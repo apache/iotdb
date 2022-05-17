@@ -29,22 +29,22 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a short to the current entry; */
+  /** Write an int to the current entry; */
   default ColumnBuilder writeInt(int value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a int to the current entry; */
+  /** Write a long to the current entry; */
   default ColumnBuilder writeLong(long value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a long to the current entry; */
+  /** Write a float to the current entry; */
   default ColumnBuilder writeFloat(float value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a byte sequences to the current entry; */
+  /** Write a double to the current entry; */
   default ColumnBuilder writeDouble(double value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
@@ -59,11 +59,29 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder);
+  /** Write an Object to the current entry, which should be the corresponding type; */
+  default ColumnBuilder writeObject(Object value) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /**
+   * Write value at index of passing column
+   *
+   * @param column source column whose type should be same as ColumnBuilder
+   * @param index index of source column to read from
+   */
+  ColumnBuilder write(Column column, int index);
 
   /** Appends a null value to the block. */
   ColumnBuilder appendNull();
+
+  /** Appends nullCount null value to the block. */
+  default ColumnBuilder appendNull(int nullCount) {
+    for (int i = 0; i < nullCount; i++) {
+      appendNull();
+    }
+    return this;
+  }
 
   /** Builds the block. This method can be called multiple times. */
   Column build();

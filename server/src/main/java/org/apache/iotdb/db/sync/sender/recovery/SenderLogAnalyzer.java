@@ -27,6 +27,7 @@ import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.sync.sender.service.MsgManager;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 
 import java.io.BufferedReader;
@@ -46,7 +47,7 @@ public class SenderLogAnalyzer {
 
   private Pipe runningPipe;
   private Pipe.PipeStatus runningPipeStatus;
-  private String runningMsg;
+  private MsgManager msgManager;
 
   public SenderLogAnalyzer() throws IOException {
     senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
@@ -56,7 +57,7 @@ public class SenderLogAnalyzer {
 
     this.pipeSinks = new HashMap<>();
     this.pipes = new ArrayList<>();
-    this.runningMsg = "";
+    this.msgManager = new MsgManager();
   }
 
   public void recover() throws IOException {
@@ -97,19 +98,20 @@ public class SenderLogAnalyzer {
                         Long.parseLong(parseStrings[1]));
             pipes.add(runningPipe);
             runningPipeStatus = runningPipe.getStatus();
-            runningMsg = "";
+            msgManager.addPipe(runningPipe);
             break;
           case STOP_PIPE: // ignore status check
             runningPipeStatus = Pipe.PipeStatus.STOP;
-            appendMsg(parseStrings);
+            msgManager.recoverMsg(parseStrings);
             break;
           case START_PIPE:
             runningPipeStatus = Pipe.PipeStatus.RUNNING;
-            appendMsg(parseStrings);
+            msgManager.recoverMsg(parseStrings);
             break;
           case DROP_PIPE:
             runningPipeStatus = Pipe.PipeStatus.DROP;
             runningPipe.drop();
+            msgManager.removeAllPipe();
             break;
           default:
             throw new UnsupportedOperationException(
@@ -145,15 +147,6 @@ public class SenderLogAnalyzer {
     br.close();
   }
 
-  private void appendMsg(String[] parseStrings) {
-    if (parseStrings.length == 3) {
-      if (runningMsg.length() > 0) {
-        runningMsg += System.lineSeparator();
-      }
-      runningMsg += parseStrings[2];
-    }
-  }
-
   public Map<String, PipeSink> getRecoveryAllPipeSinks() {
     return pipeSinks;
   }
@@ -166,7 +159,7 @@ public class SenderLogAnalyzer {
     return runningPipe;
   }
 
-  public String getRecoveryRunningMsg() {
-    return runningMsg;
+  public MsgManager getMsgManager() {
+    return msgManager;
   }
 }

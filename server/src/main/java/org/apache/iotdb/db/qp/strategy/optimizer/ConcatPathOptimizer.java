@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -43,7 +43,7 @@ import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -146,7 +146,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             ((TimeSeriesOperand) expression)
                 .setPath(
                     new PartialPath(
-                        MetaUtils.splitPathToDetachedPath(
+                        PathUtils.splitPathToDetachedPath(
                             ((TimeSeriesOperand) expression)
                                 .getPath()
                                 .getFirstNode()))); // split path To nodes

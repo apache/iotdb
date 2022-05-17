@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -109,9 +110,6 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
-  /** Port which is used for node communication in MPP. */
-  private int mppPort = 7777;
-
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
@@ -164,7 +162,7 @@ public class IoTDBConfig {
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private long fsyncWalDelayInMs = 10;
+  private volatile long fsyncWalDelayInMs = 10;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
@@ -179,23 +177,23 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 10_000;
 
   /** Size threshold of each wal file. Unit: byte */
-  private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
-  /** TTL of wal file. Unit: ms */
-  private long walFileTTLInMs = 24 * 60 * 60 * 1000;
+  /** Minimum ratio of effective information in wal files */
+  private volatile double walMinEffectiveInfoRatio = 0.1;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024;
 
   /** MemTable's max snapshot number in wal file */
-  private int maxWalMemTableSnapshotNum = 1;
+  private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 20 * 1000;
   // endregion
 
   /**
@@ -302,17 +300,6 @@ public class IoTDBConfig {
 
   /** How many threads can concurrently build index. When <= 0, use CPU core number. */
   private int concurrentIndexBuildThread = Runtime.getRuntime().availableProcessors();
-
-  /**
-   * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
-   * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately. Unit: byte
-   */
-  private long indexBufferSize = 128 * 1024 * 1024L;
 
   /**
    * the index framework adopts sliding window model to preprocess the original tv list in the
@@ -510,6 +497,14 @@ public class IoTDBConfig {
   /** indicate whether current mode is mpp */
   private boolean mppMode = false;
 
+  /** indicate whether current mode is cluster */
+  private boolean isClusterMode = false;
+
+  /**
+   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   */
+  private int dataNodeId = -1;
+
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
 
@@ -646,9 +641,6 @@ public class IoTDBConfig {
    */
   private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
 
-  /** Default system file storage is in local file system (unsupported) */
-  private FSType systemFileStorageFs = FSType.LOCAL;
-
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
 
@@ -695,14 +687,6 @@ public class IoTDBConfig {
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
 
-  /**
-   * default TTL for storage groups that are not set TTL by statements, in ms.
-   *
-   * <p>Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected. Unit: millisecond
-   */
-  private long defaultTTL = Long.MAX_VALUE;
-
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
@@ -736,12 +720,6 @@ public class IoTDBConfig {
   // In one insert (one device, one timestamp, multiple measurements),
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
-
-  // Open ID Secret
-  private String openIdProviderUrl = "";
-
-  // the authorizer provider class which extends BasicAuthorizer
-  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
   /**
    * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
@@ -805,10 +783,6 @@ public class IoTDBConfig {
 
   private boolean enableDiscardOutOfOrderData = false;
 
-  private String adminName = "root";
-
-  private String adminPassword = "root";
-
   /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
 
@@ -820,32 +794,17 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
-  /** Encryption provider class */
-  private String encryptDecryptProvider =
-      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
-
-  /** Encryption provided class parameter */
-  private String encryptDecryptProviderParameter;
-
   /** whether to use persistent schema mode */
   private String schemaEngineMode = "Memory";
 
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInSchemaFileMode = -1;
 
-  /** the max num of thread used for flushing metadata to schema file */
-  private int maxSchemaFlushThreadNum = 15;
-
   /** the minimum size (in bytes) of segment inside a schema file page */
   private short minimumSegmentInSchemaFile = 0;
 
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
-
-  /**
-   * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
-   */
-  private List<String> configNodeUrls = Collections.singletonList("127.0.0.1:22277");
 
   /** Internal ip for data node */
   private String internalIp = "127.0.0.1";
@@ -855,6 +814,10 @@ public class IoTDBConfig {
 
   /** Internal port for consensus protocol */
   private int consensusPort = 40010;
+
+  /** Ip and port of config nodes. */
+  private List<TEndPoint> configNodeList =
+      Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
@@ -888,6 +851,32 @@ public class IoTDBConfig {
 
   /** Thread keep alive time in ms of data block manager. */
   private int dataBlockManagerKeepAliveTimeInMs = 1000;
+
+  /** Thrift socket and connection timeout between data node and config node. */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+
+  /**
+   * Cache size of dataNodeSchemaCache in{@link
+   * org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache}.
+   */
+  private int dataNodeSchemaCacheSize = 10000;
+
+  /**
+   * Cache size of partition cache in {@link
+   * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
+   */
+  private int partitionCacheSize = 10000;
+
+  IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -1472,12 +1461,12 @@ public class IoTDBConfig {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
-  public long getWalFileTTLInMs() {
-    return walFileTTLInMs;
+  public double getWalMinEffectiveInfoRatio() {
+    return walMinEffectiveInfoRatio;
   }
 
-  void setWalFileTTLInMs(long walFileTTLInMs) {
-    this.walFileTTLInMs = walFileTTLInMs;
+  void setWalMinEffectiveInfoRatio(double walMinEffectiveInfoRatio) {
+    this.walMinEffectiveInfoRatio = walMinEffectiveInfoRatio;
   }
 
   public long getWalMemTableSnapshotThreshold() {
@@ -2024,14 +2013,6 @@ public class IoTDBConfig {
     this.defaultTextEncoding = TSEncoding.valueOf(defaultTextEncoding);
   }
 
-  public FSType getSystemFileStorageFs() {
-    return systemFileStorageFs;
-  }
-
-  public void setSystemFileStorageFs(String systemFileStorageFs) {
-    this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
-  }
-
   FSType getTsFileStorageFs() {
     return tsFileStorageFs;
   }
@@ -2148,14 +2129,6 @@ public class IoTDBConfig {
     this.kerberosPrincipal = kerberosPrincipal;
   }
 
-  public long getDefaultTTL() {
-    return defaultTTL;
-  }
-
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
-  }
-
   public int getThriftServerAwaitTimeForStopService() {
     return thriftServerAwaitTimeForStopService;
   }
@@ -2236,22 +2209,6 @@ public class IoTDBConfig {
     this.primitiveArraySize = primitiveArraySize;
   }
 
-  public String getOpenIdProviderUrl() {
-    return openIdProviderUrl;
-  }
-
-  public void setOpenIdProviderUrl(String openIdProviderUrl) {
-    this.openIdProviderUrl = openIdProviderUrl;
-  }
-
-  public String getAuthorizerProvider() {
-    return authorizerProvider;
-  }
-
-  public void setAuthorizerProvider(String authorizerProvider) {
-    this.authorizerProvider = authorizerProvider;
-  }
-
   public long getStartUpNanosecond() {
     return startUpNanosecond;
   }
@@ -2328,14 +2285,6 @@ public class IoTDBConfig {
 
   public int getConcurrentIndexBuildThread() {
     return concurrentIndexBuildThread;
-  }
-
-  public long getIndexBufferSize() {
-    return indexBufferSize;
-  }
-
-  public void setIndexBufferSize(long indexBufferSize) {
-    this.indexBufferSize = indexBufferSize;
   }
 
   public String getIndexRootFolder() {
@@ -2425,22 +2374,6 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
-  }
-
-  public String getAdminName() {
-    return adminName;
-  }
-
-  public void setAdminName(String adminName) {
-    this.adminName = adminName;
-  }
-
-  public String getAdminPassword() {
-    return adminPassword;
-  }
-
-  public void setAdminPassword(String adminPassword) {
-    this.adminPassword = adminPassword;
   }
 
   public boolean isEnableSeqSpaceCompaction() {
@@ -2639,22 +2572,6 @@ public class IoTDBConfig {
     this.enableIDTableLogFile = enableIDTableLogFile;
   }
 
-  public String getEncryptDecryptProvider() {
-    return encryptDecryptProvider;
-  }
-
-  public void setEncryptDecryptProvider(String encryptDecryptProvider) {
-    this.encryptDecryptProvider = encryptDecryptProvider;
-  }
-
-  public String getEncryptDecryptProviderParameter() {
-    return encryptDecryptProviderParameter;
-  }
-
-  public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
-    this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
-  }
-
   public String getSchemaEngineMode() {
     return schemaEngineMode;
   }
@@ -2671,14 +2588,6 @@ public class IoTDBConfig {
     this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
   }
 
-  public int getMaxSchemaFlushThreadNum() {
-    return maxSchemaFlushThreadNum;
-  }
-
-  public void setMaxSchemaFlushThreadNum(int maxSchemaFlushThreadNum) {
-    this.maxSchemaFlushThreadNum = maxSchemaFlushThreadNum;
-  }
-
   public short getMinimumSegmentInSchemaFile() {
     return minimumSegmentInSchemaFile;
   }
@@ -2693,14 +2602,6 @@ public class IoTDBConfig {
 
   public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
-  }
-
-  public List<String> getConfigNodeUrls() {
-    return configNodeUrls;
-  }
-
-  public void setConfigNodeUrls(List<String> configNodeUrls) {
-    this.configNodeUrls = configNodeUrls;
   }
 
   public String getInternalIp() {
@@ -2725,6 +2626,14 @@ public class IoTDBConfig {
 
   public void setConsensusPort(int consensusPort) {
     this.consensusPort = consensusPort;
+  }
+
+  public List<TEndPoint> getConfigNodeList() {
+    return configNodeList;
+  }
+
+  public void setConfigNodeList(List<TEndPoint> configNodeList) {
+    this.configNodeList = configNodeList;
   }
 
   public long getJoinClusterTimeOutMs() {
@@ -2759,14 +2668,6 @@ public class IoTDBConfig {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public int getMppPort() {
-    return mppPort;
-  }
-
-  public void setMppPort(int mppPort) {
-    this.mppPort = mppPort;
-  }
-
   public int getDataBlockManagerPort() {
     return dataBlockManagerPort;
   }
@@ -2799,11 +2700,59 @@ public class IoTDBConfig {
     this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
   }
 
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  }
+
   public boolean isMppMode() {
     return mppMode;
   }
 
   public void setMppMode(boolean mppMode) {
     this.mppMode = mppMode;
+  }
+
+  public boolean isClusterMode() {
+    return isClusterMode;
+  }
+
+  public void setClusterMode(boolean isClusterMode) {
+    this.isClusterMode = isClusterMode;
+  }
+
+  public int getDataNodeId() {
+    return dataNodeId;
+  }
+
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
+  }
+
+  public int getDataNodeSchemaCacheSize() {
+    return dataNodeSchemaCacheSize;
+  }
+
+  public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
+    this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
+  }
+
+  public int getPartitionCacheSize() {
+    return partitionCacheSize;
+  }
+
+  public void setPartitionCacheSize(int partitionCacheSize) {
+    this.partitionCacheSize = partitionCacheSize;
   }
 }

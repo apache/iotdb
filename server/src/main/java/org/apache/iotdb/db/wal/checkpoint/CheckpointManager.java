@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 
@@ -198,6 +198,7 @@ public class CheckpointManager implements AutoCloseable {
   }
   // endregion
 
+  /** Get MemTableInfo of oldest MemTable, whose first version id is smallest */
   public MemTableInfo getOldestMemTableInfo() {
     // find oldest memTable
     List<MemTableInfo> memTableInfos;
@@ -237,6 +238,33 @@ public class CheckpointManager implements AutoCloseable {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
     }
     return firstValidVersionId;
+  }
+
+  /** Get total cost of active memTables */
+  public long getTotalCostOfActiveMemTables() {
+    long totalCost = 0;
+
+    if (!config.isEnableMemControl()) {
+      infoLock.lock();
+      try {
+        totalCost = memTableId2Info.size();
+      } finally {
+        infoLock.unlock();
+      }
+    } else {
+      List<MemTableInfo> memTableInfos;
+      infoLock.lock();
+      try {
+        memTableInfos = new ArrayList<>(memTableId2Info.values());
+      } finally {
+        infoLock.unlock();
+      }
+      for (MemTableInfo memTableInfo : memTableInfos) {
+        totalCost += memTableInfo.getMemTable().getTVListsRamCost();
+      }
+    }
+
+    return totalCost;
   }
 
   @Override

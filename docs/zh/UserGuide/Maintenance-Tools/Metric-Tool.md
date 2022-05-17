@@ -110,25 +110,57 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"               | important          | 合并文件时写入量                  | data_written{name="compaction",type="total",} 10240  |
 | data_read               | name="compaction"                                                       | important          | 合并文件时的读取量                 | data_read={name="compaction",} 10240                 |
 
-#### 4.3.5. 内存占用
+#### 4.3.5. CPU
+| Metric | Tag                                     | level | 说明                                              | 示例                              |
+| ------ | --------------------------------------- | ------ | -------------------------------------------------- | --------------------------------- |
+| process_cpu_load | name="cpu" | core | process当前CPU占用率（%） | process_cpu_load{name="process",} 5.0 |
+| process_cpu_time | name="cpu" | core | process累计占用CPU时间（ns) | process_cpu_time{name="process",} 3.265625E9 |
+| sys_cpu_load | name="cpu" | core | system当前CPU占用率（%） | sys_cpu_load{name="system",} 15.0 |
+| sys_cpu_cores | name="cpu" | core | jvm可用处理器数 | sys_cpu_cores{name="system",} 16.0 |
 
-| Metric | Tag                                     | 说明   | level                                              | 示例                              |
+#### 4.3.6. 内存占用
+
+| Metric | Tag                                     | level | 说明                                              | 示例                              |
 | ------ | --------------------------------------- | ------ | -------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
+| process_max_mem | name="memory" | core | JVM最大可用内存 | process_max_mem{name="process",} 3.545759744E9 |
+| process_used_mem | name="memory" | core | JVM当前使用内存 | process_used_mem{name="process",} 4.6065456E7 |
+| process_total_mem | name="memory" | core | JVM当前已申请内存 | process_total_mem{name="process",} 2.39599616E8 |
+| process_free_mem | name="memory" | core      | JVM当前剩余可用内存 | process_free_mem{name="process",} 1.94035584E8 |
+| process_mem_ratio | name="memory" | core      | 进程的内存占用比例 | process_mem_ratio{name="process",} 0.0 |
+| sys_total_physical_memory_size | name="memory" | core | system最大物理内存 | sys_total_physical_memory_size{name="system",} 1.5950999552E10 |
+| sys_free_physical_memory_size | name="memory" | core | system当前剩余可用内存 | sys_free_physical_memory_size{name="system",} 4.532396032E9 |
+| sys_total_swap_space_size | name="memory" | core | system交换区最大空间 | sys_total_swap_space_size{name="system",} 2.1051273216E10 |
+| sys_free_swap_space_size | name="memory" | core | system交换区剩余可用空间 | sys_free_swap_space_size{name="system",} 2.931576832E9 |
+| sys_committed_vm_size | name="memory" | important | system保证可用于正在运行的进程的虚拟内存量 | sys_committed_vm_size{name="system",} 5.04344576E8 |
 
-#### 4.3.6. 缓存命中率
+#### 4.3.7. 进程状态
+
+| Metric                | Tag            | level | 说明                               | 示例                                        |
+| --------------------- | -------------- | ----- | ---------------------------------- | ------------------------------------------- |
+| process_threads_count | name="process" | core  | 当前线程数                         | process_threads_count{name="process",} 11.0 |
+| process_status        | name="process" | core  | 进程存活状态，1.0为存活，0.0为终止 | process_status{name="process",} 1.0         |
+
+#### 4.3.8. 磁盘
+
+| Metric               | Tag         | level | 说明         | 示例                                                  |
+| -------------------- | ----------- | ----- | ------------ | ----------------------------------------------------- |
+| sys_disk_total_space | name="disk" | core  | 磁盘总大小   | sys_disk_total_space{name="system",} 5.10770798592E11 |
+| sys_disk_free_space  | name="disk" | core  | 磁盘可用大小 | sys_disk_free_space{name="system",} 3.63467845632E11  |
+
+#### 4.3.9. 缓存命中率
 
 | Metric    | Tag                                     | level  | 说明                                             | 示例                        |
 | --------- | --------------------------------------- | ------ | ------------------------------------------------ | --------------------------- |
 | cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
 
-#### 4.3.7. 业务数据
+#### 4.3.10. 业务数据
 
 | Metric   | Tag                                   | level  | 说明                                         | 示例                             |
 | -------- | ------------------------------------- | ------ | -------------------------------------------- | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
 
-#### 4.3.8. 集群
+#### 4.3.11. 集群
 
 | Metric                    | Tag                             | level  | 说明                                                          | 示例                                                                         |
 | ------------------------- | ------------------------------- | ------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -329,8 +361,14 @@ static_configs:
 
 [Grafana从Prometheus查询数据并绘图的文档](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-最后是IoTDB的metrics数据在Grafana中显示的效果图：
+### 5.3. Apache IoTDB Dashboard
+我们提供了Apache IoTDB Dashboard，在Grafana中显示的效果图如下所示：
 
-![metrics_demo_1](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_1.png)
+![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-![metrics_demo_2](http://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_2.png)
+Apache IoTDB Dashboard的获取方式：
+
+1. 您可以在grafana-metrics-example文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
+2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
+
+在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。

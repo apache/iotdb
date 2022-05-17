@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.wal.recover.file;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -55,7 +55,10 @@ import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class UnsealedTsFileRecoverPerformerTest {
   private static final String SG_NAME = "root.recover_sg";

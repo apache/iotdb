@@ -33,6 +33,9 @@
         <iotdb.test.skip>false</iotdb.test.skip>
         <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
+        <jjwt-api.version>0.10.8</jjwt-api.version>
+        <oauth2-oidc-sdk.version>8.3</oauth2-oidc-sdk.version>
+        <tomcat-embed-core.version>10.1.0-M1</tomcat-embed-core.version>
     </properties>
     <dependencies>
         <dependency>
@@ -48,11 +51,6 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-consensus</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>node-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -83,11 +81,6 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
         </dependency>
@@ -98,6 +91,10 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>units</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>stats</artifactId>
         </dependency>
         <dependency>
             <groupId>io.airlift</groupId>
@@ -155,53 +152,31 @@
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-core</artifactId>
+            <version>${powermock-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-module-junit4</artifactId>
+            <version>${powermock-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-api-mockito2</artifactId>
+            <version>${powermock-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>4.0.3</version>
+            <version>${awaitility.version}</version>
             <scope>test</scope>
-        </dependency>
-        <!--        compile group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'-->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>0.10.7</version>
-        </dependency>
-        <!-- Impl -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>0.10.8</version>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>0.10.8</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>oauth2-oidc-sdk</artifactId>
-            <version>8.3</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
-            <version>8.5.46</version>
+            <version>${tomcat-embed-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -237,6 +212,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -255,9 +231,9 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>org.rocksdb</groupId>
-            <artifactId>rocksdbjni</artifactId>
-            <version>6.27.3</version>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>[${guava.version},)</version>
         </dependency>
     </dependencies>
     <build>

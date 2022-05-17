@@ -56,14 +56,14 @@ public class ReceiverManagerTest {
       manager.createPipe(pipe1, ip1, 1);
       manager.createPipe(pipe2, ip2, 2);
       manager.createPipe(pipe1, ip2, 3);
-      manager.stopPipe(pipe1, ip1);
-      manager.stopPipe(pipe2, ip2);
-      manager.dropPipe(pipe1, ip2);
-      manager.startPipe(pipe1, ip1);
+      manager.stopPipe(pipe1, ip1, 1);
+      manager.stopPipe(pipe2, ip2, 2);
+      manager.dropPipe(pipe1, ip2, 3);
+      manager.startPipe(pipe1, ip1, 1);
       List<PipeInfo> allPipeInfos = manager.getAllPipeInfos();
       Assert.assertEquals(3, allPipeInfos.size());
-      List<PipeInfo> pipeInfos1 = manager.getPipeInfos(pipe1);
-      List<PipeInfo> pipeInfos2 = manager.getPipeInfos(pipe2);
+      List<PipeInfo> pipeInfos1 = manager.getPipeInfosByPipeName(pipe1);
+      List<PipeInfo> pipeInfos2 = manager.getPipeInfosByPipeName(pipe2);
       Assert.assertEquals(2, pipeInfos1.size());
       Assert.assertEquals(1, pipeInfos2.size());
       for (PipeInfo pipeInfo : pipeInfos2) {
@@ -91,8 +91,8 @@ public class ReceiverManagerTest {
       Assert.assertEquals(error, messages.get(0));
       manager.close();
     } catch (Exception e) {
-      Assert.fail();
       e.printStackTrace();
+      Assert.fail();
     }
   }
 }

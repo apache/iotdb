@@ -106,7 +106,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
+  public TsBlock getAllSatisfiedData() throws IOException {
     // TODO change from the row-based style to column-based style
     TsBlockBuilder builder =
         new TsBlockBuilder(

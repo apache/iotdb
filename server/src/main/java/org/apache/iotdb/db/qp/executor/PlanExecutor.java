@@ -19,16 +19,21 @@
 package org.apache.iotdb.db.qp.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
@@ -48,8 +53,6 @@ import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -60,15 +63,31 @@ import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -142,7 +161,6 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
-import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -158,6 +176,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -179,6 +198,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -439,7 +459,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean operateStartPipeServer() throws QueryProcessException {
     try {
-      ReceiverService.getInstance().startPipeServer();
+      ReceiverService.getInstance().startPipeServer(false);
     } catch (PipeServerException e) {
       throw new QueryProcessException(e);
     }
@@ -1259,7 +1279,7 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPESINK_ATTRIBUTES, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeSinkName());
-    for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink())
+    for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink()) {
       if (showAll || plan.getPipeSinkName().equals(pipeSink.getName())) {
         RowRecord record = new RowRecord(0);
         record.addField(Binary.valueOf(pipeSink.getName()), TSDataType.TEXT);
@@ -1267,6 +1287,7 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(Binary.valueOf(pipeSink.showAllAttributes()), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
+    }
     return listDataSet;
   }
 
@@ -1301,7 +1322,7 @@ public class PlanExecutor implements IPlanExecutor {
                 TSDataType.TEXT,
                 TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeName());
-    for (Pipe pipe : SenderService.getInstance().getAllPipes())
+    for (Pipe pipe : SenderService.getInstance().getAllPipes()) {
       if (showAll || plan.getPipeName().equals(pipe.getName())) {
         RowRecord record = new RowRecord(0);
         record.addField(
@@ -1314,7 +1335,10 @@ public class PlanExecutor implements IPlanExecutor {
             Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
+    }
     ReceiverService.getInstance().showPipe(plan, listDataSet);
+    // sort by create time
+    listDataSet.sort(Comparator.comparing(o -> o.getFields().get(0).getStringValue()));
     return listDataSet;
   }
 
@@ -1401,7 +1425,12 @@ public class PlanExecutor implements IPlanExecutor {
 
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
+        if (reader.selfCheck(schemaMap, chunkGroupMetadataList, false)
+            != TsFileCheckStatus.COMPLETE_FILE) {
+          throw new QueryProcessException(
+              String.format(
+                  "Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
+        }
         if (plan.getVerifyMetadata()) {
           loadNewTsFileVerifyMetadata(reader);
         }
@@ -2303,7 +2332,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     int index = 0;
-    if (IoTDBDescriptor.getInstance().getConfig().getAdminName().equals(userName)) {
+    if (CommonDescriptor.getInstance().getConfig().getAdminName().equals(userName)) {
       headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);

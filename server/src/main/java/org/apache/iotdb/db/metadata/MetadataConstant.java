@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
 public class MetadataConstant {
 

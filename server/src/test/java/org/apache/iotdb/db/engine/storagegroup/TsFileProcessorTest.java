@@ -19,19 +19,19 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -311,6 +311,15 @@ public class TsFileProcessorTest {
     Assert.assertEquals(828424, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(720360, memTable.memSize());
+    // Test records
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      processor.insert(new InsertRowPlan(record));
+    }
+    Assert.assertEquals(830120, memTable.getTVListsRamCost());
+    Assert.assertEquals(90100, memTable.getTotalPointsNum());
+    Assert.assertEquals(721560, memTable.memSize());
   }
 
   @Test
@@ -337,6 +346,14 @@ public class TsFileProcessorTest {
     Assert.assertEquals(1656000, memTable.getTVListsRamCost());
     Assert.assertEquals(90000, memTable.getTotalPointsNum());
     Assert.assertEquals(1440000, memTable.memSize());
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      processor.insert(new InsertRowPlan(record));
+    }
+    Assert.assertEquals(1657696, memTable.getTVListsRamCost());
+    Assert.assertEquals(90100, memTable.getTotalPointsNum());
+    Assert.assertEquals(1441200, memTable.memSize());
   }
 
   @Test

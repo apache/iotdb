@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
@@ -57,6 +57,7 @@ public class WALNodeRecoverTask implements Runnable {
 
   @Override
   public void run() {
+    logger.info("Start recovering WAL node in the directory {}", logDirectory);
     try {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
@@ -78,6 +79,9 @@ public class WALNodeRecoverTask implements Runnable {
     }
     // delete this wal node folder
     FileUtils.deleteDirectory(logDirectory);
+    logger.info(
+        "Successfully recover WAL node in the directory {}, so delete these wal files.",
+        logDirectory);
   }
 
   private void recoverInfoFromCheckpoints() {

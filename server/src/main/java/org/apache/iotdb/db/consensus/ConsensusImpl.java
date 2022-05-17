@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.consensus;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -51,7 +51,7 @@ public class ConsensusImpl {
     private static final IConsensus INSTANCE =
         ConsensusFactory.getConsensusImpl(
                 conf.getConsensusProtocolClass(),
-                new Endpoint(conf.getInternalIp(), conf.getConsensusPort()),
+                new TEndPoint(conf.getInternalIp(), conf.getConsensusPort()),
                 new File(conf.getConsensusDir()),
                 gid -> {
                   switch (gid.getType()) {

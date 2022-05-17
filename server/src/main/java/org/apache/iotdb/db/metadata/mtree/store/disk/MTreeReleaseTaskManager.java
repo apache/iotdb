@@ -47,13 +47,12 @@ public class MTreeReleaseTaskManager {
 
   public void init() {
     releaseTaskExecutor =
-        IoTDBThreadPoolFactory.newCachedThreadPool(
-            MTREE_RELEASE_THREAD_POOL_NAME, Runtime.getRuntime().availableProcessors());
+        IoTDBThreadPoolFactory.newCachedThreadPool(MTREE_RELEASE_THREAD_POOL_NAME);
   }
 
   public void clear() {
     if (releaseTaskExecutor != null) {
-      releaseTaskExecutor.shutdownNow();
+      releaseTaskExecutor.shutdown();
       while (!releaseTaskExecutor.isTerminated()) ;
       releaseTaskExecutor = null;
     }

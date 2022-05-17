@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
@@ -71,7 +72,11 @@ public class TagLogFile implements AutoCloseable {
             StandardOpenOption.WRITE,
             StandardOpenOption.CREATE);
     // move the current position to the tail of the file
-    this.fileChannel.position(fileChannel.size());
+    try {
+      this.fileChannel.position(fileChannel.size());
+    } catch (ClosedByInterruptException e) {
+      // ignore
+    }
   }
 
   /** @return tags map, attributes map */

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.nio.ByteBuffer;
@@ -38,22 +39,5 @@ public class PathDeserializeUtil {
       default:
         throw new IllegalArgumentException("Invalid path type: " + pathType);
     }
-  }
-}
-
-enum PathType {
-  Measurement((byte) 0),
-  Aligned((byte) 1),
-  Partial((byte) 2),
-  Path((byte) 3);
-
-  private final byte pathType;
-
-  PathType(byte pathType) {
-    this.pathType = pathType;
-  }
-
-  public void serialize(ByteBuffer buffer) {
-    buffer.put(pathType);
   }
 }

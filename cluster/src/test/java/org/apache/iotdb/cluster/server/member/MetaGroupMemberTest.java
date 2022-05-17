@@ -79,21 +79,21 @@ import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -332,7 +332,8 @@ public class MetaGroupMemberTest extends BaseMember {
     try {
       for (String prefixPath : prefixPaths) {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
-          IoTDB.schemaProcessor.collectMeasurementSchema(new PartialPath(prefixPath), schemas);
+          //          IoTDB.schemaProcessor.collectMeasurementSchema(new PartialPath(prefixPath),
+          // schemas);
           dataOutputStream.writeInt(schemas.size());
           for (IMeasurementSchema schema : schemas) {
             schema.partialSerializeTo(dataOutputStream);
@@ -342,7 +343,7 @@ public class MetaGroupMemberTest extends BaseMember {
           TestUtils.getTestMeasurementSchema(0).partialSerializeTo(dataOutputStream);
         }
       }
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       // ignore
     }
     PullSchemaResp resp = new PullSchemaResp();

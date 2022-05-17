@@ -20,6 +20,7 @@
 package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
@@ -35,7 +36,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
 
-import com.google.gson.Gson;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -182,7 +182,7 @@ public class InfluxDBSession {
     try {
       InfluxQueryResultRsp tsQueryResultRsp = client.query(request);
       RpcUtils.verifySuccess(tsQueryResultRsp.status);
-      return new Gson().fromJson(tsQueryResultRsp.resultJsonString, QueryResult.class);
+      return JacksonUtils.json2Bean(tsQueryResultRsp.resultJsonString, QueryResult.class);
     } catch (TException e) {
       e.printStackTrace();
       logger.error(e.getMessage());
@@ -191,7 +191,7 @@ public class InfluxDBSession {
           request.setSessionId(sessionId);
           InfluxQueryResultRsp tsQueryResultRsp = client.query(request);
           RpcUtils.verifySuccess(tsQueryResultRsp.status);
-          return new Gson().fromJson(tsQueryResultRsp.resultJsonString, QueryResult.class);
+          return JacksonUtils.json2Bean(tsQueryResultRsp.resultJsonString, QueryResult.class);
         } catch (TException e1) {
           throw new IoTDBConnectionException(e1);
         }

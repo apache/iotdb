@@ -20,13 +20,15 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class EvaluationDAGBuilder {
@@ -34,9 +36,12 @@ public class EvaluationDAGBuilder {
   private final long queryId;
 
   private final RawQueryInputLayer inputLayer;
+  private final Map<String, List<InputLocation>> inputLocations;
 
   private final Expression[] outputExpressions;
   private final LayerPointReader[] outputPointReaders;
+
+  private final TypeProvider typeProvider;
 
   private final UDTFContext udtfContext;
 
@@ -47,26 +52,27 @@ public class EvaluationDAGBuilder {
   // sub-expressions, but they can share the same point reader. we cache the point reader here to
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
-  private final Map<Expression, TSDataType> expressionDataTypeMap;
 
   public EvaluationDAGBuilder(
       long queryId,
       RawQueryInputLayer inputLayer,
+      Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
+      TypeProvider typeProvider,
       UDTFContext udtfContext,
       float memoryBudgetInMB) {
     this.queryId = queryId;
     this.inputLayer = inputLayer;
+    this.inputLocations = inputLocations;
     this.outputExpressions = outputExpressions;
+    this.typeProvider = typeProvider;
     this.udtfContext = udtfContext;
 
-    int size = inputLayer.getInputColumnCount();
-    outputPointReaders = new LayerPointReader[size];
+    outputPointReaders = new LayerPointReader[outputExpressions.length];
 
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
     expressionIntermediateLayerMap = new HashMap<>();
-    expressionDataTypeMap = new HashMap<>();
   }
 
   public EvaluationDAGBuilder buildLayerMemoryAssigner() {
@@ -74,6 +80,13 @@ public class EvaluationDAGBuilder {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
     memoryAssigner.build();
+    return this;
+  }
+
+  public EvaluationDAGBuilder bindInputLayerColumnIndexWithExpression() {
+    for (Expression expression : outputExpressions) {
+      expression.bindInputLayerColumnIndexWithExpression(inputLocations);
+    }
     return this;
   }
 
@@ -87,7 +100,7 @@ public class EvaluationDAGBuilder {
                   udtfContext,
                   inputLayer,
                   expressionIntermediateLayerMap,
-                  expressionDataTypeMap,
+                  typeProvider,
                   memoryAssigner)
               .constructPointReader();
     }

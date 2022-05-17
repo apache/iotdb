@@ -28,12 +28,24 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import com.codahale.metrics.*;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.ScheduledReporter;
+import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -144,6 +156,9 @@ public class IoTDBReporter extends ScheduledReporter {
   }
 
   private void sendGauge(String name, Gauge gauge) {
+    if (null == gauge) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     Object obj = gauge.getValue();
     double value;
@@ -156,12 +171,18 @@ public class IoTDBReporter extends ScheduledReporter {
   }
 
   private void sendCounter(String name, Counter counter) {
+    if (null == counter) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     double value = counter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
 
   private void sendHistogram(String name, Histogram histogram) {
+    if (null == histogram) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),
@@ -172,12 +193,18 @@ public class IoTDBReporter extends ScheduledReporter {
   }
 
   private void sendMeter(String name, Meter meter) {
+    if (null == meter) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     double value = meter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
 
   private void sendTimer(String name, Timer timer) {
+    if (null == timer) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),

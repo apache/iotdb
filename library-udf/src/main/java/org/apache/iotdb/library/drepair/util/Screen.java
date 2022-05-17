@@ -37,11 +37,6 @@ public class Screen extends ValueRepair {
     setParameters();
   }
 
-  public Screen(String filename) throws Exception {
-    super(filename);
-    setParameters();
-  }
-
   private void setParameters() {
     // set the default speed threshold
     double[] speed = Util.speed(original, time);

@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,6 +61,17 @@ public class UDFParameters {
     dataTypes = new ArrayList<>();
     for (Expression expression : expressions) {
       dataTypes.add(expressionDataTypeMap.get(expression));
+    }
+  }
+
+  public UDFParameters(FunctionExpression functionExpression, TypeProvider typeProvider)
+      throws QueryProcessException {
+    expressions = functionExpression.getExpressions();
+    paths = functionExpression.getPaths();
+    attributes = functionExpression.getFunctionAttributes();
+    dataTypes = new ArrayList<>();
+    for (Expression expression : expressions) {
+      dataTypes.add(typeProvider.getType(expression.toString()));
     }
   }
 
