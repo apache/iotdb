@@ -50,7 +50,7 @@ public class SnapshotTaker {
     this.dataRegion = dataRegion;
   }
 
-  public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
+  public boolean takeFullSnapshot(String snapshotDirPath)
       throws DirectoryNotLegalException, IOException {
     File snapshotDir = new File(snapshotDirPath);
     if (snapshotDir.exists()
@@ -65,9 +65,7 @@ public class SnapshotTaker {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
-    if (flushBeforeSnapshot) {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
-    }
 
     List<Long> timePartitions = dataRegion.getTimePartitions();
     for (Long timePartition : timePartitions) {
@@ -91,10 +89,6 @@ public class SnapshotTaker {
     }
 
     return true;
-  }
-
-  public boolean takeIncrementalSnapshot(long maxWalSizeBeforeSnapshot, String snapshotDirPath) {
-    return false;
   }
 
   private List<String> getAllDataDirOfOnePartition(boolean sequence, long timePartition) {

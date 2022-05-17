@@ -53,11 +53,11 @@ public class SnapshotLoader {
           String.format("Failed to load snapshot from %s because it does not exist", dataDir));
     }
     try {
-      return DataRegion.recoverFromSnapshot(
-          storageGroupName,
+      return new DataRegion(
+          StorageEngine.getInstance().getSystemDir() + File.separator + storageGroupName,
           dataRegionId,
-          dataDirPath,
-          StorageEngine.getInstance().getSystemDir() + File.separator + storageGroupName);
+          StorageEngine.getInstance().getFileFlushPolicy(),
+          storageGroupName);
     } catch (Exception e) {
       LOGGER.error("Exception occurs while load snapshot from {}", dataDir, e);
       return null;

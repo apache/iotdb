@@ -89,7 +89,7 @@ public class IoTDBSnapshotIT {
         FileUtils.forceDelete(snapshotDir);
       }
 
-      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath());
 
       Assert.assertTrue(snapshotDir.exists());
       Assert.assertTrue(snapshotDir.isDirectory());
@@ -138,7 +138,7 @@ public class IoTDBSnapshotIT {
       File tmpFile = new File(snapshotDir, "test");
       tmpFile.createNewFile();
 
-      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath());
     }
   }
 
@@ -177,7 +177,7 @@ public class IoTDBSnapshotIT {
       if (!snapshotDir.exists()) {
         snapshotDir.mkdirs();
       }
-      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath());
       StorageEngine.getInstance()
           .setDataRegion(
               new PartialPath(SG_NAME),
@@ -237,7 +237,7 @@ public class IoTDBSnapshotIT {
       IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
       statement.execute("merge");
       DataRegion region = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME));
-      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath());
       region.abortCompaction();
       StorageEngine.getInstance()
           .setDataRegion(
