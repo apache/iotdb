@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -106,40 +107,49 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Check if expression is a valid built-in aggregation function. If not, throw a {@link
-   * SemanticException}.
+   * Identify the expression is a valid built-in aggregation function.
    *
    * @param expression expression to be checked
    * @return true if this expression is valid
    */
-  public static boolean checkIsValidAggregation(Expression expression) {
+  public static ResultColumn.ColumnType identifyOutputColumnType(Expression expression) {
     if (expression instanceof BinaryExpression) {
-      boolean isLeftValid =
-          checkIsValidAggregation(((BinaryExpression) expression).getLeftExpression());
-      boolean isRightValid =
-          checkIsValidAggregation(((BinaryExpression) expression).getRightExpression());
-      if ((isLeftValid && !isRightValid) || (!isLeftValid && isRightValid)) {
+      ResultColumn.ColumnType leftType =
+          identifyOutputColumnType(((BinaryExpression) expression).getLeftExpression());
+      ResultColumn.ColumnType rightType =
+          identifyOutputColumnType(((BinaryExpression) expression).getRightExpression());
+      if ((leftType == ResultColumn.ColumnType.RAW
+              && rightType == ResultColumn.ColumnType.AGGREGATION)
+          || (leftType == ResultColumn.ColumnType.AGGREGATION
+              && rightType == ResultColumn.ColumnType.RAW)) {
         throw new SemanticException(
-            "Raw data and aggregation result calculation is not supported.");
+            "Raw data and aggregation result hybrid calculation is not supported.");
       }
-      return isLeftValid;
+      if (leftType == ResultColumn.ColumnType.CONSTANT
+          && rightType == ResultColumn.ColumnType.CONSTANT) {
+        throw new SemanticException("Constant column is not supported.");
+      }
+      if (leftType != ResultColumn.ColumnType.CONSTANT) {
+        return leftType;
+      }
+      return rightType;
     } else if (expression instanceof UnaryExpression) {
-      return checkIsValidAggregation(((UnaryExpression) expression).getExpression());
+      return identifyOutputColumnType(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
       if (!expression.isBuiltInAggregationFunctionExpression()) {
-        return false;
+        return ResultColumn.ColumnType.RAW;
       }
       for (Expression childExpression : expression.getExpressions()) {
-        if (checkIsValidAggregation(childExpression)) {
+        if (identifyOutputColumnType(childExpression) == ResultColumn.ColumnType.AGGREGATION) {
           throw new SemanticException(
               "Aggregation results cannot be as input of the aggregation function.");
         }
       }
-      return true;
+      return ResultColumn.ColumnType.AGGREGATION;
     } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
-      return false;
+      return ResultColumn.ColumnType.RAW;
     } else if (expression instanceof ConstantOperand) {
-      return true;
+      return ResultColumn.ColumnType.CONSTANT;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());

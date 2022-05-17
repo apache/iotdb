@@ -122,7 +122,10 @@ public class ConcatPathRewriter {
       }
       resultColumns.addAll(
           resultExpressions.stream()
-              .map(expression -> new ResultColumn(expression, resultColumn.getAlias()))
+              .map(
+                  expression ->
+                      new ResultColumn(
+                          expression, resultColumn.getAlias(), resultColumn.getColumnType()))
               .collect(Collectors.toList()));
     }
     return resultColumns;

@@ -97,7 +97,8 @@ public class StatementGenerator {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
-    selectComponent.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectComponent.addResultColumn(
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("")), ResultColumn.ColumnType.RAW));
 
     // set query filter
     QueryFilter queryFilter = new QueryFilter(FilterConstant.FilterType.KW_AND);
@@ -143,7 +144,8 @@ public class StatementGenerator {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
-    selectComponent.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectComponent.addResultColumn(
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("")), ResultColumn.ColumnType.RAW));
 
     // set query filter
     PartialPath timePath = new PartialPath(TIME);

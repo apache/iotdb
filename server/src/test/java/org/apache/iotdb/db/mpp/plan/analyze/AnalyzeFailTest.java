@@ -35,7 +35,7 @@ public class AnalyzeFailTest {
 
   @Test
   public void illegalAggregationTest1() {
-    String message = "Raw data and aggregation result calculation is not supported.";
+    String message = "Raw data and aggregation result hybrid calculation is not supported.";
     assertAnalyzeSemanticException("SELECT sum(s1) + s1 FROM root.sg.d1", message);
   }
 
