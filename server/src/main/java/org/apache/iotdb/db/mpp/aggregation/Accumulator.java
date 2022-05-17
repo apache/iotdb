@@ -49,7 +49,8 @@ public interface Accumulator {
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single, so its output column
-   * is single too; But for AVG, last_value, it should be double column with dictionary order.
+   * is single too; But for AVG(COUNT and SUM), LAST_VALUE(LAST_VALUE and MAX_TIME), the output
+   * columns should be double in dictionary order.
    */
   void outputIntermediate(ColumnBuilder[] tsBlockBuilder);
 

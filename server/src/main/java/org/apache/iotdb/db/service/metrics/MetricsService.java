@@ -174,6 +174,25 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   }
 
   @Override
+  protected void collectProcessInfo() {
+    logger.info("start collecting information of metric service's process");
+    ProcessMetricsMonitor processMetricsMonitor = ProcessMetricsMonitor.getInstance();
+    processMetricsMonitor.collectProcessCPUInfo();
+    processMetricsMonitor.collectProcessMemInfo();
+    processMetricsMonitor.collectThreadInfo();
+    processMetricsMonitor.collectProcessStatusInfo();
+  }
+
+  @Override
+  protected void collectSystemInfo() {
+    logger.info("start collecting information of system hardware");
+    SysRunMetricsMonitor sysRunMetricsMonitor = SysRunMetricsMonitor.getInstance();
+    sysRunMetricsMonitor.collectSystemCpuInfo();
+    sysRunMetricsMonitor.collectSystemMEMInfo();
+    sysRunMetricsMonitor.collectSystemDiskInfo();
+  }
+
+  @Override
   public void reloadProperties(ReloadLevel reloadLevel) {
     logger.info("Reload properties of metric service");
     synchronized (this) {

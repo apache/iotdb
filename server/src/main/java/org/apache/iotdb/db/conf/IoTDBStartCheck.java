@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -41,7 +38,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -414,39 +410,5 @@ public class IoTDBStartCheck {
     }
     // rename system.properties.tmp to system.properties
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
-  }
-
-  /** call this method to serialize config node list */
-  public void serializeConfigNodeList(List<TEndPoint> configNodeList) throws IOException {
-    // create an empty tmpPropertiesFile
-    if (tmpPropertiesFile.createNewFile()) {
-      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
-    } else {
-      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
-      System.exit(-1);
-    }
-
-    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      properties.setProperty(CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(configNodeList));
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
-      // serialize finished, delete old system.properties file
-      if (propertiesFile.exists()) {
-        Files.delete(propertiesFile.toPath());
-      }
-    }
-    // rename system.properties.tmp to system.properties
-    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
-  }
-
-  public void loadConfigNodeList() {
-    // properties contain CONFIG_NODE_LIST only when start as Data node
-    try {
-      if (properties.containsKey(CONFIG_NODE_LIST)) {
-        config.setConfigNodeList(
-            NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));
-      }
-    } catch (BadNodeUrlException e) {
-      logger.error("Cannot parse config node list in system.properties");
-    }
   }
 }
