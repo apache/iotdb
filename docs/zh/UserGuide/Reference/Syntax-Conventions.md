@@ -21,7 +21,7 @@
 
 # 语法约定
 
-## Proble
+## 旧语法约定中的问题
 
 在之前版本的语法约定中，为了保持兼容性，我们引入了一些会引起歧义的规定。为了避免歧义，我们设计了新的语法约定，本章将说明旧语法约定中存在的问题，以及我们做出改动的原因。
 
@@ -47,7 +47,7 @@ select 'www.baidu.com' from root.sg;
 
 ```SQL
 # 在现有语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，语法如下：
-create root.sg.`www.baidu.com` with 'datatype' = 'BOOLEAN', 'encoding' = 'PLAIN'
+create root.sg.`www.baidu.com` with datatype = BOOLEAN, encoding = PLAIN
 
 # 查询该时间序列可以通过如下语句：
 select `www.baidu.com` from root.sg;
@@ -58,7 +58,7 @@ select `www.baidu.com` from root.sg;
 在旧语法约定中，在路径结点名中使用单引号 ' 和 双引号 " 时，需要使用反斜杠 \ 进行转义，且反斜杠会被视为路径结点名的一部分存入，而在使用其它标识符时没有这个限制，造成了不统一。
 
 ```SQL
-# 创建时间序列 root.sg.·\"a
+# 创建时间序列 root.sg.\"a
 create timeseries root.sg.`\"a` with datatype=TEXT,encoding=PLAIN;
 
 # 查询时间序列 root.sg.\"a
@@ -70,7 +70,7 @@ select `\"a` from root.sg;
 +-----------------------------+-----------+
 ```
 
-在新语法约定中，特殊路径结点名统一使用反引号进行引用，在路径结点名中使用单双引号无须添加反斜杠转义，使用反引号需要双写，具体可以参考新语法约定相关章节。
+在新语法约定中，特殊路径结点名统一使用反引号进行引用，在路径结点名中使用单双引号无须添加反斜杠转义，使用反引号需要双写，具体可以参考新语法约定路径结点名章节。
 
 ### SQL和Session接口对字符串反转义处理不一致
 
@@ -301,8 +301,6 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 - 标识符包含不允许的特殊字符。
 - 标识符为纯数字。
 
-**使用反引号引用的标识符，反引号被视为标识符的一部分，这意味着，一个用反引号引起的标识符和一个不用反引号引起的标识符是不匹配的，即：\`identifier1\` != idenfitier1。**
-
 ### 如何在反引号引起的标识符中使用引号
 
 **在反引号引起的标识符中可以直接使用单引号和双引号。**
@@ -310,11 +308,11 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 **在用反引号引用的标识符中，可以通过双写反引号的方式使用反引号，即 ` 可以表示为 ``**，示例如下：
 
 ```SQL
-# 创建模板 `t1``t`
+# 创建模板 t1`t
 create schema template `t1``t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 
-# 创建模板 `t1't"t`
+# 创建模板 t1't"t
 create schema template `t1't"t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
@@ -340,14 +338,14 @@ create schema template `t1't"t`
 - UDF 名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 `111` 的 UDF，111 为纯数字，所以需要用反引号引用，反引号一并视为标识符的一部分。
+  # 创建名为 111 的 UDF，111 为纯数字，所以需要用反引号引用。
   CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - 元数据模板名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 `111` 的元数据模板，111 为纯数字，需要用反引号引用
+  # 创建名为 111 的元数据模板，111 为纯数字，需要用反引号引用。
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -355,17 +353,17 @@ create schema template `t1't"t`
 - 用户名、角色名出现上述特殊情况时需使用反引号引用，同时无论是否使用反引号引用，用户名、角色名中均不允许出现空格，具体请参考权限管理章节中的说明。
 
   ```sql
-  # 创建用户 `special``user`.
+  # 创建用户 special`user.
   CREATE USER `special``user.` 'write_pwd'
   
-  # 创建角色 `111`
+  # 创建角色 111
   CREATE ROLE `111`
   ```
 
 - 连续查询标识出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建连续查询 `test.cq`
+  # 创建连续查询 test.cq
   CREATE CONTINUOUS QUERY `test.cq` 
   BEGIN 
     SELECT max_value(temperature) 
@@ -378,10 +376,10 @@ create schema template `t1't"t`
 - Pipe、PipeSink 名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建 PipeSink `test.*1`
+  # 创建 PipeSink test.*1
   CREATE PIPESINK `test.*1` AS IoTDB ('ip' = '输入你的IP')
   
-  # 创建 Pipe `test.*2`
+  # 创建 Pipe test.*2
   CREATE PIPE `test.*2` TO `test.*1` FROM 
   (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
   ```
@@ -412,7 +410,7 @@ create schema template `t1't"t`
 由于通配符 * 在查询表达式中也可以表示乘法符号，下述例子用于帮助您区分两种情况：
 
 ```SQL
-# 创建时间序列 root.sg.a*b
+# 创建时间序列 root.sg.`a*b`
 create timeseries root.sg.`a*b` with datatype=FLOAT,encoding=PLAIN;
 # 请注意，如标识符部分所述，a*b包含特殊字符，需要用``括起来使用
 # create timeseries root.sg.a*b with datatype=FLOAT,encoding=PLAIN 是错误用法
@@ -423,7 +421,7 @@ create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN;
 # 创建时间序列 root.sg.b
 create timeseries root.sg.b with datatype=FLOAT,encoding=PLAIN;
 
-# 查询时间序列 root.sg.a*b
+# 查询时间序列 root.sg.`a*b`
 select `a*b` from root.sg
 # 其结果集表头为
 |Time|root.sg.a*b|
@@ -436,14 +434,14 @@ select a*b from root.sg
 
 ### 标识符
 
-路径结点名不为通配符时，使用方法和标识符一致。
+路径结点名不为通配符时，使用方法和标识符一致。**在 SQL 中需要使用反引号引用的路径结点，在结果集中也会用反引号引起。**
 
 需要使用反引号进行引用的部分特殊情况示例：
 
 - 创建时间序列时，如下情况需要使用反引号对特殊节点名进行引用：
 
 ```SQL
-# 路径结点名中包含特殊字符，时间序列各结点为["root","sg","`www.``baidu.com`"]
+# 路径结点名中包含特殊字符，时间序列各结点为["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
 # 路径结点名为纯数字
@@ -474,7 +472,7 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 - 查询数据时，如下情况需要使用反引号对特殊节点名进行引用：
 
 ```SQL
-# 路径结点名中包含特殊字符 .
+# 路径结点名中包含特殊字符
 select a from root.sg.`www.``baidu.com`;
 
 # 路径结点名为纯数字
@@ -501,7 +499,7 @@ select `111` from root.sg
 
 ## 键值对
 
-**键值对的键和值可以被定义为标识符或者常量。如标识符章节所述，用反引号引起的标识符，反引号被视为标识符的一部分，所以\`key1\`和"key1"是不相同的表达方式。**
+**键值对的键和值可以被定义为标识符或者常量。**
 
 下面将介绍键值对的使用场景。
 

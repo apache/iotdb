@@ -298,8 +298,6 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 - Identifier contains special characters.
 - Identifier consists of solely digits.
 
-**In an identifier quoted with \`\`, \` will be a part of the identifier, which means a quoted identifier is not the same as an identifier that is not quoted. Example:  \`identifier1\` != identifier1.**
-
 ### How to use quotations marks in quoted identifiers
 
 `'` and `"` can be used directly in quoted identifiers.
@@ -307,11 +305,11 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 ` may be written as `` in quoted  identifiers. See the example below:
 
 ```SQL
-# create template `t1't"t`
+# create template t1't"t
 create schema template `t1't"t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 
-# create template `t1``t`
+# create template t1`t
 create schema template `t1``t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
@@ -323,7 +321,7 @@ Examples of case in which quoted identifier is used ：
 - Trigger name should be quoted in cases described above ：
 
   ```sql
-  # create trigger named `alert.``listener-sg1d1s1`
+  # create trigger named alert.`listener-sg1d1s1
   CREATE TRIGGER `alert.``listener-sg1d1s1`
   AFTER INSERT
   ON root.sg1.d1.s1
@@ -337,14 +335,14 @@ Examples of case in which quoted identifier is used ：
 - UDF name should be quoted in cases described above ：
 
   ```sql
-  # create a funciton named `111`, 111 consists of solely digits. ` will be a part of the identifier.
+  # create a funciton named 111, 111 consists of solely digits.
   CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - Template name should be quoted in cases described above ：
 
   ```sql
-  # create a template named `111`, 111 consists of solely digits. ` will be a part of the identifier.
+  # create a template named 111, 111 consists of solely digits.
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -352,17 +350,17 @@ Examples of case in which quoted identifier is used ：
 - User and Role name should be quoted in cases described above, blank space is not allow in User and Role name whether quoted or not ：
 
   ```sql
-  # create user `special``user`.
+  # create user special`user.
   CREATE USER `special``user.` 'write_pwd'
   
-  # create role `111`
+  # create role 111
   CREATE ROLE `111`
   ```
 
 - Continuous query name should be quoted in cases described above ：
 
   ```sql
-  # create continuous query `test.cq`
+  # create continuous query test.cq
   CREATE CONTINUOUS QUERY `test.cq` 
   BEGIN 
     SELECT max_value(temperature) 
@@ -375,10 +373,10 @@ Examples of case in which quoted identifier is used ：
 - Pipe、PipeSink should be quoted in cases described above ：
 
   ```sql
-  # create PipeSink `test.*1`
+  # create PipeSink test.*1
   CREATE PIPESINK `test.*1` AS IoTDB ('ip' = '输入你的IP')
   
-  # create Pipe `test.*2`
+  # create Pipe test.*2
   CREATE PIPE `test.*2` TO `test.*1` FROM 
   (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
   ```
@@ -410,7 +408,7 @@ Node name is a special identifier, it can also be wildcard `*` and `**`. When cr
 As `*` can also be used in expressions of select clause to represent multiplication, below are examples to help you better understand the usage of `* `:
 
 ```SQL
-# create timeseries root.sg.a*b
+# create timeseries root.sg.`a*b`
 create timeseries root.sg.`a*b` with datatype=FLOAT,encoding=PLAIN;
 
 # As described in Identifier part, a*b should be quoted.
@@ -422,7 +420,7 @@ create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN;
 # create timeseries root.sg.b
 create timeseries root.sg.b with datatype=FLOAT,encoding=PLAIN;
 
-# query data of root.sg.a*b
+# query data of root.sg.`a*b`
 select `a*b` from root.sg
 # Header of result dataset
 |Time|root.sg.a*b|
@@ -440,7 +438,7 @@ When node name is not wildcard, it is a identifier, which means the constraints 
 - Create timeseries statement:
 
 ```SQL
-# Node name contains special characters like ` and .,all nodes of this timeseries are: ["root","sg","`www.``baidu.com`"]
+# Node name contains special characters like ` and .,all nodes of this timeseries are: ["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
 # Node name consists of solely digits.
@@ -498,7 +496,7 @@ Results:
 
 ## Key-Value Pair
 
-**The key/value of an attribute can be constant(including string) and identifier. As described before，in an identifier quoted with \`\`, \` will be a part of the identifier, which means\`key1\` is not the same as "key1"**
+**The key/value of an attribute can be constant(including string) and identifier. **
 
 Below are usage scenarios of key-value pair:
 
