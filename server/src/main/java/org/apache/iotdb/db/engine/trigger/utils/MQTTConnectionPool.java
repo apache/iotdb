@@ -30,15 +30,16 @@ import java.util.Map;
 
 public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
 
-  // Each host corresponds to an singleton instance
+  // Each host:port corresponds to a singleton instance
   private static final Map<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP = new HashMap<>();
 
   public static MQTTConnectionPool getInstance(
-      String host, MQTTConnectionFactory factory, int size) {
-    MQTTConnectionPool pool = MQTT_CONNECTION_POOL_MAP.get(host);
+      String host, int port, MQTTConnectionFactory factory, int size) {
+    String key = host + ":" + port;
+    MQTTConnectionPool pool = MQTT_CONNECTION_POOL_MAP.get(key);
     if (pool == null || pool.isClosed()) {
       pool = new MQTTConnectionPool(factory, size);
-      MQTT_CONNECTION_POOL_MAP.put(host, pool);
+      MQTT_CONNECTION_POOL_MAP.put(key, pool);
     }
     return pool;
   }

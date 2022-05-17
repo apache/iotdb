@@ -49,7 +49,7 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
             configuration.getReconnectDelay());
     connectionPool =
         MQTTConnectionPool.getInstance(
-            configuration.getHost(), factory, configuration.getPoolSize());
+            configuration.getHost(), configuration.getPort(), factory, configuration.getPoolSize());
     connectionPool.preparePool();
   }
 
@@ -80,7 +80,7 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
     for (MQTTForwardEvent event : events) {
       sb.append(event.toJsonString()).append(", ");
     }
-    sb.replace(sb.lastIndexOf(", "), sb.length() - 1, "");
+    sb.replace(sb.lastIndexOf(", "), sb.length(), "");
     try {
       connectionPool.publish(
           configuration.getTopic(),

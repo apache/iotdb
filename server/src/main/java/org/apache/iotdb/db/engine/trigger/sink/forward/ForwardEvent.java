@@ -28,7 +28,7 @@ public class ForwardEvent implements Event {
   private final PartialPath fullPath;
 
   private static final String PAYLOAD_FORMATTER =
-      "{\"device\":\"%s\",\"measurements\":[%s],\"timestamp\":%d,\"values\":[%s]}";
+      "{\"device\":\"%s\",\"measurements\":[\"%s\"],\"timestamp\":%d,\"values\":[%s]}";
 
   public ForwardEvent(long timestamp, Object value, PartialPath fullPath) {
     this.timestamp = timestamp;

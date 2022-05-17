@@ -119,7 +119,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
       for (HTTPForwardEvent event : events) {
         sb.append(event.toJsonString()).append(", ");
       }
-      sb.replace(sb.lastIndexOf(", "), sb.length() - 1, "");
+      sb.replace(sb.lastIndexOf(", "), sb.length(), "");
       request.setEntity(new StringEntity("[" + sb + "]"));
       response = client.execute(request);
       if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
