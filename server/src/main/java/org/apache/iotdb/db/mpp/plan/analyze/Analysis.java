@@ -95,6 +95,9 @@ public class Analysis {
 
   private boolean finishQueryAfterAnalyze;
 
+  // extra mesaage from config node, used for node management
+  private List<String> matchedNodes;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -260,5 +263,13 @@ public class Analysis {
 
   public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
     return deviceToMeasurementIndexesMap;
+  }
+
+  public List<String> getMatchedNodes() {
+    return matchedNodes;
+  }
+
+  public void setMatchedNodes(List<String> matchedNodes) {
+    this.matchedNodes = matchedNodes;
   }
 }

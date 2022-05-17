@@ -513,6 +513,7 @@ public class LogicalPlanner {
       return planBuilder
           .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath())
           .planSchemaQueryMerge(false)
+          .planMemorySource(analysis.getMatchedNodes())
           .getRoot();
     }
 

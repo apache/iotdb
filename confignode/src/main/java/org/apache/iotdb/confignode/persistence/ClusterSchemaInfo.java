@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +55,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -503,6 +506,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       buffer.clear();
       storageGroupReadWriteLock.writeLock().unlock();
     }
+  }
+
+  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath partialPath) {
+    Pair<Set<String>, Set<PartialPath>> matchedPathsInNextLevel =
+        new Pair(new HashSet<>(), new HashSet<>());
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath);
+    } catch (MetadataException e) {
+      LOGGER.error("Error get matched paths in next level.", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return matchedPathsInNextLevel;
+  }
+
+  public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath partialPath) {
+    Pair<Set<String>, Set<PartialPath>> matchedNamesInNextLevel =
+        new Pair(new HashSet<>(), new HashSet<>());
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      matchedNamesInNextLevel = mTree.getChildNodeNameInNextLevel(partialPath);
+    } catch (MetadataException e) {
+      LOGGER.error("Error get matched names in next level.", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return matchedNamesInNextLevel;
   }
 
   @TestOnly

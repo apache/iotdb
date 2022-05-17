@@ -26,11 +26,14 @@ import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -143,6 +146,23 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
+    }
+  }
+
+  @Override
+  public SchemaNodeManagementPartition getSchemaNodeManagementPartition(
+      PathPatternTree patternTree) {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      patternTree.constructTree();
+      TSchemaNodeManagementResp schemaNodeManagementResp =
+          client.getSchemaNodeManagementPartition(
+              constructSchemaNodeManagementPartitionReq(patternTree));
+
+      return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
+    } catch (TException | IOException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getSchemaNodeManagementPartition():" + e.getMessage());
     }
   }
 
@@ -338,6 +358,20 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
+  private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
+      PathPatternTree patternTree) {
+    PublicBAOS baos = new PublicBAOS();
+    try {
+      patternTree.serialize(baos);
+      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
+      serializedPatternTree.put(baos.getBuf(), 0, baos.size());
+      serializedPatternTree.flip();
+      return new TSchemaNodeManagementReq(serializedPatternTree);
+    } catch (IOException e) {
+      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
+    }
+  }
+
   private TDataPartitionReq constructDataPartitionReq(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
@@ -365,6 +399,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         schemaPartitionResp.getSchemaRegionMap(),
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+  }
+
+  private SchemaNodeManagementPartition parseSchemaNodeManagementPartitionResp(
+      TSchemaNodeManagementResp schemaNodeManagementResp) {
+    return new SchemaNodeManagementPartition(
+        schemaNodeManagementResp.getSchemaRegionMap(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum(),
+        schemaNodeManagementResp.getMatchedNode());
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionResp dataPartitionResp) {

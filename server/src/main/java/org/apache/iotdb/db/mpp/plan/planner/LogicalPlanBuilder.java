@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.MemorySourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -591,6 +592,14 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planChildNodesSchemaSource(PartialPath partialPath) {
     this.root = new ChildNodesSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath);
+    return this;
+  }
+
+  public LogicalPlanBuilder planMemorySource(List<String> data) {
+    MemorySourceNode memorySourceNode =
+        new MemorySourceNode(context.getQueryId().genPlanNodeId(), data);
+    memorySourceNode.addChild(this.getRoot());
+    this.root = memorySourceNode;
     return this;
   }
 }

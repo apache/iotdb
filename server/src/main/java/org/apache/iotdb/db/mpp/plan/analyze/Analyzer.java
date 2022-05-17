@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -1123,10 +1124,16 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showChildPathsStatement);
 
-      SchemaPartition schemaPartition =
-          partitionFetcher.getSchemaPartition(
+      SchemaNodeManagementPartition schemaNodeManagementPartition =
+          partitionFetcher.getSchemaNodeManagementPartition(
               new PathPatternTree(showChildPathsStatement.getPartialPath()));
-      analysis.setSchemaPartitionInfo(schemaPartition);
+      if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
+          && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size()
+              == 0) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+      analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
+      analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
       analysis.setRespDatasetHeader(HeaderConstant.showChildPathsHeader);
       return analysis;
     }

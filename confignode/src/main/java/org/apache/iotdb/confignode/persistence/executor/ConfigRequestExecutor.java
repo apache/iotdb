@@ -20,10 +20,12 @@ package org.apache.iotdb.confignode.persistence.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -42,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
+import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
@@ -50,6 +53,7 @@ import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -59,6 +63,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConfigRequestExecutor {
@@ -115,6 +120,8 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListUserRoles((AuthorReq) req);
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
+      case GetChildPathsPartition:
+        return getSchemaNodeManagementPartiiton((GetChildPathsPartitionReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -227,6 +234,46 @@ public class ConfigRequestExecutor {
                 LOGGER.error(e.getMessage());
               }
             });
+  }
+
+  private DataSet getSchemaNodeManagementPartiiton(GetChildPathsPartitionReq req) {
+    PartialPath partialPath = req.getPartialPath();
+    String path = partialPath.getFullPath();
+    List<String> matchedChildPaths = new ArrayList<>();
+    List<String> matchedStorageGroups = new ArrayList<>();
+    List<String> storageGroups = clusterSchemaInfo.getStorageGroupNames();
+    boolean needMtreeAbove = true;
+    for (String storageGroup : storageGroups) {
+      if (path.startsWith(storageGroup)) {
+        matchedStorageGroups.add(storageGroup);
+        needMtreeAbove = false;
+        break;
+      }
+    }
+    if (needMtreeAbove) {
+      Pair<Set<String>, Set<PartialPath>> matchedChildNodePathInNextLevel =
+          clusterSchemaInfo.getChildNodePathInNextLevel(req.getPartialPath());
+      matchedChildNodePathInNextLevel.left.forEach(
+          childPath -> {
+            matchedChildPaths.add(childPath);
+          });
+      matchedChildNodePathInNextLevel.right.forEach(
+          childPath -> {
+            matchedChildPaths.add(childPath.getFullPath());
+          });
+    }
+    if (needMtreeAbove && !path.contains("**")) {
+      matchedStorageGroups.clear();
+    }
+    SchemaNodeManagementResp schemaNodeManagementResp =
+        (SchemaNodeManagementResp)
+            partitionInfo.getSchemaNodeManagementPartition(
+                matchedStorageGroups, path.equals("root.**"));
+    if (schemaNodeManagementResp.getStatus().getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      schemaNodeManagementResp.setMatchedNode(matchedChildPaths);
+    }
+    return schemaNodeManagementResp;
   }
 
   private List<SnapshotProcessor> getAllAttributes() {

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.MemorySourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -105,7 +106,8 @@ public enum PlanNodeType {
   DELETE_REGION((short) 38),
   CREATE_MULTI_TIME_SERIES((short) 39),
   CHILD_PATHS_SCAN((short) 40),
-  CHILD_NODES_SCAN((short) 41);
+  CHILD_NODES_SCAN((short) 41),
+  MEMORY_SOURCE((short) 42);
 
   private final short nodeType;
 
@@ -213,6 +215,8 @@ public enum PlanNodeType {
         return ChildPathsSchemaScanNode.deserialize(buffer);
       case 41:
         return ChildNodesSchemaScanNode.deserialize(buffer);
+      case 42:
+        return MemorySourceNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

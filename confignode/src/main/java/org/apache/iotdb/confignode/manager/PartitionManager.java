@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -332,6 +334,19 @@ public class PartitionManager {
    */
   public List<TRegionReplicaSet> getRegionReplicaSets(List<TConsensusGroupId> groupIds) {
     return partitionInfo.getRegionReplicaSets(groupIds);
+  }
+
+  /**
+   * Get SchemaNodeManagementPartition
+   *
+   * @param physicalPlan SchemaNodeManagementPartitionPlan with partitionSlotsMap
+   * @return SchemaNodeManagementPartitionDataSet that contains only existing SchemaPartition
+   */
+  public DataSet getSchemaNodeManagementPartition(GetChildPathsPartitionReq physicalPlan) {
+    SchemaNodeManagementResp schemaNodeManagementResp;
+    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
+    schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
+    return schemaNodeManagementResp;
   }
 
   private ConsensusManager getConsensusManager() {

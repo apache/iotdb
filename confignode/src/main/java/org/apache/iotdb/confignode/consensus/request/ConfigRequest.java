@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
@@ -181,6 +182,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();
+          break;
+        case GetChildPathsPartition:
+          req = new GetChildPathsPartitionReq();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

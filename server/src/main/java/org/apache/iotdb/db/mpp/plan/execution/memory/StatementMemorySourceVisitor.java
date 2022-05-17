@@ -20,11 +20,16 @@
 package org.apache.iotdb.db.mpp.plan.execution.memory;
 
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class StatementMemorySourceVisitor
     extends StatementVisitor<StatementMemorySource, StatementMemorySourceContext> {
@@ -32,5 +37,21 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitNode(StatementNode node, StatementMemorySourceContext context) {
     return new StatementMemorySource(new TsBlock(0), new DatasetHeader(new ArrayList<>(), false));
+  }
+
+  @Override
+  public StatementMemorySource visitShowChildPaths(
+      ShowChildPathsStatement showChildPathsStatement, StatementMemorySourceContext context) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
+    List<String> matchedChildPaths = context.getAnalysis().getMatchedNodes();
+    matchedChildPaths.forEach(
+        path -> {
+          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
+          tsBlockBuilder.declarePosition();
+        });
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }
 }
