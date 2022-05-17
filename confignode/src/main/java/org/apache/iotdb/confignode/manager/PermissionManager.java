@@ -61,11 +61,12 @@ public class PermissionManager {
     return configManager.getConsensusManager();
   }
 
-  public TSStatus login(String username, String password) {
+  public PermissionInfoResp login(String username, String password) {
     return authorInfo.login(username, password);
   }
 
-  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+  public PermissionInfoResp checkUserPrivileges(
+      String username, List<String> paths, int permission) {
     return authorInfo.checkUserPrivileges(username, paths, permission);
   }
 }

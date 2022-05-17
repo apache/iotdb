@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,29 +67,50 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus login(String username, String password) {
+  public PermissionInfoResp login(String username, String password) {
     boolean status;
     String loginMessage = null;
+    User user;
     TSStatus tsStatus = new TSStatus();
+    PermissionInfoResp result = new PermissionInfoResp();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    List<String> privilegeList = new ArrayList<>();
     try {
       status = authorizer.login(username, password);
+      if (status) {
+        user = authorizer.getUser(username);
+        for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+          privilegeList.add(pathPrivilege.getPath());
+          String privilegeIdList = pathPrivilege.getPrivileges().toString();
+          privilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+        }
+        permissionInfo.put(user.getStringName(), Collections.singletonList(user.getName()));
+        permissionInfo.put(user.getStringPassword(), Collections.singletonList(user.getPassword()));
+        permissionInfo.put(user.getStringPrivilegeList(), privilegeList);
+        permissionInfo.put(user.getStringRoleList(), user.getRoleList());
+        result.setPermissionInfo(permissionInfo);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
+      }
     } catch (AuthException e) {
       logger.info("meet error while logging in.", e);
       status = false;
       loginMessage = e.getMessage();
     }
-    if (status) {
-      tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      tsStatus.setMessage("Login successfully");
-    } else {
+    if (!status) {
       tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
+      result.setStatus(tsStatus);
     }
-    return tsStatus;
+    return result;
   }
 
-  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+  public PermissionInfoResp checkUserPrivileges(
+      String username, List<String> paths, int permission) {
     boolean status = true;
+    User user;
+    PermissionInfoResp result = new PermissionInfoResp();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    List<String> privilegeList = new ArrayList<>();
     try {
       for (String path : paths) {
         if (!checkOnePath(username, path, permission)) {
@@ -99,9 +121,27 @@ public class AuthorInfo implements SnapshotProcessor {
       status = false;
     }
     if (status) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      try {
+        user = authorizer.getUser(username);
+        permissionInfo.put(user.getStringName(), Collections.singletonList(user.getName()));
+        permissionInfo.put(user.getStringPassword(), Collections.singletonList(user.getPassword()));
+        for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+          privilegeList.add(pathPrivilege.getPath());
+          String privilegeIdList = pathPrivilege.getPrivileges().toString();
+          privilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+        }
+        permissionInfo.put(user.getStringRoleList(), user.getRoleList());
+        result.setPermissionInfo(permissionInfo);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (AuthException e) {
+        result.setStatus(
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage()));
+        return result;
+      }
+      return result;
     } else {
-      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR));
+      return result;
     }
   }
 

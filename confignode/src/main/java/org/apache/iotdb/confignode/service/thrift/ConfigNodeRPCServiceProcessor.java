@@ -333,14 +333,19 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus login(TLoginReq req) throws TException {
-    return configManager.login(req.getUserrname(), req.getPassword());
+  public TAuthorizerResp login(TLoginReq req) throws TException {
+    PermissionInfoResp dataSet =
+        (PermissionInfoResp) configManager.login(req.getUserrname(), req.getPassword());
+    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
   }
 
   @Override
-  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
-    return configManager.checkUserPrivileges(
-        req.getUsername(), req.getPaths(), req.getPermission());
+  public TAuthorizerResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+    PermissionInfoResp dataSet =
+        (PermissionInfoResp)
+            configManager.checkUserPrivileges(
+                req.getUsername(), req.getPaths(), req.getPermission());
+    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
   }
 
   @Override

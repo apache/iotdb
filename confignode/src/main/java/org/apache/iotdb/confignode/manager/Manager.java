@@ -183,11 +183,19 @@ public interface Manager {
    */
   DataSet queryPermission(ConfigRequest configRequest);
 
-  /** login */
-  TSStatus login(String username, String password);
+  /**
+   * login
+   *
+   * @return PermissionInfoDataSet
+   */
+  DataSet login(String username, String password);
 
-  /** Check User Privileges */
-  TSStatus checkUserPrivileges(String username, List<String> paths, int permission);
+  /**
+   * Check User Privileges
+   *
+   * @return PermissionInfoDataSet
+   */
+  DataSet checkUserPrivileges(String username, List<String> paths, int permission);
 
   /**
    * Register ConfigNode when it is first startup

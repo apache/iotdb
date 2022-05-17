@@ -221,9 +221,9 @@ service ConfigIService {
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
-  common.TSStatus login(TLoginReq req)
+  TAuthorizerResp login(TLoginReq req)
 
-  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
+  TAuthorizerResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   /* ConfigNode */
 

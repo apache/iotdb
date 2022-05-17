@@ -118,7 +118,10 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // check user privileges
-    status = authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status =
+        authorInfo
+            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
+            .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
 
     // drop user
@@ -169,7 +172,10 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // check user privileges
-    status = authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status =
+        authorInfo
+            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
+            .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role

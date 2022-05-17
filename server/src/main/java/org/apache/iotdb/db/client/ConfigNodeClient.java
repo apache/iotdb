@@ -374,11 +374,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus login(TLoginReq req) throws IoTDBConnectionException {
+  public TAuthorizerResp login(TLoginReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.login(req);
-        if (!updateConfigNodeLeader(status)) {
+        TAuthorizerResp status = client.login(req);
+        if (!updateConfigNodeLeader(status.getStatus())) {
           return status;
         }
       } catch (TException e) {
@@ -389,11 +389,12 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws IoTDBConnectionException {
+  public TAuthorizerResp checkUserPrivileges(TCheckUserPrivilegesReq req)
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.checkUserPrivileges(req);
-        if (!updateConfigNodeLeader(status)) {
+        TAuthorizerResp status = client.checkUserPrivileges(req);
+        if (!updateConfigNodeLeader(status.getStatus())) {
           return status;
         }
       } catch (TException e) {

@@ -610,7 +610,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     // check user privileges
     checkUserPrivilegesReq =
         new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
-    status = processor.checkUserPrivileges(checkUserPrivilegesReq);
+    status = processor.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
 
     // drop user
@@ -706,7 +706,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     // check user privileges
     checkUserPrivilegesReq =
         new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
-    status = processor.checkUserPrivileges(checkUserPrivilegesReq);
+    status = processor.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role

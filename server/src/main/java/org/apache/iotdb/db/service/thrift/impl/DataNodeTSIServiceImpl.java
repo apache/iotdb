@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
@@ -140,7 +141,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    TSStatus loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+    TSStatus loginStatus = AuthorizerManager.getInstance().checkUser(req.username, req.password);
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
     long sessionId = -1;
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
