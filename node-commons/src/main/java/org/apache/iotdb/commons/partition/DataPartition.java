@@ -261,16 +261,9 @@ public class DataPartition extends Partition {
             seriesPartitionSlotMapEntry.getValue().entrySet()) {
           timePartitionSlotListEntry.getKey().write(protocol);
           ReadWriteIOUtils.write(timePartitionSlotListEntry.getValue().size(), dataOutputStream);
-          timePartitionSlotListEntry
-              .getValue()
-              .forEach(
-                  x -> {
-                    try {
-                      x.write(protocol);
-                    } catch (TException e) {
-                      throw new RuntimeException(e);
-                    }
-                  });
+          for (TRegionReplicaSet tRegionReplicaSet : timePartitionSlotListEntry.getValue()) {
+            tRegionReplicaSet.write(protocol);
+          }
         }
       }
     }
