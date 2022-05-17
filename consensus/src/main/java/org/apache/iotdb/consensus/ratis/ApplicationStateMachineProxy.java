@@ -37,6 +37,7 @@ import org.apache.ratis.server.storage.RaftStorage;
 import org.apache.ratis.statemachine.StateMachineStorage;
 import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
+import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.LifeCycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,6 +149,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
     boolean success = applicationStateMachine.takeSnapshot(snapshotDir);
     if (!success) {
+      // statemachine is supposed to clear snapshotDir on failure
+      boolean isEmpty = snapshotDir.delete();
+      if (!isEmpty) {
+        logger.warn("StateMachine take snapshot failed and left some unexpected remaining files");
+        FileUtils.deleteFully(snapshotDir);
+      }
       return RaftLog.INVALID_LOG_INDEX;
     }
     return lastApplied.getIndex();
