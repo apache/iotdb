@@ -498,6 +498,10 @@ public class StorageGroupManager {
   }
 
   public void setDataRegion(int dataRegionId, DataRegion dataRegion) {
+    if (this.dataRegion[dataRegionId] != null) {
+      this.dataRegion[dataRegionId].abortCompaction();
+      this.dataRegion[dataRegionId].asyncCloseAllWorkingTsFileProcessors();
+    }
     this.dataRegion[dataRegionId] = dataRegion;
   }
 }

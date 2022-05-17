@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
@@ -141,7 +143,9 @@ public class IoTDBSnapshotIT {
   }
 
   @Test
-  public void testLoadSnapshot() throws SQLException, MetadataException, StorageEngineException {
+  public void testLoadSnapshot()
+      throws SQLException, MetadataException, StorageEngineException, DirectoryNotLegalException,
+          IOException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       Map<String, Integer> resultMap = new HashMap<>();
@@ -173,6 +177,7 @@ public class IoTDBSnapshotIT {
       if (!snapshotDir.exists()) {
         snapshotDir.mkdirs();
       }
+      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
       StorageEngine.getInstance()
           .setDataRegion(
               new PartialPath(SG_NAME),
@@ -180,6 +185,68 @@ public class IoTDBSnapshotIT {
               new SnapshotLoader(snapshotDir.getAbsolutePath(), SG_NAME, "0")
                   .loadSnapshotForStateMachine());
 
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
+      resultSet = statement.executeQuery("select ** from root");
+      while (resultSet.next()) {
+        long time = resultSet.getLong("Time");
+        for (int i = 0; i < 10; ++i) {
+          String measurment = SG_NAME + ".d" + i + ".s";
+          int res = resultSet.getInt(SG_NAME + ".d" + i + ".s");
+          Assert.assertEquals(resultMap.get(time + measurment).intValue(), res);
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testTakeAndLoadSnapshotWhenCompaction()
+      throws SQLException, MetadataException, StorageEngineException, InterruptedException,
+          DirectoryNotLegalException, IOException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      Map<String, Integer> resultMap = new HashMap<>();
+      statement.execute("set storage group to " + SG_NAME);
+      for (int i = 0; i < 10; ++i) {
+        for (int j = 0; j < 10; ++j) {
+          statement.execute(
+              String.format("insert into %s.d%d(time, s) values (%d, %d)", SG_NAME, i, j, j));
+        }
+        statement.execute("flush");
+        for (int j = 0; j < 10; ++j) {
+          statement.execute(
+              String.format("insert into %s.d%d(time, s) values (%d, %d)", SG_NAME, i, j, j + 1));
+        }
+        statement.execute("flush");
+      }
+
+      ResultSet resultSet = statement.executeQuery("select ** from root");
+      while (resultSet.next()) {
+        long time = resultSet.getLong("Time");
+        for (int i = 0; i < 10; ++i) {
+          String measurment = SG_NAME + ".d" + i + ".s";
+          int res = resultSet.getInt(SG_NAME + ".d" + i + ".s");
+          resultMap.put(time + measurment, res);
+        }
+      }
+
+      File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot");
+      if (!snapshotDir.exists()) {
+        snapshotDir.mkdirs();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
+      statement.execute("merge");
+      DataRegion region = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME));
+      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      region.abortCompaction();
+      StorageEngine.getInstance()
+          .setDataRegion(
+              new PartialPath(SG_NAME),
+              "0",
+              new SnapshotLoader(snapshotDir.getAbsolutePath(), SG_NAME, "0")
+                  .loadSnapshotForStateMachine());
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
       resultSet = statement.executeQuery("select ** from root");
       while (resultSet.next()) {
         long time = resultSet.getLong("Time");
