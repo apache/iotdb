@@ -732,58 +732,6 @@ public abstract class SchemaBasicTest {
   }
 
   @Test
-  public void testSetStorageGroupWithIllegalName() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    try {
-      PartialPath path1 = new PartialPath("root.laptop\n");
-      try {
-        schemaProcessor.setStorageGroup(path1);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
-    try {
-      PartialPath path2 = new PartialPath("root.laptop\t");
-      try {
-        schemaProcessor.setStorageGroup(path2);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
-  }
-
-  @Test
-  public void testCreateTimeseriesWithIllegalName() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    try {
-      PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
-      try {
-        schemaProcessor.createTimeseries(
-            path1, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
-    try {
-      PartialPath path2 = new PartialPath("root.laptop.d1\t.s1");
-      try {
-        schemaProcessor.createTimeseries(
-            path2, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
-  }
-
-  @Test
   public void testGetDevicesWithGivenPrefix() {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
 
@@ -1089,14 +1037,14 @@ public abstract class SchemaBasicTest {
     CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
     template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
 
-    assertEquals("[GPS, `to`.be.prefix]", template.getAllAlignedPrefix().toString());
+    assertEquals("[to.be.prefix, GPS]", template.getAllAlignedPrefix().toString());
     assertEquals("[s1, s2]", template.getAlignedMeasurements("`to`.be.prefix").toString());
 
     template.deleteAlignedPrefix("`to`.be.prefix");
 
     assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
     assertEquals(null, template.getDirectNode("prefix"));
-    assertEquals("`to`", template.getDirectNode("`to`").getName());
+    assertEquals("to", template.getDirectNode("to").getName());
 
     assertFalse(template.isDirectAligned());
     try {
@@ -1116,7 +1064,7 @@ public abstract class SchemaBasicTest {
       assertEquals("Path [a.single] does not exist", e.getMessage());
     }
     assertEquals(
-        "[`to`.be.prefix.s1, `to`.be.prefix.s2, d1.s1, GPS.x, GPS.y, s2]",
+        "[d1.s1, GPS.x, to.be.prefix.s2, GPS.y, to.be.prefix.s1, s2]",
         template.getAllMeasurementsPaths().toString());
 
     template.deleteSeriesCascade("`to`");

@@ -78,8 +78,8 @@ public class PartialPathTest {
 
     // quoted node of key word
     PartialPath i = new PartialPath("root.sg.`select`");
-    Assert.assertEquals("root.sg.`select`", i.getFullPath());
-    nodes = new String[] {"root", "sg", "`select`"};
+    Assert.assertEquals("root.sg.select", i.getFullPath());
+    nodes = new String[] {"root", "sg", "select"};
     checkNodes(nodes, i.getNodes());
 
     // wildcard
@@ -123,12 +123,23 @@ public class PartialPathTest {
     Assert.assertEquals("root.sg.DROP_TRIGGER", s.getFullPath());
     nodes = new String[] {"root", "sg", "DROP_TRIGGER"};
     checkNodes(nodes, s.getNodes());
+
+    PartialPath t = new PartialPath("root.sg.`abc`");
+    Assert.assertEquals("root.sg.abc", t.getFullPath());
+    nodes = new String[] {"root", "sg", "abc"};
+    checkNodes(nodes, t.getNodes());
   }
 
   @Test
   public void testIllegalPath() {
     try {
       new PartialPath("root.sg.d1.```");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1\na");
       fail();
     } catch (IllegalPathException ignored) {
     }
@@ -260,8 +271,8 @@ public class PartialPathTest {
 
     // quoted node of key word
     PartialPath i = new PartialPath("root.sg", "`select`");
-    Assert.assertEquals("root.sg.`select`", i.getFullPath());
-    nodes = new String[] {"root", "sg", "`select`"};
+    Assert.assertEquals("root.sg.select", i.getFullPath());
+    nodes = new String[] {"root", "sg", "select"};
     checkNodes(nodes, i.getNodes());
 
     // wildcard
@@ -282,9 +293,14 @@ public class PartialPathTest {
 
     // other
     PartialPath m = new PartialPath("root.sg", "`to`.be.prefix.s");
-    Assert.assertEquals("root.sg.`to`.be.prefix.s", m.getFullPath());
-    nodes = new String[] {"root", "sg", "`to`", "be", "prefix", "s"};
+    Assert.assertEquals("root.sg.to.be.prefix.s", m.getFullPath());
+    nodes = new String[] {"root", "sg", "to", "be", "prefix", "s"};
     checkNodes(nodes, m.getNodes());
+
+    PartialPath n = new PartialPath("root.sg", "`abc`");
+    Assert.assertEquals("root.sg.abc", n.getFullPath());
+    nodes = new String[] {"root", "sg", "abc"};
+    checkNodes(nodes, n.getNodes());
   }
 
   @Test

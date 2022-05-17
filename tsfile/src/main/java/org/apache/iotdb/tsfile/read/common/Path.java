@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.lang3.Validate;
+
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
@@ -70,15 +72,10 @@ public class Path implements Serializable, Comparable<Path> {
         String[] nodes = PathNodesGenerator.splitPathToNodes(pathSc);
         device = "";
         if (nodes.length > 1) {
-          StringBuilder s = new StringBuilder(nodes[0]);
-          for (int i = 1; i < nodes.length - 1; i++) {
-            s.append(".");
-            s.append(nodes[i]);
-          }
-          device = s.toString();
+          device = transformNodesToString(nodes, nodes.length - 1);
         }
         measurement = nodes[nodes.length - 1];
-        fullPath = pathSc;
+        fullPath = transformNodesToString(nodes, nodes.length);
       } else {
         fullPath = pathSc;
         device = "";
@@ -99,19 +96,25 @@ public class Path implements Serializable, Comparable<Path> {
     }
     // use PathNodesGenerator to check whether path is legal.
     if (!"".equals(device) && !"".equals(measurement)) {
-      String fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-      PathNodesGenerator.checkPath(fullPath);
+      String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
+      String[] nodes = PathNodesGenerator.splitPathToNodes(path);
+      this.device = transformNodesToString(nodes, nodes.length - 1);
+      this.measurement = nodes[nodes.length - 1];
+      this.fullPath = transformNodesToString(nodes, nodes.length);
     } else if (!"".equals(device)) {
-      PathNodesGenerator.checkPath(device);
+      String[] deviceNodes = PathNodesGenerator.splitPathToNodes(device);
+      this.device = transformNodesToString(deviceNodes, deviceNodes.length);
+      this.measurement = measurement;
+      this.fullPath = device;
     } else if (!"".equals(measurement)) {
-      PathNodesGenerator.checkPath(measurement);
-    }
-    this.device = device;
-    this.measurement = measurement;
-    if (!"".equals(device) && !"".equals(measurement)) {
-      this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+      String[] measurementNodes = PathNodesGenerator.splitPathToNodes(measurement);
+      this.measurement = transformNodesToString(measurementNodes, measurementNodes.length);
+      this.device = device;
+      this.fullPath = measurement;
     } else {
-      this.fullPath = "".equals(measurement) ? device : measurement;
+      this.device = device;
+      this.measurement = measurement;
+      this.fullPath = "";
     }
   }
 
@@ -186,5 +189,15 @@ public class Path implements Serializable, Comparable<Path> {
     path.device = ReadWriteIOUtils.readString(byteBuffer);
     path.fullPath = ReadWriteIOUtils.readString(byteBuffer);
     return path;
+  }
+
+  private String transformNodesToString(String[] nodes, int index) {
+    Validate.isTrue(nodes.length > 0);
+    StringBuilder s = new StringBuilder(nodes[0]);
+    for (int i = 1; i < index; i++) {
+      s.append(TsFileConstant.PATH_SEPARATOR);
+      s.append(nodes[i]);
+    }
+    return s.toString();
   }
 }

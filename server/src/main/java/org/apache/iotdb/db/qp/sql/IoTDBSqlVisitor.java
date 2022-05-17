@@ -194,6 +194,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // for create-cq clause and select-into clause.
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
 
+  /** used to match node name without special characters */
+  private static final String NODE_NAME_MATCHER = "([a-zA-Z0-9_:@#${}\\u2E80-\\u9FFF]+)";
+
+  private static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
+
   private ZoneId zoneId;
   private QueryOperator queryOp;
 
@@ -2432,13 +2437,24 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // node name
 
-  /** function for parsing node name. */
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    return ctx.getText();
+    return parseNodeString(ctx.getText());
   }
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    return ctx.getText();
+    return parseNodeString(ctx.getText());
+  }
+
+  private String parseNodeString(String nodeName) {
+    if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (org.apache.commons.lang3.StringUtils.isNumeric(unWrapped)
+          || !NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    return nodeName;
   }
 
   // alias
@@ -3015,10 +3031,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private String parseIdentifier(String src) {
-    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      String unescaped = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      // replace `` with `
-      return unescaped.replace("``", "`");
+    if (src.startsWith("`") && src.endsWith("`")) {
+      return src.substring(1, src.length() - 1).replace("``", "`");
     }
     return src;
   }

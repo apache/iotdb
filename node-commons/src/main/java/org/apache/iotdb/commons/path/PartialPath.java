@@ -64,12 +64,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    */
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = PathUtils.splitPathToDetachedNodes(path);
-    this.fullPath = path;
+    // path is root.sg.`abc`, fullPath is root.sg.abc
+    // path is root.sg.`select`, fullPath is root.sg.select
+    // path is root.sg.`111`, fullPath is root.sg.`111`
+    // path is root.sg.`a.b`, fullPath is root.sg.`a.b`
+    // path is root.sg.`a``b`, fullPath is root.sg.`a``b`
+    this.fullPath = getFullPath();
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-    this.nodes = PathUtils.splitPathToDetachedNodes(fullPath);
+    String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = PathUtils.splitPathToDetachedNodes(path);
+    this.fullPath = getFullPath();
   }
 
   /** @param partialNodes nodes of a time series path */
@@ -82,9 +88,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @param needSplit whether to split path to nodes, needSplit can only be false.
    */
   public PartialPath(String path, boolean needSplit) {
-    if (needSplit) {
-      throw new IllegalArgumentException("needSplit can only be false");
-    }
+    Validate.isTrue(!needSplit);
     fullPath = path;
     if ("".equals(path)) {
       this.nodes = new String[] {};

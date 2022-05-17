@@ -30,6 +30,7 @@ public class TsFileConstant {
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
   public static final char DOUBLE_QUOTE = '"';
   public static final char BACK_QUOTE = '`';
+  public static final String BACK_QUOTE_STRING = "`";
 
   public static final byte TIME_COLUMN_MASK = (byte) 0x80;
   public static final byte VALUE_COLUMN_MASK = (byte) 0x40;
