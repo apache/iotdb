@@ -126,6 +126,8 @@ If not, please change it to `0.13.x` manually.</font>**
     configuration file directly.__
   * __NOTICE 2: V0.12 doesn't support upgrade from v0.9 or lower version, please upgrade to v0.10 first if needed.__
   * __NOTICE 3: We don't recommend to delete data before the upgrading finished. The deletion will fail if you try to delete data in the storage group with upgrading files.__
+  * __NOTICE 4: IoTDB is stopped for some reasons during the upgrade. First make sure the `iotdb_version` in `data/system/schema/system.properties` file is the original version. Otherwise, an error will be reported when IoTDB starts again and the upgrade operation cannot be triggered again.__
+
 
 - How to upgrade from v.10.x to v0.11.x?
   * The data format (i.e., TsFile data) of v0.10.x and v0.11 are compatible, but the WAL file is 
