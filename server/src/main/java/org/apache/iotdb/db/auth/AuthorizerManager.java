@@ -441,4 +441,9 @@ public class AuthorizerManager implements IAuthorizer {
     role.setPrivilegeList(pathPrivilegeList);
     return role;
   }
+
+  public void invalidateAll() {
+    userCache.invalidateAll();
+    roleCache.invalidateAll();
+  }
 }

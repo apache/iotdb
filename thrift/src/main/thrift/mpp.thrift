@@ -210,6 +210,8 @@ service InternalService {
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
   common.THeartbeatResp getHeartBeat(common.THeartbeatReq req)
+
+  common.TSStatus invalidatePermissionCache()
 }
 
 service DataBlockService {

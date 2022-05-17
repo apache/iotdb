@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -60,8 +62,9 @@ public class AuthorInfo implements SnapshotProcessor {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private IAuthorizer authorizer;
+  private ConfigNodeProcedureEnv env;
 
-  {
+  public AuthorInfo() {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
@@ -435,5 +438,13 @@ public class AuthorInfo implements SnapshotProcessor {
       FileUtils.deleteDirectory(roleFolder);
     }
     authorizer.reset();
+  }
+
+  public void invalidateCache(ConfigNodeProcedureEnv env) throws IOException, TException {
+    List<TDataNodeLocation> allDataNodes =
+        env.getConfigManager().getNodeManager().getOnlineDataNodes();
+    for (TDataNodeLocation dataNodeLocation : allDataNodes) {
+      env.getDataNodeClient(dataNodeLocation).invalidatePermissionCache();
+    }
   }
 }

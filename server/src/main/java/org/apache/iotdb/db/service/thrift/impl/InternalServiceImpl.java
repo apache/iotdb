@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -268,6 +269,12 @@ public class InternalServiceImpl implements InternalService.Iface {
   public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
     // TODO: Return load balancing messages
     return new THeartbeatResp(req.getHeartbeatTimestamp());
+  }
+
+  @Override
+  public TSStatus invalidatePermissionCache() throws TException {
+    AuthorizerManager.getInstance().invalidateAll();
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

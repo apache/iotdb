@@ -23,19 +23,30 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 import java.util.List;
 
 /** manager permission query and operation */
 public class PermissionManager {
 
-  private final Manager configManager;
-  private final AuthorInfo authorInfo;
+  private static final Logger logger = LoggerFactory.getLogger(PermissionManager.class);
 
-  public PermissionManager(Manager configManager, AuthorInfo authorInfo) {
+  private final ConfigManager configManager;
+  private final AuthorInfo authorInfo;
+  private ConfigNodeProcedureEnv env;
+
+  public PermissionManager(ConfigManager configManager, AuthorInfo authorInfo) {
     this.configManager = configManager;
     this.authorInfo = authorInfo;
+    this.env = new ConfigNodeProcedureEnv(configManager);
   }
 
   /**
@@ -45,7 +56,15 @@ public class PermissionManager {
    * @return TSStatus
    */
   public TSStatus operatePermission(AuthorReq authorReq) {
-    return getConsensusManager().write(authorReq).getStatus();
+    TSStatus status = getConsensusManager().write(authorReq).getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        authorInfo.invalidateCache(env);
+      } catch (IOException | TException e) {
+        logger.error("error");
+      }
+    }
+    return status;
   }
 
   /**
