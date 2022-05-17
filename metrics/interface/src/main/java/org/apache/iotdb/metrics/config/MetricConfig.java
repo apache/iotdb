@@ -33,6 +33,9 @@ public class MetricConfig {
   /** enable publishing data. */
   private Boolean enableMetric = false;
 
+  /** Is stat performance of sub-module enable */
+  private Boolean enablePerformanceStat = false;
+
   /** The of monitor frame */
   private MonitorType monitorType = MonitorType.MICROMETER;
 
@@ -156,6 +159,14 @@ public class MetricConfig {
 
   public void setEnableMetric(Boolean enableMetric) {
     this.enableMetric = enableMetric;
+  }
+
+  public Boolean getEnablePerformanceStat() {
+    return enablePerformanceStat;
+  }
+
+  public void setEnablePerformanceStat(Boolean enablePerformanceStat) {
+    this.enablePerformanceStat = enablePerformanceStat;
   }
 
   public MonitorType getMonitorType() {
