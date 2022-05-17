@@ -152,7 +152,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       // statemachine is supposed to clear snapshotDir on failure
       boolean isEmpty = snapshotDir.delete();
       if (!isEmpty) {
-        logger.warn("StateMachine take snapshot failed and left some unexpected remaining files");
+        logger.warn(
+            "StateMachine take snapshot failed but leave unexpected remaining files at "
+                + snapshotDir.getAbsolutePath());
         FileUtils.deleteFully(snapshotDir);
       }
       return RaftLog.INVALID_LOG_INDEX;
