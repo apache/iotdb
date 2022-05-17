@@ -24,7 +24,7 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,12 +41,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.isEndCalc;
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.skipOutOfTimeRangePoints;
-import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
 
 /** This operator is responsible to do the aggregation calculation especially for aligned series. */
-public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
+public class AlignedSeriesAggregationScanOperator implements DataSourceOperator {
 
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
@@ -68,7 +68,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
   private boolean hasCachedTsBlock = false;
   private boolean finished = false;
 
-  public AlignedSeriesAggregateScanOperator(
+  public AlignedSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       AlignedPath seriesPath,
       Set<String> allSensors,
@@ -198,7 +198,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
 
   private void updateResultTsBlockFromAggregators() {
     resultTsBlock =
-        AggregateOperator.updateResultTsBlockFromAggregators(
+        AggregationOperator.updateResultTsBlockFromAggregators(
             tsBlockBuilder, aggregators, timeRangeIterator);
     hasCachedTsBlock = true;
   }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,8 +42,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.isEndCalc;
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.skipOutOfTimeRangePoints;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -53,7 +53,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregat
  * In sliding window situation, current time window is a pre-aggregation window. If there is no time
  * split parameter, i.e. aggregation without groupBy, just one tsBlock will be returned.
  */
-public class SeriesAggregateScanOperator implements DataSourceOperator {
+public class SeriesAggregationScanOperator implements DataSourceOperator {
 
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
@@ -74,7 +74,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   private boolean hasCachedTsBlock = false;
   private boolean finished = false;
 
-  public SeriesAggregateScanOperator(
+  public SeriesAggregationScanOperator(
       PlanNodeId sourceId,
       PartialPath seriesPath,
       Set<String> allSensors,
@@ -212,15 +212,9 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
 
   private void updateResultTsBlockFromAggregators() {
     resultTsBlock =
-        AggregateOperator.updateResultTsBlockFromAggregators(
+        AggregationOperator.updateResultTsBlockFromAggregators(
             tsBlockBuilder, aggregators, timeRangeIterator);
     hasCachedTsBlock = true;
-  }
-
-  // TODO Implement it later?
-  @Override
-  public void close() throws Exception {
-    DataSourceOperator.super.close();
   }
 
   @Override

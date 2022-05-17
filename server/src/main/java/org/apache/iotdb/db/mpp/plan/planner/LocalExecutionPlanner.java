@@ -37,13 +37,13 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FilterOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
@@ -65,7 +65,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOpe
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -380,8 +380,8 @@ public class LocalExecutionPlanner {
                               node.getSeriesPath().getSeriesType(),
                               ascending),
                           o.getStep())));
-      SeriesAggregateScanOperator aggregateScanOperator =
-          new SeriesAggregateScanOperator(
+      SeriesAggregationScanOperator aggregateScanOperator =
+          new SeriesAggregationScanOperator(
               node.getPlanNodeId(),
               seriesPath,
               context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
@@ -588,14 +588,14 @@ public class LocalExecutionPlanner {
       boolean inputRaw = node.getAggregationDescriptorList().get(0).getStep().isInputRaw();
       if (inputRaw) {
         checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
-        return new RawDataAggregateOperator(
+        return new RawDataAggregationOperator(
             operatorContext,
             aggregators,
             children.get(0),
             ascending,
             node.getGroupByTimeParameter());
       } else {
-        return new AggregateOperator(
+        return new AggregationOperator(
             operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
       }
     }
