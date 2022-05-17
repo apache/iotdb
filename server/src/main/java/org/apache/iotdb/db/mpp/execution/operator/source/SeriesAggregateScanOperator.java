@@ -21,20 +21,19 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.utils.timerangeiterator.SingleTimeWindowIterator;
-import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -42,6 +41,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.skipOutOfTimeRangePoints;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -99,7 +101,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
   }
 
   /**
@@ -107,7 +109,8 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
    * Aggregation query has only one time window and the result set of it does not contain a
    * timestamp, so it doesn't matter what the time range returns.
    */
-  public ITimeRangeIterator initTimeRangeIterator(GroupByTimeParameter groupByTimeParameter) {
+  public static ITimeRangeIterator initTimeRangeIterator(
+      GroupByTimeParameter groupByTimeParameter, boolean ascending) {
     if (groupByTimeParameter == null) {
       return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
     } else {
@@ -119,6 +122,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
           ascending,
           groupByTimeParameter.isIntervalByMonth(),
           groupByTimeParameter.isSlidingStepByMonth(),
+          groupByTimeParameter.isLeftCRightO(),
           groupByTimeParameter.getInterval() > groupByTimeParameter.getSlidingStep());
     }
   }
@@ -156,28 +160,28 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
 
       // 2. Calculate aggregation result based on current time window
       if (calcFromCacheData(curTimeRange)) {
-        updateResultTsBlockUsingAggregateResult();
+        updateResultTsBlockFromAggregators();
         return true;
       }
 
       // read page data firstly
       if (readAndCalcFromPage(curTimeRange)) {
-        updateResultTsBlockUsingAggregateResult();
+        updateResultTsBlockFromAggregators();
         return true;
       }
 
       // read chunk data secondly
       if (readAndCalcFromChunk(curTimeRange)) {
-        updateResultTsBlockUsingAggregateResult();
+        updateResultTsBlockFromAggregators();
         return true;
       }
 
       // read from file first
       while (seriesScanUtil.hasNextFile()) {
         Statistics fileStatistics = seriesScanUtil.currentFileStatistics();
-        if (fileStatistics.getStartTime() >= curTimeRange.getMax()) {
+        if (fileStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
-            updateResultTsBlockUsingAggregateResult();
+            updateResultTsBlockFromAggregators();
             return true;
           } else {
             seriesScanUtil.skipCurrentFile();
@@ -194,35 +198,22 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
 
         // read chunk
         if (readAndCalcFromChunk(curTimeRange)) {
-          updateResultTsBlockUsingAggregateResult();
+          updateResultTsBlockFromAggregators();
           return true;
         }
       }
 
-      updateResultTsBlockUsingAggregateResult();
+      updateResultTsBlockFromAggregators();
       return true;
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
     }
   }
 
-  private void updateResultTsBlockUsingAggregateResult() {
-    tsBlockBuilder.reset();
-    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(curTimeRange.getMin());
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    tsBlockBuilder.declarePosition();
-    resultTsBlock = tsBlockBuilder.build();
+  private void updateResultTsBlockFromAggregators() {
+    resultTsBlock =
+        AggregateOperator.updateResultTsBlockFromAggregators(
+            tsBlockBuilder, aggregators, timeRangeIterator);
     hasCachedTsBlock = true;
   }
 
@@ -234,7 +225,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
 
   @Override
   public boolean isFinished() {
-    return finished || (finished = hasNext());
+    return finished || (finished = !hasNext());
   }
 
   @Override
@@ -253,20 +244,20 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
     // The result is calculated from the cache
     return (preCachedData != null
             && (ascending
-                ? preCachedData.getEndTime() >= curTimeRange.getMax()
-                : preCachedData.getStartTime() < curTimeRange.getMin()))
-        || isEndCalc();
+                ? preCachedData.getEndTime() > curTimeRange.getMax()
+                : preCachedData.getEndTime() < curTimeRange.getMin()))
+        || isEndCalc(aggregators);
   }
 
   @SuppressWarnings("squid:S3776")
   private void calcFromBatch(TsBlock tsBlock, TimeRange curTimeRange) {
     // check if the batchData does not contain points in current interval
-    if (tsBlock == null || !satisfied(tsBlock, curTimeRange)) {
+    if (tsBlock == null || !satisfied(tsBlock, curTimeRange, ascending)) {
       return;
     }
 
     // skip points that cannot be calculated
-    tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange);
+    tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
 
     for (Aggregator aggregator : aggregators) {
       // current agg method has been calculated
@@ -283,22 +274,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
     }
   }
 
-  // skip points that cannot be calculated
-  private TsBlock skipOutOfTimeRangePoints(TsBlock tsBlock, TimeRange curTimeRange) {
-    TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
-    if (ascending) {
-      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() < curTimeRange.getMin()) {
-        tsBlockIterator.next();
-      }
-    } else {
-      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
-        tsBlockIterator.next();
-      }
-    }
-    return tsBlock.subTsBlock(tsBlockIterator.getRowIndex());
-  }
-
-  private boolean satisfied(TsBlock tsBlock, TimeRange timeRange) {
+  private boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
     TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
     if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
       return false;
@@ -306,23 +282,14 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
 
     if (ascending
         && (tsBlockIterator.getEndTime() < timeRange.getMin()
-            || tsBlockIterator.currentTime() >= timeRange.getMax())) {
+            || tsBlockIterator.currentTime() > timeRange.getMax())) {
       return false;
     }
     if (!ascending
-        && (tsBlockIterator.getStartTime() >= timeRange.getMax()
+        && (tsBlockIterator.getEndTime() > timeRange.getMax()
             || tsBlockIterator.currentTime() < timeRange.getMin())) {
       preCachedData = tsBlock;
       return false;
-    }
-    return true;
-  }
-
-  private boolean isEndCalc() {
-    for (Aggregator aggregator : aggregators) {
-      if (!aggregator.hasFinalResult()) {
-        return false;
-      }
     }
     return true;
   }
@@ -334,7 +301,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       // must be non overlapped page
       if (pageStatistics != null) {
         // There is no more eligible points in current time range
-        if (pageStatistics.getStartTime() >= curTimeRange.getMax()) {
+        if (pageStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             return true;
           } else {
@@ -347,7 +314,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
             && curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);
           seriesScanUtil.skipCurrentPage();
-          if (isEndCalc()) {
+          if (isEndCalc(aggregators)) {
             return true;
           }
           continue;
@@ -365,7 +332,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
-      if (ascending && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
+      if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
         preCachedData = tsBlock;
         return true;
       }
@@ -374,10 +341,10 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       calcFromBatch(tsBlock, curTimeRange);
 
       // judge whether the calculation finished
-      if (isEndCalc()
+      if (isEndCalc(aggregators)
           || (tsBlockIterator.hasNext()
               && (ascending
-                  ? tsBlockIterator.currentTime() >= curTimeRange.getMax()
+                  ? tsBlockIterator.currentTime() > curTimeRange.getMax()
                   : tsBlockIterator.currentTime() < curTimeRange.getMin()))) {
         return true;
       }
@@ -388,7 +355,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       Statistics chunkStatistics = seriesScanUtil.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curTimeRange.getMax()) {
+      if (chunkStatistics.getStartTime() > curTimeRange.getMax()) {
         if (ascending) {
           return true;
         } else {

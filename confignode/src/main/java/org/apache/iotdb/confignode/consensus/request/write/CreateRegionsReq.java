@@ -26,6 +26,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -33,19 +35,21 @@ import java.util.TreeMap;
 /** Create regions for specific StorageGroups */
 public class CreateRegionsReq extends ConfigRequest {
 
-  private final Map<String, TRegionReplicaSet> regionMap;
+  private final Map<String, List<TRegionReplicaSet>> regionMap;
 
   public CreateRegionsReq() {
     super(ConfigRequestType.CreateRegions);
     this.regionMap = new TreeMap<>();
   }
 
-  public Map<String, TRegionReplicaSet> getRegionMap() {
+  public Map<String, List<TRegionReplicaSet>> getRegionMap() {
     return regionMap;
   }
 
   public void addRegion(String storageGroup, TRegionReplicaSet regionReplicaSet) {
-    regionMap.put(storageGroup, regionReplicaSet);
+    regionMap
+        .computeIfAbsent(storageGroup, regionReplicaSets -> new ArrayList<>())
+        .add(regionReplicaSet);
   }
 
   @Override
@@ -54,20 +58,28 @@ public class CreateRegionsReq extends ConfigRequest {
 
     buffer.putInt(regionMap.size());
     regionMap.forEach(
-        (storageGroup, regionReplicaSet) -> {
+        (storageGroup, regionReplicaSets) -> {
           BasicStructureSerDeUtil.write(storageGroup, buffer);
-          ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
+          buffer.putInt(regionReplicaSets.size());
+          regionReplicaSets.forEach(
+              regionReplicaSet ->
+                  ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer));
         });
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
+    int storageGroupNum = buffer.getInt();
+    for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      TRegionReplicaSet regionReplicaSet =
-          ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
-      regionMap.put(storageGroup, regionReplicaSet);
+      regionMap.put(storageGroup, new ArrayList<>());
+
+      int regionReplicaSetNum = buffer.getInt();
+      for (int j = 0; j < regionReplicaSetNum; j++) {
+        TRegionReplicaSet regionReplicaSet =
+            ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
+        regionMap.get(storageGroup).add(regionReplicaSet);
+      }
     }
   }
 
