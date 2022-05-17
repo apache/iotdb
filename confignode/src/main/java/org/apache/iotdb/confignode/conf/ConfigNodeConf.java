@@ -107,10 +107,10 @@ public class ConfigNodeConf {
   private long timePartitionInterval = 604800;
 
   /** Default number of SchemaRegion replicas */
-  private int schemaReplicationFactor = 1;
+  private int schemaReplicationFactor = 3;
 
   /** Default number of DataRegion replicas */
-  private int dataReplicationFactor = 1;
+  private int dataReplicationFactor = 3;
 
   /** The maximum number of SchemaRegions of each StorageGroup */
   private int maximumSchemaRegionCount = 4;

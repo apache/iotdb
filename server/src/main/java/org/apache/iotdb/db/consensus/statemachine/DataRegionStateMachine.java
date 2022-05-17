@@ -66,8 +66,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public void stop() {}
 
-  // snapshotDir -> ../snapshot
-  // ../snapshot/seq/root.test/0/ xxx / kkk.tsfile
   @Override
   public boolean takeSnapshot(File snapshotDir) {
     try {
@@ -83,13 +81,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
-  // ../snapshot
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    // clear data
-    // -> data
-    // load
-    // replace
     this.region =
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),

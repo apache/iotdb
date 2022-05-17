@@ -41,7 +41,6 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
@@ -2427,18 +2426,12 @@ public class DataRegion {
 
   /** merge file under this storage group processor */
   public void compact() {
-    //    writeLock("merge");
-    //    try {
-    //      executeCompaction();
-    //    } finally {
-    //      writeUnlock();
-    //    }
-    //    try {
-    //      new SnapshotTaker(this).takeFullSnapshot("../snapshot", true);
-    //    } catch (Exception e) {
-    //      logger.error("exception occurs", e);
-    //    }
-    new SnapshotLoader("../snapshot", "root.test", "0").loadSnapshotForStateMachine();
+    writeLock("merge");
+    try {
+      executeCompaction();
+    } finally {
+      writeUnlock();
+    }
   }
 
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
