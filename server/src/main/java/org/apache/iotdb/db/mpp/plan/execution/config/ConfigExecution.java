@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
@@ -54,7 +57,13 @@ public class ConfigExecution implements IQueryExecution {
   private boolean resultSetConsumed;
   private final IConfigTask task;
 
-  public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
+  private IClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+
+  public ConfigExecution(
+      MPPQueryContext context,
+      Statement statement,
+      ExecutorService executor,
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
     this.context = context;
     this.statement = statement;
     this.executor = executor;
@@ -62,6 +71,7 @@ public class ConfigExecution implements IQueryExecution {
     this.taskFuture = SettableFuture.create();
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
     this.resultSetConsumed = false;
+    this.clientManager = clientManager;
   }
 
   @TestOnly
@@ -78,7 +88,7 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public void start() {
     try {
-      ListenableFuture<ConfigTaskResult> future = task.execute();
+      ListenableFuture<ConfigTaskResult> future = task.execute(clientManager);
       Futures.addCallback(
           future,
           new FutureCallback<ConfigTaskResult>() {
