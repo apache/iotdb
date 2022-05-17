@@ -507,17 +507,12 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get SchemaNodeManagementPartition */
-  public DataSet getSchemaNodeManagementPartition(
-      List<String> matchedStroageGroups, boolean getAll) {
+  public DataSet getSchemaNodeManagementPartition(List<String> matchedStroageGroups) {
     SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
     schemaPartitionReadWriteLock.readLock().lock();
     try {
-      if (getAll) {
-        schemaNodeManagementResp.setSchemaPartition(schemaPartition.getAllSchemaPartition());
-      } else {
-        schemaNodeManagementResp.setSchemaPartition(
-            schemaPartition.getSchemaPartition(matchedStroageGroups));
-      }
+      schemaNodeManagementResp.setSchemaPartition(
+          schemaPartition.getSchemaPartition(matchedStroageGroups));
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
       schemaNodeManagementResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

@@ -101,7 +101,8 @@ public class SchemaPartition extends Partition {
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
-      return getAllSchemaPartition();
+      return new SchemaPartition(
+          new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
     } else {
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
 
@@ -141,11 +142,6 @@ public class SchemaPartition extends Partition {
           }
         });
     return new SchemaPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
-  }
-
-  public SchemaPartition getAllSchemaPartition() {
-    return new SchemaPartition(
-        new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   /**

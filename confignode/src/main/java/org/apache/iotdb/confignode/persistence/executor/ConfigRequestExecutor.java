@@ -241,34 +241,23 @@ public class ConfigRequestExecutor {
     String path = partialPath.getFullPath();
     List<String> matchedChildPaths = new ArrayList<>();
     List<String> matchedStorageGroups = new ArrayList<>();
-    List<String> storageGroups = clusterSchemaInfo.getStorageGroupNames();
-    boolean needMtreeAbove = true;
-    for (String storageGroup : storageGroups) {
-      if (path.startsWith(storageGroup)) {
-        matchedStorageGroups.add(storageGroup);
-        needMtreeAbove = false;
-        break;
-      }
-    }
-    if (needMtreeAbove) {
-      Pair<Set<String>, Set<PartialPath>> matchedChildNodePathInNextLevel =
-          clusterSchemaInfo.getChildNodePathInNextLevel(req.getPartialPath());
-      matchedChildNodePathInNextLevel.left.forEach(
-          childPath -> {
-            matchedChildPaths.add(childPath);
-          });
-      matchedChildNodePathInNextLevel.right.forEach(
-          childPath -> {
-            matchedChildPaths.add(childPath.getFullPath());
-          });
-    }
-    if (needMtreeAbove && !path.contains("**")) {
-      matchedStorageGroups.clear();
-    }
+
+    // Pair.left means already find matched child paths from MtreeAbove,
+    // Pair.right means need more info from DataNode's schemaRegion.
+    Pair<Set<String>, Set<PartialPath>> matchedChildNodePathInNextLevel =
+        clusterSchemaInfo.getChildNodePathInNextLevel(req.getPartialPath());
+    matchedChildNodePathInNextLevel.left.forEach(
+        childPath -> {
+          matchedChildPaths.add(childPath);
+        });
+    matchedChildNodePathInNextLevel.right.forEach(
+        childPath -> {
+          matchedStorageGroups.add(childPath.getFullPath());
+        });
+
     SchemaNodeManagementResp schemaNodeManagementResp =
         (SchemaNodeManagementResp)
-            partitionInfo.getSchemaNodeManagementPartition(
-                matchedStorageGroups, path.equals("root.**"));
+            partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);
     if (schemaNodeManagementResp.getStatus().getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       schemaNodeManagementResp.setMatchedNode(matchedChildPaths);
