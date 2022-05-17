@@ -22,12 +22,10 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.utils.timerangeiterator.SingleTimeWindowIterator;
-import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -43,6 +41,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator.initTimeRangeIterator;
 
 /** This operator is responsible to do the aggregation calculation especially for aligned series. */
 public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
@@ -87,28 +89,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter);
-  }
-
-  /**
-   * If groupByTimeParameter is null, which means it's an aggregation query without down sampling.
-   * Aggregation query has only one time window and the result set of it does not contain a
-   * timestamp, so it doesn't matter what the time range returns.
-   */
-  public ITimeRangeIterator initTimeRangeIterator(GroupByTimeParameter groupByTimeParameter) {
-    if (groupByTimeParameter == null) {
-      return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
-    } else {
-      return TimeRangeIteratorFactory.getTimeRangeIterator(
-          groupByTimeParameter.getStartTime(),
-          groupByTimeParameter.getEndTime(),
-          groupByTimeParameter.getInterval(),
-          groupByTimeParameter.getSlidingStep(),
-          ascending,
-          groupByTimeParameter.isIntervalByMonth(),
-          groupByTimeParameter.isSlidingStepByMonth(),
-          groupByTimeParameter.getInterval() > groupByTimeParameter.getSlidingStep());
-    }
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
   }
 
   @Override
@@ -221,7 +202,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
 
   @Override
   public void initQueryDataSource(QueryDataSource dataSource) {
-    alignedalignedSeriesScanUtil.initQueryDataSource(dataSource);
+    alignedSeriesScanUtil.initQueryDataSource(dataSource);
   }
 
   @Override
@@ -237,7 +218,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
             && (ascending
                 ? preCachedData.getEndTime() >= curTimeRange.getMax()
                 : preCachedData.getStartTime() < curTimeRange.getMin()))
-        || isEndCalc();
+        || isEndCalc(aggregators);
   }
 
   @SuppressWarnings("squid:S3776")
@@ -248,7 +229,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
     }
 
     // skip points that cannot be calculated
-    tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange);
+    tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
 
     for (Aggregator aggregator : aggregators) {
       // current agg method has been calculated
@@ -263,21 +244,6 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
     if (tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
       preCachedData = tsBlock;
     }
-  }
-
-  // skip points that cannot be calculated
-  private TsBlock skipOutOfTimeRangePoints(TsBlock tsBlock, TimeRange curTimeRange) {
-    TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
-    if (ascending) {
-      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() < curTimeRange.getMin()) {
-        tsBlockIterator.next();
-      }
-    } else {
-      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
-        tsBlockIterator.next();
-      }
-    }
-    return tsBlock.subTsBlock(tsBlockIterator.getRowIndex());
   }
 
   private boolean satisfied(TsBlock tsBlock, TimeRange timeRange) {
@@ -296,15 +262,6 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
             || tsBlockIterator.currentTime() < timeRange.getMin())) {
       preCachedData = tsBlock;
       return false;
-    }
-    return true;
-  }
-
-  private boolean isEndCalc() {
-    for (Aggregator aggregator : aggregators) {
-      if (!aggregator.hasFinalResult()) {
-        return false;
-      }
     }
     return true;
   }
@@ -329,7 +286,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
             && curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);
           alignedSeriesScanUtil.skipCurrentPage();
-          if (isEndCalc()) {
+          if (isEndCalc(aggregators)) {
             return true;
           }
           continue;
@@ -356,7 +313,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
       calcFromBatch(tsBlock, curTimeRange);
 
       // judge whether the calculation finished
-      if (isEndCalc()
+      if (isEndCalc(aggregators)
           || (tsBlockIterator.hasNext()
               && (ascending
                   ? tsBlockIterator.currentTime() >= curTimeRange.getMax()
