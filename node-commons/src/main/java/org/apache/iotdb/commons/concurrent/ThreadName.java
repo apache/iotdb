@@ -80,9 +80,7 @@ public enum ThreadName {
   DATA_BLOCK_MANAGER_RPC_SERVER("DataBlockManagerRPC"),
   DATA_BLOCK_MANAGER_RPC_CLIENT("DataBlockManagerRPC-Client"),
   INTERNAL_SERVICE_RPC_SERVER("InternalServiceRPC"),
-  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client"),
-  PROCEDURE_NODE_SERVER("ProcedureNode-Server"),
-  PROCEDURE_NODE_CLIENT("ProcedureNode-Client");
+  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client");
 
   private final String name;
 

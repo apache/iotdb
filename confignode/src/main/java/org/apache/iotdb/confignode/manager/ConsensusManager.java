@@ -50,13 +50,11 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-  private final ConfigManager configManager;
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(ConfigManager configManager) throws IOException {
-    this.configManager = configManager;
-    setConsensusLayer();
+  public ConsensusManager(PartitionRegionStateMachine stateMachine) throws IOException {
+    setConsensusLayer(stateMachine);
   }
 
   public void close() throws IOException {
@@ -82,7 +80,7 @@ public class ConsensusManager {
   }
 
   /** Build ConfigNodeGroup ConsensusLayer */
-  private void setConsensusLayer() throws IOException {
+  private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
     consensusGroupId = new PartitionRegionId(conf.getPartitionRegionId());
 
@@ -92,7 +90,7 @@ public class ConsensusManager {
                 conf.getConfigNodeConsensusProtocolClass(),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()),
                 new File(conf.getConsensusDir()),
-                gid -> new PartitionRegionStateMachine(configManager))
+                gid -> stateMachine)
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(

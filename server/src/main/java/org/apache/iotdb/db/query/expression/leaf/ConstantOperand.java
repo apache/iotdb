@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.expression.leaf;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -104,6 +106,12 @@ public class ConstantOperand extends LeafOperand {
   }
 
   @Override
+  public void bindInputLayerColumnIndexWithExpression(
+      Map<String, List<InputLocation>> inputLocations) {
+    // Do nothing
+  }
+
+  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     // Do nothing
   }
@@ -119,6 +127,24 @@ public class ConstantOperand extends LeafOperand {
       throws QueryProcessException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       expressionDataTypeMap.put(this, this.getDataType());
+      IntermediateLayer intermediateLayer =
+          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
+      expressionIntermediateLayerMap.put(this, intermediateLayer);
+    }
+
+    return expressionIntermediateLayerMap.get(this);
+  }
+
+  @Override
+  public IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
       IntermediateLayer intermediateLayer =
           new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
       expressionIntermediateLayerMap.put(this, intermediateLayer);

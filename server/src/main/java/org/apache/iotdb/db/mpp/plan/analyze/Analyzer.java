@@ -352,6 +352,7 @@ public class Analyzer {
             alias = hasAlias ? resultColumn.getAlias() : alias;
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
             ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
+            expressionWithoutAlias.inferTypes(typeProvider);
             paginationController.consumeLimit();
           } else {
             break;

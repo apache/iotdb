@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -50,9 +51,9 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
-import org.apache.iotdb.confignode.procedure.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.procedure.Procedure;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -86,7 +87,13 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 7777));
-    RegisterDataNodeReq req0 = new RegisterDataNodeReq(dataNodeLocation);
+
+    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+    dataNodeInfo.setLocation(dataNodeLocation);
+    dataNodeInfo.setCpuCoreNum(16);
+    dataNodeInfo.setMaxMemory(34359738368L);
+
+    RegisterDataNodeReq req0 = new RegisterDataNodeReq(dataNodeInfo);
     req0.serialize(buffer);
     buffer.flip();
     RegisterDataNodeReq req1 = (RegisterDataNodeReq) ConfigRequest.Factory.create(buffer);
