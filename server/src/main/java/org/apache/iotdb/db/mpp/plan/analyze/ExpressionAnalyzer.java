@@ -48,7 +48,6 @@ import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.InExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -398,7 +397,7 @@ public class ExpressionAnalyzer {
    * -> {@link MeasurementPath}) and removes wildcards.
    *
    * @param deviceSchemaInfo device path and schema infos of measurements under this device
-   * @param measurementSet
+   * @param measurementSet all measurements appeared
    * @param typeProvider a map to record output symbols and their data types
    * @return the expression list with full path and after binding schema
    */
@@ -612,7 +611,15 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       return searchAggregationExpressions(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
-      return Collections.singletonList(expression);
+      if (expression.isBuiltInAggregationFunctionExpression()) {
+        return Collections.singletonList(expression);
+      }
+
+      List<Expression> resultExpressions = new ArrayList<>();
+      for (Expression inputExpression : expression.getExpressions()) {
+        resultExpressions.addAll(searchAggregationExpressions(inputExpression));
+      }
+      return resultExpressions;
     } else if (expression instanceof LeafOperand) {
       return Collections.emptyList();
     } else {
@@ -654,19 +661,8 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       updateTypeProvider(((UnaryExpression) expression).getExpression(), typeProvider);
     } else if (expression instanceof FunctionExpression) {
-      if (expression.isBuiltInAggregationFunctionExpression()) {
-        Validate.isTrue(expression.getExpressions().size() == 1);
-        Expression childExpression = expression.getExpressions().get(0);
-        PartialPath path = ((TimeSeriesOperand) childExpression).getPath();
-        typeProvider.setType(
-            expression.getExpressionString(),
-            SchemaUtils.getSeriesTypeByPath(
-                path, ((FunctionExpression) expression).getFunctionName()));
+      for (Expression childExpression : expression.getExpressions()) {
         updateTypeProvider(childExpression, typeProvider);
-      } else {
-        for (Expression childExpression : expression.getExpressions()) {
-          updateTypeProvider(childExpression, typeProvider);
-        }
       }
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
@@ -844,10 +840,21 @@ public class ExpressionAnalyzer {
   }
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
-    if (expression instanceof TimeSeriesOperand) {
+    if (expression instanceof BinaryExpression) {
+      String leftDeviceName =
+          getDeviceNameInSourceExpression(((BinaryExpression) expression).getLeftExpression());
+      if (leftDeviceName != null) {
+        return leftDeviceName;
+      }
+      return getDeviceNameInSourceExpression(((BinaryExpression) expression).getRightExpression());
+    } else if (expression instanceof UnaryExpression) {
+      return getDeviceNameInSourceExpression(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof TimeSeriesOperand) {
       return ((TimeSeriesOperand) expression).getPath().getDevice();
     } else if (expression instanceof FunctionExpression) {
       return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
+    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
+      return null;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());

@@ -146,31 +146,31 @@ public class Analyzer {
         }
 
         List<Pair<Expression, String>> outputExpressions;
-        Set<Expression> selectExpressions = new LinkedHashSet<>();
+        Set<Expression> transformExpressions = new LinkedHashSet<>();
         Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
         //                       <udf(udf(root.sg.d1.s1)),null>]
-        //   selectExpressions: [root.sg.d1.s1, root.sg.d1.s1 + root.sg.d1.s2,
+        //   transformExpressions: [root.sg.d1.s1, root.sg.d1.s1 + root.sg.d1.s2,
         //                       udf(udf(root.sg.d1.s1))]
         //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
         //
         // Example 2: select s1, s2, s3 as t from root.sg.* align by device
         //   outputExpressions: [<s1,null>, <s2,null>, <s1,t>]
-        //   selectExpressions: [root.sg.d1.s1, root.sg.d1.s2, root.sg.d1.s3,
+        //   transformExpressions: [root.sg.d1.s1, root.sg.d1.s2, root.sg.d1.s3,
         //                       root.sg.d2.s1, root.sg.d2.s2]
         //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2, root.sg.d1.s2],
         //                       root.sg.d2 -> [root.sg.d2.s1, root.sg.d2.s2]}
         //
         // Example 3: select sum(s1) + 1 as t, count(s2) from root.sg.d1
         //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
-        //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
+        //   transformExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
         //   aggregationExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         //   sourceExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         //
         // Example 4: select sum(s1) + 1 as t, count(s2) from root.sg.d1 where s1 > 1
         //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
-        //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
+        //   transformExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
         //   aggregationExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
         List<DeviceSchemaInfo> deviceSchemaInfos = new ArrayList<>();
@@ -183,7 +183,7 @@ public class Analyzer {
                   queryStatement,
                   schemaTree,
                   deviceSchemaInfos,
-                  selectExpressions,
+                  transformExpressions,
                   deviceToMeasurementsMap,
                   measurementSet);
 
@@ -207,14 +207,14 @@ public class Analyzer {
           analysis.setDeviceToMeasurementIndexesMap(deviceToMeasurementIndexesMap);
         } else {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
-          selectExpressions =
+          transformExpressions =
               outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet());
         }
 
         if (queryStatement.isGroupByLevel()) {
           // map from grouped expression to set of input expressions
           Map<Expression, Set<Expression>> groupByLevelExpressions =
-              analyzeGroupByLevel(queryStatement, outputExpressions, selectExpressions);
+              analyzeGroupByLevel(queryStatement, outputExpressions, transformExpressions);
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
         }
 
@@ -230,18 +230,37 @@ public class Analyzer {
         analysis.setGlobalTimeFilter(globalTimeFilter);
         analysis.setHasValueFilter(hasValueFilter);
 
-        // generate sourceExpression according to selectExpressions
-        boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
-        boolean isRawDataSource = !queryStatement.isAggregationQuery() || isValueFilterAggregation;
-        for (Expression selectExpr : selectExpressions) {
-          updateSource(selectExpr, sourceExpressions, isRawDataSource);
-        }
-        if (isValueFilterAggregation) {
+        // true if nested expressions and UDFs exist in aggregation function
+        // i.e. select sum(s1 + 1) from root.sg.d1
+        boolean isHasRawDataInputAggregation = false;
+        if (queryStatement.isAggregationQuery()) {
           Map<String, Set<Expression>> aggregationExpressions = new HashMap<>();
-          for (Expression selectExpr : selectExpressions) {
-            analyzeAggregation(selectExpr, aggregationExpressions);
+          Map<String, Set<Expression>> aggregationTransformExpressions = new HashMap<>();
+          for (Expression expression : transformExpressions) {
+            analyzeAggregation(expression, aggregationExpressions, aggregationTransformExpressions);
+          }
+          for (Expression aggregationTransformExpression :
+              aggregationTransformExpressions.values().stream()
+                  .flatMap(Set::stream)
+                  .collect(Collectors.toList())) {
+            if (ExpressionAnalyzer.checkIsNeedTransform(aggregationTransformExpression)) {
+              isHasRawDataInputAggregation = true;
+              break;
+            }
           }
           analysis.setAggregationExpressions(aggregationExpressions);
+          analysis.setHasRawDataInputAggregation(isHasRawDataInputAggregation);
+          analysis.setAggregationTransformExpressions(aggregationTransformExpressions);
+        }
+
+        // generate sourceExpression according to transformExpressions
+        boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
+        boolean isRawDataSource =
+            !queryStatement.isAggregationQuery()
+                || isValueFilterAggregation
+                || isHasRawDataInputAggregation;
+        for (Expression expression : transformExpressions) {
+          updateSource(expression, sourceExpressions, isRawDataSource);
         }
 
         if (queryStatement.getWhereCondition() != null) {
@@ -261,7 +280,7 @@ public class Analyzer {
           }
         }
         analysis.setSourceExpressions(sourceExpressions);
-        analysis.setSelectExpressions(selectExpressions);
+        analysis.setTransformExpressions(transformExpressions);
 
         if (queryStatement.getFilterNullComponent() != null) {
           FilterNullParameter filterNullParameter = new FilterNullParameter();
@@ -273,7 +292,7 @@ public class Analyzer {
                 analyzeWithoutNullAlignByDevice(queryStatement, outputExpressions);
           } else {
             resultFilterNullColumns =
-                analyzeWithoutNull(queryStatement, schemaTree, selectExpressions);
+                analyzeWithoutNull(queryStatement, schemaTree, transformExpressions);
           }
           filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
           analysis.setFilterNullParameter(filterNullParameter);
@@ -366,7 +385,7 @@ public class Analyzer {
         QueryStatement queryStatement,
         SchemaTree schemaTree,
         List<DeviceSchemaInfo> allDeviceSchemaInfos,
-        Set<Expression> selectExpressions,
+        Set<Expression> transformExpressions,
         Map<String, Set<String>> deviceToMeasurementsMap,
         Set<String> measurementSet) {
       // device path patterns in FROM clause
@@ -423,7 +442,7 @@ public class Analyzer {
       // if not, throw a SemanticException
       measurementNameToPathsMap.values().forEach(this::checkDataTypeConsistencyInAlignByDevice);
 
-      // apply SLIMIT & SOFFSET and set outputExpressions & selectExpressions
+      // apply SLIMIT & SOFFSET and set outputExpressions & transformExpressions
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
@@ -447,7 +466,7 @@ public class Analyzer {
                   ExpressionAnalyzer.replacePathInSourceExpression(
                       measurementAliasPair.left, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-              selectExpressions.add(tmpExpression);
+              transformExpressions.add(tmpExpression);
               deviceToMeasurementsMap
                   .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                   .add(measurementAliasPair.left.getExpressionString());
@@ -482,7 +501,7 @@ public class Analyzer {
                   ExpressionAnalyzer.replacePathInSourceExpression(
                       expressionWithoutAlias, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-              selectExpressions.add(tmpExpression);
+              transformExpressions.add(tmpExpression);
               deviceToMeasurementsMap
                   .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                   .add(expressionWithoutAlias.getExpressionString());
@@ -513,7 +532,7 @@ public class Analyzer {
                     ExpressionAnalyzer.replacePathInSourceExpression(
                         measurementAliasPair.left, measurementPath);
                 typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-                selectExpressions.add(tmpExpression);
+                transformExpressions.add(tmpExpression);
                 deviceToMeasurementsMap
                     .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                     .add(replacedMeasurement.getExpressionString());
@@ -576,14 +595,19 @@ public class Analyzer {
     }
 
     private void analyzeAggregation(
-        Expression selectExpr, Map<String, Set<Expression>> aggregationExpressions) {
+        Expression selectExpr,
+        Map<String, Set<Expression>> aggregationExpressions,
+        Map<String, Set<Expression>> aggregationTransformExpressions) {
       for (Expression aggregationExpression :
           ExpressionAnalyzer.searchAggregationExpressions(selectExpr)) {
+        String deviceName =
+            ExpressionAnalyzer.getDeviceNameInSourceExpression(aggregationExpression);
         aggregationExpressions
-            .computeIfAbsent(
-                ExpressionAnalyzer.getDeviceNameInSourceExpression(aggregationExpression),
-                key -> new HashSet<>())
+            .computeIfAbsent(deviceName, key -> new HashSet<>())
             .add(aggregationExpression);
+        aggregationTransformExpressions
+            .computeIfAbsent(deviceName, key -> new HashSet<>())
+            .addAll(aggregationExpression.getExpressions());
       }
     }
 
@@ -621,7 +645,7 @@ public class Analyzer {
     private Map<Expression, Set<Expression>> analyzeGroupByLevel(
         QueryStatement queryStatement,
         List<Pair<Expression, String>> outputExpressions,
-        Set<Expression> selectExpressions) {
+        Set<Expression> transformExpressions) {
       GroupByLevelController groupByLevelController =
           new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
       for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
@@ -651,7 +675,7 @@ public class Analyzer {
         }
       }
 
-      // reset outputExpressions & selectExpressions after applying SLIMIT/SOFFSET
+      // reset outputExpressions & transformExpressions after applying SLIMIT/SOFFSET
       outputExpressions.clear();
       for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
         TSDataType dataType =
@@ -665,8 +689,8 @@ public class Analyzer {
                 groupedExpression,
                 groupByLevelController.getAlias(groupedExpression.getExpressionString())));
       }
-      selectExpressions.clear();
-      selectExpressions.addAll(
+      transformExpressions.clear();
+      transformExpressions.addAll(
           groupByLevelExpressions.values().stream()
               .flatMap(Set::stream)
               .collect(Collectors.toSet()));
@@ -674,7 +698,9 @@ public class Analyzer {
     }
 
     private List<Expression> analyzeWithoutNull(
-        QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
+        QueryStatement queryStatement,
+        SchemaTree schemaTree,
+        Set<Expression> transformExpressions) {
       List<Expression> resultFilterNullColumns = new ArrayList<>();
       List<Expression> rawFilterNullColumns =
           queryStatement.getFilterNullComponent().getWithoutNullColumns();
@@ -684,7 +710,7 @@ public class Analyzer {
         for (Expression expression : resultExpressions) {
           Expression expressionWithoutAlias =
               ExpressionAnalyzer.removeAliasFromExpression(expression);
-          if (!selectExpressions.contains(expressionWithoutAlias)) {
+          if (!transformExpressions.contains(expressionWithoutAlias)) {
             throw new SemanticException(
                 String.format(
                     "The without null column '%s' don't match the columns queried.",
@@ -695,7 +721,7 @@ public class Analyzer {
       }
       // don't specify columns, by default, it is effective for all columns
       if (rawFilterNullColumns.isEmpty()) {
-        resultFilterNullColumns.addAll(selectExpressions);
+        resultFilterNullColumns.addAll(transformExpressions);
       }
       return resultFilterNullColumns;
     }

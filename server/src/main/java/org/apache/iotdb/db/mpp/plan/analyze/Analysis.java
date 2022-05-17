@@ -58,10 +58,16 @@ public class Analysis {
   private Map<String, Set<Expression>> sourceExpressions;
 
   // expression of output column to be calculated
-  private Set<Expression> selectExpressions;
+  private Set<Expression> transformExpressions;
 
   // all aggregations that need to be calculated
   private Map<String, Set<Expression>> aggregationExpressions;
+
+  // true if nested expressions and UDFs exist in aggregation function
+  private boolean isHasRawDataInputAggregation;
+
+  // input expressions of aggregations to be calculated
+  private Map<String, Set<Expression>> aggregationTransformExpressions;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
@@ -173,12 +179,12 @@ public class Analysis {
     this.sourceExpressions = sourceExpressions;
   }
 
-  public Set<Expression> getSelectExpressions() {
-    return selectExpressions;
+  public Set<Expression> getTransformExpressions() {
+    return transformExpressions;
   }
 
-  public void setSelectExpressions(Set<Expression> selectExpressions) {
-    this.selectExpressions = selectExpressions;
+  public void setTransformExpressions(Set<Expression> transformExpressions) {
+    this.transformExpressions = transformExpressions;
   }
 
   public Map<String, Set<Expression>> getAggregationExpressions() {
@@ -187,6 +193,23 @@ public class Analysis {
 
   public void setAggregationExpressions(Map<String, Set<Expression>> aggregationExpressions) {
     this.aggregationExpressions = aggregationExpressions;
+  }
+
+  public boolean isHasRawDataInputAggregation() {
+    return isHasRawDataInputAggregation;
+  }
+
+  public void setHasRawDataInputAggregation(boolean hasRawDataInputAggregation) {
+    isHasRawDataInputAggregation = hasRawDataInputAggregation;
+  }
+
+  public Map<String, Set<Expression>> getAggregationTransformExpressions() {
+    return aggregationTransformExpressions;
+  }
+
+  public void setAggregationTransformExpressions(
+      Map<String, Set<Expression>> aggregationTransformExpressions) {
+    this.aggregationTransformExpressions = aggregationTransformExpressions;
   }
 
   public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {

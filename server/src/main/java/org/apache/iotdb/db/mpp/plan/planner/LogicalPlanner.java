@@ -123,6 +123,9 @@ public class LogicalPlanner {
                       Maps.asMap(
                           Sets.newHashSet(deviceName),
                           (key) -> analysis.getAggregationExpressions().get(key)),
+                      Maps.asMap(
+                          Sets.newHashSet(deviceName),
+                          (key) -> analysis.getAggregationTransformExpressions().get(key)),
                       analysis.getSourceExpressions().get(deviceName),
                       analysis.getDeviceToQueryFilter() != null
                           ? analysis.getDeviceToQueryFilter().get(deviceName)
@@ -146,7 +149,8 @@ public class LogicalPlanner {
                     queryStatement,
                     analysis.getSourceExpressions(),
                     analysis.getAggregationExpressions(),
-                    analysis.getSelectExpressions(),
+                    analysis.getAggregationTransformExpressions(),
+                    analysis.getTransformExpressions(),
                     analysis.getQueryFilter(),
                     context));
       }
@@ -166,13 +170,15 @@ public class LogicalPlanner {
         QueryStatement queryStatement,
         Map<String, Set<Expression>> sourceExpressions,
         Map<String, Set<Expression>> aggregationExpressions,
-        Set<Expression> selectExpressions,
+        Map<String, Set<Expression>> aggregationTransformExpressions,
+        Set<Expression> transformExpressions,
         Expression queryFilter,
         MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       boolean isRawDataSource =
           !queryStatement.isAggregationQuery()
-              || (queryStatement.isAggregationQuery() && analysis.hasValueFilter());
+              || (queryStatement.isAggregationQuery() && analysis.hasValueFilter())
+              || analysis.isHasRawDataInputAggregation();
 
       // plan data source node
       if (isRawDataSource) {
@@ -185,7 +191,15 @@ public class LogicalPlanner {
             planBuilder =
                 planBuilder.planFilterAndTransform(
                     queryFilter,
-                    sourceExpressions.values().stream()
+                    aggregationTransformExpressions.values().stream()
+                        .flatMap(Set::stream)
+                        .collect(Collectors.toSet()),
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
+          } else {
+            planBuilder =
+                planBuilder.planTransform(
+                    aggregationTransformExpressions.values().stream()
                         .flatMap(Set::stream)
                         .collect(Collectors.toSet()),
                     queryStatement.isGroupByTime(),
@@ -196,7 +210,8 @@ public class LogicalPlanner {
               queryStatement.isGroupByLevel()
                   || (queryStatement.isGroupByTime()
                       && analysis.getGroupByTimeParameter().hasOverlap());
-          AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.FINAL;
+          AggregationStep curStep =
+              outputPartial ? AggregationStep.PARTIAL : AggregationStep.SINGLE;
           planBuilder =
               planBuilder.planAggregation(
                   aggregationExpressions,
@@ -221,18 +236,24 @@ public class LogicalPlanner {
                   planBuilder.planGroupByLevel(analysis.getGroupByLevelExpressions(), curStep);
             }
           }
+
+          planBuilder =
+              planBuilder.planTransform(
+                  transformExpressions,
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId());
         } else {
           if (analysis.hasValueFilter()) {
             planBuilder =
                 planBuilder.planFilterAndTransform(
                     queryFilter,
-                    selectExpressions,
+                    transformExpressions,
                     queryStatement.isGroupByTime(),
                     queryStatement.getSelectComponent().getZoneId());
           } else {
             planBuilder =
                 planBuilder.planTransform(
-                    selectExpressions,
+                    transformExpressions,
                     queryStatement.isGroupByTime(),
                     queryStatement.getSelectComponent().getZoneId());
           }
