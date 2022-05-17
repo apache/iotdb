@@ -96,18 +96,18 @@ public class Path implements Serializable, Comparable<Path> {
       throw new PathParseException(ILLEGAL_PATH_ARGUMENT);
     }
     // use PathNodesGenerator to check whether path is legal.
-    if (StringUtils.isEmpty(device) && StringUtils.isEmpty(measurement)) {
+    if (!StringUtils.isEmpty(device) && !StringUtils.isEmpty(measurement)) {
       String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
       String[] nodes = PathNodesGenerator.splitPathToNodes(path);
       this.device = transformNodesToString(nodes, nodes.length - 1);
       this.measurement = nodes[nodes.length - 1];
       this.fullPath = transformNodesToString(nodes, nodes.length);
-    } else if (StringUtils.isEmpty(device)) {
+    } else if (!StringUtils.isEmpty(device)) {
       String[] deviceNodes = PathNodesGenerator.splitPathToNodes(device);
       this.device = transformNodesToString(deviceNodes, deviceNodes.length);
       this.measurement = measurement;
       this.fullPath = device;
-    } else if (StringUtils.isEmpty(measurement)) {
+    } else if (!StringUtils.isEmpty(measurement)) {
       String[] measurementNodes = PathNodesGenerator.splitPathToNodes(measurement);
       this.measurement = transformNodesToString(measurementNodes, measurementNodes.length);
       this.device = device;
