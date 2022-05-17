@@ -19,21 +19,31 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class AuthorizerManager implements IAuthorizer {
@@ -42,6 +52,14 @@ public class AuthorizerManager implements IAuthorizer {
 
   private IAuthorizer iAuthorizer;
   private ReentrantReadWriteLock snapshotLock;
+  private TAuthorizerResp tAuthorizerResp;
+
+  LoadingCache<String, User> privilegeCache =
+      Caffeine.newBuilder()
+          .maximumSize(100)
+          .expireAfterAccess(30, TimeUnit.SECONDS)
+          // getAll将会对缓存中, 没有值的key分别调用CacheLoader.load方法来构建缓存的值
+          .build(this::buildLoader);
 
   public AuthorizerManager() {
     try {
@@ -341,5 +359,59 @@ public class AuthorizerManager implements IAuthorizer {
     } finally {
       snapshotLock.writeLock().unlock();
     }
+  }
+
+  public TSStatus checkPath(String username, List<String> allPath, int permission)
+      throws AuthException {
+    User user = privilegeCache.getIfPresent(username);
+    if (user != null) {
+      for (String path : allPath) {
+        boolean status = user.checkPrivilege(path, permission);
+        if (status) {
+          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        }
+      }
+    }
+    tAuthorizerResp = ClusterAuthorizer.checkPath(username, allPath, permission);
+    if (tAuthorizerResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      privilegeCache.get(username);
+      return tAuthorizerResp.getStatus();
+    } else {
+      return tAuthorizerResp.getStatus();
+    }
+  }
+
+  /** Check the user */
+  public TSStatus checkUser(String username, String password) {
+    User user = privilegeCache.getIfPresent(username);
+    if (user != null
+        && password != null
+        && AuthUtils.validatePassword(password, user.getPassword())) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    tAuthorizerResp = ClusterAuthorizer.checkUser(username, password);
+    if (tAuthorizerResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      privilegeCache.get(username);
+      return tAuthorizerResp.getStatus();
+    } else {
+      return tAuthorizerResp.getStatus();
+    }
+  }
+
+  User buildLoader(String username) {
+    User user = new User();
+    List<String> privilegeList =
+        tAuthorizerResp.getAuthorizerInfo().get(user.getStringPrivilegeList());
+    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+    user.setName(tAuthorizerResp.getAuthorizerInfo().get(user.getStringName()).get(0));
+    user.setPassword(tAuthorizerResp.getAuthorizerInfo().get(user.getStringPassword()).get(0));
+    for (int i = 0; i < privilegeList.size(); i++) {
+      String path = privilegeList.get(i);
+      String privilege = privilegeList.get(++i);
+      pathPrivilegeList.add(user.toPathPrivilege(path, privilege));
+    }
+    user.setPrivilegeList(pathPrivilegeList);
+    user.setRoleList(tAuthorizerResp.getAuthorizerInfo().get(user.getStringRoleList()));
+    return user;
   }
 }
