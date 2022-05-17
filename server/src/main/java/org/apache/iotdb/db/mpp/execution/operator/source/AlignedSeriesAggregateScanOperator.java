@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,8 +33,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -52,8 +51,9 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
   private final AlignedSeriesScanUtil alignedSeriesScanUtil;
+  private final int subSensorSize;
   private final boolean ascending;
-  // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
+  // We still think aggregator in AlignedSeriesAggregateScanOperator is a inputRaw step.
   // But in facing of statistics, it will invoke another method processStatistics()
   private List<Aggregator> aggregators;
 
@@ -70,7 +70,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
 
   public AlignedSeriesAggregateScanOperator(
       PlanNodeId sourceId,
-      PartialPath seriesPath,
+      AlignedPath seriesPath,
       Set<String> allSensors,
       OperatorContext context,
       List<Aggregator> aggregators,
@@ -83,6 +83,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
     this.alignedSeriesScanUtil =
         new AlignedSeriesScanUtil(
             seriesPath, allSensors, context.getInstanceContext(), timeFilter, null, ascending);
+    this.subSensorSize = seriesPath.getMeasurementList().size();
     this.aggregators = aggregators;
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
@@ -125,28 +126,28 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
 
       // 2. Calculate aggregation result based on current time window
       if (calcFromCacheData(curTimeRange)) {
-        updateResultTsBlockUsingAggregateResult();
+        updateResultTsBlockFromAggregators();
         return true;
       }
 
       // read page data firstly
       if (readAndCalcFromPage(curTimeRange)) {
-        updateResultTsBlockUsingAggregateResult();
+        updateResultTsBlockFromAggregators();
         return true;
       }
 
       // read chunk data secondly
       if (readAndCalcFromChunk(curTimeRange)) {
-        updateResultTsBlockUsingAggregateResult();
+        updateResultTsBlockFromAggregators();
         return true;
       }
 
       // read from file first
       while (alignedSeriesScanUtil.hasNextFile()) {
-        Statistics fileStatistics = AlignedSeriesScanUtil.currentFileStatistics();
-        if (fileStatistics.getStartTime() >= curTimeRange.getMax()) {
+        Statistics fileTimeStatistics = alignedSeriesScanUtil.currentFileTimeStatistics();
+        if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
-            updateResultTsBlockUsingAggregateResult();
+            updateResultTsBlockFromAggregators();
             return true;
           } else {
             alignedSeriesScanUtil.skipCurrentFile();
@@ -155,49 +156,34 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
         }
         // calc from fileMetaData
         if (canUseCurrentFileStatistics()
-            && curTimeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-          calcFromStatistics(fileStatistics);
+            && curTimeRange.contains(
+                fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
+          Statistics[] statisticsList = new Statistics[subSensorSize];
+          for (int i = 0; i < subSensorSize; i++) {
+            statisticsList[i] = alignedSeriesScanUtil.currentFileStatistics(i);
+          }
+          calcFromStatistics(statisticsList);
           alignedSeriesScanUtil.skipCurrentFile();
           continue;
         }
 
         // read chunk
         if (readAndCalcFromChunk(curTimeRange)) {
-          updateResultTsBlockUsingAggregateResult();
+          updateResultTsBlockFromAggregators();
           return true;
         }
       }
 
-      updateResultTsBlockUsingAggregateResult();
+      updateResultTsBlockFromAggregators();
       return true;
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
     }
   }
 
-  private void updateResultTsBlockUsingAggregateResult() {
-    tsBlockBuilder.reset();
-    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(curTimeRange.getMin());
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    tsBlockBuilder.declarePosition();
-    resultTsBlock = tsBlockBuilder.build();
-    hasCachedTsBlock = true;
-  }
-
   @Override
   public boolean isFinished() {
-    return finished || (finished = hasNext());
+    return finished || (finished = !hasNext());
   }
 
   @Override
@@ -210,13 +196,20 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
     return sourceId;
   }
 
+  private void updateResultTsBlockFromAggregators() {
+    resultTsBlock =
+        AggregateOperator.updateResultTsBlockFromAggregators(
+            tsBlockBuilder, aggregators, timeRangeIterator);
+    hasCachedTsBlock = true;
+  }
+
   /** @return if already get the result */
   private boolean calcFromCacheData(TimeRange curTimeRange) throws IOException {
     calcFromBatch(preCachedData, curTimeRange);
     // The result is calculated from the cache
     return (preCachedData != null
             && (ascending
-                ? preCachedData.getEndTime() >= curTimeRange.getMax()
+                ? preCachedData.getEndTime() > curTimeRange.getMax()
                 : preCachedData.getStartTime() < curTimeRange.getMin()))
         || isEndCalc(aggregators);
   }
@@ -224,7 +217,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
   @SuppressWarnings("squid:S3776")
   private void calcFromBatch(TsBlock tsBlock, TimeRange curTimeRange) {
     // check if the batchData does not contain points in current interval
-    if (tsBlock == null || !satisfied(tsBlock, curTimeRange)) {
+    if (tsBlock == null || !satisfied(tsBlock, curTimeRange, ascending)) {
       return;
     }
 
@@ -246,7 +239,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
     }
   }
 
-  private boolean satisfied(TsBlock tsBlock, TimeRange timeRange) {
+  private boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
     TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
     if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
       return false;
@@ -254,11 +247,11 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
 
     if (ascending
         && (tsBlockIterator.getEndTime() < timeRange.getMin()
-            || tsBlockIterator.currentTime() >= timeRange.getMax())) {
+            || tsBlockIterator.currentTime() > timeRange.getMax())) {
       return false;
     }
     if (!ascending
-        && (tsBlockIterator.getStartTime() >= timeRange.getMax()
+        && (tsBlockIterator.getEndTime() > timeRange.getMax()
             || tsBlockIterator.currentTime() < timeRange.getMin())) {
       preCachedData = tsBlock;
       return false;
@@ -269,11 +262,11 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean readAndCalcFromPage(TimeRange curTimeRange) throws IOException {
     while (alignedSeriesScanUtil.hasNextPage()) {
-      Statistics pageStatistics = alignedSeriesScanUtil.currentPageStatistics();
+      Statistics pageTimeStatistics = alignedSeriesScanUtil.currentPageTimeStatistics();
       // must be non overlapped page
-      if (pageStatistics != null) {
+      if (pageTimeStatistics != null) {
         // There is no more eligible points in current time range
-        if (pageStatistics.getStartTime() >= curTimeRange.getMax()) {
+        if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             return true;
           } else {
@@ -283,8 +276,13 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
         }
         // can use pageHeader
         if (canUseCurrentPageStatistics()
-            && curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
-          calcFromStatistics(pageStatistics);
+            && curTimeRange.contains(
+                pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
+          Statistics[] statisticsList = new Statistics[subSensorSize];
+          for (int i = 0; i < subSensorSize; i++) {
+            statisticsList[i] = alignedSeriesScanUtil.currentPageStatistics(i);
+          }
+          calcFromStatistics(statisticsList);
           alignedSeriesScanUtil.skipCurrentPage();
           if (isEndCalc(aggregators)) {
             return true;
@@ -304,7 +302,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
       // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
-      if (ascending && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
+      if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
         preCachedData = tsBlock;
         return true;
       }
@@ -316,7 +314,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
       if (isEndCalc(aggregators)
           || (tsBlockIterator.hasNext()
               && (ascending
-                  ? tsBlockIterator.currentTime() >= curTimeRange.getMax()
+                  ? tsBlockIterator.currentTime() > curTimeRange.getMax()
                   : tsBlockIterator.currentTime() < curTimeRange.getMin()))) {
         return true;
       }
@@ -326,8 +324,8 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
 
   private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
     while (alignedSeriesScanUtil.hasNextChunk()) {
-      Statistics chunkStatistics = alignedSeriesScanUtil.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curTimeRange.getMax()) {
+      Statistics chunkTimeStatistics = alignedSeriesScanUtil.currentChunkTimeStatistics();
+      if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
         if (ascending) {
           return true;
         } else {
@@ -337,8 +335,14 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
       }
       // calc from chunkMetaData
       if (canUseCurrentChunkStatistics()
-          && curTimeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-        calcFromStatistics(chunkStatistics);
+          && curTimeRange.contains(
+              chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
+        // calc from chunkMetaData
+        Statistics[] statisticsList = new Statistics[subSensorSize];
+        for (int i = 0; i < subSensorSize; i++) {
+          statisticsList[i] = alignedSeriesScanUtil.currentChunkStatistics(i);
+        }
+        calcFromStatistics(statisticsList);
         alignedSeriesScanUtil.skipCurrentChunk();
         continue;
       }
@@ -350,7 +354,7 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
     return false;
   }
 
-  private void calcFromStatistics(Statistics statistics) {
+  private void calcFromStatistics(Statistics[] statistics) {
     for (int i = 0; i < aggregators.size(); i++) {
       Aggregator aggregator = aggregators.get(i);
       if (aggregator.hasFinalResult()) {
@@ -361,21 +365,21 @@ public class AlignedSeriesAggregateScanOperator implements DataSourceOperator {
   }
 
   public boolean canUseCurrentFileStatistics() throws IOException {
-    Statistics fileStatistics = alignedSeriesScanUtil.currentFileStatistics();
+    Statistics fileStatistics = alignedSeriesScanUtil.currentFileTimeStatistics();
     return !alignedSeriesScanUtil.isFileOverlapped()
         && containedByTimeFilter(fileStatistics)
         && !alignedSeriesScanUtil.currentFileModified();
   }
 
   public boolean canUseCurrentChunkStatistics() throws IOException {
-    Statistics chunkStatistics = alignedSeriesScanUtil.currentChunkStatistics();
+    Statistics chunkStatistics = alignedSeriesScanUtil.currentChunkTimeStatistics();
     return !alignedSeriesScanUtil.isChunkOverlapped()
         && containedByTimeFilter(chunkStatistics)
         && !alignedSeriesScanUtil.currentChunkModified();
   }
 
   public boolean canUseCurrentPageStatistics() throws IOException {
-    Statistics currentPageStatistics = alignedSeriesScanUtil.currentPageStatistics();
+    Statistics currentPageStatistics = alignedSeriesScanUtil.currentPageTimeStatistics();
     if (currentPageStatistics == null) {
       return false;
     }
