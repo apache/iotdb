@@ -68,7 +68,7 @@ public class PathTest {
     // quoted node of key word
     Path i = new Path("root.sg.`select`", true);
     Assert.assertEquals("root.sg", i.getDevice());
-    Assert.assertEquals("`select`", i.getMeasurement());
+    Assert.assertEquals("select", i.getMeasurement());
 
     // wildcard
     Path j = new Path("root.sg.`a*b`", true);
@@ -104,6 +104,12 @@ public class PathTest {
       fail();
     } catch (PathParseException ignored) {
 
+    }
+
+    try {
+      new Path("root.sg\na", true);
+      fail();
+    } catch (PathParseException ignored) {
     }
 
     try {
