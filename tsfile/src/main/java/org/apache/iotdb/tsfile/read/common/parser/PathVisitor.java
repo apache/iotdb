@@ -26,12 +26,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 public class PathVisitor extends PathParserBaseVisitor<String[]> {
-
-  private static final String NODE_NAME_MATCHER = "([a-zA-Z0-9_:@#${}\\u2E80-\\u9FFF]+)";
-  private static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
 
   @Override
   public String[] visitPath(PathParser.PathContext ctx) {
@@ -68,7 +64,8 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (StringUtils.isNumeric(unWrapped) || !NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;

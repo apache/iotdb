@@ -99,6 +99,7 @@ import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -128,11 +129,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   /** For create-cq clause and select-into clause, used to match "{x}", where x is an integer. */
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
-
-  /** used to match node name without special characters */
-  private static final String NODE_NAME_MATCHER = "([a-zA-Z0-9_:@#${}\\u2E80-\\u9FFF]+)";
-
-  private static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
 
   // TODO: add comment
   private ZoneId zoneId;
@@ -1109,9 +1105,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeString(String nodeName) {
-    if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (StringUtils.isNumeric(unWrapped) || !NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
@@ -1187,8 +1185,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseIdentifier(String src) {
-    if (src.startsWith("`") && src.endsWith("`")) {
-      return src.substring(1, src.length() - 1).replace("``", "`");
+    if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      return src.substring(1, src.length() - 1)
+          .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
     return src;
   }

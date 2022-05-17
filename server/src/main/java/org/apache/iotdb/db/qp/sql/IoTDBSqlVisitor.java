@@ -161,6 +161,7 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.time.ZoneId;
@@ -193,11 +194,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // used to match "{x}", where x is an integer.
   // for create-cq clause and select-into clause.
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
-
-  /** used to match node name without special characters */
-  private static final String NODE_NAME_MATCHER = "([a-zA-Z0-9_:@#${}\\u2E80-\\u9FFF]+)";
-
-  private static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
 
   private ZoneId zoneId;
   private QueryOperator queryOp;
@@ -2446,10 +2442,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private String parseNodeString(String nodeName) {
-    if (nodeName.startsWith("`") && nodeName.endsWith("`")) {
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
-      if (org.apache.commons.lang3.StringUtils.isNumeric(unWrapped)
-          || !NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
@@ -3031,8 +3028,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private String parseIdentifier(String src) {
-    if (src.startsWith("`") && src.endsWith("`")) {
-      return src.substring(1, src.length() - 1).replace("``", "`");
+    if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      return src.substring(1, src.length() - 1)
+          .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
     return src;
   }
