@@ -569,13 +569,13 @@ public class LocalExecutionPlanner {
           }
         }
 
-        // TODO type here may be incorrect
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
                     descriptor.getAggregationType(),
                     context
                         .getTypeProvider()
+                        // get the type of first inputExpression
                         .getType(descriptor.getInputExpressions().get(0).toString()),
                     ascending),
                 descriptor.getStep(),

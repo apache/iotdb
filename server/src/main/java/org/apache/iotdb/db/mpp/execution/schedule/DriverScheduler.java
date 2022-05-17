@@ -66,7 +66,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
-  private static final int QUERY_TIMEOUT_MS = 1000_000; // TODO: load from config files or requests
+  private static final int QUERY_TIMEOUT_MS = 60_000; // TODO: load from config files or requests
   private final ThreadGroup workerGroups;
   private final List<AbstractDriverThread> threads;
 
