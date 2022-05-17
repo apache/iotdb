@@ -24,20 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-/**
- * This interface provides search interface for consensus requests via index. The requests may store
- * in the memory or on the disk, so remember calling {@link this#releaseOutdatedReqs} to release
- * resources.
- */
+/** This interface provides search interface for consensus requests via index. */
 public interface ConsensusReqReader {
-  /**
-   * Releases outdated consensus requests before the end index.
-   *
-   * @param endIndex index of first valid consensus request, consensus request before this index
-   *     will be released
-   */
-  void releaseOutdatedReqs(long endIndex);
-
   /**
    * Gets the consensus request at the specified position.
    *

@@ -100,11 +100,6 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public void releaseOutdatedReqs(long endIndex) {
-    // do nothing
-  }
-
-  @Override
   public IConsensusRequest getReq(long index) {
     throw new UnsupportedOperationException();
   }

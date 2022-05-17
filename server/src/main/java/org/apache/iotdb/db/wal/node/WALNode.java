@@ -378,9 +378,6 @@ public class WALNode implements IWALNode {
 
   // region Search interfaces for consensus group
   @Override
-  public void releaseOutdatedReqs(long endIndex) {}
-
-  @Override
   public IConsensusRequest getReq(long index) {
     return null;
   }
