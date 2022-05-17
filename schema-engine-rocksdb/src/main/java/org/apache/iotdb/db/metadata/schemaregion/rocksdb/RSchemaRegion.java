@@ -165,7 +165,8 @@ public class RSchemaRegion implements ISchemaRegion {
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
     storageGroupFullPath = storageGroup.getFullPath();
-    init(storageGroupMNode);
+    this.storageGroupMNode = storageGroupMNode;
+    init();
     try {
       readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);
     } catch (RocksDBException e) {
@@ -175,8 +176,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
-    this.storageGroupMNode = storageGroupMNode;
+  public void init() throws MetadataException {
     schemaRegionDirPath =
         config.getSchemaDir()
             + File.separator
@@ -216,6 +216,20 @@ public class RSchemaRegion implements ISchemaRegion {
   public void deleteSchemaRegion() throws MetadataException {
     clear();
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+  }
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Rocksdb mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Rocksdb mode currently doesn't support snapshot feature.");
   }
 
   @Override
