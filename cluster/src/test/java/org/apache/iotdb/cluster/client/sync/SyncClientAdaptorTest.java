@@ -451,7 +451,7 @@ public class SyncClientAdaptorTest {
         lastResult,
         SyncClientAdaptor.last(
             dataClient,
-            Collections.singletonList(new PartialPath("1")),
+            Collections.singletonList(new PartialPath("`1`")),
             Collections.singletonList(TSDataType.INT64.ordinal()),
             null,
             new QueryContext(),
