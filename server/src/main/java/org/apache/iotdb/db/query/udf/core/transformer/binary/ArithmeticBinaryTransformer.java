@@ -35,11 +35,12 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
 
   @Override
   protected void checkType() {
-    if (leftPointReaderDataType == TSDataType.BOOLEAN) {
-      throw new UnSupportedDataTypeException(leftPointReader.getDataType().toString());
+    if (leftPointReaderDataType == TSDataType.BOOLEAN
+        || rightPointReaderDataType == TSDataType.BOOLEAN) {
+      throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.name());
     }
-    if (rightPointReaderDataType == TSDataType.BOOLEAN) {
-      throw new UnSupportedDataTypeException(rightPointReader.getDataType().toString());
+    if (leftPointReaderDataType == TSDataType.TEXT || rightPointReaderDataType == TSDataType.TEXT) {
+      throw new UnSupportedDataTypeException(TSDataType.TEXT.name());
     }
   }
 

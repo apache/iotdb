@@ -30,6 +30,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MaxTimeAccumulator implements Accumulator {
 
   protected long maxTime = Long.MIN_VALUE;
+  protected boolean initResult = false;
 
   public MaxTimeAccumulator() {}
 
@@ -39,7 +40,7 @@ public class MaxTimeAccumulator implements Accumulator {
   public void addInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateMaxTime(curTime);
       }
     }
@@ -49,6 +50,9 @@ public class MaxTimeAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of MaxTime should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     updateMaxTime(partialResult[0].getLong(0));
   }
 
@@ -60,6 +64,10 @@ public class MaxTimeAccumulator implements Accumulator {
   // finalResult should be single column, like: | finalMaxTime |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
+    initResult = true;
     maxTime = finalResult.getLong(0);
   }
 
@@ -67,16 +75,25 @@ public class MaxTimeAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of MaxTime should be 1");
-    columnBuilders[0].writeLong(maxTime);
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+    } else {
+      columnBuilders[0].writeLong(maxTime);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeLong(maxTime);
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeLong(maxTime);
+    }
   }
 
   @Override
   public void reset() {
+    initResult = false;
     this.maxTime = Long.MIN_VALUE;
   }
 
@@ -96,6 +113,7 @@ public class MaxTimeAccumulator implements Accumulator {
   }
 
   protected void updateMaxTime(long curTime) {
+    initResult = true;
     maxTime = Math.max(maxTime, curTime);
   }
 }

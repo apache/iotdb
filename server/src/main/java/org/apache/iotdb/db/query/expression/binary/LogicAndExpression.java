@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.LogicBinaryTransfor
 
 import java.nio.ByteBuffer;
 
-public class LogicAndExpression extends BinaryExpression {
+public class LogicAndExpression extends LogicBinaryExpression {
 
   public LogicAndExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

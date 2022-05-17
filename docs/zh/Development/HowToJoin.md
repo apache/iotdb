@@ -41,7 +41,7 @@
 
 ## 关注公众号
 扫码关注官方公众号：Apache IoTDB
-![IoTDB公众号二维码](https://img-blog.csdnimg.cn/907f9d614b2f47e3b0c66a7c53bcbd5d.png#pic_left)
+![IoTDB公众号二维码](https://user-images.githubusercontent.com/7240743/98633970-73671c00-235d-11eb-9913-f38e570fcfc8.png)
 
 ## 长期事项
 ### 学习IoTDB的基本使用

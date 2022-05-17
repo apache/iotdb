@@ -45,6 +45,7 @@ import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.ratis.client.RaftClient;
+import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
@@ -58,9 +59,11 @@ import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.NetUtils;
+import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +75,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -103,6 +107,9 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
+  // TODO make it configurable
+  private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
+
   /**
    * @param ratisStorageDir different groups of RatisConsensus Peer all share ratisStorageDir as
    *     root dir
@@ -114,6 +121,14 @@ class RatisConsensus implements IConsensus {
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
+    RaftServerConfigKeys.Rpc.setSlownessTimeout(
+        properties, TimeDuration.valueOf(10, TimeUnit.MINUTES));
+    RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(2, TimeUnit.SECONDS));
+    RaftServerConfigKeys.Rpc.setTimeoutMax(properties, TimeDuration.valueOf(8, TimeUnit.SECONDS));
+    RaftServerConfigKeys.Rpc.setSleepTime(properties, TimeDuration.valueOf(1, TimeUnit.SECONDS));
+
+    RaftClientConfigKeys.Rpc.setRequestTimeout(
+        properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();
@@ -149,13 +164,13 @@ class RatisConsensus implements IConsensus {
    */
   @Override
   public ConsensusWriteResponse write(
-      ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
+      ConsensusGroupId consensusGroupId, IConsensusRequest IConsensusRequest) {
 
     // pre-condition: group exists and myself server serves this group
-    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
     if (raftGroup == null || !raftGroup.getPeers().contains(myself)) {
-      return failedWrite(new ConsensusGroupNotExistException(groupId));
+      return failedWrite(new ConsensusGroupNotExistException(consensusGroupId));
     }
 
     // serialize request into Message
@@ -163,22 +178,24 @@ class RatisConsensus implements IConsensus {
 
     // 1. first try the local server
     RaftClientRequest clientRequest =
-        buildRawRequest(groupId, message, RaftClientRequest.writeRequestType());
+        buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
     RaftClientReply localServerReply;
     RaftPeer suggestedLeader = null;
-    try {
-      localServerReply = server.submitClientRequest(clientRequest);
-      if (localServerReply.isSuccess()) {
-        ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
-        TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
-        return ConsensusWriteResponse.newBuilder().setStatus(writeStatus).build();
+    if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
+      try {
+        localServerReply = server.submitClientRequest(clientRequest);
+        if (localServerReply.isSuccess()) {
+          ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
+          TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
+          return ConsensusWriteResponse.newBuilder().setStatus(writeStatus).build();
+        }
+        NotLeaderException ex = localServerReply.getNotLeaderException();
+        if (ex != null) { // local server is not leader
+          suggestedLeader = ex.getSuggestedLeader();
+        }
+      } catch (IOException e) {
+        return failedWrite(new RatisRequestFailedException(e));
       }
-      NotLeaderException ex = localServerReply.getNotLeaderException();
-      if (ex != null) { // local server is not leader
-        suggestedLeader = ex.getSuggestedLeader();
-      }
-    } catch (IOException e) {
-      return failedWrite(new RatisRequestFailedException(e));
     }
 
     // 2. try raft client
@@ -209,11 +226,12 @@ class RatisConsensus implements IConsensus {
 
   /** Read directly from LOCAL COPY notice: May read stale data (not linearizable) */
   @Override
-  public ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest) {
-
-    RaftGroup group = getGroupInfo(Utils.fromConsensusGroupIdToRaftGroupId(groupId));
+  public ConsensusReadResponse read(
+      ConsensusGroupId consensusGroupId, IConsensusRequest IConsensusRequest) {
+    RaftGroupId groupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
+    RaftGroup group = getGroupInfo(groupId);
     if (group == null || !group.getPeers().contains(myself)) {
-      return failedRead(new ConsensusGroupNotExistException(groupId));
+      return failedRead(new ConsensusGroupNotExistException(consensusGroupId));
     }
 
     RaftClientReply reply;
@@ -476,6 +494,33 @@ class RatisConsensus implements IConsensus {
     return isLeader;
   }
 
+  private boolean waitUntilLeaderReady(RaftGroupId groupId) {
+    DivisionInfo divisionInfo;
+    try {
+      divisionInfo = server.getDivision(groupId).getInfo();
+    } catch (IOException e) {
+      // if the query fails, simply return not leader
+      logger.info("isLeaderReady checking failed with exception: ", e);
+      return false;
+    }
+    long startTime = System.currentTimeMillis();
+    try {
+      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
+        Thread.sleep(10);
+        long consumedTime = System.currentTimeMillis() - startTime;
+        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
+          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
+          return false;
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("Unexpected interruption", e);
+      return false;
+    }
+    return divisionInfo.isLeader();
+  }
+
   @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     if (isLeader(groupId)) {
@@ -512,12 +557,12 @@ class RatisConsensus implements IConsensus {
   }
 
   private RaftClientRequest buildRawRequest(
-      ConsensusGroupId groupId, Message message, RaftClientRequest.Type type) {
+      RaftGroupId groupId, Message message, RaftClientRequest.Type type) {
     return RaftClientRequest.newBuilder()
         .setServerId(server.getId())
         .setClientId(localFakeId)
         .setCallId(localFakeCallId.incrementAndGet())
-        .setGroupId(Utils.fromConsensusGroupIdToRaftGroupId(groupId))
+        .setGroupId(groupId)
         .setType(type)
         .setMessage(message)
         .build();
@@ -534,7 +579,7 @@ class RatisConsensus implements IConsensus {
         lastSeen.put(raftGroupId, raftGroup);
       }
     } catch (IOException e) {
-      logger.debug("get group failed ", e);
+      logger.debug("get group {} failed ", raftGroupId, e);
     }
     return raftGroup;
   }

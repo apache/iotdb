@@ -41,7 +41,7 @@ After creation, please send an email to the mailing list including **self introd
 
 ## Subscribe WeChat public account
 Scan the QR code to subscribe official public account: Apache IoTDB
-![IoTDB WeChat public account QR](https://img-blog.csdnimg.cn/907f9d614b2f47e3b0c66a7c53bcbd5d.png#pic_left)
+![IoTDB WeChat public account QR](https://user-images.githubusercontent.com/7240743/98633970-73671c00-235d-11eb-9913-f38e570fcfc8.png)
 
 ## Long term considerations
 ### Learn the basic use of IoTDB
