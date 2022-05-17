@@ -25,6 +25,7 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 public interface IMetricSet {
   /** bind related metric to metric manager */
   void bindTo(MetricManager metricManager);
+
   /** get type of metric set */
   PredefinedMetric getType();
 }

@@ -17,29 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.predefined;
+package org.apache.iotdb.metrics.predefined.jvm;
 
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.predefined.jvm.JvmClassLoaderMetricSet;
-import org.apache.iotdb.metrics.predefined.jvm.JvmCompileMetricSet;
-import org.apache.iotdb.metrics.predefined.jvm.JvmGcMetricSet;
-import org.apache.iotdb.metrics.predefined.jvm.JvmMemoryMetricSet;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
-public class JvmMetricSet implements IMetricSet {
+import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.ManagementFactory;
+
+/** This file is modified from io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics */
+public class JvmClassLoaderMetrics implements IMetricSet {
   @Override
   public void bindTo(MetricManager metricManager) {
-    JvmClassLoaderMetricSet jvmClassLoaderMetricSet = new JvmClassLoaderMetricSet();
-    jvmClassLoaderMetricSet.bindTo(metricManager);
+    ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
 
-    JvmCompileMetricSet jvmCompileMetricSet = new JvmCompileMetricSet();
-    jvmCompileMetricSet.bindTo(metricManager);
-
-    JvmGcMetricSet jvmGcMetricSet = new JvmGcMetricSet();
-    jvmGcMetricSet.bindTo(metricManager);
-
-    JvmMemoryMetricSet jvmMemoryMetricSet = new JvmMemoryMetricSet();
-    jvmMemoryMetricSet.bindTo(metricManager);
+    metricManager.getOrCreateAutoGauge(
+        "jvm.classes.loaded",
+        MetricLevel.IMPORTANT,
+        classLoadingBean,
+        ClassLoadingMXBean::getLoadedClassCount);
+    metricManager.getOrCreateAutoGauge(
+        "jvm.classes.unloaded",
+        MetricLevel.IMPORTANT,
+        classLoadingBean,
+        ClassLoadingMXBean::getUnloadedClassCount);
   }
 
   @Override

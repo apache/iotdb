@@ -29,7 +29,7 @@ import java.lang.management.ThreadMXBean;
 import java.util.Arrays;
 
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics */
-public class JvmThreadMetricSet implements IMetricSet {
+public class JvmThreadMetrics implements IMetricSet {
   @Override
   public void bindTo(MetricManager metricManager) {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();

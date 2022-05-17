@@ -21,26 +21,22 @@ package org.apache.iotdb.metrics.predefined.jvm;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
-import java.lang.management.CompilationMXBean;
-import java.lang.management.ManagementFactory;
-
-/** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics */
-public class JvmCompileMetricSet implements IMetricSet {
+public class JvmMetrics implements IMetricSet {
   @Override
   public void bindTo(MetricManager metricManager) {
-    CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
-    if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
-      metricManager.getOrCreateAutoGauge(
-          "jvm.compilation.time",
-          MetricLevel.IMPORTANT,
-          compilationBean,
-          CompilationMXBean::getTotalCompilationTime,
-          "compiler",
-          compilationBean.getName());
-    }
+    JvmClassLoaderMetrics jvmClassLoaderMetricSet = new JvmClassLoaderMetrics();
+    jvmClassLoaderMetricSet.bindTo(metricManager);
+
+    JvmCompileMetrics jvmCompileMetricSet = new JvmCompileMetrics();
+    jvmCompileMetricSet.bindTo(metricManager);
+
+    JvmGcMetrics jvmGcMetricSet = new JvmGcMetrics();
+    jvmGcMetricSet.bindTo(metricManager);
+
+    JvmMemoryMetrics jvmMemoryMetricSet = new JvmMemoryMetrics();
+    jvmMemoryMetricSet.bindTo(metricManager);
   }
 
   @Override

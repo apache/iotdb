@@ -51,14 +51,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmGcMetrics */
-public class JvmGcMetricSet implements IMetricSet, AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(JvmGcMetricSet.class);
+public class JvmGcMetrics implements IMetricSet, AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(JvmGcMetrics.class);
   private String youngGenPoolName;
   private String oldGenPoolName;
   private String nonGenerationalMemoryPool;
   private final List<Runnable> notificationListenerCleanUpRunnables = new CopyOnWriteArrayList<>();
 
-  public JvmGcMetricSet() {
+  public JvmGcMetrics() {
     for (MemoryPoolMXBean mbean : ManagementFactory.getMemoryPoolMXBeans()) {
       String name = mbean.getName();
       if (isYoungGenPool(name)) {
@@ -263,7 +263,7 @@ public class JvmGcMetricSet implements IMetricSet, AutoCloseable {
 
   private static Optional<MemoryPoolMXBean> getLongLivedHeapPool() {
     return ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class).stream()
-        .filter(JvmGcMetricSet::isHeap)
+        .filter(JvmGcMetrics::isHeap)
         .filter(mem -> isOldGenPool(mem.getName()) || isNonGenerationalHeapPool(mem.getName()))
         .findAny();
   }

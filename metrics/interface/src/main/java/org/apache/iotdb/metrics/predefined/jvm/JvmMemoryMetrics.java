@@ -32,7 +32,7 @@ import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
 
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics */
-public class JvmMemoryMetricSet implements IMetricSet {
+public class JvmMemoryMetrics implements IMetricSet {
   @Override
   public void bindTo(MetricManager metricManager) {
     for (BufferPoolMXBean bufferPoolBean :

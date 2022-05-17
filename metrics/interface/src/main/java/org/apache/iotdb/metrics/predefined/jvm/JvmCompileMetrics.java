@@ -24,25 +24,23 @@ import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
-import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.CompilationMXBean;
 import java.lang.management.ManagementFactory;
 
-/** This file is modified from io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics */
-public class JvmClassLoaderMetricSet implements IMetricSet {
+/** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics */
+public class JvmCompileMetrics implements IMetricSet {
   @Override
   public void bindTo(MetricManager metricManager) {
-    ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
-
-    metricManager.getOrCreateAutoGauge(
-        "jvm.classes.loaded",
-        MetricLevel.IMPORTANT,
-        classLoadingBean,
-        ClassLoadingMXBean::getLoadedClassCount);
-    metricManager.getOrCreateAutoGauge(
-        "jvm.classes.unloaded",
-        MetricLevel.IMPORTANT,
-        classLoadingBean,
-        ClassLoadingMXBean::getUnloadedClassCount);
+    CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
+    if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
+      metricManager.getOrCreateAutoGauge(
+          "jvm.compilation.time",
+          MetricLevel.IMPORTANT,
+          compilationBean,
+          CompilationMXBean::getTotalCompilationTime,
+          "compiler",
+          compilationBean.getName());
+    }
   }
 
   @Override
