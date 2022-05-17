@@ -107,7 +107,9 @@ public class ConfigNodeInfo {
     }
     properties.setProperty(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
-    properties.store(new FileOutputStream(propertiesFile), "");
+    try (FileOutputStream fileOutputStream = new FileOutputStream(propertiesFile)) {
+      properties.store(fileOutputStream, "");
+    }
   }
 
   public void loadConfigNodeList() {
