@@ -1127,6 +1127,10 @@ public class Analyzer {
       SchemaNodeManagementPartition schemaNodeManagementPartition =
           partitionFetcher.getSchemaNodeManagementPartition(
               new PathPatternTree(showChildPathsStatement.getPartialPath()));
+
+      if (schemaNodeManagementPartition == null) {
+        return analysis;
+      }
       if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
           && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size()
               == 0) {
