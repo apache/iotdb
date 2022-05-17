@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.allocator;
+package org.apache.iotdb.confignode.manager.load.balancer.allocator;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.List;
@@ -37,7 +37,7 @@ public interface IRegionAllocator {
    * @return The optimal TRegionReplicaSet derived by the specific algorithm
    */
   TRegionReplicaSet allocateRegion(
-      List<TDataNodeLocation> onlineDataNodes,
+      List<TDataNodeInfo> onlineDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId);
