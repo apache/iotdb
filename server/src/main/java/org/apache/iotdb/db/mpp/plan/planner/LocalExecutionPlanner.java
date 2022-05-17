@@ -37,11 +37,13 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FilterOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
@@ -95,6 +97,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
@@ -356,7 +359,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSeriesAggregate(
+    public Operator visitSeriesAggregationScan(
         SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
       PartialPath seriesPath = node.getSeriesPath();
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
@@ -370,10 +373,13 @@ public class LocalExecutionPlanner {
       node.getAggregationDescriptorList()
           .forEach(
               o ->
-                  new Aggregator(
-                      AccumulatorFactory.createAccumulator(
-                          o.getAggregationType(), node.getSeriesPath().getSeriesType(), ascending),
-                      o.getStep()));
+                  aggregators.add(
+                      new Aggregator(
+                          AccumulatorFactory.createAccumulator(
+                              o.getAggregationType(),
+                              node.getSeriesPath().getSeriesType(),
+                              ascending),
+                          o.getStep())));
       SeriesAggregateScanOperator aggregateScanOperator =
           new SeriesAggregateScanOperator(
               node.getPlanNodeId(),
@@ -534,7 +540,64 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitRowBasedSeriesAggregate(
         AggregationNode node, LocalExecutionPlanContext context) {
-      return super.visitRowBasedSeriesAggregate(node, context);
+      checkArgument(
+          node.getAggregationDescriptorList().size() >= 1,
+          "Aggregation descriptorList cannot be empty");
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              DeviceViewNode.class.getSimpleName());
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(child -> child.accept(this, context))
+              .collect(Collectors.toList());
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      List<Aggregator> aggregators = new ArrayList<>();
+      Map<String, List<InputLocation>> layout = makeLayout(node);
+      for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+        List<String> outputColumnNames = descriptor.getOutputColumnNames();
+        // it may include double parts
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>(outputColumnNames.size());
+        outputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
+
+        List<InputLocation[]> inputLocationList = new ArrayList<>();
+        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+          if (outputColumnNames.size() == 1) {
+            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+                });
+          }
+        }
+
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationType(),
+                    context
+                        .getTypeProvider()
+                        // get the type of first inputExpression
+                        .getType(descriptor.getInputExpressions().get(0).toString()),
+                    ascending),
+                descriptor.getStep(),
+                inputLocationList));
+      }
+      boolean inputRaw = node.getAggregationDescriptorList().get(0).getStep().isInputRaw();
+      if (inputRaw) {
+        checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
+        return new RawDataAggregateOperator(
+            operatorContext,
+            aggregators,
+            children.get(0),
+            ascending,
+            node.getGroupByTimeParameter());
+      } else {
+        return new AggregateOperator(
+            operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+      }
     }
 
     @Override

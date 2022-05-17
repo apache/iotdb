@@ -20,19 +20,22 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,14 +55,15 @@ public class SetTTLTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
+  public ListenableFuture<ConfigTaskResult> execute(
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (config.isClusterMode()) {
       TSetTTLReq setTTLReq =
           new TSetTTLReq(statement.getStorageGroupPath().getFullPath(), statement.getTTL());
-      ConfigNodeClient configNodeClient = null;
-      try {
-        configNodeClient = new ConfigNodeClient();
+      try (ConfigNodeClient configNodeClient =
+          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         // Send request to some API server
         TSStatus tsStatus = configNodeClient.setTTL(setTTLReq);
         // Get response or throw exception
@@ -73,13 +77,9 @@ public class SetTTLTask implements IConfigTask {
         } else {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         }
-      } catch (IoTDBConnectionException e) {
+      } catch (TException | IOException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
-      } finally {
-        if (configNodeClient != null) {
-          configNodeClient.close();
-        }
       }
     } else {
       try {
