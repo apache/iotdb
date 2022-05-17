@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
@@ -171,6 +171,25 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
                 .sum(),
         Tag.NAME.toString(),
         "unseq");
+  }
+
+  @Override
+  protected void collectProcessInfo() {
+    logger.info("start collecting information of metric service's process");
+    ProcessMetricsMonitor processMetricsMonitor = ProcessMetricsMonitor.getInstance();
+    processMetricsMonitor.collectProcessCPUInfo();
+    processMetricsMonitor.collectProcessMemInfo();
+    processMetricsMonitor.collectThreadInfo();
+    processMetricsMonitor.collectProcessStatusInfo();
+  }
+
+  @Override
+  protected void collectSystemInfo() {
+    logger.info("start collecting information of system hardware");
+    SysRunMetricsMonitor sysRunMetricsMonitor = SysRunMetricsMonitor.getInstance();
+    sysRunMetricsMonitor.collectSystemCpuInfo();
+    sysRunMetricsMonitor.collectSystemMEMInfo();
+    sysRunMetricsMonitor.collectSystemDiskInfo();
   }
 
   @Override

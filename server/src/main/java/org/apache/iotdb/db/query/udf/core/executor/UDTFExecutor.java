@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.executor;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;
@@ -53,6 +54,32 @@ public class UDTFExecutor {
     configurations = new UDTFConfigurations(zoneId);
   }
 
+  public void beforeStart(long queryId, float collectorMemoryBudgetInMB, TypeProvider typeProvider)
+      throws QueryProcessException {
+    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(expression);
+
+    UDFParameters parameters = new UDFParameters(expression, typeProvider);
+
+    try {
+      udtf.validate(new UDFParameterValidator(parameters));
+    } catch (Exception e) {
+      onError("validate(UDFParameterValidator)", e);
+    }
+
+    try {
+      udtf.beforeStart(parameters, configurations);
+    } catch (Exception e) {
+      onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
+    }
+    configurations.check();
+
+    collector =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            configurations.getOutputDataType(), queryId, collectorMemoryBudgetInMB, 1);
+  }
+
+  // TODO: remove it after MPP finished
+  @Deprecated
   public void beforeStart(
       long queryId,
       float collectorMemoryBudgetInMB,

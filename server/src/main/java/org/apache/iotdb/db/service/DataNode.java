@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
@@ -27,7 +29,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -142,7 +143,8 @@ public class DataNode implements DataNodeMBean {
       try {
         ConfigNodeClient configNodeClient = new ConfigNodeClient();
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+
+        // Set DataNodeLocation
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(config.getDataNodeId());
         location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
@@ -152,8 +154,15 @@ public class DataNode implements DataNodeMBean {
             new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
         location.setConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getConsensusPort()));
-        req.setDataNodeLocation(location);
 
+        // Set DataNodeInfo
+        TDataNodeInfo info = new TDataNodeInfo();
+        info.setLocation(location);
+        info.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
+        info.setMaxMemory(Runtime.getRuntime().totalMemory());
+
+        TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+        req.setDataNodeInfo(info);
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
         // store config node lists from resp

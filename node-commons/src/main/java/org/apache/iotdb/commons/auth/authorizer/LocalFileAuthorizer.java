@@ -22,10 +22,11 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
 
-  private static final CommonConfig config = CommonConfig.getInstance();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   public LocalFileAuthorizer() throws AuthException {
     super(

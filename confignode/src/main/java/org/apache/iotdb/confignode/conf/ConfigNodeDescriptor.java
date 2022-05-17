@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
@@ -35,8 +35,9 @@ import java.util.Properties;
 public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
+  private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+
   private final ConfigNodeConf conf = new ConfigNodeConf();
-  private final CommonConfig commonConfig = CommonConfig.getInstance();
 
   private ConfigNodeDescriptor() {
     loadProps();
@@ -46,20 +47,12 @@ public class ConfigNodeDescriptor {
     return conf;
   }
 
-  /** init common config according to iotdb config */
-  private void initCommonConfig() {
-    // first init the user and role folder in common config
-    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
-    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
-  }
-
   /**
    * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl() {
-    initCommonConfig();
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     // If it wasn't, check if a home directory was provided
@@ -98,6 +91,7 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
+    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       LOGGER.warn(
@@ -180,13 +174,7 @@ public class ConfigNodeDescriptor {
 
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
-      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
-
-      conf.setDefaultTTL(
-          Long.parseLong(
-              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
       conf.setTimePartitionInterval(
           Long.parseLong(
@@ -203,24 +191,56 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setInitialSchemaRegionCount(
+      conf.setMaximumSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_schema_region_count",
-                  String.valueOf(conf.getInitialSchemaRegionCount()))));
+                  "maximum_schema_region_count",
+                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
 
-      conf.setInitialDataRegionCount(
+      conf.setMaximumDataRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
-      commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
-      commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
+                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
+
+      conf.setHeartbeatInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
+
+      conf.setEnableHeartbeat(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_heartbeat", String.valueOf(conf.isEnableHeartbeat()))));
+
+      // commons
+      commonDescriptor.loadCommonProps(properties);
+      commonDescriptor.initCommonConfigDir(conf.getSystemDir());
+
+      conf.setProcedureCompletedEvictTTL(
+          Integer.parseInt(
+              properties.getProperty(
+                  "procedure_completed_evict_ttl",
+                  String.valueOf(conf.getProcedureCompletedEvictTTL()))));
+
+      conf.setProcedureCompletedCleanInterval(
+          Integer.parseInt(
+              properties.getProperty(
+                  "procedure_completed_clean_interval",
+                  String.valueOf(conf.getProcedureCompletedCleanInterval()))));
+
+      conf.setProcedureCoreWorkerThreadsSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "procedure_core_worker_thread_size",
+                  String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
       conf.updatePath();
-      commonConfig.updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+      commonDescriptor
+          .getConfig()
+          .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
     }
   }
 

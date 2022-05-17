@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
@@ -45,7 +44,7 @@ public class AuthorityCheckerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    authorizer = BasicAuthorizer.getInstance();
+    authorizer = AuthorizerManager.getInstance();
     user = new User("user", "password");
   }
 

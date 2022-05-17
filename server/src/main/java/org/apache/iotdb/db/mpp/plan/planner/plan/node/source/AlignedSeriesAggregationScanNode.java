@@ -81,9 +81,11 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
       PlanNodeId id,
       AlignedPath alignedPath,
       List<AggregationDescriptor> aggregationDescriptorList,
-      OrderBy scanOrder) {
+      OrderBy scanOrder,
+      @Nullable GroupByTimeParameter groupByTimeParameter) {
     this(id, alignedPath, aggregationDescriptorList);
     this.scanOrder = scanOrder;
+    this.groupByTimeParameter = groupByTimeParameter;
   }
 
   public AlignedSeriesAggregationScanNode(
@@ -94,9 +96,8 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
       @Nullable Filter timeFilter,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, alignedPath, aggregationDescriptorList, scanOrder);
+    this(id, alignedPath, aggregationDescriptorList, scanOrder, groupByTimeParameter);
     this.timeFilter = timeFilter;
-    this.groupByTimeParameter = groupByTimeParameter;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -115,6 +116,10 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
   @Nullable
   public Filter getTimeFilter() {
     return timeFilter;
+  }
+
+  public void setTimeFilter(@Nullable Filter timeFilter) {
+    this.timeFilter = timeFilter;
   }
 
   @Nullable
