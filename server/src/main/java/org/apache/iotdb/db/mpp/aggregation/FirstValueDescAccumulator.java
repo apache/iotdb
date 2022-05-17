@@ -38,7 +38,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   protected void addIntInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateIntFirstValue(column[1].getInt(i), curTime);
       }
     }
@@ -47,7 +47,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   protected void addLongInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateLongFirstValue(column[1].getLong(i), curTime);
       }
     }
@@ -56,7 +56,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   protected void addFloatInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateFloatFirstValue(column[1].getFloat(i), curTime);
       }
     }
@@ -65,7 +65,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   protected void addDoubleInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateDoubleFirstValue(column[1].getDouble(i), curTime);
       }
     }
@@ -74,7 +74,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   protected void addBooleanInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBooleanFirstValue(column[1].getBoolean(i), curTime);
       }
     }
@@ -83,7 +83,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   protected void addBinaryInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBinaryFirstValue(column[1].getBinary(i), curTime);
       }
     }

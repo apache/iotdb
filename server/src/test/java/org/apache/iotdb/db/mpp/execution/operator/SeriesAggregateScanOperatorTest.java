@@ -105,6 +105,23 @@ public class SeriesAggregateScanOperatorTest {
   }
 
   @Test
+  public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws IllegalPathException {
+    List<AggregationType> aggregationTypes = Collections.singletonList(AggregationType.COUNT);
+    List<Aggregator> aggregators = new ArrayList<>();
+    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+        .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
+    SeriesAggregateScanOperator seriesAggregateScanOperator =
+        initSeriesAggregateScanOperator(aggregators, null, false, null);
+    int count = 0;
+    while (seriesAggregateScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregateScanOperator.next();
+      assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
+      count++;
+    }
+    assertEquals(1, count);
+  }
+
+  @Test
   public void testMultiAggregationFuncWithoutTimeFilter1() throws IllegalPathException {
     List<AggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(AggregationType.COUNT);
@@ -266,7 +283,7 @@ public class SeriesAggregateScanOperatorTest {
 
   @Test
   public void testGroupByWithoutGlobalTimeFilter() throws IllegalPathException {
-    int[] result = new int[] {100, 100, 100, 100};
+    int[] result = new int[] {100, 100, 100, 99};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<AggregationType> aggregationTypes = Collections.singletonList(AggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
@@ -310,7 +327,7 @@ public class SeriesAggregateScanOperatorTest {
     int[][] result =
         new int[][] {
           {20000, 20100, 10200, 10300},
-          {20099, 20199, 299, 399},
+          {20099, 20199, 299, 398},
           {20099, 20199, 10259, 10379},
           {20000, 20100, 260, 380}
         };
@@ -343,7 +360,7 @@ public class SeriesAggregateScanOperatorTest {
     int[][] result =
         new int[][] {
           {20000, 20100, 10200, 10300},
-          {20099, 20199, 299, 399},
+          {20099, 20199, 299, 398},
           {20099, 20199, 10259, 10379},
           {20000, 20100, 260, 380}
         };
@@ -373,7 +390,7 @@ public class SeriesAggregateScanOperatorTest {
 
   @Test
   public void testGroupBySlidingTimeWindow() throws IllegalPathException {
-    int[] result = new int[] {50, 50, 50, 50, 50, 50, 50, 50};
+    int[] result = new int[] {50, 50, 50, 50, 50, 50, 50, 49};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 50, true);
     List<AggregationType> aggregationTypes = Collections.singletonList(AggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
