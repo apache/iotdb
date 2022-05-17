@@ -42,6 +42,8 @@ public class Utils {
   private static final int tempBufferSize = 1024;
   private static final byte PADDING_MAGIC = 0x47;
 
+  private Utils() {}
+
   public static String IPAddress(TEndPoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }

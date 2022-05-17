@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -31,11 +33,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,8 +75,31 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public void loadSnapshot(File latestSnapshotRootDir) {}
 
   @Override
-  protected TSStatus write(FragmentInstance fragmentInstance) {
-    PlanNode planNode = fragmentInstance.getFragment().getRoot();
+  public TSStatus write(IConsensusRequest request) {
+    FragmentInstance fi;
+    long minSyncIndex = Long.MAX_VALUE;
+    long currentIndex = -1;
+    try {
+      if (request instanceof IndexedConsensusRequest) {
+        fi = getFragmentInstance(((IndexedConsensusRequest) request).getRequest());
+        minSyncIndex = ((IndexedConsensusRequest) request).getMinSyncIndex();
+        currentIndex = ((IndexedConsensusRequest) request).getCurrentIndex();
+      } else {
+        fi = getFragmentInstance(request);
+      }
+      PlanNode planNode = fi.getFragment().getRoot();
+      if (planNode instanceof InsertNode) {
+        logger.error("minIndex {}", minSyncIndex);
+        logger.error("currentIndex {}", currentIndex);
+      }
+      return write(planNode);
+    } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage(), e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+  }
+
+  protected TSStatus write(PlanNode planNode) {
     try {
       if (planNode instanceof InsertRowNode) {
         region.insert((InsertRowNode) planNode);
@@ -95,7 +122,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (BatchProcessException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (Exception e) {
-      logger.error("Error in executing plan node: {}", planNode);
+      logger.error("Error in executing plan node: {}", planNode, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
     return StatusUtils.OK;

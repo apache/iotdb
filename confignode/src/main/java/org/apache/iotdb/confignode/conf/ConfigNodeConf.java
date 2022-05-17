@@ -58,8 +58,13 @@ public class ConfigNodeConf {
   private final String configNodeConsensusProtocolClass =
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
-  /** DataNode Regions consensus protocol */
-  private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  /** DataNode data region consensus protocol */
+  private String dataRegionConsensusProtocolClass =
+      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
+  /** DataNode schema region consensus protocol */
+  private String schemaRegionConsensusProtocolClass =
+      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -308,12 +313,20 @@ public class ConfigNodeConf {
     return configNodeConsensusProtocolClass;
   }
 
-  public String getDataNodeConsensusProtocolClass() {
-    return dataNodeConsensusProtocolClass;
+  public String getDataRegionConsensusProtocolClass() {
+    return dataRegionConsensusProtocolClass;
   }
 
-  public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
-    this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
+  public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public String getSchemaRegionConsensusProtocolClass() {
+    return schemaRegionConsensusProtocolClass;
+  }
+
+  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
+    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

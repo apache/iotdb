@@ -17,23 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.response;
+package org.apache.iotdb.consensus.multileader;
 
-import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-public abstract class ConsensusResponse {
-  protected final ConsensusException exception;
+public class Utils {
 
-  public ConsensusResponse(ConsensusException exception) {
-    this.exception = exception;
-  }
+  private Utils() {}
 
-  public ConsensusException getException() {
-    return exception;
-  }
-
-  @Override
-  public String toString() {
-    return "exception=" + exception;
+  public static String fromTEndPointToString(TEndPoint endpoint) {
+    return String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
   }
 }

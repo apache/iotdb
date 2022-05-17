@@ -21,15 +21,12 @@ package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
-import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
 import java.io.File;
 
@@ -37,41 +34,32 @@ import java.io.File;
  * We can use ConsensusImpl.getInstance() to obtain a consensus layer reference for reading and
  * writing
  */
-public class ConsensusImpl {
+public class DataRegionConsensusImpl {
 
-  private ConsensusImpl() {}
+  private DataRegionConsensusImpl() {}
 
   public static IConsensus getInstance() {
-    return ConsensusImplHolder.INSTANCE;
+    return DataRegionConsensusImplHolder.INSTANCE;
   }
 
-  private static class ConsensusImplHolder {
+  private static class DataRegionConsensusImplHolder {
 
     private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     private static final IConsensus INSTANCE =
         ConsensusFactory.getConsensusImpl(
-                conf.getConsensusProtocolClass(),
-                new TEndPoint(conf.getInternalIp(), conf.getConsensusPort()),
-                new File(conf.getConsensusDir()),
-                gid -> {
-                  switch (gid.getType()) {
-                    case SchemaRegion:
-                      return new SchemaRegionStateMachine(
-                          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid));
-                    case DataRegion:
-                      return new DataRegionStateMachine(
-                          StorageEngineV2.getInstance().getDataRegion((DataRegionId) gid));
-                  }
-                  throw new IllegalArgumentException(
-                      String.format("Unexpected consensusGroup %s", gid));
-                })
+                conf.getDataRegionConsensusProtocolClass(),
+                new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()),
+                new File(conf.getDataRegionConsensusDir()),
+                gid ->
+                    new DataRegionStateMachine(
+                        StorageEngineV2.getInstance().getDataRegion((DataRegionId) gid)))
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            conf.getConsensusProtocolClass())));
+                            conf.getDataRegionConsensusProtocolClass())));
 
-    private ConsensusImplHolder() {}
+    private DataRegionConsensusImplHolder() {}
   }
 }

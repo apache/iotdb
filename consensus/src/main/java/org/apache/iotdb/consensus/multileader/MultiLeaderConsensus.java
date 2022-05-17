@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.standalone;
+package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -31,8 +31,8 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
-import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
-import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
+import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,34 +44,31 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * A simple consensus implementation, which can be used when replicaNum is 1.
- *
- * <p>Notice: The stateMachine needs to implement WAL itself to ensure recovery after a restart
- */
-class StandAloneConsensus implements IConsensus {
+public class MultiLeaderConsensus implements IConsensus {
 
-  private final Logger logger = LoggerFactory.getLogger(StandAloneConsensus.class);
+  private final Logger logger = LoggerFactory.getLogger(MultiLeaderConsensus.class);
 
   private final TEndPoint thisNode;
   private final File storageDir;
   private final IStateMachine.Registry registry;
-  private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap =
+  private final Map<ConsensusGroupId, MultiLeaderServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
+  private final MultiLeaderRPCService service;
 
-  public StandAloneConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
+  public MultiLeaderConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
     this.thisNode = thisNode;
     this.storageDir = storageDir;
     this.registry = registry;
+    this.service = new MultiLeaderRPCService(thisNode);
   }
 
   @Override
   public void start() throws IOException {
     initAndRecover();
+    service.initSyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
   }
 
   private void initAndRecover() throws IOException {
@@ -88,8 +85,10 @@ class StandAloneConsensus implements IConsensus {
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
           stateMachineMap.put(
               consensusGroupId,
-              new StandAloneServerImpl(
-                  new Peer(consensusGroupId, thisNode), registry.apply(consensusGroupId)));
+              new MultiLeaderServerImpl(
+                  path.toString(),
+                  new Peer(consensusGroupId, thisNode),
+                  registry.apply(consensusGroupId)));
         }
       }
     }
@@ -100,7 +99,7 @@ class StandAloneConsensus implements IConsensus {
 
   @Override
   public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
-    StandAloneServerImpl impl = stateMachineMap.get(groupId);
+    MultiLeaderServerImpl impl = stateMachineMap.get(groupId);
     if (impl == null) {
       return ConsensusWriteResponse.newBuilder()
           .setException(new ConsensusGroupNotExistException(groupId))
@@ -111,7 +110,7 @@ class StandAloneConsensus implements IConsensus {
 
   @Override
   public ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest request) {
-    StandAloneServerImpl impl = stateMachineMap.get(groupId);
+    MultiLeaderServerImpl impl = stateMachineMap.get(groupId);
     if (impl == null) {
       return ConsensusReadResponse.newBuilder()
           .setException(new ConsensusGroupNotExistException(groupId))
@@ -122,30 +121,20 @@ class StandAloneConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
-    int consensusGroupSize = peers.size();
-    if (consensusGroupSize != 1) {
-      return ConsensusGenericResponse.newBuilder()
-          .setException(new IllegalPeerNumException(consensusGroupSize))
-          .build();
-    }
-    if (!Objects.equals(thisNode, peers.get(0).getEndpoint())) {
-      return ConsensusGenericResponse.newBuilder()
-          .setException(new IllegalPeerEndpointException(thisNode, peers.get(0).getEndpoint()))
-          .build();
-    }
     AtomicBoolean exist = new AtomicBoolean(true);
     stateMachineMap.computeIfAbsent(
         groupId,
         k -> {
           exist.set(false);
-          StandAloneServerImpl impl =
-              new StandAloneServerImpl(peers.get(0), registry.apply(groupId));
-          impl.start();
           String path = buildPeerDir(groupId);
           File file = new File(path);
           if (!file.mkdirs()) {
             logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
           }
+          MultiLeaderServerImpl impl =
+              new MultiLeaderServerImpl(
+                  path, new Peer(groupId, thisNode), peers, registry.apply(groupId));
+          impl.start();
           return impl;
         });
     if (exist.get()) {
@@ -216,6 +205,10 @@ class StandAloneConsensus implements IConsensus {
       return null;
     }
     return new Peer(groupId, thisNode);
+  }
+
+  public MultiLeaderServerImpl getImpl(ConsensusGroupId groupId) {
+    return stateMachineMap.get(groupId);
   }
 
   private String buildPeerDir(ConsensusGroupId groupId) {

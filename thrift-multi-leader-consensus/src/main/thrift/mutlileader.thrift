@@ -17,23 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.response;
+include "common.thrift"
+namespace java org.apache.iotdb.consensus.multileader.thrift
 
-import org.apache.iotdb.consensus.exception.ConsensusException;
+struct TSyncLogReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required list<binary> batches
+}
 
-public abstract class ConsensusResponse {
-  protected final ConsensusException exception;
+struct TSyncLogRes {
+  1: required list<common.TSStatus> status
+}
 
-  public ConsensusResponse(ConsensusException exception) {
-    this.exception = exception;
-  }
-
-  public ConsensusException getException() {
-    return exception;
-  }
-
-  @Override
-  public String toString() {
-    return "exception=" + exception;
-  }
+service MultiLeaderConsensusIService {
+  TSyncLogRes syncLog(TSyncLogReq req)
 }

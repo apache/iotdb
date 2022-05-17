@@ -17,23 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.response;
+package org.apache.iotdb.consensus.multileader.service;
 
-import org.apache.iotdb.consensus.exception.ConsensusException;
-
-public abstract class ConsensusResponse {
-  protected final ConsensusException exception;
-
-  public ConsensusResponse(ConsensusException exception) {
-    this.exception = exception;
-  }
-
-  public ConsensusException getException() {
-    return exception;
-  }
-
-  @Override
-  public String toString() {
-    return "exception=" + exception;
-  }
-}
+public interface MultiLeaderRPCServiceMBean {}

@@ -17,23 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.response;
+package org.apache.iotdb.consensus.multileader.asyncLogAppender;
 
-import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.multileader.IndexController;
+import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 
-public abstract class ConsensusResponse {
-  protected final ConsensusException exception;
+import java.util.concurrent.ArrayBlockingQueue;
 
-  public ConsensusResponse(ConsensusException exception) {
-    this.exception = exception;
-  }
+public class AsyncLogAppender {
 
-  public ConsensusException getException() {
-    return exception;
-  }
-
-  @Override
-  public String toString() {
-    return "exception=" + exception;
-  }
+  private MultiLeaderServerImpl impl;
+  private Peer peer;
+  private ArrayBlockingQueue<IConsensusRequest> pendingRequest;
+  private IndexController controller;
 }

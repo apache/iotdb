@@ -37,6 +37,10 @@ public abstract class ConsensusGroupId {
   // return specific type
   public abstract TConsensusGroupType getType();
 
+  public TConsensusGroupId convertToTConsensusGroupId() {
+    return new TConsensusGroupId(getType(), getId());
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(getType(), getId());
@@ -80,10 +84,6 @@ public abstract class ConsensusGroupId {
         TConsensusGroupId tConsensusGroupId) {
       return create(tConsensusGroupId.getType().getValue(), tConsensusGroupId.getId());
     }
-  }
-
-  public static TConsensusGroupId convertToTConsensusGroupId(ConsensusGroupId consensusGroupId) {
-    return new TConsensusGroupId(consensusGroupId.getType(), consensusGroupId.getId());
   }
 
   public static String formatTConsensusGroupId(TConsensusGroupId groupId) {
