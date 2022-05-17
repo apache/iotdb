@@ -43,7 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
@@ -158,7 +158,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return nodeManager.getDataNodeInfo(getDataNodeInfoReq);
     } else {
-      DataNodeLocationsResp dataSet = new DataNodeLocationsResp();
+      DataNodeInfosResp dataSet = new DataNodeInfosResp();
       dataSet.setStatus(status);
       return dataSet;
     }
