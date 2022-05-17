@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -29,6 +31,8 @@ public class SchemaCacheEntry {
   private final String alias;
 
   private final boolean isAligned;
+
+  private volatile ILastCacheContainer lastCacheContainer = null;
 
   SchemaCacheEntry(MeasurementSchema measurementSchema, String alias, boolean isAligned) {
     this.measurementSchema = measurementSchema;
@@ -54,5 +58,20 @@ public class SchemaCacheEntry {
 
   public boolean isAligned() {
     return isAligned;
+  }
+
+  public ILastCacheContainer getLastCacheContainer() {
+    if (lastCacheContainer == null) {
+      synchronized (this) {
+        if (lastCacheContainer == null) {
+          lastCacheContainer = new LastCacheContainer();
+        }
+      }
+    }
+    return lastCacheContainer;
+  }
+
+  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
+    this.lastCacheContainer = lastCacheContainer;
   }
 }

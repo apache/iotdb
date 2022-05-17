@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -96,6 +97,38 @@ public class DataNodeSchemaCache {
     }
   }
 
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return null;
+    }
+
+    return DataNodeLastCacheManager.getLastCache(entry);
+  }
+
+  public void updateLastCache(
+      PartialPath seriesPath,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return;
+    }
+
+    DataNodeLastCacheManager.updateLastCache(
+        entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  public void resetLastCache(PartialPath seriesPath) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return;
+    }
+
+    DataNodeLastCacheManager.resetLastCache(entry);
+  }
+
   /**
    * For delete timeseries meatadata cache operation
    *
@@ -103,6 +136,7 @@ public class DataNodeSchemaCache {
    * @return
    */
   public void invalidate(PartialPath partialPath) {
+    resetLastCache(partialPath);
     cache.invalidate(partialPath);
   }
 
