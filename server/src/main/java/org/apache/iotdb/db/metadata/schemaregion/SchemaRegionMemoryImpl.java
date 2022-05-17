@@ -422,14 +422,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     try {
       logWriter.copyTo(mLogSnapshotTmp);
-      mLogSnapshot.deleteOnExit();
+      mLogSnapshot.delete();
       if (!mLogSnapshotTmp.renameTo(mLogSnapshot)) {
         logger.error(
             "Failed to rename {} to {} while creating snapshot for schemaRegion {}.",
             mLogSnapshotTmp.getName(),
             mLogSnapshot.getName(),
             schemaRegionId);
-        mLogSnapshot.deleteOnExit();
+        mLogSnapshot.delete();
         return false;
       }
 
@@ -440,10 +440,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           e.getMessage(),
           e);
-      mLogSnapshot.deleteOnExit();
+      mLogSnapshot.delete();
       return false;
     } finally {
-      mLogSnapshotTmp.deleteOnExit();
+      mLogSnapshotTmp.delete();
     }
   }
 
@@ -462,8 +462,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
     File tagFile =
         SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.TAG_LOG);
-    mLog.deleteOnExit();
-    tagFile.deleteOnExit();
+    mLog.delete();
+    tagFile.delete();
 
     try {
       FileUtils.copyFile(mLogSnapshot, mLog);

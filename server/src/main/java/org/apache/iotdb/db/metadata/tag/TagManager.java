@@ -82,23 +82,23 @@ public class TagManager {
         SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT_TMP);
     try {
       tagLogFile.copyTo(tagLogSnapshotTmp);
-      tagLogSnapshot.deleteOnExit();
+      tagLogSnapshot.delete();
       if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
         logger.error(
             "Failed to rename {} to {} while creating tagManager snapshot.",
             tagLogSnapshotTmp.getName(),
             tagLogSnapshot.getName());
-        tagLogSnapshot.deleteOnExit();
+        tagLogSnapshot.delete();
         return false;
       }
 
       return true;
     } catch (IOException e) {
       logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
-      tagLogSnapshot.deleteOnExit();
+      tagLogSnapshot.delete();
       return false;
     } finally {
-      tagLogSnapshotTmp.deleteOnExit();
+      tagLogSnapshotTmp.delete();
     }
   }
 
