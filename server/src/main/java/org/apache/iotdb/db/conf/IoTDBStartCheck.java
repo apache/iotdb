@@ -108,8 +108,6 @@ public class IoTDBStartCheck {
 
   private static final String DATA_NODE_ID = "data_node_id";
 
-  private static final String CONFIG_NODE_LIST = "config_node_list";
-
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBStartCheck getInstance() {
@@ -390,6 +388,15 @@ public class IoTDBStartCheck {
         parameter, String.valueOf(badValue), properties.getProperty(parameter));
   }
 
+  // reload properties from system.properties
+  private void reloadProperties() throws IOException {
+    try (FileInputStream inputStream = new FileInputStream(propertiesFile);
+        InputStreamReader inputStreamReader =
+            new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
+      properties.load(inputStreamReader);
+    }
+  }
+
   /** call this method to serialize DataNodeId */
   public void serializeDataNodeId(int dataNodeId) throws IOException {
     // create an empty tmpPropertiesFile
@@ -399,6 +406,8 @@ public class IoTDBStartCheck {
       logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
       System.exit(-1);
     }
+
+    reloadProperties();
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
