@@ -40,7 +40,7 @@ public class MinTimeAccumulator implements Accumulator {
   public void addInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateMinTime(curTime);
         break;
       }
@@ -51,6 +51,9 @@ public class MinTimeAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of MinTime should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     updateMinTime(partialResult[0].getLong(0));
   }
 
@@ -62,6 +65,9 @@ public class MinTimeAccumulator implements Accumulator {
   // finalResult should be single column, like: | finalMinTime |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
     minTime = finalResult.getLong(0);
   }
 
@@ -69,12 +75,20 @@ public class MinTimeAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of MinTime should be 1");
-    columnBuilders[0].writeLong(minTime);
+    if (!hasCandidateResult) {
+      columnBuilders[0].appendNull();
+    } else {
+      columnBuilders[0].writeLong(minTime);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeLong(minTime);
+    if (!hasCandidateResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeLong(minTime);
+    }
   }
 
   @Override

@@ -30,7 +30,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * This node is responsible for the final aggregation merge operation. It will process the data from
@@ -97,10 +96,7 @@ public class GroupByLevelNode extends AggregationNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return aggregationDescriptorList.stream()
-        .map(AggregationDescriptor::getOutputColumnNames)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
+    return outputColumnNames;
   }
 
   @Override
