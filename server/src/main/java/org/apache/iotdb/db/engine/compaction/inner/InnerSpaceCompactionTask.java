@@ -333,13 +333,19 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
    */
   protected void releaseFileLocksAndResetMergingStatus() {
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+      TsFileResource resource = selectedTsFileResourceList.get(i);
       if (isHoldingReadLock[i]) {
-        selectedTsFileResourceList.get(i).readUnlock();
+        resource.readUnlock();
       }
       if (isHoldingWriteLock[i]) {
-        selectedTsFileResourceList.get(i).writeUnlock();
+        resource.writeUnlock();
       }
-      selectedTsFileResourceList.get(i).setStatus(originStatus[i]);
+      try {
+        if (!resource.isDeleted()) {
+          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
+        }
+      } catch (Throwable e) {
+      }
     }
   }
 
@@ -349,7 +355,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       return false;
     }
     try {
-      originStatus = new TsFileResourceStatus[selectedTsFileResourceList.size()];
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
         TsFileResource resource = selectedTsFileResourceList.get(i);
         resource.readLock();
