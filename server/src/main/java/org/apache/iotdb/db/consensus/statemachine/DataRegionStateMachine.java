@@ -72,12 +72,17 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    this.region =
+    DataRegion newRegion =
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),
                 region.getLogicalStorageGroupName(),
                 region.getDataRegionId())
             .loadSnapshotForStateMachine();
+    if (newRegion == null) {
+      logger.error("Fail to load snapshot from {}", latestSnapshotRootDir);
+      return;
+    }
+    this.region = newRegion;
     try {
       StorageEngineV2.getInstance()
           .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);

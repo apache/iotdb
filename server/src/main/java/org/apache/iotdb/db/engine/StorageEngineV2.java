@@ -605,7 +605,6 @@ public class StorageEngineV2 implements IService {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
       oldRegion.syncCloseAllWorkingTsFileProcessors();
-      ;
       oldRegion.abortCompaction();
     }
     dataRegionMap.put(regionId, newRegion);
