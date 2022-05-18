@@ -496,5 +496,4 @@ public class StorageGroupManager {
   public AtomicBoolean getIsSettling() {
     return isSettling;
   }
-
 }
