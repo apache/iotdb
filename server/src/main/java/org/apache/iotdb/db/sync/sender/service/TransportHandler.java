@@ -84,10 +84,7 @@ public class TransportHandler {
     transportFuture = transportExecutorService.submit(transportClient);
     heartbeatFuture =
         heartbeatExecutorService.scheduleWithFixedDelay(
-            this::sendHeartbeat,
-            SyncConstant.HEARTBEAT_DELAY_SECONDS,
-            SyncConstant.HEARTBEAT_DELAY_SECONDS,
-            TimeUnit.SECONDS);
+            this::sendHeartbeat, 0, SyncConstant.HEARTBEAT_DELAY_SECONDS, TimeUnit.SECONDS);
   }
 
   public void stop() {

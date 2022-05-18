@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,7 @@ import java.util.Map;
 public class TagLogFile implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TagLogFile.class);
+  private File tagFile;
   private FileChannel fileChannel;
   private static final String LENGTH_EXCEED_MSG =
       "Tag/Attribute exceeds the max length limit. "
@@ -63,11 +65,11 @@ public class TagLogFile implements AutoCloseable {
       }
     }
 
-    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
+    tagFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
 
     this.fileChannel =
         FileChannel.open(
-            logFile.toPath(),
+            tagFile.toPath(),
             StandardOpenOption.READ,
             StandardOpenOption.WRITE,
             StandardOpenOption.CREATE);
@@ -77,6 +79,12 @@ public class TagLogFile implements AutoCloseable {
     } catch (ClosedByInterruptException e) {
       // ignore
     }
+  }
+
+  public synchronized void copyTo(File targetFile) throws IOException {
+    // flush os buffer
+    fileChannel.force(true);
+    FileUtils.copyFile(tagFile, targetFile);
   }
 
   /** @return tags map, attributes map */
