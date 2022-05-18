@@ -114,6 +114,7 @@ public class LogicalPlanner {
               subPlanBuilder.withNewRoot(
                   visitQueryBody(
                       queryStatement,
+                      analysis.getDeviceToIsRawDataSource().get(deviceName),
                       analysis.getDeviceToSourceExpressions().get(deviceName),
                       analysis.getDeviceToAggregationExpressions().get(deviceName),
                       analysis.getDeviceToAggregationTransformExpressions().get(deviceName),
@@ -138,6 +139,7 @@ public class LogicalPlanner {
             planBuilder.withNewRoot(
                 visitQueryBody(
                     queryStatement,
+                    analysis.isRawDataSource(),
                     analysis.getSourceExpressions(),
                     analysis.getAggregationExpressions(),
                     analysis.getAggregationTransformExpressions(),
@@ -159,6 +161,7 @@ public class LogicalPlanner {
 
     public PlanNode visitQueryBody(
         QueryStatement queryStatement,
+        boolean isRawDataSource,
         Set<Expression> sourceExpressions,
         Set<Expression> aggregationExpressions,
         Set<Expression> aggregationTransformExpressions,
@@ -166,10 +169,6 @@ public class LogicalPlanner {
         Expression queryFilter,
         MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      boolean isRawDataSource =
-          !queryStatement.isAggregationQuery()
-              || (queryStatement.isAggregationQuery() && analysis.hasValueFilter())
-              || analysis.isHasRawDataInputAggregation();
 
       // plan data source node
       if (isRawDataSource) {

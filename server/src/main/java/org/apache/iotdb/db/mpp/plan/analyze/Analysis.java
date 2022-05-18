@@ -81,6 +81,8 @@ public class Analysis {
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
 
+  private boolean isRawDataSource;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,6 +105,8 @@ public class Analysis {
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+
+  private Map<String, Boolean> deviceToIsRawDataSource;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
@@ -345,5 +349,21 @@ public class Analysis {
   public void setDeviceToTransformExpressions(
       Map<String, Set<Expression>> deviceToTransformExpressions) {
     this.deviceToTransformExpressions = deviceToTransformExpressions;
+  }
+
+  public boolean isRawDataSource() {
+    return isRawDataSource;
+  }
+
+  public void setRawDataSource(boolean rawDataSource) {
+    isRawDataSource = rawDataSource;
+  }
+
+  public Map<String, Boolean> getDeviceToIsRawDataSource() {
+    return deviceToIsRawDataSource;
+  }
+
+  public void setDeviceToIsRawDataSource(Map<String, Boolean> deviceToIsRawDataSource) {
+    this.deviceToIsRawDataSource = deviceToIsRawDataSource;
   }
 }

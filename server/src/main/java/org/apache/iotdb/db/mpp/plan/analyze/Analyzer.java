@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -181,21 +180,17 @@ public class Analyzer {
         if (queryStatement.isAlignByDevice()) {
           Map<String, Set<Expression>> deviceToTransformExpressions = new HashMap<>();
 
-          // all schema infos of each device
-          List<DeviceSchemaInfo> allDeviceSchemaInfos = new ArrayList<>();
-
-          // a set that contains all measurement names,
-          Set<String> measurementSet = new HashSet<>();
+          // all selected device
+          Set<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
           Map<String, Set<String>> deviceToMeasurementsMap = new HashMap<>();
           outputExpressions =
-              analyzeFrom(
+              analyzeSelect(
                   queryStatement,
                   schemaTree,
-                  allDeviceSchemaInfos,
+                  deviceList,
                   deviceToTransformExpressions,
-                  deviceToMeasurementsMap,
-                  measurementSet);
+                  deviceToMeasurementsMap);
 
           Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
           List<String> allMeasurements =
@@ -219,18 +214,20 @@ public class Analyzer {
           Map<String, Set<Expression>> deviceToSourceExpressions = new HashMap<>();
           boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
 
-          if (queryStatement.isAggregationQuery()) {
-            Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
-            Map<String, Set<Expression>> deviceToAggregationTransformExpressions = new HashMap<>();
+          Map<String, Boolean> deviceToIsRawDataSource = new HashMap<>();
 
-            for (String deviceName : deviceToTransformExpressions.keySet()) {
-              Set<Expression> transformExpressions = deviceToTransformExpressions.get(deviceName);
-              Set<Expression> aggregationExpressions = new HashSet<>();
-              Set<Expression> aggregationTransformExpressions = new HashSet<>();
+          Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
+          Map<String, Set<Expression>> deviceToAggregationTransformExpressions = new HashMap<>();
+          for (String deviceName : deviceToTransformExpressions.keySet()) {
+            Set<Expression> transformExpressions = deviceToTransformExpressions.get(deviceName);
+            Set<Expression> aggregationExpressions = new HashSet<>();
+            Set<Expression> aggregationTransformExpressions = new HashSet<>();
 
+            boolean isHasRawDataInputAggregation = false;
+            if (queryStatement.isAggregationQuery()) {
               // true if nested expressions and UDFs exist in aggregation function
               // i.e. select sum(s1 + 1) from root.sg.d1 align by device
-              boolean isHasRawDataInputAggregation =
+              isHasRawDataInputAggregation =
                   analyzeAggregation(
                       transformExpressions,
                       aggregationExpressions,
@@ -238,28 +235,35 @@ public class Analyzer {
               deviceToAggregationExpressions.put(deviceName, aggregationExpressions);
               deviceToAggregationTransformExpressions.put(
                   deviceName, aggregationTransformExpressions);
-
-              boolean isRawDataSource =
-                  !queryStatement.isAggregationQuery()
-                      || isValueFilterAggregation
-                      || isHasRawDataInputAggregation;
-
-              for (Expression expression : transformExpressions) {
-                updateSource(
-                    expression, deviceToSourceExpressions.get(deviceName), isRawDataSource);
-              }
             }
-            analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
-            analysis.setDeviceToAggregationTransformExpressions(
-                deviceToAggregationTransformExpressions);
+
+            boolean isRawDataSource =
+                !queryStatement.isAggregationQuery()
+                    || isValueFilterAggregation
+                    || isHasRawDataInputAggregation;
+
+            for (Expression expression : transformExpressions) {
+              updateSource(
+                  expression,
+                  deviceToSourceExpressions.computeIfAbsent(deviceName, key -> new HashSet<>()),
+                  isRawDataSource);
+            }
+            deviceToIsRawDataSource.put(deviceName, isRawDataSource);
           }
+          analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
+          analysis.setDeviceToAggregationTransformExpressions(
+              deviceToAggregationTransformExpressions);
+          analysis.setDeviceToIsRawDataSource(deviceToIsRawDataSource);
 
           if (queryStatement.getWhereCondition() != null) {
-            Map<String, Expression> deviceToQueryFilter =
-                analyzeWhereSplitByDevice(queryStatement, allDeviceSchemaInfos, measurementSet);
-            deviceToQueryFilter.forEach(
-                (deviceName, queryFilter) ->
-                    updateSource(queryFilter, deviceToSourceExpressions.get(deviceName), true));
+            Map<String, Expression> deviceToQueryFilter = new HashMap<>();
+            for (PartialPath devicePath : deviceList) {
+              Expression queryFilter =
+                  analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
+              deviceToQueryFilter.put(devicePath.getFullPath(), queryFilter);
+              updateSource(
+                  queryFilter, deviceToSourceExpressions.get(devicePath.getFullPath()), true);
+            }
             analysis.setDeviceToQueryFilter(deviceToQueryFilter);
           }
           analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
@@ -307,6 +311,7 @@ public class Analyzer {
             updateSource(queryFilter, sourceExpressions, isRawDataSource);
             analysis.setQueryFilter(queryFilter);
           }
+          analysis.setRawDataSource(isRawDataSource);
           analysis.setSourceExpressions(sourceExpressions);
           analysis.setTransformExpressions(transformExpressions);
         }
@@ -423,180 +428,108 @@ public class Analyzer {
       return outputExpressions;
     }
 
-    private List<Pair<Expression, String>> analyzeFrom(
-        QueryStatement queryStatement,
-        SchemaTree schemaTree,
-        List<DeviceSchemaInfo> allDeviceSchemaInfos,
-        Map<String, Set<Expression>> deviceToTransformExpressions,
-        Map<String, Set<String>> deviceToMeasurementsMap,
-        Set<String> measurementSet) {
+    private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, SchemaTree schemaTree) {
       // device path patterns in FROM clause
       List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
-      // a list of measurement expressions with alias (null if alias not exist)
-      List<Pair<Expression, String>> measurementExpressions =
-          queryStatement.getSelectComponent().getResultColumns().stream()
-              .map(
-                  resultColumn -> new Pair<>(resultColumn.getExpression(), resultColumn.getAlias()))
-              .collect(Collectors.toList());
-      measurementSet.addAll(
-          measurementExpressions.stream()
-              .map(Pair::getLeft)
-              .map(ExpressionAnalyzer::collectPaths)
-              .flatMap(Set::stream)
-              .map(PartialPath::getFullPath)
-              .collect(Collectors.toSet()));
-
-      // a list contains all selected paths
-      List<MeasurementPath> allSelectedPaths = new ArrayList<>();
+      Set<PartialPath> deviceList = new LinkedHashSet<>();
       for (PartialPath devicePattern : devicePatternList) {
-        // get matched device path and all measurement schema infos under this device
-        List<DeviceSchemaInfo> deviceSchemaInfos = schemaTree.getMatchedDevices(devicePattern);
-        allDeviceSchemaInfos.addAll(deviceSchemaInfos);
-        for (DeviceSchemaInfo deviceSchema : deviceSchemaInfos) {
-          // add matched path into allSelectedPaths
-          allSelectedPaths.addAll(deviceSchema.getMeasurements(measurementSet));
-        }
+        // get all matched devices
+        deviceList.addAll(
+            schemaTree.getMatchedDevices(devicePattern).stream()
+                .map(DeviceSchemaInfo::getDevicePath)
+                .collect(Collectors.toList()));
       }
+      return deviceList;
+    }
 
-      // convert allSelectedPaths to a map from measurement name to corresponding paths
-      Map<String, List<MeasurementPath>> measurementNameToPathsMap = new HashMap<>();
-      Map<String, String> aliasToMeasurementNameMap = new HashMap<>();
-      for (MeasurementPath measurementPath : allSelectedPaths) {
-        measurementNameToPathsMap
-            .computeIfAbsent(measurementPath.getMeasurement(), key -> new ArrayList<>())
-            .add(measurementPath);
-        if (measurementPath.isMeasurementAliasExists()) {
-          if (aliasToMeasurementNameMap.containsKey(measurementPath.getMeasurementAlias())
-              && !Objects.equals(
-                  aliasToMeasurementNameMap.get(measurementPath.getMeasurementAlias()),
-                  measurementPath.getMeasurement())) {
-            throw new SemanticException(
-                String.format(
-                    "ALIGN BY DEVICE: alias '%s' can only be matched with one measurement",
-                    measurementPath.getMeasurementAlias()));
-          }
-          aliasToMeasurementNameMap.put(
-              measurementPath.getMeasurementAlias(), measurementPath.getMeasurement());
-        }
-      }
-      // check whether the datatype of paths which has the same measurement name are consistent
-      // if not, throw a SemanticException
-      measurementNameToPathsMap.values().forEach(this::checkDataTypeConsistencyInAlignByDevice);
-
-      // apply SLIMIT & SOFFSET and set outputExpressions & transformExpressions
+    private List<Pair<Expression, String>> analyzeSelect(
+        QueryStatement queryStatement,
+        SchemaTree schemaTree,
+        Set<PartialPath> deviceList,
+        Map<String, Set<Expression>> deviceToTransformExpressions,
+        Map<String, Set<String>> deviceToMeasurementsMap) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
               queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
-      for (Pair<Expression, String> measurementAliasPair : measurementExpressions) {
-        String measurement =
-            ExpressionAnalyzer.getPathInSourceExpression(measurementAliasPair.left).toString();
-        if (measurementNameToPathsMap.containsKey(measurement)) {
-          List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurement);
-          measurementPaths.forEach(MeasurementPath::removeMeasurementAlias);
-          TSDataType dataType = measurementPaths.get(0).getSeriesType();
+
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        Expression selectExpression = resultColumn.getExpression();
+        boolean hasAlias = resultColumn.hasAlias();
+
+        // measurement expression after removing wildcard
+        // use LinkedHashMap for order-preserving
+        Map<Expression, Map<String, Expression>> measurementToDeviceTransformExpressions =
+            new LinkedHashMap<>();
+        for (PartialPath device : deviceList) {
+          List<Expression> transformExpressions =
+              ExpressionAnalyzer.concatDeviceAndRemoveWildcard(
+                  selectExpression, device, schemaTree, typeProvider);
+          for (Expression transformExpression : transformExpressions) {
+            measurementToDeviceTransformExpressions
+                .computeIfAbsent(
+                    ExpressionAnalyzer.getMeasurementExpression(transformExpression),
+                    key -> new HashMap<>())
+                .put(
+                    device.getFullPath(),
+                    ExpressionAnalyzer.removeAliasFromExpression(transformExpression));
+          }
+        }
+
+        if (hasAlias && measurementToDeviceTransformExpressions.keySet().size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
+        }
+
+        for (Expression measurementExpression : measurementToDeviceTransformExpressions.keySet()) {
           if (paginationController.hasCurOffset()) {
             paginationController.consumeOffset();
             continue;
           }
           if (paginationController.hasCurLimit()) {
-            outputExpressions.add(measurementAliasPair);
-            typeProvider.setType(measurementAliasPair.left.getExpressionString(), dataType);
-            for (MeasurementPath measurementPath : measurementPaths) {
-              Expression tmpExpression =
-                  ExpressionAnalyzer.replacePathInSourceExpression(
-                      measurementAliasPair.left, measurementPath);
-              typeProvider.setType(tmpExpression.getExpressionString(), dataType);
+            Map<String, Expression> deviceToTransformExpressionOfOneMeasurement =
+                measurementToDeviceTransformExpressions.get(measurementExpression);
+            deviceToTransformExpressionOfOneMeasurement
+                .values()
+                .forEach(expression -> expression.inferTypes(typeProvider));
+            // check whether the datatype of paths which has the same measurement name are
+            // consistent
+            // if not, throw a SemanticException
+            checkDataTypeConsistencyInAlignByDevice(
+                new ArrayList<>(deviceToTransformExpressionOfOneMeasurement.values()));
+
+            // add outputExpressions
+            Expression measurementExpressionWithoutAlias =
+                ExpressionAnalyzer.removeAliasFromExpression(measurementExpression);
+            String alias =
+                !Objects.equals(measurementExpressionWithoutAlias, measurementExpression)
+                    ? measurementExpression.getExpressionString()
+                    : null;
+            alias = hasAlias ? resultColumn.getAlias() : alias;
+            ExpressionAnalyzer.updateTypeProvider(measurementExpressionWithoutAlias, typeProvider);
+            measurementExpressionWithoutAlias.inferTypes(typeProvider);
+            outputExpressions.add(new Pair<>(measurementExpressionWithoutAlias, alias));
+
+            // add deviceToTransformExpressions
+            for (String deviceName : deviceToTransformExpressionOfOneMeasurement.keySet()) {
+              Expression transformExpression =
+                  deviceToTransformExpressionOfOneMeasurement.get(deviceName);
               deviceToTransformExpressions
-                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
-                  .add(tmpExpression);
+                  .computeIfAbsent(deviceName, key -> new HashSet<>())
+                  .add(ExpressionAnalyzer.removeAliasFromExpression(transformExpression));
               deviceToMeasurementsMap
-                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
-                  .add(measurementAliasPair.left.getExpressionString());
+                  .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+                  .add(measurementExpressionWithoutAlias.getExpressionString());
             }
             paginationController.consumeLimit();
           } else {
             break;
           }
-        } else if (aliasToMeasurementNameMap.containsKey(measurement)
-            && measurementNameToPathsMap.containsKey(aliasToMeasurementNameMap.get(measurement))) {
-          List<MeasurementPath> measurementPaths =
-              measurementNameToPathsMap.get(aliasToMeasurementNameMap.get(measurement));
-          measurementPaths.forEach(MeasurementPath::removeMeasurementAlias);
-          TSDataType dataType = measurementPaths.get(0).getSeriesType();
-          Expression expressionWithAlias = measurementAliasPair.left;
-          Expression expressionWithoutAlias =
-              ExpressionAnalyzer.removeAliasInMeasurementExpression(
-                  measurementAliasPair.left, aliasToMeasurementNameMap);
-          String alias =
-              measurementAliasPair.right != null
-                  ? measurementAliasPair.right
-                  : expressionWithAlias.getExpressionString();
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-            continue;
-          }
-          if (paginationController.hasCurLimit()) {
-            outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
-            typeProvider.setType(expressionWithoutAlias.getExpressionString(), dataType);
-            for (MeasurementPath measurementPath : measurementPaths) {
-              Expression tmpExpression =
-                  ExpressionAnalyzer.replacePathInSourceExpression(
-                      expressionWithoutAlias, measurementPath);
-              typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-              deviceToTransformExpressions
-                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
-                  .add(tmpExpression);
-              deviceToMeasurementsMap
-                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
-                  .add(expressionWithoutAlias.getExpressionString());
-            }
-            paginationController.consumeLimit();
-          } else {
-            break;
-          }
-        } else if (measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-          for (String measurementName : measurementNameToPathsMap.keySet()) {
-            List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurementName);
-            measurementPaths.forEach(MeasurementPath::removeMeasurementAlias);
-            TSDataType dataType = measurementPaths.get(0).getSeriesType();
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              // replace `*` with exact measurement name
-              Expression replacedMeasurement =
-                  ExpressionAnalyzer.replacePathInSourceExpression(
-                      measurementAliasPair.left, measurementName);
-              typeProvider.setType(replacedMeasurement.getExpressionString(), dataType);
-              outputExpressions.add(new Pair<>(replacedMeasurement, measurementAliasPair.right));
-              for (MeasurementPath measurementPath : measurementPaths) {
-                // replace `*` with exact measurement path
-                Expression tmpExpression =
-                    ExpressionAnalyzer.replacePathInSourceExpression(
-                        measurementAliasPair.left, measurementPath);
-                typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-                deviceToTransformExpressions
-                    .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
-                    .add(tmpExpression);
-                deviceToMeasurementsMap
-                    .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
-                    .add(replacedMeasurement.getExpressionString());
-              }
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
-          }
-          if (!paginationController.hasCurLimit()) {
-            break;
-          }
-        } else {
-          // do nothing or warning
         }
       }
+
       return outputExpressions;
     }
 
@@ -668,24 +601,16 @@ public class Analyzer {
           rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
     }
 
-    private Map<String, Expression> analyzeWhereSplitByDevice(
-        QueryStatement queryStatement,
-        List<DeviceSchemaInfo> deviceSchemaInfos,
-        Set<String> measurementSet) {
-      Map<String, Expression> deviceToQueryFilter = new HashMap<>();
-      for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfos) {
-        List<Expression> rewrittenPredicates =
-            ExpressionAnalyzer.removeWildcardInQueryFilterByDevice(
-                queryStatement.getWhereCondition().getPredicate(),
-                deviceSchemaInfo,
-                measurementSet,
-                typeProvider);
-        deviceToQueryFilter.put(
-            deviceSchemaInfo.getDevicePath().getFullPath(),
-            ExpressionUtils.constructQueryFilter(
-                rewrittenPredicates.stream().distinct().collect(Collectors.toList())));
-      }
-      return deviceToQueryFilter;
+    private Expression analyzeWhereSplitByDevice(
+        QueryStatement queryStatement, PartialPath devicePath, SchemaTree schemaTree) {
+      List<Expression> rewrittenPredicates =
+          ExpressionAnalyzer.removeWildcardInQueryFilterByDevice(
+              queryStatement.getWhereCondition().getPredicate(),
+              devicePath,
+              schemaTree,
+              typeProvider);
+      return ExpressionUtils.constructQueryFilter(
+          rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
     }
 
     private Map<Expression, Set<Expression>> analyzeGroupByLevel(
@@ -813,10 +738,10 @@ public class Analyzer {
      * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
      * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
      */
-    private void checkDataTypeConsistencyInAlignByDevice(List<MeasurementPath> measurementPaths) {
-      TSDataType checkedDataType = measurementPaths.get(0).getSeriesType();
-      for (MeasurementPath path : measurementPaths) {
-        if (path.getSeriesType() != checkedDataType) {
+    private void checkDataTypeConsistencyInAlignByDevice(List<Expression> expressions) {
+      TSDataType checkedDataType = typeProvider.getType(expressions.get(0).getExpressionString());
+      for (Expression expression : expressions) {
+        if (typeProvider.getType(expression.getExpressionString()) != checkedDataType) {
           throw new SemanticException(
               "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
         }

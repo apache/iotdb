@@ -63,6 +63,7 @@ public class LastValueAccumulator implements Accumulator {
         break;
       case BOOLEAN:
         addBooleanInput(column, timeRange);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));
