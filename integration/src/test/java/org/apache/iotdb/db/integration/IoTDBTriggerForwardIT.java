@@ -44,6 +44,8 @@ import java.sql.Types;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -131,11 +133,17 @@ public class IoTDBTriggerForwardIT {
       if (exception != null) {
         return;
       }
+      await()
+          .atMost(1, MINUTES)
+          .until(
+              () ->
+                  count
+                      == checkSingleSensorHandlerResult(
+                          "root.vehicle.a.b.c.d2",
+                          "Time,root.vehicle.a.b.c.d2.s3,root.vehicle.a.b.c.d2.s4",
+                          new int[] {Types.TIMESTAMP, Types.FLOAT, Types.FLOAT}));
 
-      checkSingleSensorHandlerResult(
-          "root.vehicle.a.b.c.d2", "Time,root.vehicle.a.b.c.d2.s3,root.vehicle.a.b.c.d2.s4");
-
-    } catch (SQLException | InterruptedException | ClassNotFoundException e) {
+    } catch (SQLException | InterruptedException e) {
       fail(e.getMessage());
     } finally {
       stopDataGenerator();
@@ -199,9 +207,11 @@ public class IoTDBTriggerForwardIT {
     }
   }
 
-  private void checkSingleSensorHandlerResult(String path, String expectedHeaderStrings)
+  private int checkSingleSensorHandlerResult(
+      String path, String expectedHeaderStrings, int[] expectedTypes)
       throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
+    int forwardCount = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -210,17 +220,12 @@ public class IoTDBTriggerForwardIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, expectedHeaderStrings, expectedTypes);
 
-        checkHeader(
-            resultSetMetaData,
-            expectedHeaderStrings,
-            new int[] {Types.TIMESTAMP, Types.FLOAT, Types.FLOAT});
-
-        int count = 0;
         while (resultSet.next()) {
-          count++;
+          ++forwardCount;
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            assertEquals(count, Double.parseDouble(resultSet.getString(i)), 0.0);
+            assertEquals(forwardCount, Double.parseDouble(resultSet.getString(i)), 0.0);
           }
         }
       }
@@ -228,6 +233,7 @@ public class IoTDBTriggerForwardIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    return forwardCount;
   }
 
   private void checkHeader(
