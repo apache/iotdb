@@ -47,7 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -456,10 +456,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.readLock().lock();
     try {
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-          ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-        mTree.serialize(byteArrayOutputStream);
-        byteArrayOutputStream.writeTo(fileOutputStream);
-        fileOutputStream.flush();
+          BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+        mTree.serialize(outputStream);
+        outputStream.flush();
       }
       return tmpFile.renameTo(snapshotFile);
     } finally {
