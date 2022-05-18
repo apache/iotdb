@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.timerangeiterator;
+package org.apache.iotdb.db.mpp.aggregation.timerangeiterator;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
@@ -61,5 +61,10 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
   @Override
   public boolean isAscending() {
     return false;
+  }
+
+  @Override
+  public long currentOutputTime() {
+    return curTimeRange.getMin();
   }
 }

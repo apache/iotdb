@@ -161,6 +161,7 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.time.ZoneId;
@@ -2432,13 +2433,25 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // node name
 
-  /** function for parsing node name. */
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return parseNodeString(ctx.getText());
   }
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return parseNodeString(ctx.getText());
+  }
+
+  private String parseNodeString(String nodeName) {
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    return nodeName;
   }
 
   // alias
@@ -3015,10 +3028,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private String parseIdentifier(String src) {
-    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      String unescaped = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      // replace `` with `
-      return unescaped.replace("``", "`");
+    if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      return src.substring(1, src.length() - 1)
+          .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
     return src;
   }

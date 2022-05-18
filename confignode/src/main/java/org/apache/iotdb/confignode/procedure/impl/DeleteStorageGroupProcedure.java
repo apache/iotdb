@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
@@ -193,14 +193,15 @@ public class DeleteStorageGroupProcedure
 
   private void invalidateCache(ConfigNodeProcedureEnv env, String storageGroupName)
       throws IOException, TException {
-    List<TDataNodeLocation> allDataNodes =
-        env.getConfigManager().getNodeManager().getOnlineDataNodes();
+    List<TDataNodeInfo> allDataNodes =
+        env.getConfigManager().getNodeManager().getOnlineDataNodes(-1);
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
-    for (TDataNodeLocation dataNodeLocation : allDataNodes) {
-      env.getDataNodeClient(dataNodeLocation).invalidateSchemaCache(invalidateCacheReq);
-      env.getDataNodeClient(dataNodeLocation).invalidatePartitionCache(invalidateCacheReq);
+    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
+      env.getDataNodeClient(dataNodeInfo.getLocation()).invalidateSchemaCache(invalidateCacheReq);
+      env.getDataNodeClient(dataNodeInfo.getLocation())
+          .invalidatePartitionCache(invalidateCacheReq);
     }
   }
 

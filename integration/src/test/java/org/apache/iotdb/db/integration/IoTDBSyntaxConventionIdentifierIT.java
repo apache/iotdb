@@ -48,6 +48,99 @@ public class IoTDBSyntaxConventionIdentifierIT {
   }
 
   @Test
+  public void testKeyWord() {
+    String[] createNodeNames = {
+      "add",
+      "as",
+      "between",
+      "select",
+      "drop_trigger",
+      "REVOKE_USER_ROLE",
+      "pipesink",
+      "boolean",
+      "datatype",
+      "device",
+    };
+
+    String[] resultTimeseries = {
+      "root.sg1.d1.add",
+      "root.sg1.d1.as",
+      "root.sg1.d1.between",
+      "root.sg1.d1.select",
+      "root.sg1.d1.drop_trigger",
+      "root.sg1.d1.REVOKE_USER_ROLE",
+      "root.sg1.d1.pipesink",
+      "root.sg1.d1.boolean",
+      "root.sg1.d1.datatype",
+      "root.sg1.d1.device",
+    };
+
+    String[] selectNodeNames = {
+      "add",
+      "as",
+      "between",
+      "select",
+      "drop_trigger",
+      "REVOKE_USER_ROLE",
+      "pipesink",
+      "boolean",
+      "datatype",
+      "device",
+    };
+
+    String[] suffixInResultColumns = {
+      "add",
+      "as",
+      "between",
+      "select",
+      "drop_trigger",
+      "REVOKE_USER_ROLE",
+      "pipesink",
+      "boolean",
+      "datatype",
+      "device",
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < createNodeNames.length; i++) {
+        String createSql =
+            String.format("CREATE TIMESERIES root.sg1.d1.%s INT32", createNodeNames[i]);
+        String insertSql =
+            String.format("INSERT INTO root.sg1.d1(time, %s) VALUES(1, 1)", createNodeNames[i]);
+        statement.execute(createSql);
+        statement.execute(insertSql);
+      }
+
+      boolean hasResult = statement.execute("SHOW TIMESERIES");
+      Assert.assertTrue(hasResult);
+      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
+
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
+        expectedResult.remove(resultSet.getString("timeseries"));
+      }
+      Assert.assertEquals(0, expectedResult.size());
+
+      for (int i = 0; i < selectNodeNames.length; i++) {
+        String selectSql =
+            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
+        hasResult = statement.execute(selectSql);
+        Assert.assertTrue(hasResult);
+
+        resultSet = statement.getResultSet();
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
   public void testNodeName() {
     String[] createNodeNames = {
       "a_1",
@@ -61,6 +154,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`a.'b`",
       "````",
       "`c.d.```",
+      "`abc`",
+      "a1_:@#${}"
     };
 
     String[] resultTimeseries = {
@@ -69,12 +164,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "root.sg1.d1.aaa",
       "root.sg1.d1.select",
       "root.sg1.d1.`a.b`",
-      "root.sg1.d1.111",
+      "root.sg1.d1.`111`",
       "root.sg1.d1.`a``b`",
       "root.sg1.d1.`a.\"b`",
       "root.sg1.d1.`a.'b`",
       "root.sg1.d1.````",
       "root.sg1.d1.`c.d.```",
+      "root.sg1.d1.abc",
+      "root.sg1.d1.a1_:@#${}",
     };
 
     String[] selectNodeNames = {
@@ -89,6 +186,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`a.'b`",
       "````",
       "`c.d.```",
+      "abc",
+      "a1_:@#${}",
     };
 
     String[] suffixInResultColumns = {
@@ -97,12 +196,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "aaa",
       "select",
       "`a.b`",
-      "111",
+      "`111`",
       "`a``b`",
       "`a.\"b`",
       "`a.'b`",
       "````",
       "`c.d.```",
+      "abc",
+      "a1_:@#${}",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -196,6 +297,56 @@ public class IoTDBSyntaxConventionIdentifierIT {
       // shouled use double '`' in a quoted nodeName
       try {
         statement.execute("create timeseries root.sg1.d1.`a`` INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.``a` INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      // unsupported
+      try {
+        statement.execute("create timeseries root.sg1.d1.contains INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.and INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.or INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.not INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      // reserved words can not be identifier
+      try {
+        statement.execute("create timeseries root.sg1.d1.root INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.time INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.timestamp INT32");
         fail();
       } catch (Exception ignored) {
       }
@@ -426,9 +577,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "create trigger trigger before insert on root.sg1.d1  "
+            "create trigger trigger` before insert on root.sg1.d1  "
                 + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-        fail();
       } catch (Exception ignored) {
       }
 
@@ -543,7 +693,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
     };
 
     String[] resultNames = {
-      "id", "ID", "id0", "_id", "0id", "233", "ab!", "\"ab\"", "\"ac\"", "'ab'", "a.b", "a`b"
+      "id", "ID", "id0", "_id", "0id", "233", "ab!", "\"ab\"", "\\\"ac\\\"", "'ab'", "a.b", "a`b"
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

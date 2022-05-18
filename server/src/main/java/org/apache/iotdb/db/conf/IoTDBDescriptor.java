@@ -593,13 +593,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
-      conf.setEnablePerformanceStat(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
       int maxConcurrentClientNum =
           Integer.parseInt(
               properties.getProperty(

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.common.constant;
 
+import java.util.regex.Pattern;
+
 public class TsFileConstant {
 
   public static final String TSFILE_SUFFIX = ".tsfile";
@@ -30,9 +32,14 @@ public class TsFileConstant {
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
   public static final char DOUBLE_QUOTE = '"';
   public static final char BACK_QUOTE = '`';
+  public static final String BACK_QUOTE_STRING = "`";
+  public static final String DOUBLE_BACK_QUOTE_STRING = "``";
 
   public static final byte TIME_COLUMN_MASK = (byte) 0x80;
   public static final byte VALUE_COLUMN_MASK = (byte) 0x40;
+
+  private static final String NODE_NAME_MATCHER = "([a-zA-Z0-9_:@#${}\\u2E80-\\u9FFF]+)";
+  public static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
 
   private TsFileConstant() {}
 }
