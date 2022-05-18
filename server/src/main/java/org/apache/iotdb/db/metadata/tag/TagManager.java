@@ -82,7 +82,12 @@ public class TagManager {
         SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT_TMP);
     try {
       tagLogFile.copyTo(tagLogSnapshotTmp);
-      tagLogSnapshot.delete();
+      if (tagLogSnapshot.exists() && !tagLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating tagManager snapshot.",
+            tagLogSnapshot.getName());
+        return false;
+      }
       if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
         logger.error(
             "Failed to rename {} to {} while creating tagManager snapshot.",

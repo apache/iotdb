@@ -422,7 +422,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     try {
       logWriter.copyTo(mLogSnapshotTmp);
-      mLogSnapshot.delete();
+      if (mLogSnapshot.exists() && !mLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot file {} while creating snapshot for schemaRegion {}.",
+            mLogSnapshot.getName(),
+            schemaRegionId);
+        return false;
+      }
+
       if (!mLogSnapshotTmp.renameTo(mLogSnapshot)) {
         logger.error(
             "Failed to rename {} to {} while creating snapshot for schemaRegion {}.",
