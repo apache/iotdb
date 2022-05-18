@@ -59,7 +59,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
@@ -269,6 +274,11 @@ public class InternalServiceImpl implements InternalService.Iface {
     // TODO: Return load balancing messages
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()){
       // add load balancing message when metric framework is enabled.
+      Gauge cpuLoad = MetricsService.getInstance().getMetricManager().getOrCreateGauge(
+          Metric.SYS_CPU_LOAD.toString(),
+          MetricLevel.CORE,
+          Tag.NAME.toString(),
+          "system");
 
     }
     return new THeartbeatResp(req.getHeartbeatTimestamp());
