@@ -27,12 +27,15 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,13 +58,13 @@ public class AuthorizerManager implements IAuthorizer {
   private ReentrantReadWriteLock snapshotLock;
   private TPermissionInfoResp tPermissionInfoResp;
 
-  LoadingCache<String, User> userCache =
+  private LoadingCache<String, User> userCache =
       Caffeine.newBuilder()
           .maximumSize(100)
           .expireAfterAccess(30, TimeUnit.MINUTES)
           .build(this::cacheUser);
 
-  LoadingCache<String, Role> roleCache =
+  private LoadingCache<String, Role> roleCache =
       Caffeine.newBuilder()
           .maximumSize(100)
           .expireAfterAccess(30, TimeUnit.MINUTES)
@@ -369,61 +372,92 @@ public class AuthorizerManager implements IAuthorizer {
 
   public TSStatus checkPath(String username, List<String> allPath, int permission)
       throws AuthException {
-    User user = userCache.getIfPresent(username);
-    boolean status = true;
-    if (user != null) {
-      for (String path : allPath) {
-        if (!user.checkPrivilege(path, permission)) {
-          for (String roleName : user.getRoleList()) {
-            Role role = roleCache.getIfPresent(roleName);
-            // It is detected that the role of the user does not exist in the cache, indicating that
-            // the permission information of the role has changed, and the user is initialized.
-            if (role == null) {
-              invalidateCache(username, "");
-              status = false;
+    snapshotLock.writeLock().lock();
+    try {
+      User user = userCache.getIfPresent(username);
+      boolean status = true;
+      if (user != null) {
+        for (String path : allPath) {
+          if (!user.checkPrivilege(path, permission)) {
+            for (String roleName : user.getRoleList()) {
+              Role role = roleCache.getIfPresent(roleName);
+              // It is detected that the role of the user does not exist in the cache, indicating
+              // that the permission information of the role has changed.
+              // The user cache needs to be initialized
+              if (role == null) {
+                invalidateCache(username, "");
+                status = false;
+                break;
+              }
+              if (!role.checkPrivilege(path, permission)) {
+                status = false;
+              }
+            }
+            if (status == false) {
               break;
             }
-            if (!role.checkPrivilege(path, permission)) {
-              status = false;
-            }
-          }
-          if (status == false) {
-            break;
           }
         }
       }
-    }
-    if (status) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    }
-    tPermissionInfoResp = ClusterAuthorizer.checkPath(username, allPath, permission);
-    if (tPermissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      userCache.get(username);
-      return tPermissionInfoResp.getStatus();
-    } else {
-      return tPermissionInfoResp.getStatus();
+      if (status) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      tPermissionInfoResp = ClusterAuthorizer.checkPath(username, allPath, permission);
+      if (tPermissionInfoResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        userCache.get(username);
+        return tPermissionInfoResp.getStatus();
+      } else {
+        return tPermissionInfoResp.getStatus();
+      }
+    } finally {
+      snapshotLock.writeLock().unlock();
     }
   }
 
   /** Check the user */
   public TSStatus checkUser(String username, String password) {
-    User user = userCache.getIfPresent(username);
-    if (user != null
-        && password != null
-        && AuthUtils.validatePassword(password, user.getPassword())) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    snapshotLock.writeLock().lock();
+    try {
+      User user = userCache.getIfPresent(username);
+      if (user != null
+          && password != null
+          && AuthUtils.validatePassword(password, user.getPassword())) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      tPermissionInfoResp = ClusterAuthorizer.checkUser(username, password);
+      if (tPermissionInfoResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        userCache.get(username);
+        return tPermissionInfoResp.getStatus();
+      } else {
+        return tPermissionInfoResp.getStatus();
+      }
+    } finally {
+      snapshotLock.writeLock().unlock();
     }
-    tPermissionInfoResp = ClusterAuthorizer.checkUser(username, password);
-    if (tPermissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      userCache.get(username);
-      return tPermissionInfoResp.getStatus();
-    } else {
-      return tPermissionInfoResp.getStatus();
+  }
+
+  public SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
+    snapshotLock.writeLock().lock();
+    try {
+      return ClusterAuthorizer.queryPermission(authorizerReq);
+    } finally {
+      snapshotLock.writeLock().unlock();
+    }
+  }
+
+  public SettableFuture<ConfigTaskResult> operatePermission(TAuthorizerReq authorizerReq) {
+    snapshotLock.writeLock().lock();
+    try {
+      return ClusterAuthorizer.operatePermission(authorizerReq);
+    } finally {
+      snapshotLock.writeLock().unlock();
     }
   }
 
   /** cache user */
-  User cacheUser(String username) {
+  private User cacheUser(String username) {
     User user = new User();
     List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
@@ -441,7 +475,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   /** cache role */
-  Role cacheRole(String roleName) {
+  private Role cacheRole(String roleName) {
     Role role = new Role();
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
@@ -467,11 +501,11 @@ public class AuthorizerManager implements IAuthorizer {
    */
   public void invalidateCache(String username, String roleName) {
     if (userCache.getIfPresent(username) != null) {
-      userCache.invalidate(username);
       List<String> roleList = userCache.getIfPresent(username).getRoleList();
       if (!roleList.isEmpty()) {
         roleCache.invalidateAll(roleList);
       }
+      userCache.invalidate(username);
     }
     if (roleCache.getIfPresent(roleName) != null) {
       roleCache.invalidate(roleName);
@@ -495,5 +529,17 @@ public class AuthorizerManager implements IAuthorizer {
     pathPrivilege.setPrivileges(privilegeIds);
     pathPrivilege.setPath(path);
     return pathPrivilege;
+  }
+
+  public void settPermissionInfoResp(TPermissionInfoResp tPermissionInfoResp) {
+    this.tPermissionInfoResp = tPermissionInfoResp;
+  }
+
+  public LoadingCache<String, User> getUserCache() {
+    return userCache;
+  }
+
+  public LoadingCache<String, Role> getRoleCache() {
+    return roleCache;
   }
 }
