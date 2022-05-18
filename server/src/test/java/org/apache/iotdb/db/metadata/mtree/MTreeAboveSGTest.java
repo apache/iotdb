@@ -32,7 +32,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -311,12 +312,12 @@ public class MTreeAboveSGTest {
       storageGroupMNode.setTimePartitionInterval(i);
     }
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
-    root.serialize(byteBuffer);
-    byteBuffer.flip();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    root.serialize(outputStream);
 
     MTreeAboveSG newTree = new MTreeAboveSG();
-    newTree.deserialize(byteBuffer);
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
       newTree.isStorageGroup(pathList[i]);
