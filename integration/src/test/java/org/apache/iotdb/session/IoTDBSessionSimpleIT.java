@@ -530,7 +530,7 @@ public class IoTDBSessionSimpleIT {
     session.setStorageGroup(storageGroup);
 
     session.createTimeseries(
-        "root.sg.\"my.device.with.colon:\".s",
+        "root.sg.`my.device.with.colon:`.s",
         TSDataType.INT64,
         TSEncoding.RLE,
         CompressionType.SNAPPY);
@@ -557,6 +557,12 @@ public class IoTDBSessionSimpleIT {
     try {
       session.createTimeseries(
           "root.sg.d1..s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("", e);
+    }
+
+    try {
+      session.createTimeseries("", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       logger.error("", e);
     }

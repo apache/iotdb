@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.wal.WALManager;
 
@@ -34,7 +36,10 @@ public class IoTDBShutdownHook extends Thread {
   public void run() {
     CompactionTaskManager.getInstance().stop();
     // close rocksdb if possible to avoid lose data
-    IoTDB.configManager.clear();
+    if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+        .equals(SchemaEngineMode.Rocksdb_based)) {
+      IoTDB.configManager.clear();
+    }
 
     // == flush data to Tsfile and remove WAL log files
     StorageEngine.getInstance().syncCloseAllProcessor();

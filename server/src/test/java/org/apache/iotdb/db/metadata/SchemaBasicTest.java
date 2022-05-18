@@ -108,13 +108,13 @@ public abstract class SchemaBasicTest {
 
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop.d1"));
-      schemaProcessor.setStorageGroup(new PartialPath("root.1"));
+      schemaProcessor.setStorageGroup(new PartialPath("root.`1`"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.`1`")));
 
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
@@ -158,7 +158,7 @@ public abstract class SchemaBasicTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
       schemaProcessor.createTimeseries(
-          new PartialPath("root.1.2.3"),
+          new PartialPath("root.`1`.`2`.`3`"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
@@ -167,8 +167,8 @@ public abstract class SchemaBasicTest {
       assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.s1")));
       assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.1_2")));
       assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.`\"1.2.3\"`")));
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1.2")));
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1.2.3")));
+      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.`1`.`2`")));
+      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.`1`.`2`.`3`")));
     } catch (MetadataException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
@@ -246,31 +246,31 @@ public abstract class SchemaBasicTest {
     try {
       schemaProcessor.deleteTimeseries(new PartialPath("root.laptop.d1.1_2"));
       schemaProcessor.deleteTimeseries(new PartialPath("root.laptop.d1.`\"1.2.3\"`"));
-      schemaProcessor.deleteTimeseries(new PartialPath("root.1.2.3"));
+      schemaProcessor.deleteTimeseries(new PartialPath("root.`1`.`2`.`3`"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.1_2")));
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.`\"1.2.3\"`")));
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.1.2.3")));
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.1.2")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.`1`.`2`.`3`")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.`1`.`2`")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.`1`")));
 
     try {
-      schemaProcessor.deleteStorageGroups(Collections.singletonList(new PartialPath("root.1")));
+      schemaProcessor.deleteStorageGroups(Collections.singletonList(new PartialPath("root.`1`")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.1")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.`1`")));
 
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template")));
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template.d1")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template0")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template0.d1")));
 
     try {
       schemaProcessor.createTimeseries(
-          new PartialPath("root.template.d2"),
+          new PartialPath("root.template0.d2"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
@@ -282,19 +282,19 @@ public abstract class SchemaBasicTest {
 
     try {
       schemaProcessor.createSchemaTemplate(getCreateTemplatePlan());
-      schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.template"));
+      schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.template0"));
       schemaProcessor.setUsingSchemaTemplate(
-          new ActivateTemplatePlan(new PartialPath("root.template.d1")));
+          new ActivateTemplatePlan(new PartialPath("root.template0.d1")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1.s11")));
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template.d2.s11")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1.vector")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1.vector.s0")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1.s11")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template0.d2.s11")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1.vector")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1.vector.s0")));
   }
 
   /**
@@ -607,11 +607,11 @@ public abstract class SchemaBasicTest {
           schemaProcessor.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(
           schemaProcessor
-              .getBelongedStorageGroups(new PartialPath("root.vehicle.device"))
+              .getBelongedStorageGroups(new PartialPath("root.vehicle.device0"))
               .isEmpty());
       assertTrue(
           schemaProcessor
-              .getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
+              .getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor"))
               .isEmpty());
 
       schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
@@ -619,20 +619,20 @@ public abstract class SchemaBasicTest {
           schemaProcessor.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertFalse(
           schemaProcessor
-              .getBelongedStorageGroups(new PartialPath("root.vehicle.device"))
+              .getBelongedStorageGroups(new PartialPath("root.vehicle.device0"))
               .isEmpty());
       assertFalse(
           schemaProcessor
-              .getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor"))
+              .getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor"))
               .isEmpty());
       assertTrue(
           schemaProcessor.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
       assertTrue(
           schemaProcessor
-              .getBelongedStorageGroups(new PartialPath("root.vehicle1.device"))
+              .getBelongedStorageGroups(new PartialPath("root.vehicle1.device0"))
               .isEmpty());
 
-      schemaProcessor.setStorageGroup(new PartialPath("root.vehicle1.device"));
+      schemaProcessor.setStorageGroup(new PartialPath("root.vehicle1.device0"));
       assertTrue(
           schemaProcessor
               .getBelongedStorageGroups(new PartialPath("root.vehicle1.device1"))
@@ -647,7 +647,7 @@ public abstract class SchemaBasicTest {
               .isEmpty());
       assertFalse(
           schemaProcessor
-              .getBelongedStorageGroups(new PartialPath("root.vehicle1.device"))
+              .getBelongedStorageGroups(new PartialPath("root.vehicle1.device0"))
               .isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -729,58 +729,6 @@ public abstract class SchemaBasicTest {
       assertEquals("root is not a legal path", e.getMessage());
     }
     assertTrue(caughtException);
-  }
-
-  @Test
-  public void testSetStorageGroupWithIllegalName() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    try {
-      PartialPath path1 = new PartialPath("root.laptop\n");
-      try {
-        schemaProcessor.setStorageGroup(path1);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
-    try {
-      PartialPath path2 = new PartialPath("root.laptop\t");
-      try {
-        schemaProcessor.setStorageGroup(path2);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
-  }
-
-  @Test
-  public void testCreateTimeseriesWithIllegalName() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    try {
-      PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
-      try {
-        schemaProcessor.createTimeseries(
-            path1, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
-    try {
-      PartialPath path2 = new PartialPath("root.laptop.d1\t.s1");
-      try {
-        schemaProcessor.createTimeseries(
-            path2, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
-        fail();
-      } catch (MetadataException e) {
-      }
-    } catch (IllegalPathException e1) {
-      fail();
-    }
   }
 
   @Test
@@ -1083,16 +1031,16 @@ public abstract class SchemaBasicTest {
     assertNull(template.getPathNodeInTemplate("notExists"));
     assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
 
-    String[] alignedMeasurements = {"to.be.prefix.s1", "to.be.prefix.s2"};
+    String[] alignedMeasurements = {"`to`.be.prefix.s1", "`to`.be.prefix.s2"};
     TSDataType[] dataTypes = {TSDataType.INT32, TSDataType.INT32};
     TSEncoding[] encodings = {TSEncoding.RLE, TSEncoding.RLE};
     CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
     template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
 
     assertEquals("[to.be.prefix, GPS]", template.getAllAlignedPrefix().toString());
-    assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
+    assertEquals("[s1, s2]", template.getAlignedMeasurements("`to`.be.prefix").toString());
 
-    template.deleteAlignedPrefix("to.be.prefix");
+    template.deleteAlignedPrefix("`to`.be.prefix");
 
     assertEquals("[GPS]", template.getAllAlignedPrefix().toString());
     assertEquals(null, template.getDirectNode("prefix"));
@@ -1119,7 +1067,7 @@ public abstract class SchemaBasicTest {
         "[d1.s1, GPS.x, to.be.prefix.s2, GPS.y, to.be.prefix.s1, s2]",
         template.getAllMeasurementsPaths().toString());
 
-    template.deleteSeriesCascade("to");
+    template.deleteSeriesCascade("`to`");
 
     assertEquals("[d1.s1, GPS.x, GPS.y, s2]", template.getAllMeasurementsPaths().toString());
   }
@@ -1233,8 +1181,8 @@ public abstract class SchemaBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.1");
-    UnsetTemplatePlan unsetTemplatePlan = new UnsetTemplatePlan("root.sg.1", "template1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.`1`");
+    UnsetTemplatePlan unsetTemplatePlan = new UnsetTemplatePlan("root.sg.`1`", "template1");
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     schemaProcessor.createSchemaTemplate(createTemplatePlan);
 
@@ -1243,7 +1191,7 @@ public abstract class SchemaBasicTest {
       schemaProcessor.unsetSchemaTemplate(unsetTemplatePlan);
       fail("No exception thrown.");
     } catch (Exception e) {
-      assertEquals("Path [root.sg.1] does not exist", e.getMessage());
+      assertEquals("Path [root.sg.`1`] does not exist", e.getMessage());
     }
 
     schemaProcessor.setSchemaTemplate(setTemplatePlan);
@@ -1258,7 +1206,7 @@ public abstract class SchemaBasicTest {
       schemaProcessor.unsetSchemaTemplate(unsetTemplatePlan);
       fail("No exception thrown.");
     } catch (Exception e) {
-      assertEquals("NO template on root.sg.1", e.getMessage());
+      assertEquals("NO template on root.sg.`1`", e.getMessage());
     }
   }
 
@@ -1725,18 +1673,6 @@ public abstract class SchemaBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-
-    // show timeseries root.laptop.d1.(s0,s1)
-    try {
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      schemaProcessor.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    } catch (MetadataException e) {
-      assertEquals(
-          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
-          e.getMessage());
-    }
   }
 
   @Test
@@ -1999,16 +1935,16 @@ public abstract class SchemaBasicTest {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     assertTrue(schemaProcessor.isPathExist(new PartialPath("root")));
 
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.group-with-hyphen")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.group_with_hyphen")));
 
     try {
-      schemaProcessor.setStorageGroup(new PartialPath("root.group-with-hyphen"));
+      schemaProcessor.setStorageGroup(new PartialPath("root.group_with_hyphen"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.group-with-hyphen")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.group_with_hyphen")));
   }
 
   @Test
@@ -2288,7 +2224,7 @@ public abstract class SchemaBasicTest {
   public void testCreateAlignedTimeseriesWithAliasAndTags() throws Exception {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
-    PartialPath devicePath = new PartialPath("root.laptop.device");
+    PartialPath devicePath = new PartialPath("root.laptop.device0");
     List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
     List<TSDataType> tsDataTypes =
         Arrays.asList(
@@ -2333,8 +2269,8 @@ public abstract class SchemaBasicTest {
     schemaProcessor.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
 
     Assert.assertEquals(
-        5, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.device.*")));
-    Assert.assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.device.alias2")));
+        5, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.device0.*")));
+    Assert.assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.device0.alias2")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(new PartialPath("root.**"), false, "key", "value", 0, 0, false);
@@ -2346,11 +2282,11 @@ public abstract class SchemaBasicTest {
             .sorted(Comparator.comparing(ShowResult::getName))
             .collect(Collectors.toList());
     ShowTimeSeriesResult result = showTimeSeriesResults.get(0);
-    Assert.assertEquals("root.laptop.device.s1", result.getName());
+    Assert.assertEquals("root.laptop.device0.s1", result.getName());
     Assert.assertEquals("alias1", result.getAlias());
     Assert.assertEquals(tags, result.getTag());
     result = showTimeSeriesResults.get(1);
-    Assert.assertEquals("root.laptop.device.s4", result.getName());
+    Assert.assertEquals("root.laptop.device0.s4", result.getName());
     Assert.assertEquals(tags, result.getTag());
   }
 

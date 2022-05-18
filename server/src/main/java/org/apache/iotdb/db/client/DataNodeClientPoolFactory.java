@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -143,6 +144,23 @@ public class DataNodeClientPoolFactory {
           new ClientPoolProperty.Builder<AsyncDataNodeDataBlockServiceClient>()
               .build()
               .getConfig());
+    }
+  }
+
+  public static class ConfigNodeClientPoolFactory
+      implements IClientPoolFactory<PartitionRegionId, ConfigNodeClient> {
+    @Override
+    public KeyedObjectPool<PartitionRegionId, ConfigNodeClient> createClientPool(
+        ClientManager<PartitionRegionId, ConfigNodeClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new ConfigNodeClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<ConfigNodeClient>().build().getConfig());
     }
   }
 }
