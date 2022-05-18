@@ -135,6 +135,11 @@ struct TSchemaFetchResponse {
   1: required binary serializedSchemaTree
 }
 
+struct TInvalidatePermissionCacheReq{
+  1: required string username
+  2: required string roleName
+}
+
 service InternalService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -211,7 +216,12 @@ service InternalService {
   **/
   common.THeartbeatResp getHeartBeat(common.THeartbeatReq req)
 
-  common.TSStatus invalidatePermissionCache()
+  /**
+   * Config node will invalidate permission Info cache.
+   *
+   * @param string:username, list<string>:roleList
+   */
+  common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 }
 
 service DataBlockService {

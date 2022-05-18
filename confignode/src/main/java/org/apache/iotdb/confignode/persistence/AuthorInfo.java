@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -62,7 +63,6 @@ public class AuthorInfo implements SnapshotProcessor {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private IAuthorizer authorizer;
-  private ConfigNodeProcedureEnv env;
 
   public AuthorInfo() {
     try {
@@ -440,11 +440,15 @@ public class AuthorInfo implements SnapshotProcessor {
     authorizer.reset();
   }
 
-  public void invalidateCache(ConfigNodeProcedureEnv env) throws IOException, TException {
+  public void invalidateCache(ConfigNodeProcedureEnv env, String username, String roleName)
+      throws IOException, TException {
     List<TDataNodeLocation> allDataNodes =
         env.getConfigManager().getNodeManager().getOnlineDataNodes();
+    TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
+    req.setUsername(username);
+    req.setRoleName(roleName);
     for (TDataNodeLocation dataNodeLocation : allDataNodes) {
-      env.getDataNodeClient(dataNodeLocation).invalidatePermissionCache();
+      env.getDataNodeClient(dataNodeLocation).invalidatePermissionCache(req);
     }
   }
 }

@@ -70,6 +70,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
@@ -272,8 +273,8 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus invalidatePermissionCache() throws TException {
-    AuthorizerManager.getInstance().invalidateAll();
+  public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) throws TException {
+    AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

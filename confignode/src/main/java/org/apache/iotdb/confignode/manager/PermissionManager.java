@@ -59,9 +59,11 @@ public class PermissionManager {
     TSStatus status = getConsensusManager().write(authorReq).getStatus();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
-        authorInfo.invalidateCache(env);
+        authorInfo.invalidateCache(env, authorReq.getUserName(), authorReq.getRoleName());
       } catch (IOException | TException e) {
-        logger.error("error");
+        logger.error(
+            "Failed to initialize cache,the initialization operation is {}",
+            authorReq.getAuthorType());
       }
     }
     return status;

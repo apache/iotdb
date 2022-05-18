@@ -369,21 +369,29 @@ public class AuthorizerManager implements IAuthorizer {
   public TSStatus checkPath(String username, List<String> allPath, int permission)
       throws AuthException {
     User user = userCache.getIfPresent(username);
+    boolean status = true;
     if (user != null) {
       for (String path : allPath) {
-        if (user.checkPrivilege(path, permission)) {
-          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-        } else {
+        if (!user.checkPrivilege(path, permission)) {
           for (String roleName : user.getRoleList()) {
             Role role = roleCache.getIfPresent(roleName);
-            if (role != null) {
-              if (role.checkPrivilege(path, permission)) {
-                return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-              }
+            if (role == null) {
+              invalidateCache(username, "");
+              status = false;
+              break;
             }
+            if (!role.checkPrivilege(path, permission)) {
+              status = false;
+            }
+          }
+          if (status == false) {
+            break;
           }
         }
       }
+    }
+    if (status) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     tPermissionInfoResp = ClusterAuthorizer.checkPath(username, allPath, permission);
     if (tPermissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -442,8 +450,16 @@ public class AuthorizerManager implements IAuthorizer {
     return role;
   }
 
-  public void invalidateAll() {
-    userCache.invalidateAll();
-    roleCache.invalidateAll();
+  public void invalidateCache(String username, String roleName) {
+    if (userCache.getIfPresent(username) != null) {
+      userCache.invalidate(username);
+      List<String> roleList = userCache.getIfPresent(username).getRoleList();
+      if (!roleList.isEmpty()) {
+        roleCache.invalidateAll(roleList);
+      }
+    }
+    if (roleCache.getIfPresent(roleName) != null) {
+      roleCache.invalidate(roleName);
+    }
   }
 }
