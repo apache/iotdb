@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.trigger.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.fusesource.mqtt.client.BlockingConnection;
@@ -32,10 +33,12 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
 
   // Each host:port corresponds to a singleton instance
   private static final Map<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP = new HashMap<>();
+  private static final Map<String, Integer> MQTT_CONNECTION_REFERENCE_COUNT = new HashMap<>();
 
   public static MQTTConnectionPool getInstance(
-      String host, int port, MQTTConnectionFactory factory, int size) {
-    String key = host + ":" + port;
+      String host, int port, String username, MQTTConnectionFactory factory, int size) {
+    String key = host + ":" + port + "," + username;
+    MQTT_CONNECTION_REFERENCE_COUNT.merge(key, 1, Integer::sum);
     MQTTConnectionPool pool = MQTT_CONNECTION_POOL_MAP.get(key);
     if (pool == null || pool.isClosed()) {
       pool = new MQTTConnectionPool(factory, size);
@@ -59,9 +62,15 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
     returnObject(connection);
   }
 
-  public void clearAndClose() {
+  public void clearAndClose(String host, int port, String username) throws SinkException {
+    String key = host + ":" + port + "," + username;
     clear();
-    close();
+    if (!MQTT_CONNECTION_REFERENCE_COUNT.containsKey(key)) {
+      throw new SinkException("The MQTT connection pool doesn't exist");
+    }
+    if (0 == MQTT_CONNECTION_REFERENCE_COUNT.merge(key, -1, Integer::sum)) {
+      close();
+    }
   }
 
   public void publish(final String topic, final byte[] payload, final QoS qos, final boolean retain)

@@ -43,7 +43,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
   private static int referenceCount;
 
   private HttpPost request;
-  private HTTPForwardConfiguration configuration;
+  private HTTPForwardConfiguration config;
 
   private static synchronized void closeClient() throws IOException {
     if (--referenceCount == 0) {
@@ -65,23 +65,23 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
   }
 
   @Override
-  public void open(HTTPForwardConfiguration configuration) {
-    this.configuration = configuration;
+  public void open(HTTPForwardConfiguration config) {
+    this.config = config;
     if (this.request == null) {
-      this.request = new HttpPost(configuration.getEndpoint());
+      this.request = new HttpPost(config.getEndpoint());
       request.setHeader("Accept", "application/json");
       request.setHeader("Content-type", "application/json");
     }
 
-    openClient(configuration.getPoolSize(), configuration.getPoolMaxPerRoute());
+    openClient(config.getPoolSize(), config.getPoolMaxPerRoute());
   }
 
   @Override
   public void onEvent(HTTPForwardEvent event) throws SinkException {
     CloseableHttpResponse response = null;
     try {
-      String device = configuration.getDevice();
-      String measurement = configuration.getMeasurement();
+      String device = config.getDevice();
+      String measurement = config.getMeasurement();
       if (device != null && measurement != null) {
         request.setEntity(new StringEntity("[" + event.toJsonString(device, measurement) + "]"));
       } else {
@@ -92,7 +92,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
         throw new SinkException(response.getStatusLine().toString());
       }
     } catch (Exception e) {
-      if (configuration.isStopIfException()) {
+      if (config.isStopIfException()) {
         throw new SinkException("HTTP Forward Exception", e);
       }
       LOGGER.error("HTTP Forward Exception", e);
@@ -112,8 +112,8 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
     CloseableHttpResponse response = null;
     try {
       StringBuilder sb = new StringBuilder();
-      String device = configuration.getDevice();
-      String measurement = configuration.getMeasurement();
+      String device = config.getDevice();
+      String measurement = config.getMeasurement();
       if (device != null && measurement != null) {
         for (HTTPForwardEvent event : events) {
           sb.append(event.toJsonString(device, measurement)).append(", ");
@@ -130,7 +130,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
         throw new SinkException(response.getStatusLine().toString());
       }
     } catch (Exception e) {
-      if (configuration.isStopIfException()) {
+      if (config.isStopIfException()) {
         throw new SinkException("HTTP Forward Exception", e);
       }
       LOGGER.error("HTTP Forward Exception", e);

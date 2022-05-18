@@ -34,50 +34,54 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTForwardHandler.class);
 
   private MQTTConnectionPool connectionPool;
-  private MQTTForwardConfiguration configuration;
+  private MQTTForwardConfiguration config;
 
   @Override
-  public void open(MQTTForwardConfiguration configuration) throws Exception {
-    this.configuration = configuration;
+  public void open(MQTTForwardConfiguration config) throws Exception {
+    this.config = config;
     MQTTConnectionFactory factory =
         new MQTTConnectionFactory(
-            configuration.getHost(),
-            configuration.getPort(),
-            configuration.getUsername(),
-            configuration.getPassword(),
-            configuration.getConnectAttemptsMax(),
-            configuration.getReconnectDelay());
+            config.getHost(),
+            config.getPort(),
+            config.getUsername(),
+            config.getPassword(),
+            config.getConnectAttemptsMax(),
+            config.getReconnectDelay());
     connectionPool =
         MQTTConnectionPool.getInstance(
-            configuration.getHost(), configuration.getPort(), factory, configuration.getPoolSize());
+            config.getHost(),
+            config.getPort(),
+            config.getUsername(),
+            factory,
+            config.getPoolSize());
     connectionPool.preparePool();
   }
 
   @Override
   public void close() throws Exception {
-    connectionPool.clearAndClose();
+    connectionPool.clearAndClose(config.getHost(), config.getPort(), config.getUsername());
   }
 
   @Override
   public void onEvent(MQTTForwardEvent event) throws SinkException {
     try {
-      String device = configuration.getDevice();
-      String measurement = configuration.getMeasurement();
+      String device = config.getDevice();
+      String measurement = config.getMeasurement();
       if (device != null && measurement != null) {
         connectionPool.publish(
-            configuration.getTopic(),
+            config.getTopic(),
             ("[" + event.toJsonString(device, measurement) + "]").getBytes(),
-            configuration.getQos(),
-            configuration.isRetain());
+            config.getQos(),
+            config.isRetain());
       } else {
         connectionPool.publish(
-            configuration.getTopic(),
+            config.getTopic(),
             ("[" + event.toJsonString() + "]").getBytes(),
-            configuration.getQos(),
-            configuration.isRetain());
+            config.getQos(),
+            config.isRetain());
       }
     } catch (Exception e) {
-      if (configuration.isStopIfException()) {
+      if (config.isStopIfException()) {
         throw new SinkException("MQTT Forward Exception", e);
       }
       LOGGER.error("MQTT Forward Exception", e);
@@ -87,8 +91,8 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
   @Override
   public void onEvent(List<MQTTForwardEvent> events) throws SinkException {
     StringBuilder sb = new StringBuilder().append("[");
-    String device = configuration.getDevice();
-    String measurement = configuration.getMeasurement();
+    String device = config.getDevice();
+    String measurement = config.getMeasurement();
     if (device != null && measurement != null) {
       for (MQTTForwardEvent event : events) {
         sb.append(event.toJsonString(device, measurement)).append(", ");
@@ -101,12 +105,9 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
     sb.replace(sb.lastIndexOf(", "), sb.length(), "").append("]");
     try {
       connectionPool.publish(
-          configuration.getTopic(),
-          sb.toString().getBytes(),
-          configuration.getQos(),
-          configuration.isRetain());
+          config.getTopic(), sb.toString().getBytes(), config.getQos(), config.isRetain());
     } catch (Exception e) {
-      if (configuration.isStopIfException()) {
+      if (config.isStopIfException()) {
         throw new SinkException("MQTT Forward Exception", e);
       }
       LOGGER.error("MQTT Forward Exception", e);
