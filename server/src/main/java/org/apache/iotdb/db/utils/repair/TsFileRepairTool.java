@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils.repair;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -35,6 +34,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -47,17 +47,28 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class TsFileRepairTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileRepairTool.class);
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static String baseDataDirPath;
 
   public static void main(String[] args) throws WriteProcessException, IOException {
-    if (args.length != 0) {
-      logger.warn("Param is uncessary.");
+    if (!checkArgs(args)) {
+      System.exit(1);
     }
     System.out.println("Start repairing...");
     // get seq data dirs
     List<String> seqDataDirs =
-        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
-    for (int i = 0; i < seqDataDirs.size(); i++) {
-      seqDataDirs.set(i, seqDataDirs.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
+        new ArrayList<>(
+            Arrays.asList(
+                Objects.requireNonNull(
+                    new File(baseDataDirPath)
+                        .list((dir, name) -> (!name.equals("system") && !name.equals("wal"))))));
+    for (int i = 0; i < Objects.requireNonNull(seqDataDirs).size(); i++) {
+      seqDataDirs.set(
+          i,
+          baseDataDirPath
+              + File.separator
+              + seqDataDirs.get(i)
+              + File.separator
+              + IoTDBConstant.SEQUENCE_FLODER_NAME);
     }
 
     for (String seqDataPath : seqDataDirs) {
@@ -95,6 +106,21 @@ public class TsFileRepairTool {
     System.out.println("Finish repairing successfully!");
   }
 
+  public static boolean checkArgs(String[] args) {
+    if (args.length != 1) {
+      System.out.println("Num of param should be one, which is base data dir. Eg: xxx/iotdb/data");
+      return false;
+    } else {
+      baseDataDirPath = args[0];
+      if ((baseDataDirPath.endsWith("data") || baseDataDirPath.endsWith("data" + File.separator))
+          && !baseDataDirPath.endsWith("data" + File.separator + "data")) {
+        return true;
+      }
+      System.out.println("Please input correct base data dir. Eg: xxx/iotdb/data");
+      return false;
+    }
+  }
+
   private static void moveBadSeqFilesToUnseqDir(File[] tsFiles)
       throws WriteProcessException, IOException {
     // deviceID -> endTime
@@ -104,11 +130,13 @@ public class TsFileRepairTool {
       resource.deserialize();
       boolean hasMoved = false;
       for (String deviceID : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceID);
-        if (endTime <= deviceEndTime.getOrDefault(deviceID, Long.MIN_VALUE)) {
+        long startTime = resource.getStartTime(deviceID);
+        if (startTime <= deviceEndTime.getOrDefault(deviceID, Long.MIN_VALUE)) {
           // find the corrupted seq file which device end time is less than previous seq files.
           // move the corrupted seq file to corresponding unseq dir.
-          if (hasMoved) continue;
+          if (hasMoved) {
+            continue;
+          }
           logger.info(
               "Find the corrupted file {}, move it to unseq dir.", tsFile.getAbsolutePath());
           String targetDirPath = resource.getTsFile().getParent().replace("sequence", "unsequence");
@@ -119,7 +147,7 @@ public class TsFileRepairTool {
           moveFiles(filesToBeMoved, targetDirPath);
           hasMoved = true;
         } else {
-          deviceEndTime.put(deviceID, endTime);
+          deviceEndTime.put(deviceID, resource.getEndTime(deviceID));
         }
       }
     }
@@ -141,7 +169,7 @@ public class TsFileRepairTool {
   private static boolean checkIsDirectory(File dir) {
     boolean res = true;
     if (!dir.isDirectory()) {
-      logger.error("{} is not a directory, skip it.", dir.getAbsolutePath());
+      logger.error("{} is not a directory or does not exist, skip it.", dir.getAbsolutePath());
       res = false;
     }
     return res;
