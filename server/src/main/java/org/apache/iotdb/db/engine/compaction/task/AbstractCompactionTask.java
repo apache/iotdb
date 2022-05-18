@@ -74,10 +74,10 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
       doCompaction();
       isSuccess = true;
     } catch (InterruptedException e) {
-      LOGGER.warn("Current task is interrupted");
+      LOGGER.warn("{} [Compaction] Current task is interrupted", fullStorageGroupName);
     } catch (Throwable e) {
       // Use throwable to catch OOM exception.
-      LOGGER.error("Running compaction task failed", e);
+      LOGGER.error("{} [Compaction] Running compaction task failed", fullStorageGroupName, e);
     } finally {
       this.currentTaskNum.decrementAndGet();
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);

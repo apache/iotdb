@@ -174,8 +174,6 @@ public class ConfigNodeDescriptor {
 
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
-      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
       conf.setTimePartitionInterval(
@@ -193,20 +191,48 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setInitialSchemaRegionCount(
+      conf.setMaximumSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_schema_region_count",
-                  String.valueOf(conf.getInitialSchemaRegionCount()))));
+                  "maximum_schema_region_count",
+                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
 
-      conf.setInitialDataRegionCount(
+      conf.setMaximumDataRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
+
+      conf.setHeartbeatInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
+
+      conf.setEnableHeartbeat(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_heartbeat", String.valueOf(conf.isEnableHeartbeat()))));
 
       // commons
       commonDescriptor.loadCommonProps(properties);
       commonDescriptor.initCommonConfigDir(conf.getSystemDir());
+
+      conf.setProcedureCompletedEvictTTL(
+          Integer.parseInt(
+              properties.getProperty(
+                  "procedure_completed_evict_ttl",
+                  String.valueOf(conf.getProcedureCompletedEvictTTL()))));
+
+      conf.setProcedureCompletedCleanInterval(
+          Integer.parseInt(
+              properties.getProperty(
+                  "procedure_completed_clean_interval",
+                  String.valueOf(conf.getProcedureCompletedCleanInterval()))));
+
+      conf.setProcedureCoreWorkerThreadsSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "procedure_core_worker_thread_size",
+                  String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);

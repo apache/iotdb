@@ -87,7 +87,6 @@
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
-        <module>thrift-procedure</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>influxdb-protocol</module>
@@ -116,7 +115,6 @@
         <module>metrics</module>
         <module>integration</module>
         <module>consensus</module>
-        <module>procedure</module>
         <module>library-udf</module>
         <module>schema-engine-rocksdb</module>
     </modules>
@@ -1415,6 +1413,7 @@
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
+                                <exclude>org/apache/iotdb/cluster/*</exclude>
                                 <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>

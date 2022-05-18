@@ -27,7 +27,9 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -206,6 +209,33 @@ public class SchemaUtils {
   }
 
   /**
+   * judge whether the order of aggregation calculation is consistent with the order of traversing
+   * data
+   */
+  public static boolean isConsistentWithScanOrder(
+      AggregationType aggregationFunction, OrderBy scanOrder) {
+    boolean ascending = scanOrder == OrderBy.TIMESTAMP_ASC;
+    switch (aggregationFunction) {
+      case MIN_TIME:
+      case FIRST_VALUE:
+        return ascending;
+      case MAX_TIME:
+      case LAST_VALUE:
+        return !ascending;
+      case SUM:
+      case MIN_VALUE:
+      case MAX_VALUE:
+      case EXTREME:
+      case COUNT:
+      case AVG:
+        return true;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation function: %s", aggregationFunction));
+    }
+  }
+
+  /**
    * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
    * return such an exception or null if it cannot be found.
    *
@@ -231,6 +261,28 @@ public class SchemaUtils {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
           String.format("encoding %s does not support %s", encoding, dataType), true);
+    }
+  }
+
+  public static List<AggregationType> splitPartialAggregation(AggregationType aggregationType) {
+    switch (aggregationType) {
+      case FIRST_VALUE:
+        return Collections.singletonList(AggregationType.MIN_TIME);
+      case LAST_VALUE:
+        return Collections.singletonList(AggregationType.MAX_TIME);
+      case AVG:
+        return Arrays.asList(AggregationType.COUNT, AggregationType.SUM);
+      case SUM:
+      case MIN_VALUE:
+      case MAX_VALUE:
+      case EXTREME:
+      case COUNT:
+      case MIN_TIME:
+      case MAX_TIME:
+        return Collections.emptyList();
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation function: %s", aggregationType));
     }
   }
 }

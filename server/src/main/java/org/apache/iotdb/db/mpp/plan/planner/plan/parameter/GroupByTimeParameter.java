@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
+
 /** The parameter of `GROUP BY TIME` */
 public class GroupByTimeParameter {
 
@@ -133,6 +135,12 @@ public class GroupByTimeParameter {
 
   public void setLeftCRightO(boolean leftCRightO) {
     this.leftCRightO = leftCRightO;
+  }
+
+  public boolean hasOverlap() {
+    long tmpInterval = isIntervalByMonth ? interval * MS_TO_MONTH : interval;
+    long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
+    return tmpInterval > tmpSlidingStep;
   }
 
   public void serialize(ByteBuffer buffer) {

@@ -134,10 +134,12 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
+    boolean hasRegionReplicaSet = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.regionReplicaSet =
-        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
-    fragmentInstance.hostDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
-
+        hasRegionReplicaSet ? ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer) : null;
+    boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
+    fragmentInstance.hostDataNode =
+        hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
     return fragmentInstance;
   }
 
@@ -150,8 +152,14 @@ public class FragmentInstance implements IConsensusRequest {
       timeFilter.serialize(buffer);
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
-    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
-    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, buffer);
+    ReadWriteIOUtils.write(regionReplicaSet != null, buffer);
+    if (regionReplicaSet != null) {
+      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
+    }
+    ReadWriteIOUtils.write(hostDataNode != null, buffer);
+    if (hostDataNode != null) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, buffer);
+    }
   }
 
   @Override

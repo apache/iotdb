@@ -48,7 +48,7 @@ public class ClusterSchemaInfoTest {
 
   @BeforeClass
   public static void setup() {
-    clusterSchemaInfo = ClusterSchemaInfo.getInstance();
+    clusterSchemaInfo = new ClusterSchemaInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
@@ -91,7 +91,7 @@ public class ClusterSchemaInfoTest {
         storageGroupPathList.size(), clusterSchemaInfo.getStorageGroupNames().size());
 
     GetStorageGroupReq getStorageGroupReq =
-        new GetStorageGroupReq(Arrays.asList(PathUtils.splitPathToDetachedPath("root.**")));
+        new GetStorageGroupReq(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
     Map<String, TStorageGroupSchema> reloadResult =
         clusterSchemaInfo.getMatchedStorageGroupSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);

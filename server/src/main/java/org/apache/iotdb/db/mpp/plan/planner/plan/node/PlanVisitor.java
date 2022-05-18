@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
@@ -51,6 +52,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 
 public abstract class PlanVisitor<R, C> {
 
@@ -64,7 +70,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSeriesAggregate(SeriesAggregationScanNode node, C context) {
+  public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -184,11 +190,39 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitCreateMultiTimeSeries(CreateMultiTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   public R visitAlterTimeSeries(AlterTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
   public R visitTransform(TransformNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteRegion(DeleteRegionNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertRow(InsertRowNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertTablet(InsertTabletNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertRows(InsertRowsNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertMultiTablets(InsertMultiTabletsNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertRowsOfOneDevice(InsertRowsOfOneDeviceNode node, C context) {
     return visitPlan(node, context);
   }
 }

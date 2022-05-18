@@ -175,8 +175,8 @@ public class MTreeAboveSGTest {
       assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d3")));
 
-      root.setStorageGroup(new PartialPath("root.1"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.1")));
+      root.setStorageGroup(new PartialPath("root.`1`"));
+      assertTrue(root.isStorageGroup(new PartialPath("root.`1`")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -209,23 +209,24 @@ public class MTreeAboveSGTest {
     try {
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
       assertTrue(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle"));
       assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
-      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
       assertFalse(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device0")).isEmpty());
 
-      root.setStorageGroup(new PartialPath("root.vehicle1.device"));
+      root.setStorageGroup(new PartialPath("root.vehicle1.device0"));
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
-      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertFalse(
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device0")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -237,9 +238,7 @@ public class MTreeAboveSGTest {
     try {
       root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
     } catch (MetadataException e) {
-      Assert.assertEquals(
-          "The storage group name can only be characters, numbers and underscores. root.\"sg.ln\" is not a legal path",
-          e.getMessage());
+      Assert.assertEquals("root.\"sg.ln\" is not a legal path", e.getMessage());
     }
   }
 

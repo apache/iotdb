@@ -107,6 +107,10 @@ public class AlignedSeriesScanNode extends SourceNode {
     return timeFilter;
   }
 
+  public void setTimeFilter(@Nullable Filter timeFilter) {
+    this.timeFilter = timeFilter;
+  }
+
   @Nullable
   public Filter getValueFilter() {
     return valueFilter;
@@ -125,11 +129,13 @@ public class AlignedSeriesScanNode extends SourceNode {
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return regionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {}
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
 
   @Override
   public void close() throws Exception {}
@@ -260,5 +266,11 @@ public class AlignedSeriesScanNode extends SourceNode {
         limit,
         offset,
         regionReplicaSet);
+  }
+
+  public String toString() {
+    return String.format(
+        "AlignedSeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
+        this.getPlanNodeId(), this.getAlignedPath(), this.getRegionReplicaSet());
   }
 }

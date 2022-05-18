@@ -18,8 +18,8 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 
 import io.moquette.broker.security.IAuthenticator;
 import org.apache.commons.lang3.StringUtils;
@@ -37,7 +37,7 @@ public class BrokerAuthenticator implements IAuthenticator {
     }
 
     try {
-      IAuthorizer authorizer = BasicAuthorizer.getInstance();
+      IAuthorizer authorizer = AuthorizerManager.getInstance();
       return authorizer.login(username, new String(password));
     } catch (AuthException e) {
       LOG.info("meet error while logging in.", e);

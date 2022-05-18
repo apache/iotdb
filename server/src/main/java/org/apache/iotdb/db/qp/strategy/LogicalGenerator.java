@@ -114,14 +114,14 @@ public class LogicalGenerator {
       PartialPath path = new PartialPath(p);
       fromOp.addPrefixTablePath(path);
     }
-    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     queryOp.setSelectComponent(selectOp);
     queryOp.setFromComponent(fromOp);
 
     // set time filter operator
     FilterOperator filterOp = new FilterOperator(FilterType.KW_AND);
-    PartialPath timePath = new PartialPath(TIME);
+    PartialPath timePath = new PartialPath(TIME, false);
     filterOp.setSinglePath(timePath);
     Set<PartialPath> pathSet = new HashSet<>();
     pathSet.add(timePath);
@@ -151,7 +151,7 @@ public class LogicalGenerator {
     FromComponent fromOp = new FromComponent();
     SelectComponent selectOp = new SelectComponent(zoneId);
 
-    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     for (String p : req.getPaths()) {
       PartialPath path = new PartialPath(p);
@@ -161,7 +161,7 @@ public class LogicalGenerator {
     queryOp.setSelectComponent(selectOp);
     queryOp.setFromComponent(fromOp);
 
-    PartialPath timePath = new PartialPath(TIME);
+    PartialPath timePath = new PartialPath(TIME, false);
 
     BasicFunctionOperator basicFunctionOperator =
         new BasicFunctionOperator(

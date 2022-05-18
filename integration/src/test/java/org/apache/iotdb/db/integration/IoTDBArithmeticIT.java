@@ -268,8 +268,8 @@ public class IoTDBArithmeticIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s5 from root.sg.d1");
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Unsupported data type: BOOLEAN"));
+    } catch (Exception throwable) {
+      assertTrue(throwable.getMessage().contains("Unsupported dataType: BOOLEAN"));
     }
   }
 
@@ -281,7 +281,7 @@ public class IoTDBArithmeticIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s6 from root.sg.d1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Unsupported data type: TEXT"));
+      assertTrue(throwable.getMessage().contains("Unsupported dataType: TEXT"));
     }
   }
 }
