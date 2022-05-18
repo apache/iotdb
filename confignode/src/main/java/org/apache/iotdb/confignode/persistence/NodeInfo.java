@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -29,7 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -79,18 +80,15 @@ public class NodeInfo implements SnapshotProcessor {
           ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor(),
           ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
 
-  private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
-
   // Online ConfigNodes
+  private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
   private final Set<TConfigNodeLocation> onlineConfigNodes;
 
-  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-
-  private AtomicInteger nextDataNodeId = new AtomicInteger(0);
-
   // Online DataNodes
-  private final ConcurrentNavigableMap<Integer, TDataNodeLocation> onlineDataNodes =
-      new ConcurrentSkipListMap();
+  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
+  private AtomicInteger nextDataNodeId = new AtomicInteger(0);
+  private final ConcurrentNavigableMap<Integer, TDataNodeInfo> onlineDataNodes =
+      new ConcurrentSkipListMap<>();
 
   // For remove or draining DataNode
   // TODO: implement
@@ -105,14 +103,15 @@ public class NodeInfo implements SnapshotProcessor {
         new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
   }
 
-  public boolean containsValue(TDataNodeLocation info) {
+  /** @return true if the specific DataNode is now online */
+  public boolean isOnlineDataNode(TDataNodeLocation info) {
     boolean result = false;
     dataNodeInfoReadWriteLock.readLock().lock();
 
     try {
-      for (Map.Entry<Integer, TDataNodeLocation> entry : onlineDataNodes.entrySet()) {
+      for (Map.Entry<Integer, TDataNodeInfo> entry : onlineDataNodes.entrySet()) {
         info.setDataNodeId(entry.getKey());
-        if (entry.getValue().equals(info)) {
+        if (entry.getValue().getLocation().equals(info)) {
           result = true;
           break;
         }
@@ -124,10 +123,6 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  public void put(int dataNodeID, TDataNodeLocation info) {
-    onlineDataNodes.put(dataNodeID, info);
-  }
-
   /**
    * Persist DataNode info
    *
@@ -136,11 +131,12 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public TSStatus registerDataNode(RegisterDataNodeReq registerDataNodeReq) {
     TSStatus result;
-    TDataNodeLocation info = registerDataNodeReq.getLocation();
+    TDataNodeInfo info = registerDataNodeReq.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      onlineDataNodes.put(info.getDataNodeId(), info);
-      if (nextDataNodeId.get() < registerDataNodeReq.getLocation().getDataNodeId()) {
+      onlineDataNodes.put(info.getLocation().getDataNodeId(), info);
+
+      if (nextDataNodeId.get() < info.getLocation().getDataNodeId()) {
         // In this case, at least one Datanode is registered with the leader node,
         // so the nextDataNodeID of the followers needs to be added
         nextDataNodeId.getAndIncrement();
@@ -157,7 +153,7 @@ public class NodeInfo implements SnapshotProcessor {
 
       LOGGER.info(
           "Successfully register DataNode: {}. Current online DataNodes: {}",
-          info,
+          info.getLocation(),
           onlineDataNodes);
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
@@ -172,18 +168,17 @@ public class NodeInfo implements SnapshotProcessor {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsResp getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq) {
-    DataNodeLocationsResp result = new DataNodeLocationsResp();
+  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq) {
+    DataNodeInfosResp result = new DataNodeInfosResp();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
     int dataNodeId = getDataNodeInfoReq.getDataNodeID();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setDataNodeLocations(new HashMap<>(onlineDataNodes));
+        result.setDataNodeInfoMap(new HashMap<>(onlineDataNodes));
       } else {
-
-        result.setDataNodeLocations(
+        result.setDataNodeInfoMap(
             Collections.singletonMap(dataNodeId, onlineDataNodes.get(dataNodeId)));
       }
     } finally {
@@ -204,22 +199,22 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  public List<TDataNodeLocation> getOnlineDataNodes() {
-    List<TDataNodeLocation> result;
+  /**
+   * Return the specific online DataNode
+   *
+   * @param dataNodeId Specific DataNodeId
+   * @return All online DataNodes if dataNodeId equals -1. And return the specific DataNode
+   *     otherwise.
+   */
+  public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
+    List<TDataNodeInfo> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      result = new ArrayList<>(onlineDataNodes.values());
-    } finally {
-      dataNodeInfoReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
-
-  public TDataNodeLocation getOnlineDataNode(int dataNodeId) {
-    TDataNodeLocation result;
-    dataNodeInfoReadWriteLock.readLock().lock();
-    try {
-      result = onlineDataNodes.get(dataNodeId);
+      if (dataNodeId == -1) {
+        result = new ArrayList<>(onlineDataNodes.values());
+      } else {
+        result = Collections.singletonList(onlineDataNodes.get(dataNodeId));
+      }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
@@ -305,18 +300,29 @@ public class NodeInfo implements SnapshotProcessor {
       serializeDrainingDataNodes(dataOutputStream, protocol);
 
       fileOutputStream.flush();
+
+      fileOutputStream.close();
+
+      return tmpFile.renameTo(snapshotFile);
+
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
       dataNodeInfoReadWriteLock.readLock().unlock();
+      for (int retry = 0; retry < 5; retry++) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
     }
-
-    return tmpFile.renameTo(snapshotFile);
   }
 
   private void serializeOnlineDataNode(DataOutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     outputStream.writeInt(onlineDataNodes.size());
-    for (Entry<Integer, TDataNodeLocation> entry : onlineDataNodes.entrySet()) {
+    for (Entry<Integer, TDataNodeInfo> entry : onlineDataNodes.entrySet()) {
       outputStream.writeInt(entry.getKey());
       entry.getValue().write(protocol);
     }
@@ -368,9 +374,9 @@ public class NodeInfo implements SnapshotProcessor {
     int size = inputStream.readInt();
     while (size > 0) {
       int dataNodeId = inputStream.readInt();
-      TDataNodeLocation tDataNodeLocation = new TDataNodeLocation();
-      tDataNodeLocation.read(protocol);
-      onlineDataNodes.put(dataNodeId, tDataNodeLocation);
+      TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+      dataNodeInfo.read(protocol);
+      onlineDataNodes.put(dataNodeId, dataNodeInfo);
       size--;
     }
   }

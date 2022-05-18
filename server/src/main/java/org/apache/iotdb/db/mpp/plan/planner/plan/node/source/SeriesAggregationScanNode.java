@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
@@ -65,7 +66,7 @@ public class SeriesAggregationScanNode extends SourceNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column in
   // result TsBlock
-  private final List<AggregationDescriptor> aggregationDescriptorList;
+  private List<AggregationDescriptor> aggregationDescriptorList;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -88,7 +89,8 @@ public class SeriesAggregationScanNode extends SourceNode {
       List<AggregationDescriptor> aggregationDescriptorList) {
     super(id);
     this.seriesPath = seriesPath;
-    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.aggregationDescriptorList =
+        AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList);
   }
 
   public SeriesAggregationScanNode(
@@ -176,6 +178,10 @@ public class SeriesAggregationScanNode extends SourceNode {
         .collect(Collectors.toList());
   }
 
+  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
+    this.aggregationDescriptorList = aggregationDescriptorList;
+  }
+
   @Override
   public void open() throws Exception {}
 
@@ -194,7 +200,7 @@ public class SeriesAggregationScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSeriesAggregate(this, context);
+    return visitor.visitSeriesAggregationScan(this, context);
   }
 
   @Override

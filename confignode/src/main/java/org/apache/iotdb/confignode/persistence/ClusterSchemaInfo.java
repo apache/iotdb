@@ -160,18 +160,27 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.writeLock().lock();
 
     try {
-      for (Map.Entry<String, TRegionReplicaSet> reqEntry : req.getRegionMap().entrySet()) {
+      for (Map.Entry<String, List<TRegionReplicaSet>> reqEntry : req.getRegionMap().entrySet()) {
         PartialPath partialPathName = new PartialPath(reqEntry.getKey());
         TStorageGroupSchema storageGroupSchema =
             mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
-        switch (reqEntry.getValue().getRegionId().getType()) {
-          case SchemaRegion:
-            storageGroupSchema.getSchemaRegionGroupIds().add(reqEntry.getValue().getRegionId());
-            break;
-          case DataRegion:
-            storageGroupSchema.getDataRegionGroupIds().add(reqEntry.getValue().getRegionId());
-            break;
-        }
+        reqEntry
+            .getValue()
+            .forEach(
+                regionReplicaSet -> {
+                  switch (regionReplicaSet.getRegionId().getType()) {
+                    case SchemaRegion:
+                      storageGroupSchema
+                          .getSchemaRegionGroupIds()
+                          .add(regionReplicaSet.getRegionId());
+                      break;
+                    case DataRegion:
+                      storageGroupSchema
+                          .getDataRegionGroupIds()
+                          .add(regionReplicaSet.getRegionId());
+                      break;
+                  }
+                });
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -460,7 +469,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       buffer.clear();
       for (int retry = 0; retry < 5; retry++) {
-        if (tmpFile.delete()) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
           break;
         } else {
           LOGGER.warn(

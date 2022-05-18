@@ -64,7 +64,7 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
-  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
+  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
   // e.g., a31+/$%#&[]{}3e4, "a.b", 'a.b'
@@ -507,9 +507,6 @@ public class IoTDBConfig {
 
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
-
-  /** Is stat performance of sub-module enable. */
-  private boolean enablePerformanceStat = false;
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -1603,14 +1600,6 @@ public class IoTDBConfig {
 
   void setExternalSortThreshold(int externalSortThreshold) {
     this.externalSortThreshold = externalSortThreshold;
-  }
-
-  public boolean isEnablePerformanceStat() {
-    return enablePerformanceStat;
-  }
-
-  public void setEnablePerformanceStat(boolean enablePerformanceStat) {
-    this.enablePerformanceStat = enablePerformanceStat;
   }
 
   public boolean isEnablePartialInsert() {
