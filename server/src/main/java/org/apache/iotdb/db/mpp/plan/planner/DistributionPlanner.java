@@ -94,11 +94,8 @@ public class DistributionPlanner {
   }
 
   public DistributedQueryPlan planFragments() {
-    PlanNodeUtil.printPlanNode(this.logicalPlan.getRootNode());
     PlanNode rootAfterRewrite = rewriteSource();
-    PlanNodeUtil.printPlanNode(rootAfterRewrite);
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    PlanNodeUtil.printPlanNode(rootWithExchange);
     if (analysis.getStatement() instanceof QueryStatement) {
       analysis
           .getRespDatasetHeader()
