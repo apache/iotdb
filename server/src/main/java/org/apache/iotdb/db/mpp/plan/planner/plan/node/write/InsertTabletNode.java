@@ -537,7 +537,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   int subSerializeSize(int start, int end) {
     int size = 0;
-    size += Long.SIZE;
+    size += Long.BYTES;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
