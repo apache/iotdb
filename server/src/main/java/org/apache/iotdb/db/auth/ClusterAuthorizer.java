@@ -20,19 +20,22 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.AuthorizerConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,9 +43,11 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -52,21 +57,21 @@ public class ClusterAuthorizer {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerConfigTask.class);
 
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
+      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+
   public static TPermissionInfoResp checkPath(
       String username, List<String> allPath, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
-    ConfigNodeClient configNodeClient = null;
     TPermissionInfoResp status = null;
-    try {
-      configNodeClient = new ConfigNodeClient();
+    try (ConfigNodeClient configNodeClient =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
       status = configNodeClient.checkUserPrivileges(req);
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
       if (status == null) {
         status = new TPermissionInfoResp();
       }
@@ -78,17 +83,13 @@ public class ClusterAuthorizer {
   public static TPermissionInfoResp checkUser(String username, String password) {
     TLoginReq req = new TLoginReq(username, password);
     TPermissionInfoResp status = null;
-    ConfigNodeClient configNodeClient = null;
-    try {
-      configNodeClient = new ConfigNodeClient();
+    try (ConfigNodeClient configNodeClient =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
       status = configNodeClient.login(req);
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
       if (status == null) {
         status = new TPermissionInfoResp();
       }
@@ -96,11 +97,10 @@ public class ClusterAuthorizer {
     return status;
   }
 
-  public static SettableFuture<ConfigTaskResult> operatePermission(TAuthorizerReq authorizerReq) {
+  public static SettableFuture<ConfigTaskResult> operatePermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    ConfigNodeClient configNodeClient = null;
     try {
-      configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
       // Get response or throw exception
@@ -115,25 +115,20 @@ public class ClusterAuthorizer {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       logger.error("Failed to connect to config node.");
       future.setException(e);
-    } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return future;
   }
 
-  public static SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
+  public static SettableFuture<ConfigTaskResult> queryPermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    ConfigNodeClient configNodeClient = null;
     TAuthorizerResp authorizerResp;
     try {
-      configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       authorizerResp = configNodeClient.queryPermission(authorizerReq);
       // Get response or throw exception
@@ -175,7 +170,7 @@ public class ClusterAuthorizer {
         future.set(
             new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       logger.error("Failed to connect to config node.");
       future.setException(e);
     } finally {

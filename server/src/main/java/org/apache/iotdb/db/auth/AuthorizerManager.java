@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -438,19 +439,21 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  public SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
+  public SettableFuture<ConfigTaskResult> queryPermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     snapshotLock.writeLock().lock();
     try {
-      return ClusterAuthorizer.queryPermission(authorizerReq);
+      return ClusterAuthorizer.queryPermission(authorizerReq, configNodeClient);
     } finally {
       snapshotLock.writeLock().unlock();
     }
   }
 
-  public SettableFuture<ConfigTaskResult> operatePermission(TAuthorizerReq authorizerReq) {
+  public SettableFuture<ConfigTaskResult> operatePermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     snapshotLock.writeLock().lock();
     try {
-      return ClusterAuthorizer.operatePermission(authorizerReq);
+      return ClusterAuthorizer.operatePermission(authorizerReq, configNodeClient);
     } finally {
       snapshotLock.writeLock().unlock();
     }
