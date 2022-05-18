@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -83,7 +83,7 @@ public class IoTDBSnapshotIT {
         statement.execute("flush");
       }
 
-      DataRegion region = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME));
+      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
       File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot");
       if (snapshotDir.exists()) {
         FileUtils.forceDelete(snapshotDir);
@@ -129,7 +129,7 @@ public class IoTDBSnapshotIT {
         statement.execute("flush");
       }
 
-      DataRegion region = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME));
+      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
       File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot");
       if (!snapshotDir.exists()) {
         snapshotDir.mkdirs();
@@ -172,16 +172,15 @@ public class IoTDBSnapshotIT {
         }
       }
 
-      DataRegion region = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME));
+      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
       File snapshotDir = new File(TestConstant.OUTPUT_DATA_DIR, "snapshot");
       if (!snapshotDir.exists()) {
         snapshotDir.mkdirs();
       }
       new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
-      StorageEngine.getInstance()
+      StorageEngineV2.getInstance()
           .setDataRegion(
-              new PartialPath(SG_NAME),
-              "0",
+              new DataRegionId(0),
               new SnapshotLoader(snapshotDir.getAbsolutePath(), SG_NAME, "0")
                   .loadSnapshotForStateMachine());
 
@@ -236,13 +235,12 @@ public class IoTDBSnapshotIT {
       }
       IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
       statement.execute("merge");
-      DataRegion region = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME));
+      DataRegion region = StorageEngineV2.getInstance().getDataRegion(new DataRegionId(0));
       new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
       region.abortCompaction();
-      StorageEngine.getInstance()
+      StorageEngineV2.getInstance()
           .setDataRegion(
-              new PartialPath(SG_NAME),
-              "0",
+              new DataRegionId(0),
               new SnapshotLoader(snapshotDir.getAbsolutePath(), SG_NAME, "0")
                   .loadSnapshotForStateMachine());
       ChunkCache.getInstance().clear();

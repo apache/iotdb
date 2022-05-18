@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.snapshot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
@@ -57,7 +57,7 @@ public class SnapshotLoader {
               + File.separator
               + storageGroupName,
           dataRegionId,
-          StorageEngine.getInstance().getFileFlushPolicy(),
+          StorageEngineV2.getInstance().getFileFlushPolicy(),
           storageGroupName);
     } catch (Exception e) {
       LOGGER.error("Exception occurs while load snapshot from {}", snapshotPath, e);

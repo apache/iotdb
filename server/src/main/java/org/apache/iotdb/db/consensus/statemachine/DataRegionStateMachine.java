@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -79,11 +79,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
                 region.getDataRegionId())
             .loadSnapshotForStateMachine();
     try {
-      StorageEngine.getInstance()
-          .setDataRegion(
-              new PartialPath(region.getLogicalStorageGroupName()),
-              region.getDataRegionId(),
-              region);
+      StorageEngineV2.getInstance()
+          .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
     } catch (Exception e) {
       logger.error("Exception occurs when replacing data region in storage engine.", e);
     }

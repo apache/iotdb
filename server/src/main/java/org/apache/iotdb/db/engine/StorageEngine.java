@@ -1055,19 +1055,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  public TsFileFlushPolicy getFileFlushPolicy() {
-    return fileFlushPolicy;
-  }
-
-  public void setDataRegion(
-      PartialPath logicalStorageGroup, String dataRegionId, DataRegion dataRegion)
-      throws MetadataException {
-    StorageGroupManager manager =
-        getStorageGroupManager(
-            IoTDB.schemaProcessor.getStorageGroupNodeByPath(logicalStorageGroup));
-    manager.setDataRegion(Integer.parseInt(dataRegionId), dataRegion);
-  }
-
   static class InstanceHolder {
 
     private static final StorageEngine INSTANCE = new StorageEngine();

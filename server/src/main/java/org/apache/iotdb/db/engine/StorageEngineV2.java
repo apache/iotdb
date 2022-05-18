@@ -601,6 +601,20 @@ public class StorageEngineV2 implements IService {
     return dataRegionMap.get(regionId);
   }
 
+  public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
+    if (dataRegionMap.containsKey(regionId)) {
+      DataRegion oldRegion = dataRegionMap.get(regionId);
+      oldRegion.syncCloseAllWorkingTsFileProcessors();
+      ;
+      oldRegion.abortCompaction();
+    }
+    dataRegionMap.put(regionId, newRegion);
+  }
+
+  public TsFileFlushPolicy getFileFlushPolicy() {
+    return fileFlushPolicy;
+  }
+
   static class InstanceHolder {
 
     private static final StorageEngineV2 INSTANCE = new StorageEngineV2();
