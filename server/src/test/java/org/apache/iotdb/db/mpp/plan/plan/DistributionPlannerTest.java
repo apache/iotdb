@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -288,6 +290,55 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(3, plan.getInstances().size());
+  }
+
+  @Test
+  public void testParallelPlanWithAlignedSeries() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query_aligned");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+
+    timeJoinNode.addChild(
+        new AlignedSeriesScanNode(
+            queryId.genPlanNodeId(),
+            new AlignedPath("root.sg.d1", Arrays.asList("s1", "s2")),
+            OrderBy.TIMESTAMP_ASC));
+    timeJoinNode.addChild(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
+            OrderBy.TIMESTAMP_ASC));
+
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(3, plan.getInstances().size());
+  }
+
+  @Test
+  public void testSingleAlignedSeries() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query_aligned");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+
+    timeJoinNode.addChild(
+        new AlignedSeriesScanNode(
+            queryId.genPlanNodeId(),
+            new AlignedPath("root.sg.d22", Arrays.asList("s1", "s2")),
+            OrderBy.TIMESTAMP_ASC));
+
+    LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(1, plan.getInstances().size());
   }
 
   @Test

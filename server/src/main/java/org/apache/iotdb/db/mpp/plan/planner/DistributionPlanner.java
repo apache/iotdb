@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
@@ -332,16 +333,16 @@ public class DistributionPlanner {
       // current TimeJoinNode
       List<SourceNode> sources = new ArrayList<>();
       for (PlanNode child : node.getChildren()) {
-        if (child instanceof SeriesScanNode) {
+        if (child instanceof SeriesSourceNode) {
           // If the child is SeriesScanNode, we need to check whether this node should be seperated
           // into several splits.
-          SeriesScanNode handle = (SeriesScanNode) child;
+          SeriesSourceNode handle = (SeriesSourceNode) child;
           List<TRegionReplicaSet> dataDistribution =
-              analysis.getPartitionInfo(handle.getSeriesPath(), handle.getTimeFilter());
+              analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
           // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
           // SeriesScanNode.
           for (TRegionReplicaSet dataRegion : dataDistribution) {
-            SeriesScanNode split = (SeriesScanNode) handle.clone();
+            SeriesSourceNode split = (SeriesSourceNode) handle.clone();
             split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             split.setRegionReplicaSet(dataRegion);
             sources.add(split);
