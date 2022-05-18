@@ -584,7 +584,7 @@ public class RSchemaRegion implements ISchemaRegion {
               RMeasurementMNode deletedNode;
               try {
                 path = RSchemaUtils.getPathByInnerName(new String(key));
-                String[] nodes = PathUtils.splitPathToDetachedPath(path);
+                String[] nodes = PathUtils.splitPathToDetachedNodes(path);
                 deletedNode = new RMeasurementMNode(path, value, readWriteHandler);
                 atomicInteger.incrementAndGet();
                 try (WriteBatch batch = new WriteBatch()) {

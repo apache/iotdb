@@ -77,7 +77,7 @@ public class ReceiverLogAnalyzerTest {
       Assert.assertEquals(1, map.get(pipe2).size());
       Assert.assertEquals(1, map.get(pipe2).size());
       Assert.assertEquals(PipeStatus.STOP, map.get(pipe2).get(ip2).get(2L));
-      Assert.assertEquals(PipeStatus.RUNNING, map.get(pipe1).get(ip1).get(1L));
+      Assert.assertEquals(PipeStatus.STOP, map.get(pipe1).get(ip1).get(1L));
       Assert.assertEquals(PipeStatus.DROP, map.get(pipe1).get(ip2).get(3L));
     } catch (Exception e) {
       Assert.fail();

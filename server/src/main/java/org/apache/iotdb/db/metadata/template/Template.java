@@ -98,7 +98,7 @@ public class Template {
         // If sublist of measurements has only one item,
         // but it share prefix with other aligned sublist, it will be aligned too
         String[] thisMeasurement =
-            PathUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
+            PathUtils.splitPathToDetachedNodes(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
             joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
         isAlign =
@@ -184,7 +184,7 @@ public class Template {
       if (getPathNodeInTemplate(path) != null) {
         throw new IllegalPathException("Path duplicated: " + path);
       }
-      pathNodes = PathUtils.splitPathToDetachedPath(path);
+      pathNodes = PathUtils.splitPathToDetachedNodes(path);
 
       if (pathNodes.length == 1) {
         prefix = "";
@@ -233,7 +233,7 @@ public class Template {
     if (getPathNodeInTemplate(path) != null) {
       throw new IllegalPathException("Path duplicated: " + path);
     }
-    String[] pathNode = PathUtils.splitPathToDetachedPath(path);
+    String[] pathNode = PathUtils.splitPathToDetachedNodes(path);
     IMNode cur = constructEntityPath(path);
 
     synchronized (this) {
@@ -358,7 +358,7 @@ public class Template {
   }
 
   public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
-    return getPathNodeInTemplate(PathUtils.splitPathToDetachedPath(path));
+    return getPathNodeInTemplate(PathUtils.splitPathToDetachedNodes(path));
   }
 
   private IMNode getPathNodeInTemplate(String[] pathNodes) {
@@ -380,7 +380,7 @@ public class Template {
   }
 
   public boolean isPathExistInTemplate(String path) throws IllegalPathException {
-    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
     if (!directNodes.containsKey(pathNodes[0])) {
       return false;
     }
@@ -400,7 +400,7 @@ public class Template {
   }
 
   public boolean isPathMeasurement(String path) throws MetadataException {
-    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
     if (!directNodes.containsKey(pathNodes[0])) {
       throw new PathNotExistException(path);
     }
@@ -476,7 +476,7 @@ public class Template {
    * @return null if need to add direct node, will never return a measurement.
    */
   private IMNode constructEntityPath(String path) throws IllegalPathException {
-    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
     if (pathNodes.length == 1) {
       return null;
     }
@@ -532,7 +532,7 @@ public class Template {
 
     // If prefix exists and not aligned, it will throw exception
     // Prefix equality will be checked in constructTemplateTree
-    pathNode = PathUtils.splitPathToDetachedPath(measurements[0]);
+    pathNode = PathUtils.splitPathToDetachedNodes(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
     IMNode targetNode = getPathNodeInTemplate(prefix);
     if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
@@ -541,7 +541,7 @@ public class Template {
     }
 
     for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = PathUtils.splitPathToDetachedPath(measurements[i]);
+      pathNode = PathUtils.splitPathToDetachedNodes(measurements[i]);
       leafNodes[i] = pathNode[pathNode.length - 1];
     }
     schema = constructSchemas(leafNodes, dataTypes, encodings, compressors);
@@ -564,7 +564,7 @@ public class Template {
     }
 
     for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = PathUtils.splitPathToDetachedPath(measurements[i]);
+      pathNode = PathUtils.splitPathToDetachedNodes(measurements[i]);
 
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
