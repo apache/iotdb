@@ -26,9 +26,6 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,14 +44,8 @@ public class AuthorizerManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
     authorizerManager = AuthorizerManager.getInstance();
     tPermissionInfoResp = new TPermissionInfoResp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
