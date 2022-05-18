@@ -276,6 +276,10 @@ public class MTreeAboveSGTest {
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false, null);
+    Assert.assertEquals(2, result.left.size());
+    Assert.assertEquals(2, result.right.size());
+
     result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
