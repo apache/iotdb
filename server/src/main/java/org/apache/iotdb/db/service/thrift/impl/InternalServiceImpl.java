@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
@@ -77,7 +78,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -267,6 +267,10 @@ public class InternalServiceImpl implements InternalService.Iface {
   @Override
   public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
     // TODO: Return load balancing messages
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()){
+      // add load balancing message when metric framework is enabled.
+
+    }
     return new THeartbeatResp(req.getHeartbeatTimestamp());
   }
 
