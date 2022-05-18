@@ -57,10 +57,10 @@ else
     echo "can't find $CONFIGNODE_CONF/confignode-env.sh"
 fi
 
-if [ -d ${IOTDB_HOME}/lib ]; then
-LIB_PATH=${IOTDB_HOME}/lib
+if [ -d ${CONFIGNODE_HOME}/lib ]; then
+LIB_PATH=${CONFIGNODE_HOME}/lib
 else
-LIB_PATH=${IOTDB_HOME}/../lib
+LIB_PATH=${CONFIGNODE_HOME}/../lib
 fi
 
 CLASSPATH=""
