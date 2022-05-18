@@ -145,9 +145,13 @@ public class Analyzer {
           return analysis;
         }
 
-        List<Pair<Expression, String>> outputExpressions;
-        Set<Expression> transformExpressions = new LinkedHashSet<>();
-        Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
+        // extract global time filter from query filter and determine if there is a value filter
+        Pair<Filter, Boolean> resultPair = analyzeGlobalTimeFilter(queryStatement);
+        Filter globalTimeFilter = resultPair.left;
+        boolean hasValueFilter = resultPair.right;
+        analysis.setGlobalTimeFilter(globalTimeFilter);
+        analysis.setHasValueFilter(hasValueFilter);
+
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
         //                       <udf(udf(root.sg.d1.s1)),null>]
@@ -173,17 +177,23 @@ public class Analyzer {
         //   transformExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
         //   aggregationExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
-        List<DeviceSchemaInfo> deviceSchemaInfos = new ArrayList<>();
-        // a set that contains all measurement names,
-        Set<String> measurementSet = new HashSet<>();
+        List<Pair<Expression, String>> outputExpressions;
         if (queryStatement.isAlignByDevice()) {
+          Map<String, Set<Expression>> deviceToTransformExpressions = new HashMap<>();
+
+          // all schema infos of each device
+          List<DeviceSchemaInfo> allDeviceSchemaInfos = new ArrayList<>();
+
+          // a set that contains all measurement names,
+          Set<String> measurementSet = new HashSet<>();
+
           Map<String, Set<String>> deviceToMeasurementsMap = new HashMap<>();
           outputExpressions =
               analyzeFrom(
                   queryStatement,
                   schemaTree,
-                  deviceSchemaInfos,
-                  transformExpressions,
+                  allDeviceSchemaInfos,
+                  deviceToTransformExpressions,
                   deviceToMeasurementsMap,
                   measurementSet);
 
@@ -205,82 +215,106 @@ public class Analyzer {
             deviceToMeasurementIndexesMap.put(deviceName, indexes);
           }
           analysis.setDeviceToMeasurementIndexesMap(deviceToMeasurementIndexesMap);
+
+          Map<String, Set<Expression>> deviceToSourceExpressions = new HashMap<>();
+          boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
+
+          if (queryStatement.isAggregationQuery()) {
+            Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
+            Map<String, Set<Expression>> deviceToAggregationTransformExpressions = new HashMap<>();
+
+            for (String deviceName : deviceToTransformExpressions.keySet()) {
+              Set<Expression> transformExpressions = deviceToTransformExpressions.get(deviceName);
+              Set<Expression> aggregationExpressions = new HashSet<>();
+              Set<Expression> aggregationTransformExpressions = new HashSet<>();
+
+              // true if nested expressions and UDFs exist in aggregation function
+              // i.e. select sum(s1 + 1) from root.sg.d1 align by device
+              boolean isHasRawDataInputAggregation =
+                  analyzeAggregation(
+                      transformExpressions,
+                      aggregationExpressions,
+                      aggregationTransformExpressions);
+              deviceToAggregationExpressions.put(deviceName, aggregationExpressions);
+              deviceToAggregationTransformExpressions.put(
+                  deviceName, aggregationTransformExpressions);
+
+              boolean isRawDataSource =
+                  !queryStatement.isAggregationQuery()
+                      || isValueFilterAggregation
+                      || isHasRawDataInputAggregation;
+
+              for (Expression expression : transformExpressions) {
+                updateSource(
+                    expression, deviceToSourceExpressions.get(deviceName), isRawDataSource);
+              }
+            }
+            analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
+            analysis.setDeviceToAggregationTransformExpressions(
+                deviceToAggregationTransformExpressions);
+          }
+
+          if (queryStatement.getWhereCondition() != null) {
+            Map<String, Expression> deviceToQueryFilter =
+                analyzeWhereSplitByDevice(queryStatement, allDeviceSchemaInfos, measurementSet);
+            deviceToQueryFilter.forEach(
+                (deviceName, queryFilter) ->
+                    updateSource(queryFilter, deviceToSourceExpressions.get(deviceName), true));
+            analysis.setDeviceToQueryFilter(deviceToQueryFilter);
+          }
+          analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
+          analysis.setDeviceToTransformExpressions(deviceToTransformExpressions);
         } else {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
-          transformExpressions =
+          Set<Expression> transformExpressions =
               outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet());
-        }
 
-        if (queryStatement.isGroupByLevel()) {
-          // map from grouped expression to set of input expressions
-          Map<Expression, Set<Expression>> groupByLevelExpressions =
-              analyzeGroupByLevel(queryStatement, outputExpressions, transformExpressions);
-          analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+          if (queryStatement.isGroupByLevel()) {
+            // map from grouped expression to set of input expressions
+            Map<Expression, Set<Expression>> groupByLevelExpressions =
+                analyzeGroupByLevel(queryStatement, outputExpressions, transformExpressions);
+            analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+          }
+
+          // true if nested expressions and UDFs exist in aggregation function
+          // i.e. select sum(s1 + 1) from root.sg.d1
+          boolean isHasRawDataInputAggregation = false;
+          if (queryStatement.isAggregationQuery()) {
+            Set<Expression> aggregationExpressions = new HashSet<>();
+            Set<Expression> aggregationTransformExpressions = new HashSet<>();
+            isHasRawDataInputAggregation =
+                analyzeAggregation(
+                    transformExpressions, aggregationExpressions, aggregationTransformExpressions);
+            analysis.setAggregationExpressions(aggregationExpressions);
+            analysis.setAggregationTransformExpressions(aggregationTransformExpressions);
+          }
+
+          // generate sourceExpression according to transformExpressions
+          Set<Expression> sourceExpressions = new LinkedHashSet<>();
+          boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
+          boolean isRawDataSource =
+              !queryStatement.isAggregationQuery()
+                  || isValueFilterAggregation
+                  || isHasRawDataInputAggregation;
+          for (Expression expression : transformExpressions) {
+            updateSource(expression, sourceExpressions, isRawDataSource);
+          }
+
+          if (queryStatement.getWhereCondition() != null) {
+            Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
+
+            // update sourceExpression according to queryFilter
+            updateSource(queryFilter, sourceExpressions, isRawDataSource);
+            analysis.setQueryFilter(queryFilter);
+          }
+          analysis.setSourceExpressions(sourceExpressions);
+          analysis.setTransformExpressions(transformExpressions);
         }
 
         if (queryStatement.isGroupByTime()) {
           analysis.setGroupByTimeParameter(
               new GroupByTimeParameter(queryStatement.getGroupByTimeComponent()));
         }
-
-        // extract global time filter from query filter and determine if there is a value filter
-        Pair<Filter, Boolean> resultPair = analyzeGlobalTimeFilter(queryStatement);
-        Filter globalTimeFilter = resultPair.left;
-        boolean hasValueFilter = resultPair.right;
-        analysis.setGlobalTimeFilter(globalTimeFilter);
-        analysis.setHasValueFilter(hasValueFilter);
-
-        // true if nested expressions and UDFs exist in aggregation function
-        // i.e. select sum(s1 + 1) from root.sg.d1
-        boolean isHasRawDataInputAggregation = false;
-        if (queryStatement.isAggregationQuery()) {
-          Map<String, Set<Expression>> aggregationExpressions = new HashMap<>();
-          Map<String, Set<Expression>> aggregationTransformExpressions = new HashMap<>();
-          for (Expression expression : transformExpressions) {
-            analyzeAggregation(expression, aggregationExpressions, aggregationTransformExpressions);
-          }
-          for (Expression aggregationTransformExpression :
-              aggregationTransformExpressions.values().stream()
-                  .flatMap(Set::stream)
-                  .collect(Collectors.toList())) {
-            if (ExpressionAnalyzer.checkIsNeedTransform(aggregationTransformExpression)) {
-              isHasRawDataInputAggregation = true;
-              break;
-            }
-          }
-          analysis.setAggregationExpressions(aggregationExpressions);
-          analysis.setHasRawDataInputAggregation(isHasRawDataInputAggregation);
-          analysis.setAggregationTransformExpressions(aggregationTransformExpressions);
-        }
-
-        // generate sourceExpression according to transformExpressions
-        boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
-        boolean isRawDataSource =
-            !queryStatement.isAggregationQuery()
-                || isValueFilterAggregation
-                || isHasRawDataInputAggregation;
-        for (Expression expression : transformExpressions) {
-          updateSource(expression, sourceExpressions, isRawDataSource);
-        }
-
-        if (queryStatement.getWhereCondition() != null) {
-          if (queryStatement.isAlignByDevice()) {
-            Map<String, Expression> deviceToQueryFilter =
-                analyzeWhereSplitByDevice(queryStatement, deviceSchemaInfos, measurementSet);
-            deviceToQueryFilter
-                .values()
-                .forEach(
-                    queryFilter -> updateSource(queryFilter, sourceExpressions, isRawDataSource));
-            analysis.setDeviceToQueryFilter(deviceToQueryFilter);
-          } else {
-            Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
-            // update sourceExpression according to queryFilter
-            updateSource(queryFilter, sourceExpressions, isRawDataSource);
-            analysis.setQueryFilter(queryFilter);
-          }
-        }
-        analysis.setSourceExpressions(sourceExpressions);
-        analysis.setTransformExpressions(transformExpressions);
 
         if (queryStatement.getFilterNullComponent() != null) {
           FilterNullParameter filterNullParameter = new FilterNullParameter();
@@ -292,7 +326,7 @@ public class Analyzer {
                 analyzeWithoutNullAlignByDevice(queryStatement, outputExpressions);
           } else {
             resultFilterNullColumns =
-                analyzeWithoutNull(queryStatement, schemaTree, transformExpressions);
+                analyzeWithoutNull(queryStatement, schemaTree, analysis.getTransformExpressions());
           }
           filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
           analysis.setFilterNullParameter(filterNullParameter);
@@ -320,8 +354,16 @@ public class Analyzer {
         analysis.setTypeProvider(typeProvider);
 
         // fetch partition information
+        Set<String> deviceSet = new HashSet<>();
+        if (queryStatement.isAlignByDevice()) {
+          deviceSet = analysis.getDeviceToSourceExpressions().keySet();
+        } else {
+          for (Expression expression : analysis.getSourceExpressions()) {
+            deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
+          }
+        }
         Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-        for (String devicePath : sourceExpressions.keySet()) {
+        for (String devicePath : deviceSet) {
           DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
           queryParam.setDevicePath(devicePath);
           sgNameToQueryParamsMap
@@ -385,7 +427,7 @@ public class Analyzer {
         QueryStatement queryStatement,
         SchemaTree schemaTree,
         List<DeviceSchemaInfo> allDeviceSchemaInfos,
-        Set<Expression> transformExpressions,
+        Map<String, Set<Expression>> deviceToTransformExpressions,
         Map<String, Set<String>> deviceToMeasurementsMap,
         Set<String> measurementSet) {
       // device path patterns in FROM clause
@@ -466,7 +508,9 @@ public class Analyzer {
                   ExpressionAnalyzer.replacePathInSourceExpression(
                       measurementAliasPair.left, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-              transformExpressions.add(tmpExpression);
+              deviceToTransformExpressions
+                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
+                  .add(tmpExpression);
               deviceToMeasurementsMap
                   .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                   .add(measurementAliasPair.left.getExpressionString());
@@ -501,7 +545,9 @@ public class Analyzer {
                   ExpressionAnalyzer.replacePathInSourceExpression(
                       expressionWithoutAlias, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-              transformExpressions.add(tmpExpression);
+              deviceToTransformExpressions
+                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
+                  .add(tmpExpression);
               deviceToMeasurementsMap
                   .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                   .add(expressionWithoutAlias.getExpressionString());
@@ -532,7 +578,9 @@ public class Analyzer {
                     ExpressionAnalyzer.replacePathInSourceExpression(
                         measurementAliasPair.left, measurementPath);
                 typeProvider.setType(tmpExpression.getExpressionString(), dataType);
-                transformExpressions.add(tmpExpression);
+                deviceToTransformExpressions
+                    .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
+                    .add(tmpExpression);
                 deviceToMeasurementsMap
                     .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                     .add(replacedMeasurement.getExpressionString());
@@ -581,34 +629,32 @@ public class Analyzer {
     }
 
     private void updateSource(
-        Expression selectExpr,
-        Map<String, Set<Expression>> sourceExpressions,
-        boolean isRawDataSource) {
-      for (Expression sourceExpression :
-          ExpressionAnalyzer.searchSourceExpressions(selectExpr, isRawDataSource)) {
-        sourceExpressions
-            .computeIfAbsent(
-                ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
-                key -> new LinkedHashSet<>())
-            .add(sourceExpression);
-      }
+        Expression selectExpr, Set<Expression> sourceExpressions, boolean isRawDataSource) {
+      sourceExpressions.addAll(
+          ExpressionAnalyzer.searchSourceExpressions(selectExpr, isRawDataSource));
     }
 
-    private void analyzeAggregation(
-        Expression selectExpr,
-        Map<String, Set<Expression>> aggregationExpressions,
-        Map<String, Set<Expression>> aggregationTransformExpressions) {
-      for (Expression aggregationExpression :
-          ExpressionAnalyzer.searchAggregationExpressions(selectExpr)) {
-        String deviceName =
-            ExpressionAnalyzer.getDeviceNameInSourceExpression(aggregationExpression);
-        aggregationExpressions
-            .computeIfAbsent(deviceName, key -> new HashSet<>())
-            .add(aggregationExpression);
-        aggregationTransformExpressions
-            .computeIfAbsent(deviceName, key -> new HashSet<>())
-            .addAll(aggregationExpression.getExpressions());
+    private boolean analyzeAggregation(
+        Set<Expression> transformExpressions,
+        Set<Expression> aggregationExpressions,
+        Set<Expression> aggregationTransformExpressions) {
+      // true if nested expressions and UDFs exist in aggregation function
+      // i.e. select sum(s1 + 1) from root.sg.d1 align by device
+      boolean isHasRawDataInputAggregation = false;
+      for (Expression expression : transformExpressions) {
+        for (Expression aggregationExpression :
+            ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+          aggregationExpressions.add(aggregationExpression);
+          aggregationTransformExpressions.addAll(aggregationExpression.getExpressions());
+        }
       }
+      for (Expression aggregationTransformExpression : aggregationTransformExpressions) {
+        if (ExpressionAnalyzer.checkIsNeedTransform(aggregationTransformExpression)) {
+          isHasRawDataInputAggregation = true;
+          break;
+        }
+      }
+      return isHasRawDataInputAggregation;
     }
 
     private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {

@@ -53,9 +53,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -111,22 +108,16 @@ public class LogicalPlanner {
 
       if (queryStatement.isAlignByDevice()) {
         Map<String, PlanNode> deviceToSubPlanMap = new HashMap<>();
-        for (String deviceName : analysis.getSourceExpressions().keySet()) {
+        for (String deviceName : analysis.getDeviceToSourceExpressions().keySet()) {
           LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(context);
           subPlanBuilder =
               subPlanBuilder.withNewRoot(
                   visitQueryBody(
                       queryStatement,
-                      Maps.asMap(
-                          Sets.newHashSet(deviceName),
-                          (key) -> analysis.getSourceExpressions().get(key)),
-                      Maps.asMap(
-                          Sets.newHashSet(deviceName),
-                          (key) -> analysis.getAggregationExpressions().get(key)),
-                      Maps.asMap(
-                          Sets.newHashSet(deviceName),
-                          (key) -> analysis.getAggregationTransformExpressions().get(key)),
-                      analysis.getSourceExpressions().get(deviceName),
+                      analysis.getDeviceToSourceExpressions().get(deviceName),
+                      analysis.getDeviceToAggregationExpressions().get(deviceName),
+                      analysis.getDeviceToAggregationTransformExpressions().get(deviceName),
+                      analysis.getDeviceToSourceExpressions().get(deviceName),
                       analysis.getDeviceToQueryFilter() != null
                           ? analysis.getDeviceToQueryFilter().get(deviceName)
                           : null,
@@ -168,9 +159,9 @@ public class LogicalPlanner {
 
     public PlanNode visitQueryBody(
         QueryStatement queryStatement,
-        Map<String, Set<Expression>> sourceExpressions,
-        Map<String, Set<Expression>> aggregationExpressions,
-        Map<String, Set<Expression>> aggregationTransformExpressions,
+        Set<Expression> sourceExpressions,
+        Set<Expression> aggregationExpressions,
+        Set<Expression> aggregationTransformExpressions,
         Set<Expression> transformExpressions,
         Expression queryFilter,
         MPPQueryContext context) {
@@ -191,17 +182,13 @@ public class LogicalPlanner {
             planBuilder =
                 planBuilder.planFilterAndTransform(
                     queryFilter,
-                    aggregationTransformExpressions.values().stream()
-                        .flatMap(Set::stream)
-                        .collect(Collectors.toSet()),
+                    aggregationTransformExpressions,
                     queryStatement.isGroupByTime(),
                     queryStatement.getSelectComponent().getZoneId());
           } else {
             planBuilder =
                 planBuilder.planTransform(
-                    aggregationTransformExpressions.values().stream()
-                        .flatMap(Set::stream)
-                        .collect(Collectors.toSet()),
+                    aggregationTransformExpressions,
                     queryStatement.isGroupByTime(),
                     queryStatement.getSelectComponent().getZoneId());
           }

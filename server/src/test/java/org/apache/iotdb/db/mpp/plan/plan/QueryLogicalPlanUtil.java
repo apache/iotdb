@@ -107,24 +107,24 @@ public class QueryLogicalPlanUtil {
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
-        new SeriesScanNode(
+        new AlignedSeriesScanNode(
             new PlanNodeId("0"),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (AlignedPath) schemaMap.get("root.sg.d2.a"),
             OrderBy.TIMESTAMP_ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("1"),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
             OrderBy.TIMESTAMP_ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("2"),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
             OrderBy.TIMESTAMP_ASC));
     sourceNodeList.add(
-        new AlignedSeriesScanNode(
+        new SeriesScanNode(
             new PlanNodeId("3"),
-            (AlignedPath) schemaMap.get("root.sg.d2.a"),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
             OrderBy.TIMESTAMP_ASC));
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("4"), OrderBy.TIMESTAMP_ASC, sourceNodeList);

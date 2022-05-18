@@ -98,33 +98,28 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planRawDataSource(
-      Map<String, Set<Expression>> deviceNameToSourceExpressions,
-      OrderBy scanOrder,
-      Filter timeFilter) {
+      Set<Expression> sourceExpressions, OrderBy scanOrder, Filter timeFilter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    for (Set<Expression> sourceExpressionList :
-        deviceNameToSourceExpressions.values()) { // for each device
-      List<PartialPath> selectedPaths =
-          sourceExpressionList.stream()
-              .map(expression -> ((TimeSeriesOperand) expression).getPath())
-              .collect(Collectors.toList());
-      List<PartialPath> groupedPaths = MetaUtils.groupAlignedPaths(selectedPaths);
-      for (PartialPath path : groupedPaths) {
-        if (path instanceof MeasurementPath) { // non-aligned series
-          SeriesScanNode seriesScanNode =
-              new SeriesScanNode(
-                  context.getQueryId().genPlanNodeId(), (MeasurementPath) path, scanOrder);
-          seriesScanNode.setTimeFilter(timeFilter);
-          sourceNodeList.add(seriesScanNode);
-        } else if (path instanceof AlignedPath) { // aligned series
-          AlignedSeriesScanNode alignedSeriesScanNode =
-              new AlignedSeriesScanNode(
-                  context.getQueryId().genPlanNodeId(), (AlignedPath) path, scanOrder);
-          alignedSeriesScanNode.setTimeFilter(timeFilter);
-          sourceNodeList.add(alignedSeriesScanNode);
-        } else {
-          throw new IllegalArgumentException("unexpected path type");
-        }
+    List<PartialPath> selectedPaths =
+        sourceExpressions.stream()
+            .map(expression -> ((TimeSeriesOperand) expression).getPath())
+            .collect(Collectors.toList());
+    List<PartialPath> groupedPaths = MetaUtils.groupAlignedPaths(selectedPaths);
+    for (PartialPath path : groupedPaths) {
+      if (path instanceof MeasurementPath) { // non-aligned series
+        SeriesScanNode seriesScanNode =
+            new SeriesScanNode(
+                context.getQueryId().genPlanNodeId(), (MeasurementPath) path, scanOrder);
+        seriesScanNode.setTimeFilter(timeFilter);
+        sourceNodeList.add(seriesScanNode);
+      } else if (path instanceof AlignedPath) { // aligned series
+        AlignedSeriesScanNode alignedSeriesScanNode =
+            new AlignedSeriesScanNode(
+                context.getQueryId().genPlanNodeId(), (AlignedPath) path, scanOrder);
+        alignedSeriesScanNode.setTimeFilter(timeFilter);
+        sourceNodeList.add(alignedSeriesScanNode);
+      } else {
+        throw new IllegalArgumentException("unexpected path type");
       }
     }
 
@@ -133,11 +128,11 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planAggregationSource(
-      Map<String, Set<Expression>> deviceNameToSourceExpressions,
+      Set<Expression> sourceExpressions,
       OrderBy scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
-      Map<String, Set<Expression>> aggregationExpressions,
+      Set<Expression> aggregationExpressions,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       TypeProvider typeProvider) {
     AggregationStep curStep =
@@ -147,57 +142,54 @@ public class LogicalPlanBuilder {
             : AggregationStep.SINGLE;
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    for (Set<Expression> sourceExpressionList :
-        deviceNameToSourceExpressions.values()) { // for each device
-      Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
-      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
-      for (Expression sourceExpression : sourceExpressionList) {
-        AggregationType aggregationFunction =
-            AggregationType.valueOf(
-                ((FunctionExpression) sourceExpression).getFunctionName().toUpperCase());
-        AggregationDescriptor aggregationDescriptor =
-            new AggregationDescriptor(
-                aggregationFunction, curStep, sourceExpression.getExpressions());
-        if (curStep.isOutputPartial()) {
-          updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
-        }
-        PartialPath selectPath =
-            ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
-        if (SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
-          ascendingAggregations
-              .computeIfAbsent(selectPath, key -> new ArrayList<>())
-              .add(aggregationDescriptor);
-        } else {
-          descendingAggregations
-              .computeIfAbsent(selectPath, key -> new ArrayList<>())
-              .add(aggregationDescriptor);
-        }
+    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
+    for (Expression sourceExpression : sourceExpressions) {
+      AggregationType aggregationFunction =
+          AggregationType.valueOf(
+              ((FunctionExpression) sourceExpression).getFunctionName().toUpperCase());
+      AggregationDescriptor aggregationDescriptor =
+          new AggregationDescriptor(
+              aggregationFunction, curStep, sourceExpression.getExpressions());
+      if (curStep.isOutputPartial()) {
+        updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
       }
+      PartialPath selectPath =
+          ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
+      if (SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
+        ascendingAggregations
+            .computeIfAbsent(selectPath, key -> new ArrayList<>())
+            .add(aggregationDescriptor);
+      } else {
+        descendingAggregations
+            .computeIfAbsent(selectPath, key -> new ArrayList<>())
+            .add(aggregationDescriptor);
+      }
+    }
 
-      Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
-          MetaUtils.groupAlignedAggregations(ascendingAggregations);
-      Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
-          MetaUtils.groupAlignedAggregations(descendingAggregations);
-      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
-          groupedAscendingAggregations.entrySet()) {
-        sourceNodeList.add(
-            createAggregationScanNode(
-                pathAggregationsEntry.getKey(),
-                pathAggregationsEntry.getValue(),
-                scanOrder,
-                groupByTimeParameter,
-                timeFilter));
-      }
-      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
-          groupedDescendingAggregations.entrySet()) {
-        sourceNodeList.add(
-            createAggregationScanNode(
-                pathAggregationsEntry.getKey(),
-                pathAggregationsEntry.getValue(),
-                scanOrder,
-                groupByTimeParameter,
-                timeFilter));
-      }
+    Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
+        MetaUtils.groupAlignedAggregations(ascendingAggregations);
+    Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
+        MetaUtils.groupAlignedAggregations(descendingAggregations);
+    for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+        groupedAscendingAggregations.entrySet()) {
+      sourceNodeList.add(
+          createAggregationScanNode(
+              pathAggregationsEntry.getKey(),
+              pathAggregationsEntry.getValue(),
+              scanOrder,
+              groupByTimeParameter,
+              timeFilter));
+    }
+    for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+        groupedDescendingAggregations.entrySet()) {
+      sourceNodeList.add(
+          createAggregationScanNode(
+              pathAggregationsEntry.getKey(),
+              pathAggregationsEntry.getValue(),
+              scanOrder,
+              groupByTimeParameter,
+              timeFilter));
     }
 
     if (curStep.isOutputPartial()) {
@@ -283,7 +275,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planAggregation(
-      Map<String, Set<Expression>> aggregationExpressions,
+      Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
       TypeProvider typeProvider) {
@@ -309,7 +301,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planGroupByTime(
-      Map<String, Set<Expression>> aggregationExpressions,
+      Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep) {
     if (aggregationExpressions == null) {
@@ -327,7 +319,7 @@ public class LogicalPlanBuilder {
 
   private PlanNode createGroupByTimeNode(
       List<PlanNode> children,
-      Map<String, Set<Expression>> aggregationExpressions,
+      Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep) {
     List<AggregationDescriptor> aggregationDescriptorList =
@@ -395,9 +387,8 @@ public class LogicalPlanBuilder {
   }
 
   private List<AggregationDescriptor> constructAggregationDescriptorList(
-      Map<String, Set<Expression>> aggregationExpressions, AggregationStep curStep) {
-    return aggregationExpressions.values().stream()
-        .flatMap(Set::stream)
+      Set<Expression> aggregationExpressions, AggregationStep curStep) {
+    return aggregationExpressions.stream()
         .map(
             expression -> {
               Validate.isTrue(expression instanceof FunctionExpression);

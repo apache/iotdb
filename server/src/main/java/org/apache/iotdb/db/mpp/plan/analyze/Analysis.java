@@ -39,6 +39,10 @@ import java.util.Set;
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common Analysis
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   // Statement
   private Statement statement;
 
@@ -54,23 +58,64 @@ public class Analysis {
   // map from output column name (for every node) to its datatype
   private TypeProvider typeProvider;
 
+  private boolean finishQueryAfterAnalyze;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Query Analysis (used in ALIGN BY TIME)
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   // map from device name to series/aggregation under this device
-  private Map<String, Set<Expression>> sourceExpressions;
+  private Set<Expression> sourceExpressions;
+
+  // input expressions of aggregations to be calculated
+  private Set<Expression> aggregationTransformExpressions;
+
+  // all aggregations that need to be calculated
+  private Set<Expression> aggregationExpressions;
 
   // expression of output column to be calculated
   private Set<Expression> transformExpressions;
 
+  private Expression queryFilter;
+
+  // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
+  private Map<Expression, Set<Expression>> groupByLevelExpressions;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Query Analysis (used in ALIGN BY DEVICE)
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // map from device name to series/aggregation under this device
+  private Map<String, Set<Expression>> deviceToSourceExpressions;
+
+  // input expressions of aggregations to be calculated
+  private Map<String, Set<Expression>> deviceToAggregationTransformExpressions;
+
   // all aggregations that need to be calculated
-  private Map<String, Set<Expression>> aggregationExpressions;
+  private Map<String, Set<Expression>> deviceToAggregationExpressions;
+
+  // expression of output column to be calculated
+  private Map<String, Set<Expression>> deviceToTransformExpressions;
+
+  // map from device name to query filter under this device
+  private Map<String, Expression> deviceToQueryFilter;
+
+  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
+  // not 0 because device is the first column
+  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Query Common Analysis (above DeviceView)
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // indicate is there a value filter
+  private boolean hasValueFilter = false;
 
   // true if nested expressions and UDFs exist in aggregation function
   private boolean isHasRawDataInputAggregation;
 
-  // input expressions of aggregations to be calculated
-  private Map<String, Set<Expression>> aggregationTransformExpressions;
-
-  // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
-  private Map<Expression, Set<Expression>> groupByLevelExpressions;
+  // a global time filter used in `initQueryDataSource` and filter push down
+  private Filter globalTimeFilter;
 
   // parameter of `WITHOUT NULL` clause
   private FilterNullParameter filterNullParameter;
@@ -81,25 +126,8 @@ public class Analysis {
   // parameter of `GROUP BY TIME` clause
   private GroupByTimeParameter groupByTimeParameter;
 
-  private Expression queryFilter;
-
-  // map from device name to query filter under this device (used in ALIGN BY DEVICE)
-  private Map<String, Expression> deviceToQueryFilter;
-
-  // indicate is there a value filter
-  private boolean hasValueFilter = false;
-
-  // a global time filter used in `initQueryDataSource` and filter push down
-  private Filter globalTimeFilter;
-
   // header of result dataset
   private DatasetHeader respDatasetHeader;
-
-  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
-  // not 0 because device is the first column
-  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
-
-  private boolean finishQueryAfterAnalyze;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -171,45 +199,12 @@ public class Analysis {
         || (schemaPartition != null && !schemaPartition.isEmpty());
   }
 
-  public Map<String, Set<Expression>> getSourceExpressions() {
-    return sourceExpressions;
-  }
-
-  public void setSourceExpressions(Map<String, Set<Expression>> sourceExpressions) {
-    this.sourceExpressions = sourceExpressions;
-  }
-
-  public Set<Expression> getTransformExpressions() {
-    return transformExpressions;
-  }
-
-  public void setTransformExpressions(Set<Expression> transformExpressions) {
-    this.transformExpressions = transformExpressions;
-  }
-
-  public Map<String, Set<Expression>> getAggregationExpressions() {
-    return aggregationExpressions;
-  }
-
-  public void setAggregationExpressions(Map<String, Set<Expression>> aggregationExpressions) {
-    this.aggregationExpressions = aggregationExpressions;
-  }
-
   public boolean isHasRawDataInputAggregation() {
     return isHasRawDataInputAggregation;
   }
 
   public void setHasRawDataInputAggregation(boolean hasRawDataInputAggregation) {
     isHasRawDataInputAggregation = hasRawDataInputAggregation;
-  }
-
-  public Map<String, Set<Expression>> getAggregationTransformExpressions() {
-    return aggregationTransformExpressions;
-  }
-
-  public void setAggregationTransformExpressions(
-      Map<String, Set<Expression>> aggregationTransformExpressions) {
-    this.aggregationTransformExpressions = aggregationTransformExpressions;
   }
 
   public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
@@ -283,5 +278,72 @@ public class Analysis {
 
   public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
     return deviceToMeasurementIndexesMap;
+  }
+
+  public Set<Expression> getSourceExpressions() {
+    return sourceExpressions;
+  }
+
+  public void setSourceExpressions(Set<Expression> sourceExpressions) {
+    this.sourceExpressions = sourceExpressions;
+  }
+
+  public Set<Expression> getAggregationTransformExpressions() {
+    return aggregationTransformExpressions;
+  }
+
+  public void setAggregationTransformExpressions(Set<Expression> aggregationTransformExpressions) {
+    this.aggregationTransformExpressions = aggregationTransformExpressions;
+  }
+
+  public Set<Expression> getAggregationExpressions() {
+    return aggregationExpressions;
+  }
+
+  public void setAggregationExpressions(Set<Expression> aggregationExpressions) {
+    this.aggregationExpressions = aggregationExpressions;
+  }
+
+  public Set<Expression> getTransformExpressions() {
+    return transformExpressions;
+  }
+
+  public void setTransformExpressions(Set<Expression> transformExpressions) {
+    this.transformExpressions = transformExpressions;
+  }
+
+  public Map<String, Set<Expression>> getDeviceToSourceExpressions() {
+    return deviceToSourceExpressions;
+  }
+
+  public void setDeviceToSourceExpressions(Map<String, Set<Expression>> deviceToSourceExpressions) {
+    this.deviceToSourceExpressions = deviceToSourceExpressions;
+  }
+
+  public Map<String, Set<Expression>> getDeviceToAggregationTransformExpressions() {
+    return deviceToAggregationTransformExpressions;
+  }
+
+  public void setDeviceToAggregationTransformExpressions(
+      Map<String, Set<Expression>> deviceToAggregationTransformExpressions) {
+    this.deviceToAggregationTransformExpressions = deviceToAggregationTransformExpressions;
+  }
+
+  public Map<String, Set<Expression>> getDeviceToAggregationExpressions() {
+    return deviceToAggregationExpressions;
+  }
+
+  public void setDeviceToAggregationExpressions(
+      Map<String, Set<Expression>> deviceToAggregationExpressions) {
+    this.deviceToAggregationExpressions = deviceToAggregationExpressions;
+  }
+
+  public Map<String, Set<Expression>> getDeviceToTransformExpressions() {
+    return deviceToTransformExpressions;
+  }
+
+  public void setDeviceToTransformExpressions(
+      Map<String, Set<Expression>> deviceToTransformExpressions) {
+    this.deviceToTransformExpressions = deviceToTransformExpressions;
   }
 }
