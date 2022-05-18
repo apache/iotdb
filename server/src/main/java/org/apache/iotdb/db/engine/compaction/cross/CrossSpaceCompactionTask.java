@@ -286,6 +286,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       return false;
     }
     for (TsFileResource tsFileResource : tsFileResourceList) {
+      LOGGER.info("add read lock for {}", tsFileResource);
       tsFileResource.readLock();
       holdReadLockList.add(tsFileResource);
       if (tsFileResource.isCompacting()

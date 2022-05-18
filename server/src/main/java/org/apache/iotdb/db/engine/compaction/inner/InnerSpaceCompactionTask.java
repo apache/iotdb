@@ -59,6 +59,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList tsFileResourceList;
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
+  private TsFileResourceStatus[] originStatus;
 
   public InnerSpaceCompactionTask(
       long timePartition,
@@ -297,17 +298,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public String toString() {
-    return new StringBuilder()
-        .append(fullStorageGroupName)
-        .append("-")
-        .append(timePartition)
-        .append(" task file num is ")
-        .append(selectedTsFileResourceList.size())
-        .append(", files is ")
-        .append(selectedTsFileResourceList)
-        .append(", total compaction count is ")
-        .append(sumOfCompactionCount)
-        .toString();
+    return fullStorageGroupName
+        + "-"
+        + timePartition
+        + " task file num is "
+        + selectedTsFileResourceList.size()
+        + ", files is "
+        + selectedTsFileResourceList
+        + ", total compaction count is "
+        + sumOfCompactionCount;
   }
 
   @Override
@@ -340,7 +339,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       if (isHoldingWriteLock[i]) {
         selectedTsFileResourceList.get(i).writeUnlock();
       }
-      selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
+      selectedTsFileResourceList.get(i).setStatus(originStatus[i]);
     }
   }
 
@@ -349,10 +348,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return false;
     }
+    originStatus = new TsFileResourceStatus[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       resource.readLock();
+      LOGGER.info("Get the read lock of {}", resource);
       isHoldingReadLock[i] = true;
+      originStatus[i] = resource.getStatus();
       if (resource.isCompacting()
           || !resource.isClosed()
           || !resource.getTsFile().exists()
