@@ -225,4 +225,8 @@ public class AggregationNode extends MultiChildNode {
     }
     return deduplicatedDescriptors;
   }
+
+  public String toString() {
+    return String.format("AggregationNode-%s", getPlanNodeId());
+  }
 }

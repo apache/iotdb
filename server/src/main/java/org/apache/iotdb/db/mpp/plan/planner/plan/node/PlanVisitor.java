@@ -74,10 +74,6 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitAggregation(AggregationNode node, C context) {
-    return visitPlan(node, context);
-  }
-
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
     return visitPlan(node, context);
   }

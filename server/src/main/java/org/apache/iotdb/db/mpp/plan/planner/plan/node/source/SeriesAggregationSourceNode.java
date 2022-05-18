@@ -24,13 +24,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 
 import java.util.List;
 
-public abstract class SeriesAggregationSourceNode extends SeriesSourceNode{
+public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column in
   // result TsBlock
   protected List<AggregationDescriptor> aggregationDescriptorList;
 
-  public SeriesAggregationSourceNode(PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
+  public SeriesAggregationSourceNode(
+      PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
   }

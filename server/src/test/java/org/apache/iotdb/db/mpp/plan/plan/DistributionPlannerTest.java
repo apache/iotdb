@@ -50,10 +50,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -61,6 +66,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -293,6 +299,120 @@ public class DistributionPlannerTest {
   }
 
   @Test
+  public void testTimeJoinAggregationSinglePerRegion() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query_time_join_aggregation");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    String d1s1Path = "root.sg.d1.s1";
+    List<AggregationDescriptor> d1s1Descriptors = new ArrayList<>();
+    d1s1Descriptors.add(
+        new AggregationDescriptor(
+            AggregationType.COUNT,
+            AggregationStep.FINAL,
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path)))));
+    timeJoinNode.addChild(
+        new SeriesAggregationScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath(d1s1Path, TSDataType.INT32),
+            d1s1Descriptors));
+
+    String d22s1Path = "root.sg.d22.s1";
+    List<AggregationDescriptor> d22s1Descriptors = new ArrayList<>();
+    d22s1Descriptors.add(
+        new AggregationDescriptor(
+            AggregationType.COUNT,
+            AggregationStep.FINAL,
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath(d22s1Path)))));
+    timeJoinNode.addChild(
+        new SeriesAggregationScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath(d22s1Path, TSDataType.INT32),
+            d22s1Descriptors));
+    Analysis analysis = constructAnalysis();
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, timeJoinNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(3, plan.getInstances().size());
+  }
+
+  @Test
+  public void testTimeJoinAggregationMultiPerRegion() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query_time_join_aggregation");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    String d1s1Path = "root.sg.d1.s1";
+    List<AggregationDescriptor> d1s1Descriptors = new ArrayList<>();
+    d1s1Descriptors.add(
+        new AggregationDescriptor(
+            AggregationType.COUNT,
+            AggregationStep.FINAL,
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path)))));
+    timeJoinNode.addChild(
+        new SeriesAggregationScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath(d1s1Path, TSDataType.INT32),
+            d1s1Descriptors));
+
+    String d333s1Path = "root.sg.d333.s1";
+    List<AggregationDescriptor> d22s1Descriptors = new ArrayList<>();
+    d1s1Descriptors.add(
+        new AggregationDescriptor(
+            AggregationType.COUNT,
+            AggregationStep.FINAL,
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath(d333s1Path)))));
+    timeJoinNode.addChild(
+        new SeriesAggregationScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath(d333s1Path, TSDataType.INT32),
+            d22s1Descriptors));
+    Analysis analysis = constructAnalysis();
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, timeJoinNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(3, plan.getInstances().size());
+  }
+
+  @Test
+  public void testTimeJoinAggregationMultiPerRegion2() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query_time_join_aggregation");
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    String d1s1Path = "root.sg.d333.s1";
+    List<AggregationDescriptor> d1s1Descriptors = new ArrayList<>();
+    d1s1Descriptors.add(
+        new AggregationDescriptor(
+            AggregationType.COUNT,
+            AggregationStep.FINAL,
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path)))));
+    timeJoinNode.addChild(
+        new SeriesAggregationScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath(d1s1Path, TSDataType.INT32),
+            d1s1Descriptors));
+
+    String d333s1Path = "root.sg.d4444.s1";
+    List<AggregationDescriptor> d22s1Descriptors = new ArrayList<>();
+    d1s1Descriptors.add(
+        new AggregationDescriptor(
+            AggregationType.COUNT,
+            AggregationStep.FINAL,
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath(d333s1Path)))));
+    timeJoinNode.addChild(
+        new SeriesAggregationScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath(d333s1Path, TSDataType.INT32),
+            d22s1Descriptors));
+    Analysis analysis = constructAnalysis();
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, timeJoinNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+  }
+
+  @Test
   public void testParallelPlanWithAlignedSeries() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_aligned");
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
@@ -433,6 +553,7 @@ public class DistributionPlannerTest {
     String device1 = "root.sg.d1";
     String device2 = "root.sg.d22";
     String device3 = "root.sg.d333";
+    String device4 = "root.sg.d4444";
 
     DataPartition dataPartition =
         new DataPartition(
@@ -506,9 +627,34 @@ public class DistributionPlannerTest {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> d3DataRegionMap = new HashMap<>();
     d3DataRegionMap.put(new TTimePartitionSlot(), d3DataRegions);
 
+    List<TRegionReplicaSet> d4DataRegions = new ArrayList<>();
+    d4DataRegions.add(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000)))));
+    d4DataRegions.add(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 4),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(41)
+                    .setExternalEndPoint(new TEndPoint("192.0.4.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(42)
+                    .setExternalEndPoint(new TEndPoint("192.0.4.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d4DataRegionMap = new HashMap<>();
+    d4DataRegionMap.put(new TTimePartitionSlot(), d4DataRegions);
+
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device3), d3DataRegionMap);
+    sgPartitionMap.put(executor.getSeriesPartitionSlot(device4), d4DataRegionMap);
 
     dataPartitionMap.put("root.sg", sgPartitionMap);
 

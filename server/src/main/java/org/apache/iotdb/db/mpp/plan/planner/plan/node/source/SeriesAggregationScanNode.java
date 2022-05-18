@@ -286,4 +286,10 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
   public Filter getPartitionTimeFilter() {
     return timeFilter;
   }
+
+  public String toString() {
+    return String.format(
+        "SeriesAggregationScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
+        this.getPlanNodeId(), this.getSeriesPath(), this.getRegionReplicaSet());
+  }
 }

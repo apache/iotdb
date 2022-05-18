@@ -123,7 +123,8 @@ public class AggregationDescriptor {
   }
 
   public AggregationDescriptor deepClone() {
-    return new AggregationDescriptor(this.getAggregationType(), this.step, this.getInputExpressions());
+    return new AggregationDescriptor(
+        this.getAggregationType(), this.step, this.getInputExpressions());
   }
 
   public void serialize(ByteBuffer byteBuffer) {
