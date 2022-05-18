@@ -76,21 +76,21 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    FragmentInstance fi;
-    long minSyncIndex = Long.MAX_VALUE;
-    long currentIndex = -1;
+    PlanNode planNode;
     try {
       if (request instanceof IndexedConsensusRequest) {
-        fi = getFragmentInstance(((IndexedConsensusRequest) request).getRequest());
-        minSyncIndex = ((IndexedConsensusRequest) request).getMinSyncIndex();
-        currentIndex = ((IndexedConsensusRequest) request).getCurrentIndex();
+        planNode =
+            getFragmentInstance(((IndexedConsensusRequest) request).getRequest())
+                .getFragment()
+                .getRoot();
+        if (planNode instanceof InsertNode) {
+          ((InsertNode) planNode)
+              .setCurrentIndex(((IndexedConsensusRequest) request).getCurrentIndex());
+          ((InsertNode) planNode)
+              .setMinSyncIndex(((IndexedConsensusRequest) request).getMinSyncIndex());
+        }
       } else {
-        fi = getFragmentInstance(request);
-      }
-      PlanNode planNode = fi.getFragment().getRoot();
-      if (planNode instanceof InsertNode) {
-        logger.error("minIndex {}", minSyncIndex);
-        logger.error("currentIndex {}", currentIndex);
+        planNode = getFragmentInstance(request).getFragment().getRoot();
       }
       return write(planNode);
     } catch (IllegalArgumentException e) {

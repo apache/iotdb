@@ -138,6 +138,16 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
+  public void setMinSyncIndex(long index) {
+    insertRowNodeList.forEach(plan -> plan.setMinSyncIndex(index));
+  }
+
+  @Override
+  public void setCurrentIndex(long index) {
+    insertRowNodeList.forEach(plan -> plan.setCurrentIndex(index));
+  }
+
+  @Override
   public boolean validateAndSetSchema(SchemaTree schemaTree) {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       if (!insertRowNode.validateAndSetSchema(schemaTree)) {

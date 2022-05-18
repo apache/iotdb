@@ -117,6 +117,16 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
+  public void setMinSyncIndex(long index) {
+    insertTabletNodeList.forEach(plan -> plan.setMinSyncIndex(index));
+  }
+
+  @Override
+  public void setCurrentIndex(long index) {
+    insertTabletNodeList.forEach(plan -> plan.setCurrentIndex(index));
+  }
+
+  @Override
   public boolean validateAndSetSchema(SchemaTree schemaTree) {
     for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
       if (!insertTabletNode.validateAndSetSchema(schemaTree)) {

@@ -68,7 +68,13 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
   protected IDeviceID deviceID;
 
   /** Physical address of data region after splitting */
-  TRegionReplicaSet dataRegionReplicaSet;
+  protected TRegionReplicaSet dataRegionReplicaSet;
+
+  /** used by multi_leader_consensus */
+  protected long minSyncIndex = Long.MAX_VALUE;
+
+  /** used by multi_leader_consensus */
+  protected long currentIndex = -1;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -137,6 +143,22 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
 
   public void setDeviceID(IDeviceID deviceID) {
     this.deviceID = deviceID;
+  }
+
+  public long getMinSyncIndex() {
+    return minSyncIndex;
+  }
+
+  public void setMinSyncIndex(long minSyncIndex) {
+    this.minSyncIndex = minSyncIndex;
+  }
+
+  public long getCurrentIndex() {
+    return currentIndex;
+  }
+
+  public void setCurrentIndex(long currentIndex) {
+    this.currentIndex = currentIndex;
   }
 
   /**
