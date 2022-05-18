@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -35,17 +37,19 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,11 +70,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterPartitionFetcher.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
-  private final ConfigNodeClient client;
 
   private final SeriesPartitionExecutor partitionExecutor;
 
   private PartitionCache partitionCache;
+
+  private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
+      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private static final class ClusterPartitionFetcherHolder {
     private static final ClusterPartitionFetcher INSTANCE = new ClusterPartitionFetcher();
@@ -83,11 +90,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private ClusterPartitionFetcher() {
-    try {
-      client = new ConfigNodeClient();
-    } catch (IoTDBConnectionException e) {
-      throw new StatementAnalyzeException("Couldn't connect config node");
-    }
     this.partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
@@ -98,7 +100,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-    try {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.findAllDevicePaths();
       Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, false);
@@ -113,7 +116,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -121,7 +124,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
-    try {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.findAllDevicePaths();
       Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, true);
@@ -136,7 +140,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
@@ -145,13 +149,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    try {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TDataPartitionResp dataPartitionResp =
           client.getDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
       if (dataPartitionResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionResp);
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getDataPartition():" + e.getMessage());
     }
@@ -160,7 +165,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    try {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
           splitDataPartitionQueryParam(dataPartitionQueryParams, false);
       DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
@@ -174,7 +180,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return dataPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getDataPartition():" + e.getMessage());
     }
@@ -184,13 +190,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     // Do not use data partition cache
-    try {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TDataPartitionResp dataPartitionResp =
           client.getOrCreateDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
       if (dataPartitionResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionResp);
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
@@ -200,7 +207,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    try {
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
           splitDataPartitionQueryParam(dataPartitionQueryParams, true);
       DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
@@ -215,10 +223,19 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return dataPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
+  }
+
+  @Override
+  public void invalidAllCache() {
+    logger.debug("Invalidate partition cache");
+    partitionCache.storageGroupCache.clear();
+    partitionCache.invalidAllDataPartitionCache();
+    partitionCache.invalidAllSchemaPartitionCache();
+    logger.debug("PartitionCache is invalid:{}", partitionCache);
   }
 
   /** get deviceToStorageGroup map */
@@ -235,7 +252,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     boolean firstTryResult = partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup);
     if (!firstTryResult) {
       List<String> storageGroupPathPattern = ROOT_PATH;
-      try {
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TStorageGroupSchemaResp storageGroupSchemaResp =
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
         if (storageGroupSchemaResp.getStatus().getCode()
@@ -276,7 +294,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             }
           }
         }
-      } catch (IoTDBConnectionException | MetadataException e) {
+      } catch (TException | MetadataException | IOException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }
@@ -569,6 +587,30 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       DataPartitionCacheKey dataPartitionCacheKey =
           new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
       dataPartitionCache.invalidate(dataPartitionCacheKey);
+    }
+
+    /** invalid schemaPartitionCache by device */
+    public void invalidAllSchemaPartitionCache() {
+      schemaPartitionCache.invalidateAll();
+    }
+
+    /** invalid dataPartitionCache by seriesPartitionSlot, timePartitionSlot */
+    public void invalidAllDataPartitionCache() {
+      dataPartitionCache.invalidateAll();
+    }
+
+    @Override
+    public String toString() {
+      return "PartitionCache{"
+          + "cacheSize="
+          + cacheSize
+          + ", storageGroupCache="
+          + storageGroupCache
+          + ", schemaPartitionCache="
+          + schemaPartitionCache
+          + ", dataPartitionCache="
+          + dataPartitionCache
+          + '}';
     }
   }
 

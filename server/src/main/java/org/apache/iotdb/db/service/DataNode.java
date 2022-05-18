@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
@@ -27,10 +29,10 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -57,9 +59,9 @@ import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,12 +139,14 @@ public class DataNode implements DataNodeMBean {
   public void joinCluster() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
+    ConfigNodeInfo.getInstance()
+        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
     while (retry > 0) {
       logger.info("start joining the cluster.");
-      try {
-        ConfigNodeClient configNodeClient = new ConfigNodeClient();
+      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+
+        // Set DataNodeLocation
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(config.getDataNodeId());
         location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
@@ -152,8 +156,15 @@ public class DataNode implements DataNodeMBean {
             new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
         location.setConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getConsensusPort()));
-        req.setDataNodeLocation(location);
 
+        // Set DataNodeInfo
+        TDataNodeInfo info = new TDataNodeInfo();
+        info.setLocation(location);
+        info.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
+        info.setMaxMemory(Runtime.getRuntime().totalMemory());
+
+        TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+        req.setDataNodeInfo(info);
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
         // store config node lists from resp
@@ -161,8 +172,7 @@ public class DataNode implements DataNodeMBean {
         for (TConfigNodeLocation configNodeLocation : dataNodeRegisterResp.getConfigNodeList()) {
           configNodeList.add(configNodeLocation.getInternalEndPoint());
         }
-        config.setConfigNodeList(configNodeList);
-        IoTDBStartCheck.getInstance().serializeConfigNodeList(configNodeList);
+        ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeList);
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -180,10 +190,10 @@ public class DataNode implements DataNodeMBean {
         }
       } catch (IOException e) {
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
-      } catch (IoTDBConnectionException e) {
+      } catch (TException e) {
         // read config nodes from system.properties
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
-        IoTDBStartCheck.getInstance().loadConfigNodeList();
+        ConfigNodeInfo.getInstance().loadConfigNodeList();
       }
 
       try {

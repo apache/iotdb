@@ -34,28 +34,6 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <configuration>
-                            <target>
-                                <mkdir dir="target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode"/>
-                                <mkdir dir="target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode"/>
-                                <mkdir dir="target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/lib"/>
-                                <symlink link="${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode/lib" resource="../lib"/>
-                                <symlink link="${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode/lib" resource="../lib"/>
-                            </target>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>${maven.assembly.version}</version>
                 <executions>
@@ -75,6 +53,7 @@
                                 <descriptor>src/assembly/grafana-connector.xml</descriptor>
                                 <descriptor>src/assembly/client-cpp.xml</descriptor>
                                 <descriptor>src/assembly/grafana-plugin.xml</descriptor>
+                                <descriptor>src/assembly/library-udf.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -111,6 +90,7 @@
                                         <include>apache-iotdb-${project.version}-grafana-connector-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-grafana-plugin-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -163,6 +143,12 @@
             <artifactId>influxdb-protocol</artifactId>
             <version>${project.version}</version>
             <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>library-udf</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
         </dependency>
     </dependencies>
 </project>

@@ -36,33 +36,35 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
-
   private final Manager configManager;
+  private final PartitionInfo partitionInfo;
 
   private SeriesPartitionExecutor executor;
 
-  public PartitionManager(Manager configManager) {
+  public PartitionManager(Manager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
+    this.partitionInfo = partitionInfo;
     setSeriesPartitionExecutor();
   }
 
@@ -126,23 +128,37 @@ public class PartitionManager {
    */
   private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> allocateSchemaPartition(
       Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlotsMap) {
+
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap =
+        partitionInfo.getRegionReplicaMap();
 
     for (String storageGroup : noAssignedSchemaPartitionSlotsMap.keySet()) {
+
       List<TSeriesPartitionSlot> noAssignedPartitionSlots =
           noAssignedSchemaPartitionSlotsMap.get(storageGroup);
-      List<TRegionReplicaSet> schemaRegionReplicaSets =
-          partitionInfo.getRegionReplicaSets(
+      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
+      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
+          partitionInfo.getSortedRegionSlotsCounter(
               getClusterSchemaManager()
                   .getRegionGroupIds(storageGroup, TConsensusGroupType.SchemaRegion));
-      Random random = new Random();
 
       Map<TSeriesPartitionSlot, TRegionReplicaSet> allocateResult = new HashMap<>();
-      noAssignedPartitionSlots.forEach(
-          seriesPartitionSlot ->
-              allocateResult.put(
-                  seriesPartitionSlot,
-                  schemaRegionReplicaSets.get(random.nextInt(schemaRegionReplicaSets.size()))));
+      for (TSeriesPartitionSlot seriesPartitionSlot : noAssignedPartitionSlots) {
+        // Do greedy allocation
+        Pair<Long, TConsensusGroupId> bestRegion = regionSlotsCounter.get(0);
+        allocateResult.put(seriesPartitionSlot, regionReplicaMap.get(bestRegion.getRight()));
+
+        // Bubble sort
+        int index = 0;
+        regionSlotsCounter.set(0, new Pair<>(bestRegion.getLeft() + 1, bestRegion.getRight()));
+        while (index < regionSlotsCounter.size() - 1
+            && regionSlotsCounter.get(index).getLeft()
+                > regionSlotsCounter.get(index + 1).getLeft()) {
+          Collections.swap(regionSlotsCounter, index, index + 1);
+          index += 1;
+        }
+      }
 
       result.put(storageGroup, allocateResult);
     }
@@ -218,15 +234,18 @@ public class PartitionManager {
 
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         result = new HashMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap =
+        partitionInfo.getRegionReplicaMap();
 
     for (String storageGroup : noAssignedDataPartitionSlotsMap.keySet()) {
+
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> noAssignedPartitionSlotsMap =
           noAssignedDataPartitionSlotsMap.get(storageGroup);
-      List<TRegionReplicaSet> dataRegionEndPoints =
-          partitionInfo.getRegionReplicaSets(
+      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
+      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
+          partitionInfo.getSortedRegionSlotsCounter(
               getClusterSchemaManager()
                   .getRegionGroupIds(storageGroup, TConsensusGroupType.DataRegion));
-      Random random = new Random();
 
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> allocateResult =
           new HashMap<>();
@@ -234,10 +253,23 @@ public class PartitionManager {
           noAssignedPartitionSlotsMap.entrySet()) {
         allocateResult.put(seriesPartitionEntry.getKey(), new HashMap<>());
         for (TTimePartitionSlot timePartitionSlot : seriesPartitionEntry.getValue()) {
+
+          // Do greedy allocation
+          Pair<Long, TConsensusGroupId> bestRegion = regionSlotsCounter.get(0);
           allocateResult
               .get(seriesPartitionEntry.getKey())
               .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
-              .add(dataRegionEndPoints.get(random.nextInt(dataRegionEndPoints.size())));
+              .add(regionReplicaMap.get(bestRegion.getRight()));
+
+          // Bubble sort
+          int index = 0;
+          regionSlotsCounter.set(0, new Pair<>(bestRegion.getLeft() + 1, bestRegion.getRight()));
+          while (index < regionSlotsCounter.size() - 1
+              && regionSlotsCounter.get(index).getLeft()
+                  > regionSlotsCounter.get(index + 1).getLeft()) {
+            Collections.swap(regionSlotsCounter, index, index + 1);
+            index += 1;
+          }
         }
       }
 
@@ -257,7 +289,7 @@ public class PartitionManager {
         storageGroupWithoutRegion.add(storageGroup);
       }
     }
-    getLoadManager().allocateAndCreateRegions(storageGroupWithoutRegion, consensusGroupType);
+    getLoadManager().initializeRegions(storageGroupWithoutRegion, consensusGroupType);
   }
 
   /** Get all allocated RegionReplicaSets */
@@ -290,6 +322,16 @@ public class PartitionManager {
    */
   public int generateNextRegionGroupId() {
     return partitionInfo.generateNextRegionGroupId();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param groupIds List<TConsensusGroupId>
+   * @return RegionReplicaSet by the specific TConsensusGroupIds
+   */
+  public List<TRegionReplicaSet> getRegionReplicaSets(List<TConsensusGroupId> groupIds) {
+    return partitionInfo.getRegionReplicaSets(groupIds);
   }
 
   private ConsensusManager getConsensusManager() {

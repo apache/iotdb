@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticSubtracti
 
 import java.nio.ByteBuffer;
 
-public class SubtractionExpression extends BinaryExpression {
+public class SubtractionExpression extends ArithmeticBinaryExpression {
 
   public SubtractionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

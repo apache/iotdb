@@ -95,14 +95,14 @@ public class IoTDBSessionSyntaxConventionIT {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
 
-    measurements.add("\"a“（Φ）”b\"");
-    measurements.add("\"a>b\"");
-    measurements.add("'a.b'");
-    measurements.add("'a“（Φ）”b'");
-    measurements.add("'a>b'");
-    measurements.add("a“（Φ）”b");
-    measurements.add("a>b");
-    measurements.add("\\\"a");
+    measurements.add("`\"a“（Φ）”b\"`");
+    measurements.add("`\"a>b\"`");
+    measurements.add("`'a.b'`");
+    measurements.add("`'a“（Φ）”b'`");
+    measurements.add("`'a>b'`");
+    measurements.add("`a“（Φ）”b`");
+    measurements.add("`a>b`");
+    measurements.add("`\\\"a`");
     List<String> values = new ArrayList<>();
 
     for (int i = 0; i < measurements.size(); i++) {
@@ -118,7 +118,7 @@ public class IoTDBSessionSyntaxConventionIT {
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a>b'`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a>b`"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\\\\\"a`"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\\\"a`"));
 
     session.close();
   }

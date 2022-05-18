@@ -86,4 +86,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     // todo implement auto create schema
     return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
   }
+
+  @Override
+  public void invalidAllCache() {}
 }

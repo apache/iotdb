@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class CompareNonEqualTransformer extends CompareBinaryTransformer {
 
@@ -32,21 +31,20 @@ public class CompareNonEqualTransformer extends CompareBinaryTransformer {
   }
 
   @Override
-  protected void checkType() {
-    if ((leftPointReaderDataType == TSDataType.BOOLEAN
-            && rightPointReaderDataType != TSDataType.BOOLEAN)
-        || (leftPointReaderDataType != TSDataType.BOOLEAN
-            && rightPointReaderDataType == TSDataType.BOOLEAN)) {
-      throw new UnSupportedDataTypeException(
-          "left: "
-              + leftPointReaderDataType.toString()
-              + ", right: "
-              + rightPointReaderDataType.toString());
-    }
+  protected Evaluator constructNumberEvaluator() {
+    return () ->
+        Double.compare(
+                castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
+                castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType))
+            != 0;
   }
 
   @Override
-  protected boolean evaluate(double leftOperand, double rightOperand) {
-    return Double.compare(leftOperand, rightOperand) != 0;
+  protected Evaluator constructTextEvaluator() {
+    return () ->
+        compare(
+                leftPointReader.currentBinary().getStringValue(),
+                rightPointReader.currentBinary().getStringValue())
+            != 0;
   }
 }

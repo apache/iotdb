@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
@@ -34,10 +35,13 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionRe
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -46,19 +50,17 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -71,10 +73,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
+
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
   private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
-  private final Map<TConsensusGroupId, TRegionReplicaSet> regionMap;
+  private final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap;
+  // Map<TConsensusGroupId, allocatedSlotsNumber>
+  private final Map<TConsensusGroupId, Long> regionSlotsCounter;
 
   // SchemaPartition read write lock
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
@@ -84,14 +89,12 @@ public class PartitionInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock dataPartitionReadWriteLock;
   private final DataPartition dataPartition;
 
-  // The size of the buffer used for snapshot(temporary value)
-  private final int bufferSize = 10 * 1024 * 1024;
-
   private final String snapshotFileName = "partition_info.bin";
 
-  private PartitionInfo() {
+  public PartitionInfo() {
     this.regionReadWriteLock = new ReentrantReadWriteLock();
-    this.regionMap = new HashMap<>();
+    this.regionReplicaMap = new HashMap<>();
+    this.regionSlotsCounter = new HashMap<>();
 
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.schemaPartition =
@@ -129,9 +132,12 @@ public class PartitionInfo implements SnapshotProcessor {
     try {
       int maxRegionId = Integer.MIN_VALUE;
 
-      for (TRegionReplicaSet regionReplicaSet : req.getRegionMap().values()) {
-        regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
-        maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
+      for (List<TRegionReplicaSet> regionReplicaSets : req.getRegionMap().values()) {
+        for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+          regionReplicaMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+          regionSlotsCounter.put(regionReplicaSet.getRegionId(), 0L);
+          maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
+        }
       }
 
       if (nextRegionGroupId.get() < maxRegionId) {
@@ -158,13 +164,35 @@ public class PartitionInfo implements SnapshotProcessor {
     regionReadWriteLock.writeLock().lock();
     try {
       for (TConsensusGroupId consensusGroupId : req.getConsensusGroupIds()) {
-        regionMap.remove(consensusGroupId);
+        regionReplicaMap.remove(consensusGroupId);
+        regionSlotsCounter.remove(consensusGroupId);
       }
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       regionReadWriteLock.writeLock().unlock();
     }
     return result;
+  }
+
+  /**
+   * Delete StorageGroup
+   *
+   * @param req DeleteRegionsReq
+   */
+  public void deleteStorageGroup(DeleteStorageGroupReq req) {
+    TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+    List<TConsensusGroupId> dataRegionGroupIds = storageGroupSchema.getDataRegionGroupIds();
+    List<TConsensusGroupId> schemaRegionGroupIds = storageGroupSchema.getSchemaRegionGroupIds();
+    DeleteRegionsReq deleteRegionsReq = new DeleteRegionsReq();
+    for (TConsensusGroupId schemaRegionGroupId : schemaRegionGroupIds) {
+      deleteRegionsReq.addConsensusGroupId(schemaRegionGroupId);
+    }
+    for (TConsensusGroupId dataRegionId : dataRegionGroupIds) {
+      deleteRegionsReq.addConsensusGroupId(dataRegionId);
+    }
+    deleteRegions(deleteRegionsReq);
+    deleteDataPartitionMapByStorageGroup(storageGroupSchema.getName());
+    deleteSchemaPartitionMapByStorageGroup(storageGroupSchema.getName());
   }
 
   /**
@@ -196,6 +224,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus createSchemaPartition(CreateSchemaPartitionReq req) {
     schemaPartitionReadWriteLock.writeLock().lock();
+    regionReadWriteLock.writeLock().lock();
 
     try {
       // Allocate SchemaPartition by CreateSchemaPartitionPlan
@@ -204,10 +233,14 @@ public class PartitionInfo implements SnapshotProcessor {
       assignedResult.forEach(
           (storageGroup, partitionSlots) ->
               partitionSlots.forEach(
-                  (seriesPartitionSlot, regionReplicaSet) ->
-                      schemaPartition.createSchemaPartition(
-                          storageGroup, seriesPartitionSlot, regionReplicaSet)));
+                  (seriesPartitionSlot, regionReplicaSet) -> {
+                    schemaPartition.createSchemaPartition(
+                        storageGroup, seriesPartitionSlot, regionReplicaSet);
+                    regionSlotsCounter.computeIfPresent(
+                        regionReplicaSet.getRegionId(), (consensusGroupId, count) -> (count + 1));
+                  }));
     } finally {
+      regionReadWriteLock.writeLock().unlock();
       schemaPartitionReadWriteLock.writeLock().unlock();
     }
 
@@ -218,7 +251,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * Filter no assigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
-   * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
+   * @return Map<StorageGroupName, List < TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
    *     assigned in partitionSlotsMap
    */
   public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlots(
@@ -265,6 +298,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus createDataPartition(CreateDataPartitionReq req) {
     dataPartitionReadWriteLock.writeLock().lock();
+    regionReadWriteLock.writeLock().lock();
 
     try {
       // Allocate DataPartition by CreateDataPartitionPlan
@@ -277,13 +311,18 @@ public class PartitionInfo implements SnapshotProcessor {
                       timePartitionSlotRegionReplicaSets.forEach(
                           ((timePartitionSlot, regionReplicaSets) ->
                               regionReplicaSets.forEach(
-                                  regionReplicaSet ->
-                                      dataPartition.createDataPartition(
-                                          storageGroup,
-                                          seriesPartitionSlot,
-                                          timePartitionSlot,
-                                          regionReplicaSet)))))));
+                                  regionReplicaSet -> {
+                                    dataPartition.createDataPartition(
+                                        storageGroup,
+                                        seriesPartitionSlot,
+                                        timePartitionSlot,
+                                        regionReplicaSet);
+                                    regionSlotsCounter.computeIfPresent(
+                                        regionReplicaSet.getRegionId(),
+                                        (consensusGroupId, count) -> (count + 1));
+                                  }))))));
     } finally {
+      regionReadWriteLock.writeLock().unlock();
       dataPartitionReadWriteLock.writeLock().unlock();
     }
 
@@ -295,7 +334,7 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
    *     List<TTimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
+   * @return Map<StorageGroupName, Map < TSeriesPartitionSlot, List < TTimePartitionSlot>>>,
    *     DataPartitionSlots that is not assigned in partitionSlotsMap
    */
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
@@ -317,7 +356,7 @@ public class PartitionInfo implements SnapshotProcessor {
     regionReadWriteLock.readLock().lock();
     try {
       for (TConsensusGroupId groupId : groupIds) {
-        result.add(regionMap.get(groupId));
+        result.add(regionReplicaMap.get(groupId));
       }
     } finally {
       regionReadWriteLock.readLock().unlock();
@@ -330,11 +369,57 @@ public class PartitionInfo implements SnapshotProcessor {
     List<TRegionReplicaSet> result;
     regionReadWriteLock.readLock().lock();
     try {
-      result = new ArrayList<>(regionMap.values());
+      result = new ArrayList<>(regionReplicaMap.values());
     } finally {
       regionReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  /** @return A copy of regionReplicaMap */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRegionReplicaMap() {
+    Map<TConsensusGroupId, TRegionReplicaSet> result;
+    regionReadWriteLock.readLock().lock();
+    try {
+      result = new HashMap<>(regionReplicaMap);
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** @return The specific Regions that sorted by the number of allocated slots */
+  public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
+      List<TConsensusGroupId> consensusGroupIds) {
+    List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
+    regionReadWriteLock.readLock().lock();
+    try {
+      for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
+        result.add(new Pair<>(regionSlotsCounter.get(consensusGroupId), consensusGroupId));
+      }
+      result.sort(Comparator.comparingLong(Pair::getLeft));
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  private void deleteDataPartitionMapByStorageGroup(String storageGroup) {
+    dataPartitionReadWriteLock.writeLock().lock();
+    try {
+      dataPartition.getDataPartitionMap().remove(storageGroup);
+    } finally {
+      dataPartitionReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void deleteSchemaPartitionMapByStorageGroup(String storageGroup) {
+    schemaPartitionReadWriteLock.writeLock().lock();
+    try {
+      schemaPartition.getSchemaPartitionMap().remove(storageGroup);
+    } finally {
+      schemaPartitionReadWriteLock.writeLock().unlock();
+    }
   }
 
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
@@ -347,32 +432,40 @@ public class PartitionInfo implements SnapshotProcessor {
       return false;
     }
 
+    // prevents temporary files from being damaged and cannot be deleted, which affects the next
+    // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
     lockAllRead();
-    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
-    try {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+        DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataOutputStream)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+
       // serialize nextRegionGroupId
-      byteBuffer.putInt(nextRegionGroupId.get());
+      dataOutputStream.writeInt(nextRegionGroupId.get());
       // serialize regionMap
-      serializeRegionMap(byteBuffer);
+      serializeRegionMap(dataOutputStream, protocol);
       // serialize schemaPartition
-      schemaPartition.serialize(byteBuffer);
+      schemaPartition.serialize(dataOutputStream, protocol);
       // serialize dataPartition
-      dataPartition.serialize(byteBuffer);
+      dataPartition.serialize(dataOutputStream, protocol);
       // write to file
-      try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-          FileChannel fileChannel = fileOutputStream.getChannel()) {
-        byteBuffer.flip();
-        fileChannel.write(byteBuffer);
-      }
+      fileOutputStream.flush();
+      fileOutputStream.close();
       // rename file
       return tmpFile.renameTo(snapshotFile);
     } finally {
       unlockAllRead();
-      byteBuffer.clear();
       // with or without success, delete temporary files anyway
-      tmpFile.delete();
+      for (int retry = 0; retry < 5; retry++) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
     }
   }
 
@@ -389,22 +482,19 @@ public class PartitionInfo implements SnapshotProcessor {
     // no operations are processed at this time
     lockAllWrite();
 
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        FileChannel fileChannel = fileInputStream.getChannel()) {
-      // get buffer from fileChannel
-      fileChannel.read(buffer);
-      buffer.flip();
+        DataInputStream dataInputStream = new DataInputStream(fileInputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataInputStream)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
       clear();
       // start to restore
-      nextRegionGroupId.set(buffer.getInt());
-      deserializeRegionMap(buffer);
-      schemaPartition.deserialize(buffer);
-      dataPartition.deserialize(buffer);
+      nextRegionGroupId.set(dataInputStream.readInt());
+      deserializeRegionMap(dataInputStream, protocol);
+      schemaPartition.deserialize(dataInputStream, protocol);
+      dataPartition.deserialize(dataInputStream, protocol);
     } finally {
       unlockAllWrite();
-      buffer.clear();
     }
   }
 
@@ -442,40 +532,41 @@ public class PartitionInfo implements SnapshotProcessor {
     return schemaPartition;
   }
 
-  private void serializeRegionMap(ByteBuffer buffer) throws TException, IOException {
-    try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(out)) {
-      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-      for (Entry<TConsensusGroupId, TRegionReplicaSet> entry : regionMap.entrySet()) {
-        entry.getKey().write(protocol);
-        entry.getValue().write(protocol);
-      }
-      byte[] toArray = out.toByteArray();
-      buffer.putInt(toArray.length);
-      buffer.put(toArray);
+  @TestOnly
+  public Map<TConsensusGroupId, Long> getRegionSlotsCounter() {
+    return regionSlotsCounter;
+  }
+
+  private void serializeRegionMap(DataOutputStream dataOutputStream, TProtocol protocol)
+      throws TException, IOException {
+    dataOutputStream.writeInt(regionReplicaMap.size());
+    for (TConsensusGroupId consensusGroupId : regionReplicaMap.keySet()) {
+      consensusGroupId.write(protocol);
+      regionReplicaMap.get(consensusGroupId).write(protocol);
+      protocol.writeI64(regionSlotsCounter.get(consensusGroupId));
     }
   }
 
-  private void deserializeRegionMap(ByteBuffer buffer) throws TException, IOException {
-    int length = buffer.getInt();
-    byte[] regionMapBuffer = new byte[length];
-    buffer.get(regionMapBuffer);
-    try (ByteArrayInputStream in = new ByteArrayInputStream(regionMapBuffer);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(in)) {
-      while (in.available() > 0) {
-        TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-        TConsensusGroupId tConsensusGroupId = new TConsensusGroupId();
-        tConsensusGroupId.read(protocol);
-        TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-        tRegionReplicaSet.read(protocol);
-        regionMap.put(tConsensusGroupId, tRegionReplicaSet);
-      }
+  private void deserializeRegionMap(DataInputStream dataInputStream, TProtocol protocol)
+      throws TException, IOException {
+    int size = dataInputStream.readInt();
+    while (size > 0) {
+      TConsensusGroupId tConsensusGroupId = new TConsensusGroupId();
+      tConsensusGroupId.read(protocol);
+      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+      tRegionReplicaSet.read(protocol);
+      Long count = protocol.readI64();
+
+      regionReplicaMap.put(tConsensusGroupId, tRegionReplicaSet);
+      regionSlotsCounter.put(tConsensusGroupId, count);
+      size--;
     }
   }
 
   public void clear() {
     nextRegionGroupId = new AtomicInteger(0);
-    regionMap.clear();
+    regionReplicaMap.clear();
+    regionSlotsCounter.clear();
 
     if (schemaPartition.getSchemaPartitionMap() != null) {
       schemaPartition.getSchemaPartitionMap().clear();
@@ -484,18 +575,5 @@ public class PartitionInfo implements SnapshotProcessor {
     if (dataPartition.getDataPartitionMap() != null) {
       dataPartition.getDataPartitionMap().clear();
     }
-  }
-
-  private static class PartitionInfoHolder {
-
-    private static final PartitionInfo INSTANCE = new PartitionInfo();
-
-    private PartitionInfoHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PartitionInfo getInstance() {
-    return PartitionInfoHolder.INSTANCE;
   }
 }
