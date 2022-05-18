@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.trigger.sink.forward;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ForwardEvent implements Event {
   private final long timestamp;
@@ -38,7 +39,21 @@ public class ForwardEvent implements Event {
 
   public String toJsonString() {
     return String.format(
-        PAYLOAD_FORMATTER, fullPath.getDevice(), fullPath.getMeasurement(), timestamp, value);
+        PAYLOAD_FORMATTER,
+        fullPath.getDevice(),
+        fullPath.getMeasurement(),
+        timestamp,
+        objectToJson(value));
+  }
+
+  public String toJsonString(String device, String measurement) {
+    return String.format(PAYLOAD_FORMATTER, device, measurement, timestamp, objectToJson(value));
+  }
+
+  private static String objectToJson(Object object) {
+    return (object instanceof String || object instanceof Binary)
+        ? ('\"' + object.toString() + '\"')
+        : object.toString();
   }
 
   public long getTimestamp() {

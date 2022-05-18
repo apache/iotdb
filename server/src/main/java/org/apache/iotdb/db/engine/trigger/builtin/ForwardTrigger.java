@@ -78,8 +78,12 @@ public class ForwardTrigger implements Trigger {
     boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
     int poolSize = attributes.getIntOrDefault("poolSize", 200);
     int poolMaxPerRoute = attributes.getIntOrDefault("poolMaxPerRoute", 20);
+    String device = attributes.getStringOrDefault("device", null);
+    String measurement = attributes.getStringOrDefault("measurement", null);
+
     HTTPForwardConfiguration forwardConfig =
-        new HTTPForwardConfiguration(endpoint, stopIfException, poolSize, poolMaxPerRoute);
+        new HTTPForwardConfiguration(
+            endpoint, stopIfException, poolSize, poolMaxPerRoute, device, measurement);
     forwardConfig.checkConfig();
     return forwardConfig;
   }
@@ -97,9 +101,9 @@ public class ForwardTrigger implements Trigger {
     String qos = attributes.getStringOrDefault("qos", "exactly_once");
     int poolSize = attributes.getIntOrDefault("poolSize", 4);
     boolean retain = attributes.getBooleanOrDefault("retain", false);
-    String payloadFormatter =
-        attributes.getStringOrDefault(
-            "payloadFormatter", "FullPath: `fullPath`, timestamp: `timestamp`, value: `value`");
+    String device = attributes.getStringOrDefault("device", null);
+    String measurement = attributes.getStringOrDefault("measurement", null);
+
     MQTTForwardConfiguration forwardConfig =
         new MQTTForwardConfiguration(
             host,
@@ -112,7 +116,9 @@ public class ForwardTrigger implements Trigger {
             qos,
             retain,
             poolSize,
-            stopIfException);
+            stopIfException,
+            device,
+            measurement);
     forwardConfig.checkConfig();
     return forwardConfig;
   }

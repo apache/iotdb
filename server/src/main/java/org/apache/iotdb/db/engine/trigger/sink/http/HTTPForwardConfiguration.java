@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.http;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
@@ -30,17 +32,33 @@ public class HTTPForwardConfiguration implements Configuration {
   private final int poolSize;
   private final int poolMaxPerRoute;
 
+  private final String device;
+  private final String measurement;
+
   public HTTPForwardConfiguration(
-      String endpoint, boolean stopIfException, int poolSize, int poolMaxPerRoute) {
+      String endpoint,
+      boolean stopIfException,
+      int poolSize,
+      int poolMaxPerRoute,
+      String device,
+      String measurement) {
     this.endpoint = endpoint;
     this.stopIfException = stopIfException;
     this.poolSize = poolSize;
     this.poolMaxPerRoute = poolMaxPerRoute;
+    this.device = device;
+    this.measurement = measurement;
   }
 
   public void checkConfig() throws SinkException {
     if (endpoint == null || endpoint.isEmpty()) {
       throw new SinkException("HTTP config item error");
+    } else if (device != null || measurement != null) {
+      try {
+        new PartialPath(device, measurement);
+      } catch (IllegalPathException e) {
+        throw new SinkException("HTTP config item error", e);
+      }
     }
   }
 
@@ -58,5 +76,13 @@ public class HTTPForwardConfiguration implements Configuration {
 
   public int getPoolMaxPerRoute() {
     return poolMaxPerRoute;
+  }
+
+  public String getDevice() {
+    return device;
+  }
+
+  public String getMeasurement() {
+    return measurement;
   }
 }

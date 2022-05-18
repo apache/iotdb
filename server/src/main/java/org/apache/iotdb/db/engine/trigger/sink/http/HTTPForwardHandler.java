@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.http;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 import org.apache.iotdb.db.engine.trigger.utils.HTTPConnectionPool;
@@ -54,17 +53,8 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
 
   private static synchronized void openClient(int maxTotal, int maxPerRoute) {
     if (referenceCount++ == 0) {
-      PoolingHttpClientConnectionManager connectionManager = HTTPConnectionPool.getInstance();
-      // Set the max number of connections
-      connectionManager.setMaxTotal(
-          Math.min(
-              maxTotal, IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPoolSize()));
-      // Set the maximum number of connections per host and the specified number of connections
-      // per website, which will not affect the access of other websites
-      connectionManager.setDefaultMaxPerRoute(
-          Math.min(
-              maxPerRoute,
-              IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPOOLMaxPerRoute()));
+      PoolingHttpClientConnectionManager connectionManager =
+          HTTPConnectionPool.getInstance(maxTotal, maxPerRoute);
       client = HttpClients.custom().setConnectionManager(connectionManager).build();
     }
   }
@@ -90,7 +80,13 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
   public void onEvent(HTTPForwardEvent event) throws SinkException {
     CloseableHttpResponse response = null;
     try {
-      request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
+      String device = configuration.getDevice();
+      String measurement = configuration.getMeasurement();
+      if (device != null && measurement != null) {
+        request.setEntity(new StringEntity("[" + event.toJsonString(device, measurement) + "]"));
+      } else {
+        request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
+      }
       response = client.execute(request);
       if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
         throw new SinkException(response.getStatusLine().toString());
@@ -116,8 +112,16 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
     CloseableHttpResponse response = null;
     try {
       StringBuilder sb = new StringBuilder();
-      for (HTTPForwardEvent event : events) {
-        sb.append(event.toJsonString()).append(", ");
+      String device = configuration.getDevice();
+      String measurement = configuration.getMeasurement();
+      if (device != null && measurement != null) {
+        for (HTTPForwardEvent event : events) {
+          sb.append(event.toJsonString(device, measurement)).append(", ");
+        }
+      } else {
+        for (HTTPForwardEvent event : events) {
+          sb.append(event.toJsonString()).append(", ");
+        }
       }
       sb.replace(sb.lastIndexOf(", "), sb.length(), "");
       request.setEntity(new StringEntity("[" + sb + "]"));

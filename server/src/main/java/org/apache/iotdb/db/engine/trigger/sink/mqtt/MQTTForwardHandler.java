@@ -61,11 +61,21 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
   @Override
   public void onEvent(MQTTForwardEvent event) throws SinkException {
     try {
-      connectionPool.publish(
-          configuration.getTopic(),
-          event.toJsonString().getBytes(),
-          configuration.getQos(),
-          configuration.isRetain());
+      String device = configuration.getDevice();
+      String measurement = configuration.getMeasurement();
+      if (device != null && measurement != null) {
+        connectionPool.publish(
+            configuration.getTopic(),
+            ("[" + event.toJsonString(device, measurement) + "]").getBytes(),
+            configuration.getQos(),
+            configuration.isRetain());
+      } else {
+        connectionPool.publish(
+            configuration.getTopic(),
+            ("[" + event.toJsonString() + "]").getBytes(),
+            configuration.getQos(),
+            configuration.isRetain());
+      }
     } catch (Exception e) {
       if (configuration.isStopIfException()) {
         throw new SinkException("MQTT Forward Exception", e);
@@ -76,11 +86,19 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
 
   @Override
   public void onEvent(List<MQTTForwardEvent> events) throws SinkException {
-    StringBuilder sb = new StringBuilder();
-    for (MQTTForwardEvent event : events) {
-      sb.append(event.toJsonString()).append(", ");
+    StringBuilder sb = new StringBuilder().append("[");
+    String device = configuration.getDevice();
+    String measurement = configuration.getMeasurement();
+    if (device != null && measurement != null) {
+      for (MQTTForwardEvent event : events) {
+        sb.append(event.toJsonString(device, measurement)).append(", ");
+      }
+    } else {
+      for (MQTTForwardEvent event : events) {
+        sb.append(event.toJsonString()).append(", ");
+      }
     }
-    sb.replace(sb.lastIndexOf(", "), sb.length(), "");
+    sb.replace(sb.lastIndexOf(", "), sb.length(), "").append("]");
     try {
       connectionPool.publish(
           configuration.getTopic(),
