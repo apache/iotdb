@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
-import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -375,11 +374,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TPermissionInfoResp login(TLoginReq req) throws IoTDBConnectionException {
+  public TSStatus login(TLoginReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TPermissionInfoResp status = client.login(req);
-        if (!updateConfigNodeLeader(status.getStatus())) {
+        TSStatus status = client.login(req);
+        if (!updateConfigNodeLeader(status)) {
           return status;
         }
       } catch (TException e) {
@@ -390,12 +389,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
-      throws IoTDBConnectionException {
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TPermissionInfoResp status = client.checkUserPrivileges(req);
-        if (!updateConfigNodeLeader(status.getStatus())) {
+        TSStatus status = client.checkUserPrivileges(req);
+        if (!updateConfigNodeLeader(status)) {
           return status;
         }
       } catch (TException e) {
