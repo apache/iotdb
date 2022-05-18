@@ -285,18 +285,23 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return false;
     }
-    for (TsFileResource tsFileResource : tsFileResourceList) {
-      LOGGER.info("add read lock for {}", tsFileResource);
-      tsFileResource.readLock();
-      holdReadLockList.add(tsFileResource);
-      if (tsFileResource.isCompacting()
-          || !tsFileResource.isClosed()
-          || !tsFileResource.getTsFile().exists()
-          || tsFileResource.isDeleted()) {
-        releaseAllLock();
-        return false;
+    try {
+      for (TsFileResource tsFileResource : tsFileResourceList) {
+        LOGGER.info("add read lock for {}", tsFileResource);
+        tsFileResource.readLock();
+        holdReadLockList.add(tsFileResource);
+        if (tsFileResource.isCompacting()
+            || !tsFileResource.isClosed()
+            || !tsFileResource.getTsFile().exists()
+            || tsFileResource.isDeleted()) {
+          releaseAllLock();
+          return false;
+        }
+        tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
       }
-      tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
+    } catch (Throwable e) {
+      releaseAllLock();
+      throw e;
     }
     return true;
   }

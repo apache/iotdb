@@ -348,26 +348,31 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return false;
     }
-    originStatus = new TsFileResourceStatus[selectedTsFileResourceList.size()];
-    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-      TsFileResource resource = selectedTsFileResourceList.get(i);
-      resource.readLock();
-      LOGGER.info("Get the read lock of {}", resource);
-      isHoldingReadLock[i] = true;
-      originStatus[i] = resource.getStatus();
-      if (resource.isCompacting()
-          || !resource.isClosed()
-          || !resource.getTsFile().exists()
-          || resource.isDeleted()) {
-        // this source file cannot be compacted
-        // release the lock of locked files, and return
-        releaseFileLocksAndResetMergingStatus();
-        return false;
+    try {
+      originStatus = new TsFileResourceStatus[selectedTsFileResourceList.size()];
+      for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+        TsFileResource resource = selectedTsFileResourceList.get(i);
+        resource.readLock();
+        LOGGER.info("Get the read lock of {}", resource);
+        isHoldingReadLock[i] = true;
+        originStatus[i] = resource.getStatus();
+        if (resource.isCompacting()
+            || !resource.isClosed()
+            || !resource.getTsFile().exists()
+            || resource.isDeleted()) {
+          // this source file cannot be compacted
+          // release the lock of locked files, and return
+          releaseFileLocksAndResetMergingStatus();
+          return false;
+        }
       }
-    }
 
-    for (TsFileResource resource : selectedTsFileResourceList) {
-      resource.setStatus(TsFileResourceStatus.COMPACTING);
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        resource.setStatus(TsFileResourceStatus.COMPACTING);
+      }
+    } catch (Throwable e) {
+      releaseFileLocksAndResetMergingStatus();
+      throw e;
     }
     return true;
   }
