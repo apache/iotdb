@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregationNode extends ProcessNode {
+public class AggregationNode extends MultiChildNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
@@ -52,8 +52,6 @@ public class AggregationNode extends ProcessNode {
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
   protected OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
-
-  protected List<PlanNode> children;
 
   public AggregationNode(
       PlanNodeId id,
@@ -67,8 +65,7 @@ public class AggregationNode extends ProcessNode {
       List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter) {
-    super(id);
-    this.children = children;
+    super(id, children);
     this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
     this.groupByTimeParameter = groupByTimeParameter;
   }
@@ -81,10 +78,9 @@ public class AggregationNode extends ProcessNode {
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter) {
-    super(id);
+    super(id, new ArrayList<>());
     this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
     this.groupByTimeParameter = groupByTimeParameter;
-    this.children = new ArrayList<>();
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {

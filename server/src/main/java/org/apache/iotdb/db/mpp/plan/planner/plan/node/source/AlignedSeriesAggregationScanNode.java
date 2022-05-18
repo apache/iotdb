@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
@@ -44,14 +45,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class AlignedSeriesAggregationScanNode extends SourceNode {
+public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
   // The paths of the target series which will be aggregated.
   private final AlignedPath alignedPath;
-
-  // The list of aggregate functions, each AggregateDescriptor will be output as one column in
-  // result TsBlock
-  private final List<AggregationDescriptor> aggregationDescriptorList;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -72,9 +69,8 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
       PlanNodeId id,
       AlignedPath alignedPath,
       List<AggregationDescriptor> aggregationDescriptorList) {
-    super(id);
+    super(id, aggregationDescriptorList);
     this.alignedPath = alignedPath;
-    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   public AlignedSeriesAggregationScanNode(
@@ -103,10 +99,6 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
 
   public AlignedPath getAlignedPath() {
     return alignedPath;
-  }
-
-  public List<AggregationDescriptor> getAggregationDescriptorList() {
-    return aggregationDescriptorList;
   }
 
   public OrderBy getScanOrder() {
@@ -269,5 +261,15 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
         timeFilter,
         groupByTimeParameter,
         regionReplicaSet);
+  }
+
+  @Override
+  public PartialPath getPartitionPath() {
+    return alignedPath;
+  }
+
+  @Override
+  public Filter getPartitionTimeFilter() {
+    return timeFilter;
   }
 }

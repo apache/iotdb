@@ -122,6 +122,10 @@ public class AggregationDescriptor {
     this.step = step;
   }
 
+  public AggregationDescriptor deepClone() {
+    return new AggregationDescriptor(this.getAggregationType(), this.step, this.getInputExpressions());
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(aggregationType.ordinal(), byteBuffer);
     step.serialize(byteBuffer);
