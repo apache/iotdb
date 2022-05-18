@@ -49,6 +49,9 @@ public class TsFileRepairTool {
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public static void main(String[] args) throws WriteProcessException, IOException {
+    if (args.length != 0) {
+      logger.warn("Param is uncessary.");
+    }
     System.out.println("Start repairing...");
     // get seq data dirs
     List<String> seqDataDirs =

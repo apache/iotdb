@@ -29,7 +29,7 @@ pushd %~dp0..\..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.utils.repair.TsFileRepairTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
