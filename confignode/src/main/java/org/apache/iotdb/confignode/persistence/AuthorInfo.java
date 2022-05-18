@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
@@ -397,13 +397,13 @@ public class AuthorInfo implements SnapshotProcessor {
    */
   public void invalidateCache(ConfigNodeProcedureEnv env, String username, String roleName)
       throws IOException, TException {
-    List<TDataNodeLocation> allDataNodes =
-        env.getConfigManager().getNodeManager().getOnlineDataNodes();
+    List<TDataNodeInfo> allDataNodes =
+        env.getConfigManager().getNodeManager().getOnlineDataNodes(-1);
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
     req.setUsername(username);
     req.setRoleName(roleName);
-    for (TDataNodeLocation dataNodeLocation : allDataNodes) {
-      env.getDataNodeClient(dataNodeLocation).invalidatePermissionCache(req);
+    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
+      env.getDataNodeClient(dataNodeInfo.getLocation()).invalidatePermissionCache(req);
     }
   }
 
