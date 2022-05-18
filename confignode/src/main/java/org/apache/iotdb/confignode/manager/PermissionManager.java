@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -59,7 +60,11 @@ public class PermissionManager {
     TSStatus status = getConsensusManager().write(authorReq).getStatus();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
-        authorInfo.invalidateCache(env, authorReq.getUserName(), authorReq.getRoleName());
+        // If the permissions change, clear the cache content affected by the operation
+        if (authorReq.getAuthorType() != ConfigRequestType.CreateUser
+            || authorReq.getAuthorType() != ConfigRequestType.CreateRole) {
+          authorInfo.invalidateCache(env, authorReq.getUserName(), authorReq.getRoleName());
+        }
       } catch (IOException | TException e) {
         logger.error(
             "Failed to initialize cache,the initialization operation is {}",

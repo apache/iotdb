@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -375,6 +376,8 @@ public class AuthorizerManager implements IAuthorizer {
         if (!user.checkPrivilege(path, permission)) {
           for (String roleName : user.getRoleList()) {
             Role role = roleCache.getIfPresent(roleName);
+            // It is detected that the role of the user does not exist in the cache, indicating that
+            // the permission information of the role has changed, and the user is initialized.
             if (role == null) {
               invalidateCache(username, "");
               status = false;
@@ -419,6 +422,7 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
+  /** cache user */
   User cacheUser(String username) {
     User user = new User();
     List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
@@ -428,7 +432,7 @@ public class AuthorizerManager implements IAuthorizer {
     for (int i = 0; i < privilegeList.size(); i++) {
       String path = privilegeList.get(i);
       String privilege = privilegeList.get(++i);
-      pathPrivilegeList.add(user.toPathPrivilege(path, privilege));
+      pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
@@ -436,6 +440,7 @@ public class AuthorizerManager implements IAuthorizer {
     return user;
   }
 
+  /** cache role */
   Role cacheRole(String roleName) {
     Role role = new Role();
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
@@ -444,12 +449,22 @@ public class AuthorizerManager implements IAuthorizer {
     for (int i = 0; i < privilegeList.size(); i++) {
       String path = privilegeList.get(i);
       String privilege = privilegeList.get(++i);
-      pathPrivilegeList.add(role.toPathPrivilege(path, privilege));
+      pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     role.setPrivilegeList(pathPrivilegeList);
     return role;
   }
 
+  /**
+   * Initialize user and role cache information.
+   *
+   * <p>If the permission information of the role changes, only the role cache information is
+   * cleared. During permission checking, if the role belongs to a user, the user will be
+   * initialized.
+   *
+   * @param username
+   * @param roleName
+   */
   public void invalidateCache(String username, String roleName) {
     if (userCache.getIfPresent(username) != null) {
       userCache.invalidate(username);
@@ -461,5 +476,24 @@ public class AuthorizerManager implements IAuthorizer {
     if (roleCache.getIfPresent(roleName) != null) {
       roleCache.invalidate(roleName);
     }
+  }
+
+  /**
+   * Convert user privilege information obtained from confignode to PathPrivilege
+   *
+   * @param path permission path
+   * @param privilege privilegeIds
+   * @return
+   */
+  private PathPrivilege toPathPrivilege(String path, String privilege) {
+    PathPrivilege pathPrivilege = new PathPrivilege();
+    String[] privileges = privilege.replace(" ", "").split(",");
+    Set<Integer> privilegeIds = new HashSet<>();
+    for (String p : privileges) {
+      privilegeIds.add(Integer.parseInt(p));
+    }
+    pathPrivilege.setPrivileges(privilegeIds);
+    pathPrivilege.setPath(path);
+    return pathPrivilege;
   }
 }

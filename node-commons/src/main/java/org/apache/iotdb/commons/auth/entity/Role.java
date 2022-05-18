@@ -27,7 +27,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -90,18 +89,6 @@ public class Role {
 
   public boolean checkPrivilege(String path, int privilegeId) throws AuthException {
     return AuthUtils.checkPrivilege(path, privilegeId, privilegeList);
-  }
-
-  public PathPrivilege toPathPrivilege(String path, String privilege) {
-    PathPrivilege pathPrivilege = new PathPrivilege();
-    String[] privileges = privilege.replace(" ", "").split(",");
-    Set<Integer> privilegeIds = new HashSet<>();
-    for (String p : privileges) {
-      privilegeIds.add(Integer.parseInt(p));
-    }
-    pathPrivilege.setPrivileges(privilegeIds);
-    pathPrivilege.setPath(path);
-    return pathPrivilege;
   }
 
   @Override
