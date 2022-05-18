@@ -44,9 +44,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode implements IConsensusRequest {
-  /** this insert node doesn't need to participate in consensus */
+  /** this insert node doesn't need to participate in multi-leader consensus */
   public static final long NO_CONSENSUS_INDEX = -1;
-  /** no consensus, all insert nodes can be safely deleted */
+  /** no multi-leader consensus, all insert nodes can be safely deleted */
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
   /**
