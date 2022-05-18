@@ -35,6 +35,7 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -107,7 +108,7 @@ public class MTreeAboveSGTest {
       Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a")).left;
       Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root")).left;
       assertEquals(new HashSet<>(), result1);
-      assertEquals(new HashSet<>(Collections.emptyList()), result2);
+      assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
       assertEquals(new HashSet<>(Collections.singletonList("a")), result3);
 
       // if child node is nll   will return  null HashSet
