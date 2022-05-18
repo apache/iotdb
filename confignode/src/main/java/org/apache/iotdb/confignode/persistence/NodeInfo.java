@@ -300,12 +300,23 @@ public class NodeInfo implements SnapshotProcessor {
       serializeDrainingDataNodes(dataOutputStream, protocol);
 
       fileOutputStream.flush();
+
+      fileOutputStream.close();
+
+      return tmpFile.renameTo(snapshotFile);
+
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
       dataNodeInfoReadWriteLock.readLock().unlock();
+      for (int retry = 0; retry < 5; retry++) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
     }
-
-    return tmpFile.renameTo(snapshotFile);
   }
 
   private void serializeOnlineDataNode(DataOutputStream outputStream, TProtocol protocol)
