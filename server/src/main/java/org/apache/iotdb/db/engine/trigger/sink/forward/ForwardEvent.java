@@ -46,10 +46,6 @@ public class ForwardEvent implements Event {
         objectToJson(value));
   }
 
-  public String toJsonString(String device, String measurement) {
-    return String.format(PAYLOAD_FORMATTER, device, measurement, timestamp, objectToJson(value));
-  }
-
   private static String objectToJson(Object object) {
     return (object instanceof String || object instanceof Binary)
         ? ('\"' + object.toString() + '\"')

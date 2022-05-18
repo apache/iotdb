@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
@@ -40,9 +38,6 @@ public class MQTTForwardConfiguration implements Configuration {
   private final int poolSize;
   private final boolean stopIfException;
 
-  private final String device;
-  private final String measurement;
-
   public MQTTForwardConfiguration(
       String host,
       int port,
@@ -54,9 +49,7 @@ public class MQTTForwardConfiguration implements Configuration {
       String qos,
       boolean retain,
       int poolSize,
-      boolean stopIfException,
-      String device,
-      String measurement)
+      boolean stopIfException)
       throws SinkException {
     this.host = host;
     this.port = port;
@@ -69,8 +62,6 @@ public class MQTTForwardConfiguration implements Configuration {
     this.retain = retain;
     this.poolSize = poolSize;
     this.stopIfException = stopIfException;
-    this.device = device;
-    this.measurement = measurement;
   }
 
   private static QoS parseQoS(String qos) throws SinkException {
@@ -98,12 +89,6 @@ public class MQTTForwardConfiguration implements Configuration {
         || topic == null
         || topic.isEmpty()) {
       throw new SinkException("MQTT config item error");
-    } else if (device != null || measurement != null) {
-      try {
-        new PartialPath(device, measurement);
-      } catch (IllegalPathException e) {
-        throw new SinkException("MQTT config item error", e);
-      }
     }
   }
 
@@ -149,13 +134,5 @@ public class MQTTForwardConfiguration implements Configuration {
 
   public boolean isStopIfException() {
     return stopIfException;
-  }
-
-  public String getDevice() {
-    return device;
-  }
-
-  public String getMeasurement() {
-    return measurement;
   }
 }

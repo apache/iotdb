@@ -65,21 +65,11 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
   @Override
   public void onEvent(MQTTForwardEvent event) throws SinkException {
     try {
-      String device = config.getDevice();
-      String measurement = config.getMeasurement();
-      if (device != null && measurement != null) {
-        connectionPool.publish(
-            config.getTopic(),
-            ("[" + event.toJsonString(device, measurement) + "]").getBytes(),
-            config.getQos(),
-            config.isRetain());
-      } else {
-        connectionPool.publish(
-            config.getTopic(),
-            ("[" + event.toJsonString() + "]").getBytes(),
-            config.getQos(),
-            config.isRetain());
-      }
+      connectionPool.publish(
+          config.getTopic(),
+          ("[" + event.toJsonString() + "]").getBytes(),
+          config.getQos(),
+          config.isRetain());
     } catch (Exception e) {
       if (config.isStopIfException()) {
         throw new SinkException("MQTT Forward Exception", e);
@@ -91,16 +81,8 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
   @Override
   public void onEvent(List<MQTTForwardEvent> events) throws SinkException {
     StringBuilder sb = new StringBuilder().append("[");
-    String device = config.getDevice();
-    String measurement = config.getMeasurement();
-    if (device != null && measurement != null) {
-      for (MQTTForwardEvent event : events) {
-        sb.append(event.toJsonString(device, measurement)).append(", ");
-      }
-    } else {
-      for (MQTTForwardEvent event : events) {
-        sb.append(event.toJsonString()).append(", ");
-      }
+    for (MQTTForwardEvent event : events) {
+      sb.append(event.toJsonString()).append(", ");
     }
     sb.replace(sb.lastIndexOf(", "), sb.length(), "").append("]");
     try {

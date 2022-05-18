@@ -80,13 +80,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
   public void onEvent(HTTPForwardEvent event) throws SinkException {
     CloseableHttpResponse response = null;
     try {
-      String device = config.getDevice();
-      String measurement = config.getMeasurement();
-      if (device != null && measurement != null) {
-        request.setEntity(new StringEntity("[" + event.toJsonString(device, measurement) + "]"));
-      } else {
-        request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
-      }
+      request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
       response = client.execute(request);
       if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
         throw new SinkException(response.getStatusLine().toString());
@@ -112,16 +106,8 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
     CloseableHttpResponse response = null;
     try {
       StringBuilder sb = new StringBuilder();
-      String device = config.getDevice();
-      String measurement = config.getMeasurement();
-      if (device != null && measurement != null) {
-        for (HTTPForwardEvent event : events) {
-          sb.append(event.toJsonString(device, measurement)).append(", ");
-        }
-      } else {
-        for (HTTPForwardEvent event : events) {
-          sb.append(event.toJsonString()).append(", ");
-        }
+      for (HTTPForwardEvent event : events) {
+        sb.append(event.toJsonString()).append(", ");
       }
       sb.replace(sb.lastIndexOf(", "), sb.length(), "");
       request.setEntity(new StringEntity("[" + sb + "]"));
