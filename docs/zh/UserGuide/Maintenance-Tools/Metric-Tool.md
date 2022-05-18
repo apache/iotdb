@@ -233,6 +233,9 @@ metric采集默认是关闭的，需要先到conf/iotdb-metric.yml中打开后�
 # 是否启动监控模块，默认为false
 enableMetric: false
 
+# 是否启用操作延迟统计
+enablePerformanceStat: false
+
 # 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[JMX, PROMETHEUS, IOTDB],IOTDB是默认关闭的。
 metricReporterList:
   - JMX
@@ -244,9 +247,10 @@ monitorType: MICROMETER
 # 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
 
-# 预定义的指标集, 可选参数: [JVM, LOGBACK], 其中LOGBACK在dropwizard中不支持
+# 预定义的指标集, 可选参数: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
 predefinedMetrics:
   - JVM
+  - FILE
 
 # Prometheus Reporter 使用的端口
 prometheusExporterPort: 9091
