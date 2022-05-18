@@ -1055,10 +1055,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  public String getSystemDir() {
-    return systemDir;
-  }
-
   public TsFileFlushPolicy getFileFlushPolicy() {
     return fileFlushPolicy;
   }

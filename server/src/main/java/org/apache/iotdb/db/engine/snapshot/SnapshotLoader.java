@@ -20,8 +20,10 @@ package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -37,29 +39,28 @@ import java.util.List;
 public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
   private String storageGroupName;
-  private String dataDirPath;
+  private String snapshotPath;
   private String dataRegionId;
 
-  public SnapshotLoader(String dataDirPath, String storageGroupName, String dataRegionId) {
-    this.dataDirPath = dataDirPath;
+  public SnapshotLoader(String snapshotPath, String storageGroupName, String dataRegionId) {
+    this.snapshotPath = snapshotPath;
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
   }
 
   private DataRegion loadSnapshot() {
-    File dataDir = new File(dataDirPath);
-    if (!dataDir.exists()) {
-      throw new RuntimeException(
-          String.format("Failed to load snapshot from %s because it does not exist", dataDir));
-    }
     try {
       return new DataRegion(
-          StorageEngine.getInstance().getSystemDir() + File.separator + storageGroupName,
+          IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+              + File.separator
+              + "storage_groups"
+              + File.separator
+              + storageGroupName,
           dataRegionId,
           StorageEngine.getInstance().getFileFlushPolicy(),
           storageGroupName);
     } catch (Exception e) {
-      LOGGER.error("Exception occurs while load snapshot from {}", dataDir, e);
+      LOGGER.error("Exception occurs while load snapshot from {}", snapshotPath, e);
       return null;
     }
   }
@@ -70,6 +71,40 @@ public class SnapshotLoader {
    * @return
    */
   public DataRegion loadSnapshotForStateMachine() {
+    try {
+      deleteAllFilesInDataDirs();
+    } catch (IOException e) {
+      return null;
+    }
+
+    // move the snapshot data to data dir
+    String seqBaseDir =
+        IoTDBConstant.SEQUENCE_FLODER_NAME
+            + File.separator
+            + storageGroupName
+            + File.separator
+            + dataRegionId;
+    String unseqBaseDir =
+        IoTDBConstant.UNSEQUENCE_FLODER_NAME
+            + File.separator
+            + storageGroupName
+            + File.separator
+            + dataRegionId;
+    File sourceDataDir = new File(snapshotPath);
+    if (sourceDataDir.exists()) {
+      try {
+        createLinksFromSnapshotDirToDataDir(sourceDataDir, seqBaseDir, unseqBaseDir);
+      } catch (IOException | DiskSpaceInsufficientException e) {
+        LOGGER.error(
+            "Exception occurs when creating links from snapshot directory to data directory", e);
+        return null;
+      }
+    }
+
+    return loadSnapshot();
+  }
+
+  private void deleteAllFilesInDataDirs() throws IOException {
     String[] dataDirPaths = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
 
     // delete
@@ -119,45 +154,13 @@ public class SnapshotLoader {
           storageGroupName,
           dataRegionId,
           e);
+      throw e;
     }
-
-    // move the snapshot data to data dir
-    String targetDataDir = dataDirPaths[0];
-    File seqBaseDir =
-        new File(
-            targetDataDir
-                + File.separator
-                + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId);
-    File unseqBaseDir =
-        new File(
-            targetDataDir
-                + File.separator
-                + IoTDBConstant.UNSEQUENCE_FLODER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId);
-    File sourceDataDir = new File(dataDirPath);
-    if (sourceDataDir.exists()) {
-      try {
-        createLinksFromSnapshotDirToDataDir(sourceDataDir, seqBaseDir, unseqBaseDir);
-      } catch (IOException e) {
-        LOGGER.error(
-            "Exception occurs when creating links from snapshot directory to data directory", e);
-        return null;
-      }
-    }
-
-    this.dataDirPath = targetDataDir;
-    return loadSnapshot();
   }
 
   private void createLinksFromSnapshotDirToDataDir(
-      File sourceDir, File seqBaseDir, File unseqBaseDir) throws IOException {
+      File sourceDir, String seqBaseDir, String unseqBaseDir)
+      throws IOException, DiskSpaceInsufficientException {
     File[] files = sourceDir.listFiles();
     if (files == null) {
       return;
@@ -170,7 +173,12 @@ public class SnapshotLoader {
       boolean seq = fileInfo[0].equals("seq");
       String timePartition = fileInfo[3];
       String fileName = fileInfo[4];
-      File targetDirForThisTimePartition = new File(seq ? seqBaseDir : unseqBaseDir, timePartition);
+      String nextDataDir =
+          seq
+              ? DirectoryManager.getInstance().getNextFolderForSequenceFile()
+              : DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
+      File baseDir = new File(nextDataDir, seq ? seqBaseDir : unseqBaseDir);
+      File targetDirForThisTimePartition = new File(baseDir, timePartition);
       if (!targetDirForThisTimePartition.exists() && !targetDirForThisTimePartition.mkdirs()) {
         throw new IOException(
             String.format("Failed to make directory %s", targetDirForThisTimePartition));

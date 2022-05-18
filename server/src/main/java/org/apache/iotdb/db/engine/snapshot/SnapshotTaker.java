@@ -50,7 +50,7 @@ public class SnapshotTaker {
     this.dataRegion = dataRegion;
   }
 
-  public boolean takeFullSnapshot(String snapshotDirPath)
+  public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
       throws DirectoryNotLegalException, IOException {
     File snapshotDir = new File(snapshotDirPath);
     if (snapshotDir.exists()
@@ -65,7 +65,9 @@ public class SnapshotTaker {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
+    if (flushBeforeSnapshot) {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
+    }
 
     List<Long> timePartitions = dataRegion.getTimePartitions();
     for (Long timePartition : timePartitions) {
@@ -75,6 +77,14 @@ public class SnapshotTaker {
         createFileSnapshot(seqDataDirs, snapshotDir, true, timePartition);
       } catch (IOException e) {
         LOGGER.error("Fail to create snapshot", e);
+        File[] files = snapshotDir.listFiles();
+        if (files != null) {
+          for (File file : files) {
+            if (!file.delete()) {
+              LOGGER.error("Failed to delete link file {} after failing to create snapshot", file);
+            }
+          }
+        }
         return false;
       }
 
