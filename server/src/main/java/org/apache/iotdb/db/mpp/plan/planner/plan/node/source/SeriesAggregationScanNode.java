@@ -26,10 +26,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -40,10 +40,8 @@ import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -68,10 +66,7 @@ public class SeriesAggregationScanNode extends SourceNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column in
   // result TsBlock
-  private final List<AggregationDescriptor> aggregationDescriptorList;
-
-  // all the sensors in seriesPath's device of current query
-  private final Set<String> allSensors;
+  private List<AggregationDescriptor> aggregationDescriptorList;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -91,36 +86,34 @@ public class SeriesAggregationScanNode extends SourceNode {
   public SeriesAggregationScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
-      List<AggregationDescriptor> aggregationDescriptorList,
-      Set<String> allSensors) {
+      List<AggregationDescriptor> aggregationDescriptorList) {
     super(id);
     this.seriesPath = seriesPath;
-    this.allSensors = allSensors;
-    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.aggregationDescriptorList =
+        AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList);
   }
 
   public SeriesAggregationScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList,
-      Set<String> allSensors,
-      OrderBy scanOrder) {
-    this(id, seriesPath, aggregationDescriptorList, allSensors);
+      OrderBy scanOrder,
+      @Nullable GroupByTimeParameter groupByTimeParameter) {
+    this(id, seriesPath, aggregationDescriptorList);
     this.scanOrder = scanOrder;
+    this.groupByTimeParameter = groupByTimeParameter;
   }
 
   public SeriesAggregationScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList,
-      Set<String> allSensors,
       OrderBy scanOrder,
       @Nullable Filter timeFilter,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, seriesPath, aggregationDescriptorList, allSensors, scanOrder);
+    this(id, seriesPath, aggregationDescriptorList, scanOrder, groupByTimeParameter);
     this.timeFilter = timeFilter;
-    this.groupByTimeParameter = groupByTimeParameter;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -128,13 +121,13 @@ public class SeriesAggregationScanNode extends SourceNode {
     return scanOrder;
   }
 
-  public Set<String> getAllSensors() {
-    return allSensors;
-  }
-
   @Nullable
   public Filter getTimeFilter() {
     return timeFilter;
+  }
+
+  public void setTimeFilter(@Nullable Filter timeFilter) {
+    this.timeFilter = timeFilter;
   }
 
   @Nullable
@@ -148,16 +141,6 @@ public class SeriesAggregationScanNode extends SourceNode {
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
     return aggregationDescriptorList;
-  }
-
-  public List<AggregationType> getAggregateFuncList() {
-    return aggregationDescriptorList.stream()
-        .map(AggregationDescriptor::getAggregationType)
-        .collect(Collectors.toList());
-  }
-
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
   }
 
   @Override
@@ -181,7 +164,6 @@ public class SeriesAggregationScanNode extends SourceNode {
         getPlanNodeId(),
         getSeriesPath(),
         getAggregationDescriptorList(),
-        getAllSensors(),
         getScanOrder(),
         getTimeFilter(),
         getGroupByTimeParameter(),
@@ -194,6 +176,10 @@ public class SeriesAggregationScanNode extends SourceNode {
         .map(AggregationDescriptor::getOutputColumnNames)
         .flatMap(List::stream)
         .collect(Collectors.toList());
+  }
+
+  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
+    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   @Override
@@ -214,7 +200,7 @@ public class SeriesAggregationScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSeriesAggregate(this, context);
+    return visitor.visitSeriesAggregationScan(this, context);
   }
 
   @Override
@@ -224,10 +210,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
     for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
       aggregationDescriptor.serialize(byteBuffer);
-    }
-    ReadWriteIOUtils.write(allSensors.size(), byteBuffer);
-    for (String sensor : allSensors) {
-      ReadWriteIOUtils.write(sensor, byteBuffer);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     if (timeFilter == null) {
@@ -252,11 +234,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     for (int i = 0; i < aggregateDescriptorSize; i++) {
       aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
     }
-    int allSensorsSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Set<String> allSensors = new HashSet<>();
-    for (int i = 0; i < allSensorsSize; i++) {
-      allSensors.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter timeFilter = null;
@@ -275,7 +252,6 @@ public class SeriesAggregationScanNode extends SourceNode {
         planNodeId,
         partialPath,
         aggregationDescriptorList,
-        allSensors,
         scanOrder,
         timeFilter,
         groupByTimeParameter,
@@ -296,7 +272,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     SeriesAggregationScanNode that = (SeriesAggregationScanNode) o;
     return seriesPath.equals(that.seriesPath)
         && aggregationDescriptorList.equals(that.aggregationDescriptorList)
-        && allSensors.equals(that.allSensors)
         && scanOrder == that.scanOrder
         && Objects.equals(timeFilter, that.timeFilter)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
@@ -309,7 +284,6 @@ public class SeriesAggregationScanNode extends SourceNode {
         super.hashCode(),
         seriesPath,
         aggregationDescriptorList,
-        allSensors,
         scanOrder,
         timeFilter,
         groupByTimeParameter,

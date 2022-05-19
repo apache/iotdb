@@ -24,6 +24,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+/**
+ * The result of Linear Fill functions at timestamp "T" is calculated by performing a linear fitting
+ * method on two time series values, one is at the closest timestamp before T, and the other is at
+ * the closest timestamp after T. Linear Fill function calculation only supports numeric types
+ * including int, double and float.
+ */
 public abstract class LinearFill {
 
   // whether previous value is null

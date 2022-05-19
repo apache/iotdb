@@ -32,7 +32,7 @@ WS
 
 
 /**
- * 2. Keywords
+ * 2. Keywords, new keywords should be added into IdentifierParser.g4
  */
 
 // Common Keywords
@@ -836,6 +836,17 @@ DROP_CONTINUOUS_QUERY
     : D R O P '_' C O N T I N U O U S '_' Q U E R Y
     ;
 
+SCHEMA_REPLICATION_FACTOR
+    : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
+    ;
+
+DATA_REPLICATION_FACTOR
+    : D A T A '_' R E P L I C A T I O N '_' F A C T O R
+    ;
+
+TIME_PARTITION_INTERVAL
+    : T I M E '_' P A R T I T I O N '_' I N T E R V A L
+    ;
 
 /**
  * 3. Operators
@@ -964,7 +975,7 @@ NAN_LITERAL
 
 
 /**
- * 6. Identifier
+ * 6. ID
  */
 
 ID

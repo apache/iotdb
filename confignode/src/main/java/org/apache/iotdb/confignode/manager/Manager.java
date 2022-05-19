@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationF
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -57,7 +58,7 @@ public interface Manager {
    *
    * @return DataNodeManager instance
    */
-  NodeManager getDataNodeManager();
+  NodeManager getNodeManager();
 
   /**
    * Get ConsensusManager
@@ -79,6 +80,13 @@ public interface Manager {
    * @return PartitionManager instance
    */
   PartitionManager getPartitionManager();
+
+  /**
+   * Get LoadManager
+   *
+   * @return LoadManager instance
+   */
+  LoadManager getLoadManager();
 
   /**
    * Register DataNode
@@ -122,6 +130,14 @@ public interface Manager {
    * @return status
    */
   TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
+
+  /**
+   * Delete StorageGroups
+   *
+   * @param deletedPaths List<StringPattern>
+   * @return status
+   */
+  TSStatus deleteStorageGroups(List<String> deletedPaths);
 
   /**
    * Get SchemaPartition

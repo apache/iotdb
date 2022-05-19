@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -27,7 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -42,20 +44,20 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/** Manage cluster node information and process node addition and removal requests */
+/** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
-  private static final NodeInfo nodeInfo = NodeInfo.getInstance();
-
   private final Manager configManager;
+  private final NodeInfo nodeInfo;
 
   /** TODO:do some operate after add node or remove node */
   private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
-  public NodeManager(Manager configManager) {
+  public NodeManager(Manager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
+    this.nodeInfo = nodeInfo;
   }
 
   private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
@@ -82,21 +84,22 @@ public class NodeManager {
   public DataSet registerDataNode(RegisterDataNodeReq req) {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
-    if (NodeInfo.getInstance().containsValue(req.getLocation())) {
+    if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
       // Reset client
-      AsyncDataNodeClientPool.getInstance().resetClient(req.getLocation().getInternalEndPoint());
+      AsyncDataNodeClientPool.getInstance()
+          .resetClient(req.getInfo().getLocation().getInternalEndPoint());
 
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      req.getLocation().setDataNodeId(NodeInfo.getInstance().generateNextDataNodeId());
+      req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
     }
 
-    dataSet.setDataNodeId(req.getLocation().getDataNodeId());
+    dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
@@ -109,16 +112,19 @@ public class NodeManager {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsResp getDataNodeInfo(GetDataNodeInfoReq req) {
-    return (DataNodeLocationsResp) getConsensusManager().read(req).getDataset();
+  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoReq req) {
+    return (DataNodeInfosResp) getConsensusManager().read(req).getDataset();
   }
 
-  public int getOnlineDataNodeCount() {
-    return nodeInfo.getOnlineDataNodeCount();
-  }
-
-  public List<TDataNodeLocation> getOnlineDataNodes() {
-    return nodeInfo.getOnlineDataNodes();
+  /**
+   * Only leader use this interface
+   *
+   * @param dataNodeId Specific DataNodeId
+   * @return All online DataNodes if dataNodeId equals -1. And return the specific DataNode
+   *     otherwise.
+   */
+  public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
+    return nodeInfo.getOnlineDataNodes(dataNodeId);
   }
 
   /**
@@ -150,6 +156,10 @@ public class NodeManager {
       return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
     }
+  }
+
+  public List<TConfigNodeLocation> getOnlineConfigNodes() {
+    return nodeInfo.getOnlineConfigNodes();
   }
 
   private ConsensusManager getConsensusManager() {

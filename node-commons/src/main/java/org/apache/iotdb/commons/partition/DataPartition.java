@@ -21,14 +21,21 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.nio.ByteBuffer;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TProtocol;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 public class DataPartition extends Partition {
@@ -238,11 +245,69 @@ public class DataPartition extends Partition {
         .put(timePartitionSlot, Collections.singletonList(regionReplicaSet));
   }
 
-  public void serialize(ByteBuffer buffer) {
-    // TODO: Serialize DataPartition
+  public void serialize(DataOutputStream dataOutputStream, TProtocol protocol)
+      throws IOException, TException {
+    // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
+    dataOutputStream.writeInt(dataPartitionMap.size());
+    for (Entry<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        entry : dataPartitionMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), dataOutputStream);
+      ReadWriteIOUtils.write(entry.getValue().size(), dataOutputStream);
+      for (Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          seriesPartitionSlotMapEntry : entry.getValue().entrySet()) {
+        seriesPartitionSlotMapEntry.getKey().write(protocol);
+        ReadWriteIOUtils.write(seriesPartitionSlotMapEntry.getValue().size(), dataOutputStream);
+        for (Entry<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListEntry :
+            seriesPartitionSlotMapEntry.getValue().entrySet()) {
+          timePartitionSlotListEntry.getKey().write(protocol);
+          ReadWriteIOUtils.write(timePartitionSlotListEntry.getValue().size(), dataOutputStream);
+          for (TRegionReplicaSet tRegionReplicaSet : timePartitionSlotListEntry.getValue()) {
+            tRegionReplicaSet.write(protocol);
+          }
+        }
+      }
+    }
   }
 
-  public void deserialize(ByteBuffer buffer) {
-    // TODO: Deserialize DataPartition
+  public void deserialize(DataInputStream dataInputStream, TProtocol protocol)
+      throws TException, IOException {
+    int storageGroupNum = dataInputStream.readInt();
+    // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
+    while (storageGroupNum > 0) {
+      String storageGroup = ReadWriteIOUtils.readString(dataInputStream);
+      int tSeriesPartitionSlotNum = ReadWriteIOUtils.readInt(dataInputStream);
+
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          seriesPartitionSlotMapHashMap = new HashMap<>();
+      while (tSeriesPartitionSlotNum > 0) {
+        TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot();
+        tSeriesPartitionSlot.read(protocol);
+
+        int tTimePartitionSlotNum = ReadWriteIOUtils.readInt(dataInputStream);
+
+        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListHashMap =
+            new HashMap<>();
+        while (tTimePartitionSlotNum > 0) {
+          TTimePartitionSlot tTimePartitionSlot = new TTimePartitionSlot();
+          tTimePartitionSlot.read(protocol);
+          int size = ReadWriteIOUtils.readInt(dataInputStream);
+
+          List<TRegionReplicaSet> tRegionMessageList = new ArrayList<>();
+          while (size > 0) {
+            TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+            tRegionReplicaSet.read(protocol);
+            tRegionMessageList.add(tRegionReplicaSet);
+            size--;
+          }
+          timePartitionSlotListHashMap.put(tTimePartitionSlot, tRegionMessageList);
+          tTimePartitionSlotNum--;
+        }
+
+        seriesPartitionSlotMapHashMap.put(tSeriesPartitionSlot, timePartitionSlotListHashMap);
+        tSeriesPartitionSlotNum--;
+      }
+      dataPartitionMap.put(storageGroup, seriesPartitionSlotMapHashMap);
+      storageGroupNum--;
+    }
   }
 }

@@ -88,12 +88,12 @@ public class LinearFillOperator implements ProcessOperator {
     // make sure we call child.next() at most once
     if (cachedTsBlock.isEmpty()) {
       canCallNext = false;
-      TsBlock nextBlock = child.next();
+      TsBlock nextTsBlock = child.next();
       // child operator's calculation is not finished, so we just return null
-      if (nextBlock == null || nextBlock.isEmpty()) {
-        return nextBlock;
+      if (nextTsBlock == null || nextTsBlock.isEmpty()) {
+        return nextTsBlock;
       } else { // otherwise, we cache it
-        cachedTsBlock.add(nextBlock);
+        cachedTsBlock.add(nextTsBlock);
       }
     }
 
@@ -108,12 +108,12 @@ public class LinearFillOperator implements ProcessOperator {
         if (canCallNext) { // if we can call child.next(), we call that and cache it in
           // cachedTsBlock
           canCallNext = false;
-          TsBlock nextBlock = child.next();
+          TsBlock nextTsBlock = child.next();
           // child operator's calculation is not finished, so we just return null
-          if (nextBlock == null || nextBlock.isEmpty()) {
-            return nextBlock;
+          if (nextTsBlock == null || nextTsBlock.isEmpty()) {
+            return nextTsBlock;
           } else { // otherwise, we cache it
-            cachedTsBlock.add(nextBlock);
+            cachedTsBlock.add(nextTsBlock);
           }
         }
 

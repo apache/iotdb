@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
@@ -116,6 +118,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
@@ -130,9 +133,12 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -213,7 +219,7 @@ public class LocalExecutionPlanner {
           new SeriesScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              node.getAllSensors(),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               seriesPath.getSeriesType(),
               operatorContext,
               node.getTimeFilter(),
@@ -377,7 +383,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSeriesAggregate(
+    public Operator visitSeriesAggregationScan(
         SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
       PartialPath seriesPath = node.getSeriesPath();
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
@@ -391,15 +397,18 @@ public class LocalExecutionPlanner {
       node.getAggregationDescriptorList()
           .forEach(
               o ->
-                  new Aggregator(
-                      AccumulatorFactory.createAccumulator(
-                          o.getAggregationType(), node.getSeriesPath().getSeriesType(), ascending),
-                      o.getStep()));
+                  aggregators.add(
+                      new Aggregator(
+                          AccumulatorFactory.createAccumulator(
+                              o.getAggregationType(),
+                              node.getSeriesPath().getSeriesType(),
+                              ascending),
+                          o.getStep())));
       SeriesAggregateScanOperator aggregateScanOperator =
           new SeriesAggregateScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              node.getAllSensors(),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               operatorContext,
               aggregators,
               node.getTimeFilter(),
@@ -423,7 +432,13 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      return new DeviceViewOperator(operatorContext, node.getDevices(), children, null, null);
+      List<List<Integer>> deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      return new DeviceViewOperator(
+          operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
     }
 
     @Override
@@ -593,13 +608,15 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TransformNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
       try {
         return new TransformOperator(
             operatorContext,
             inputOperator,
             inputDataTypes,
+            inputLocations,
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
@@ -615,13 +632,15 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(), node.getPlanNodeId(), FilterNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
       try {
         return new FilterOperator(
             operatorContext,
             inputOperator,
             inputDataTypes,
+            inputLocations,
             node.getPredicate(),
             node.getOutputExpressions(),
             node.isKeepNull(),
@@ -669,7 +688,64 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitRowBasedSeriesAggregate(
         AggregationNode node, LocalExecutionPlanContext context) {
-      return super.visitRowBasedSeriesAggregate(node, context);
+      checkArgument(
+          node.getAggregationDescriptorList().size() >= 1,
+          "Aggregation descriptorList cannot be empty");
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              DeviceViewNode.class.getSimpleName());
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(child -> child.accept(this, context))
+              .collect(Collectors.toList());
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      List<Aggregator> aggregators = new ArrayList<>();
+      Map<String, List<InputLocation>> layout = makeLayout(node);
+      for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+        List<String> outputColumnNames = descriptor.getOutputColumnNames();
+        // it may include double parts
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>(outputColumnNames.size());
+        outputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
+
+        List<InputLocation[]> inputLocationList = new ArrayList<>();
+        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+          if (outputColumnNames.size() == 1) {
+            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+                });
+          }
+        }
+
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationType(),
+                    context
+                        .getTypeProvider()
+                        // get the type of first inputExpression
+                        .getType(descriptor.getInputExpressions().get(0).toString()),
+                    ascending),
+                descriptor.getStep(),
+                inputLocationList));
+      }
+      boolean inputRaw = node.getAggregationDescriptorList().get(0).getStep().isInputRaw();
+      if (inputRaw) {
+        checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
+        return new RawDataAggregateOperator(
+            operatorContext,
+            aggregators,
+            children.get(0),
+            ascending,
+            node.getGroupByTimeParameter());
+      } else {
+        return new AggregateOperator(
+            operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+      }
     }
 
     @Override
@@ -815,6 +891,14 @@ public class LocalExecutionPlanner {
       return outputMappings;
     }
 
+    private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+      return node.getChildren().stream()
+          .map(PlanNode::getOutputColumnNames)
+          .flatMap(List::stream)
+          .map(typeProvider::getType)
+          .collect(Collectors.toList());
+    }
+
     private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
       return node.getOutputColumnNames().stream()
           .map(typeProvider::getType)
@@ -841,6 +925,8 @@ public class LocalExecutionPlanner {
   private static class LocalExecutionPlanContext {
     private final FragmentInstanceContext instanceContext;
     private final List<PartialPath> paths;
+    // deviceId -> sensorId Set
+    private final Map<String, Set<String>> allSensorsMap;
     // Used to lock corresponding query resources
     private final List<DataSourceOperator> sourceOperators;
     private ISinkHandle sinkHandle;
@@ -854,12 +940,14 @@ public class LocalExecutionPlanner {
       this.typeProvider = typeProvider;
       this.instanceContext = instanceContext;
       this.paths = new ArrayList<>();
+      this.allSensorsMap = new HashMap<>();
       this.sourceOperators = new ArrayList<>();
     }
 
     public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
       this.instanceContext = instanceContext;
       this.paths = new ArrayList<>();
+      this.allSensorsMap = new HashMap<>();
       this.sourceOperators = new ArrayList<>();
     }
 
@@ -869,6 +957,12 @@ public class LocalExecutionPlanner {
 
     public List<PartialPath> getPaths() {
       return paths;
+    }
+
+    public Set<String> getAllSensors(String deviceId, String sensorId) {
+      Set<String> allSensors = allSensorsMap.computeIfAbsent(deviceId, k -> new HashSet<>());
+      allSensors.add(sensorId);
+      return allSensors;
     }
 
     public List<DataSourceOperator> getSourceOperators() {

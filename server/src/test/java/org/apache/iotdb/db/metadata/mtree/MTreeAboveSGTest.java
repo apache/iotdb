@@ -32,8 +32,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -106,7 +108,7 @@ public class MTreeAboveSGTest {
       Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a")).left;
       Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root")).left;
       assertEquals(new HashSet<>(), result1);
-      assertEquals(new HashSet<>(Collections.emptyList()), result2);
+      assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
       assertEquals(new HashSet<>(Collections.singletonList("a")), result3);
 
       // if child node is nll   will return  null HashSet
@@ -175,8 +177,8 @@ public class MTreeAboveSGTest {
       assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d3")));
 
-      root.setStorageGroup(new PartialPath("root.1"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.1")));
+      root.setStorageGroup(new PartialPath("root.`1`"));
+      assertTrue(root.isStorageGroup(new PartialPath("root.`1`")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -209,23 +211,24 @@ public class MTreeAboveSGTest {
     try {
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
       assertTrue(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle"));
       assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
-      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device")).isEmpty());
+      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
       assertFalse(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device0")).isEmpty());
 
-      root.setStorageGroup(new PartialPath("root.vehicle1.device"));
+      root.setStorageGroup(new PartialPath("root.vehicle1.device0"));
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
-      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertFalse(
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device0")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -237,9 +240,7 @@ public class MTreeAboveSGTest {
     try {
       root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
     } catch (MetadataException e) {
-      Assert.assertEquals(
-          "The storage group name can only be characters, numbers and underscores. root.\"sg.ln\" is not a legal path",
-          e.getMessage());
+      Assert.assertEquals("root.\"sg.ln\" is not a legal path", e.getMessage());
     }
   }
 
@@ -274,6 +275,10 @@ public class MTreeAboveSGTest {
     Pair<List<PartialPath>, Set<PartialPath>> result =
         root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null);
     Assert.assertEquals(0, result.left.size());
+    Assert.assertEquals(2, result.right.size());
+
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false, null);
+    Assert.assertEquals(2, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
     result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null);
@@ -312,12 +317,12 @@ public class MTreeAboveSGTest {
       storageGroupMNode.setTimePartitionInterval(i);
     }
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
-    root.serialize(byteBuffer);
-    byteBuffer.flip();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    root.serialize(outputStream);
 
     MTreeAboveSG newTree = new MTreeAboveSG();
-    newTree.deserialize(byteBuffer);
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
       newTree.isStorageGroup(pathList[i]);

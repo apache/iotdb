@@ -77,7 +77,7 @@ public class IoTDBSyncReceiverIT {
   String pipeName1 = "pipe1";
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
-
+  String showPipeSql = "SHOW PIPE";
   TransportClient client;
 
   @Before
@@ -149,7 +149,6 @@ public class IoTDBSyncReceiverIT {
   public void testPipeOperation() {
     logger.info("testPipeOperation");
     String[] columnNames = {"create time", "name", "role", "remote", "status", "message"};
-    String showPipeSql = "SHOW PIPE";
     try {
       // create
       client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
@@ -166,6 +165,35 @@ public class IoTDBSyncReceiverIT {
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // start
+      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.RUNNING.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
+      // restart
+      EnvironmentUtils.shutdownDaemon();
+      EnvironmentUtils.reactiveDaemon();
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.STOP.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
+      // start again
       client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
       retArray =
           new String[] {
@@ -204,6 +232,28 @@ public class IoTDBSyncReceiverIT {
                 "receiver",
                 remoteIp1,
                 PipeStatus.DROP.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
+      // create again
+      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1 + 1));
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.DROP.name(),
+                ""),
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1 + 1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.STOP.name(),
                 "")
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);

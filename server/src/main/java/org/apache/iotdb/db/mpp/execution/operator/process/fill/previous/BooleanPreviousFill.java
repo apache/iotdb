@@ -36,13 +36,16 @@ public class BooleanPreviousFill implements IFill {
   @Override
   public Column fill(Column valueColumn) {
     int size = valueColumn.getPositionCount();
-    // if this valueColumn doesn't have any null value, or it's empty, just return itself;
-    if (!valueColumn.mayHaveNull() || size == 0) {
-      if (size != 0) {
-        previousIsNull = false;
-        // update the value using last non-null value
-        value = valueColumn.getBoolean(size - 1);
-      }
+    // if this valueColumn is empty, just return itself;
+    if (size == 0) {
+      return valueColumn;
+    }
+    // if this valueColumn doesn't have any null value, record the last value, and then return
+    // itself.
+    if (!valueColumn.mayHaveNull()) {
+      previousIsNull = false;
+      // update the value using last non-null value
+      value = valueColumn.getBoolean(size - 1);
       return valueColumn;
     }
     // if its values are all null
@@ -56,13 +59,13 @@ public class BooleanPreviousFill implements IFill {
     } else {
       boolean[] array = new boolean[size];
       boolean[] isNull = new boolean[size];
-      // have no null value
-      boolean nonNullValue = true;
+      // have null value
+      boolean hasNullValue = false;
       for (int i = 0; i < size; i++) {
         if (valueColumn.isNull(i)) {
           if (previousIsNull) {
             isNull[i] = true;
-            nonNullValue = false;
+            hasNullValue = true;
           } else {
             array[i] = value;
           }
@@ -72,10 +75,10 @@ public class BooleanPreviousFill implements IFill {
           previousIsNull = false;
         }
       }
-      if (nonNullValue) {
-        return new BooleanColumn(size, Optional.empty(), array);
-      } else {
+      if (hasNullValue) {
         return new BooleanColumn(size, Optional.of(isNull), array);
+      } else {
+        return new BooleanColumn(size, Optional.empty(), array);
       }
     }
   }

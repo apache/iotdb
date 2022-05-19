@@ -1571,7 +1571,7 @@ public class DataRegion {
     try {
       File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
       if (storageGroupFolder.exists()) {
-        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     } finally {
       writeUnlock();
@@ -1628,7 +1628,7 @@ public class DataRegion {
       File storageGroupFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
       if (storageGroupFolder.exists()) {
-        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     }
   }
@@ -3484,6 +3484,10 @@ public class DataRegion {
 
     void call(TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
         throws WriteProcessException;
+  }
+
+  public List<Long> getTimePartitions() {
+    return new ArrayList<>(partitionMaxFileVersions.keySet());
   }
 
   public String getInsertWriteLockHolder() {
