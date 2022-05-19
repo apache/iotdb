@@ -125,6 +125,10 @@ public class AggregationNode extends MultiChildNode {
         .collect(Collectors.toList());
   }
 
+  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
+    this.aggregationDescriptorList = aggregationDescriptorList;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitRowBasedSeriesAggregate(this, context);

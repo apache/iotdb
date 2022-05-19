@@ -48,7 +48,7 @@ import java.util.Objects;
 public class GroupByLevelNode extends AggregationNode {
 
   // column name of each output column
-  private final List<String> outputColumnNames;
+  private List<String> outputColumnNames;
 
   public GroupByLevelNode(
       PlanNodeId id,
@@ -97,6 +97,10 @@ public class GroupByLevelNode extends AggregationNode {
   @Override
   public List<String> getOutputColumnNames() {
     return outputColumnNames;
+  }
+
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
   }
 
   @Override
@@ -164,5 +168,9 @@ public class GroupByLevelNode extends AggregationNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), outputColumnNames);
+  }
+
+  public String toString() {
+    return String.format("GroupByLevelNode-%s: Output: %s, Input: %s", getPlanNodeId(), getOutputColumnNames(), aggregationDescriptorList.size());
   }
 }
