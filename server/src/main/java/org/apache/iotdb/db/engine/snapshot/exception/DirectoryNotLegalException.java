@@ -16,47 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.snapshot.exception;
 
-package org.apache.iotdb.db.service.metrics;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public enum Metric {
-  ENTRY,
-  COST_TASK,
-  QUEUE,
-  FILE_SIZE,
-  FILE_COUNT,
-  MEM,
-  CACHE_HIT,
-  ERROR_LOG,
-  QUANTITY,
-  DATA_WRITTEN,
-  DATA_READ,
-  COMPACTION_TASK_COUNT,
-  CLUSTER_NODE_STATUS,
-  CLUSTER_NODE_LEADER_COUNT,
-  CLUSTER_ELECT,
-  CLUSTER_UNCOMMITTED_LOG,
-  PROCESS_CPU_LOAD,
-  PROCESS_CPU_TIME,
-  PROCESS_MAX_MEM,
-  PROCESS_USED_MEM,
-  PROCESS_TOTAL_MEM,
-  PROCESS_FREE_MEM,
-  PROCESS_THREADS_COUNT,
-  PROCESS_MEM_RATIO,
-  PROCESS_STATUS,
-  SYS_CPU_LOAD,
-  SYS_CPU_CORES,
-  SYS_TOTAL_PHYSICAL_MEMORY_SIZE,
-  SYS_FREE_PHYSICAL_MEMORY_SIZE,
-  SYS_TOTAL_SWAP_SPACE_SIZE,
-  SYS_FREE_SWAP_SPACE_SIZE,
-  SYS_COMMITTED_VM_SIZE,
-  SYS_DISK_TOTAL_SPACE,
-  SYS_DISK_FREE_SPACE;
-
-  @Override
-  public String toString() {
-    return super.toString().toLowerCase();
+public class DirectoryNotLegalException extends IoTDBException {
+  public DirectoryNotLegalException(String message) {
+    super(message, TSStatusCode.SNAPSHOT_DIR_NOT_LEGAL.getStatusCode());
   }
 }

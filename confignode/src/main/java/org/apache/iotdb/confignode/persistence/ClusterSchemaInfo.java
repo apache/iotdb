@@ -47,12 +47,12 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,9 +74,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
 
   private MTreeAboveSG mTree;
-
-  // The size of the buffer used for snapshot(temporary value)
-  private final int bufferSize = 10 * 1024 * 1024;
 
   private final String snapshotFileName = "cluster_schema.bin";
 
@@ -458,19 +455,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
 
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 
     storageGroupReadWriteLock.readLock().lock();
     try {
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-          FileChannel fileChannel = fileOutputStream.getChannel()) {
-        mTree.serialize(buffer);
-        buffer.flip();
-        fileChannel.write(buffer);
+          BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+        mTree.serialize(outputStream);
+        outputStream.flush();
       }
       return tmpFile.renameTo(snapshotFile);
     } finally {
-      buffer.clear();
       for (int retry = 0; retry < 5; retry++) {
         if (!tmpFile.exists() || tmpFile.delete()) {
           break;
@@ -494,16 +488,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return;
     }
     storageGroupReadWriteLock.writeLock().lock();
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        FileChannel fileChannel = fileInputStream.getChannel()) {
-      // get buffer from fileChannel
-      fileChannel.read(buffer);
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       mTree.clear();
-      buffer.flip();
-      mTree.deserialize(buffer);
+      mTree.deserialize(bufferedInputStream);
     } finally {
-      buffer.clear();
       storageGroupReadWriteLock.writeLock().unlock();
     }
   }

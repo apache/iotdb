@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,20 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
+package org.apache.iotdb.metrics.predefined;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
-import java.io.IOException;
+public interface IMetricSet {
+  /** bind related metric to metric manager */
+  void bindTo(MetricManager metricManager);
 
-@FunctionalInterface
-/**
- * Estimate how much memory a file may occupy when being queried during merge.
- *
- * @param resource
- * @return
- * @throws IOException
- */
-interface IFileQueryMemMeasurement {
-  long measure(TsFileResource resource) throws IOException;
+  /** get type of metric set */
+  PredefinedMetric getType();
 }
