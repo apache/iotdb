@@ -60,11 +60,11 @@ public class FloatLinearFill extends LinearFill {
   }
 
   @Override
-  Column createFilledValueColumn(Object array, boolean[] isNull, boolean nonNullValue, int size) {
-    if (nonNullValue) {
-      return new FloatColumn(size, Optional.empty(), (float[]) array);
-    } else {
+  Column createFilledValueColumn(Object array, boolean[] isNull, boolean hasNullValue, int size) {
+    if (hasNullValue) {
       return new FloatColumn(size, Optional.of(isNull), (float[]) array);
+    } else {
+      return new FloatColumn(size, Optional.empty(), (float[]) array);
     }
   }
 

@@ -60,11 +60,11 @@ public class DoubleLinearFill extends LinearFill {
   }
 
   @Override
-  Column createFilledValueColumn(Object array, boolean[] isNull, boolean nonNullValue, int size) {
-    if (nonNullValue) {
-      return new DoubleColumn(size, Optional.empty(), (double[]) array);
-    } else {
+  Column createFilledValueColumn(Object array, boolean[] isNull, boolean hasNullValue, int size) {
+    if (hasNullValue) {
       return new DoubleColumn(size, Optional.of(isNull), (double[]) array);
+    } else {
+      return new DoubleColumn(size, Optional.empty(), (double[]) array);
     }
   }
 

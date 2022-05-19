@@ -60,11 +60,11 @@ public class IntLinearFill extends LinearFill {
   }
 
   @Override
-  Column createFilledValueColumn(Object array, boolean[] isNull, boolean nonNullValue, int size) {
-    if (nonNullValue) {
-      return new IntColumn(size, Optional.empty(), (int[]) array);
-    } else {
+  Column createFilledValueColumn(Object array, boolean[] isNull, boolean hasNullValue, int size) {
+    if (hasNullValue) {
       return new IntColumn(size, Optional.of(isNull), (int[]) array);
+    } else {
+      return new IntColumn(size, Optional.empty(), (int[]) array);
     }
   }
 

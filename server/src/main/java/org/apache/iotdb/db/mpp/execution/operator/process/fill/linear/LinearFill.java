@@ -49,13 +49,16 @@ public abstract class LinearFill {
    */
   public Column fill(TimeColumn timeColumn, Column valueColumn) {
     int size = valueColumn.getPositionCount();
-    // if this valueColumn doesn't have any null value, or it's empty, just return itself;
-    if (!valueColumn.mayHaveNull() || size == 0) {
-      if (size != 0) {
-        previousIsNull = false;
-        // update the value using last non-null value
-        updatePreviousValue(valueColumn, valueColumn.getPositionCount() - 1);
-      }
+    // if this valueColumn is empty, just return itself;
+    if (size == 0) {
+      return valueColumn;
+    }
+    // if this valueColumn doesn't have any null value, record the last value, and then return
+    // itself.
+    if (!valueColumn.mayHaveNull()) {
+      previousIsNull = false;
+      // update the value using last non-null value
+      updatePreviousValue(valueColumn, valueColumn.getPositionCount() - 1);
       return valueColumn;
     }
 
@@ -72,8 +75,8 @@ public abstract class LinearFill {
     } else {
       Object array = createValueArray(size);
       boolean[] isNull = new boolean[size];
-      // have no null value
-      boolean nonNullValue = true;
+      // have null value
+      boolean hasNullValue = false;
 
       for (int i = 0; i < size; i++) {
         // current value is null, we need to fill it
@@ -83,7 +86,7 @@ public abstract class LinearFill {
           // we don't fill it, if either previous value or next value is null
           if (previousIsNull || nextIsNull(currentTime)) {
             isNull[i] = true;
-            nonNullValue = false;
+            hasNullValue = true;
           } else {
             // fill value using previous and next value
             fillValue(array, i);
@@ -96,7 +99,7 @@ public abstract class LinearFill {
           previousIsNull = false;
         }
       }
-      return createFilledValueColumn(array, isNull, nonNullValue, size);
+      return createFilledValueColumn(array, isNull, hasNullValue, size);
     }
   }
 
@@ -170,7 +173,7 @@ public abstract class LinearFill {
   abstract Column createFilledValueColumn();
 
   abstract Column createFilledValueColumn(
-      Object array, boolean[] isNull, boolean nonNullValue, int size);
+      Object array, boolean[] isNull, boolean hasNullValue, int size);
 
   abstract void updatePreviousValue(Column column, int index);
 

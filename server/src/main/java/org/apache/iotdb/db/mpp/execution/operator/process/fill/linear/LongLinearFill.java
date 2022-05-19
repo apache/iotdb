@@ -60,11 +60,11 @@ public class LongLinearFill extends LinearFill {
   }
 
   @Override
-  Column createFilledValueColumn(Object array, boolean[] isNull, boolean nonNullValue, int size) {
-    if (nonNullValue) {
-      return new LongColumn(size, Optional.empty(), (long[]) array);
-    } else {
+  Column createFilledValueColumn(Object array, boolean[] isNull, boolean hasNullValue, int size) {
+    if (hasNullValue) {
       return new LongColumn(size, Optional.of(isNull), (long[]) array);
+    } else {
+      return new LongColumn(size, Optional.empty(), (long[]) array);
     }
   }
 
