@@ -87,6 +87,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     } else {
       tsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
     }
+    this.hashCode = this.toString().hashCode();
     collectSelectedFilesInfo();
   }
 
@@ -311,7 +312,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public int hashCode() {
-    return toString().hashCode();
+    return this.hashCode;
   }
 
   @Override
@@ -360,7 +361,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         resource.readLock();
         LOGGER.info("Get the read lock of {}", resource);
         isHoldingReadLock[i] = true;
-        originStatus[i] = resource.getStatus();
         if (resource.isCompacting()
             || !resource.isClosed()
             || !resource.getTsFile().exists()
