@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.constant;
 
 import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 public enum InnerUnsequenceCompactionSelector {
   SIZE_TIERED;
@@ -34,15 +33,12 @@ public enum InnerUnsequenceCompactionSelector {
   }
 
   public IInnerUnseqSpaceSelector createInstance(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
-      long timePartition,
-      TsFileManager tsFileManager) {
+      String logicalStorageGroupName, String virtualStorageGroupName, long timePartition) {
     switch (this) {
       case SIZE_TIERED:
       default:
         return new SizeTieredCompactionSelector(
-            logicalStorageGroupName, virtualStorageGroupName, timePartition, tsFileManager, false);
+            logicalStorageGroupName, virtualStorageGroupName, timePartition, false);
     }
   }
 }
