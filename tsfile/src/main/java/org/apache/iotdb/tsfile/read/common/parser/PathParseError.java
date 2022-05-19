@@ -34,6 +34,10 @@ public class PathParseError extends BaseErrorListener {
       int charPositionInLine,
       String msg,
       RecognitionException e) {
+    // make msg clearer
+    if (msg.contains("expecting {ADD, AFTER")) {
+      msg = "wrong identifier, " + msg;
+    }
     throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
   }
 }
