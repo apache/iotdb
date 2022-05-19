@@ -20,6 +20,8 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -316,6 +318,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
       }
 
+      // measurementAlias is also a nodeName
+      isLegalMeasurements(new String[] {req.getMeasurementAlias()});
+
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -370,6 +375,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getMeasurements());
       }
 
+      isLegalMeasurements(req.getMeasurementAlias().toArray(new String[0]));
+      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
           (CreateAlignedTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -412,6 +420,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getPaths().size(),
             req.getPaths().get(0));
       }
+
+      isLegalMeasurements(req.getMeasurementAliasList().toArray(new String[0]));
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
@@ -616,6 +626,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
@@ -660,6 +672,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.prefixPath,
             req.getTimestamps().get(0));
       }
+
+      isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -707,6 +721,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
@@ -753,6 +769,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
+      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
       // permission check
@@ -788,6 +806,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
+
+      isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -826,6 +846,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
+
+      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
@@ -872,6 +894,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.prefixPaths.get(0),
             req.getTimestamps().get(0));
       }
+
+      isLegalMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
@@ -1019,11 +1043,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) {
+    // todo: check measurement using isLegalMeasurements()
     throw new UnsupportedOperationException();
   }
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
+    // todo: check measurement using isLegalMeasurements()
     throw new UnsupportedOperationException();
   }
 
@@ -1065,6 +1091,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           SESSION_MANAGER.getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
+
+      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -1149,5 +1177,23 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private QueryId genQueryId(long id) {
     return new QueryId(String.valueOf(id));
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+    for (List<String> measurementList : measurementLists) {
+      isLegalMeasurements(measurementList.toArray(new String[0]));
+    }
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurements(String[] measurements) throws TException {
+    for (String measurement : measurements) {
+      try {
+        PathUtils.isLegalPath(measurement);
+      } catch (IllegalPathException e) {
+        throw new TException(e.getMessage());
+      }
+    }
   }
 }
