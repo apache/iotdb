@@ -68,6 +68,7 @@ public class LogicalPlannerTest {
   public void testQueryPlan() {
     for (String sql : querySQLs) {
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
+      System.out.printf("\"%s\" TEST PASSED\n", sql);
     }
   }
 

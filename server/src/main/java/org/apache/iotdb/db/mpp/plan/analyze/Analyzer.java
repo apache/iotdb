@@ -262,7 +262,10 @@ public class Analyzer {
                   analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
               deviceToQueryFilter.put(devicePath.getFullPath(), queryFilter);
               updateSource(
-                  queryFilter, deviceToSourceExpressions.get(devicePath.getFullPath()), true);
+                  queryFilter,
+                  deviceToSourceExpressions.computeIfAbsent(
+                      devicePath.getFullPath(), key -> new HashSet<>()),
+                  true);
             }
             analysis.setDeviceToQueryFilter(deviceToQueryFilter);
           }
@@ -271,7 +274,9 @@ public class Analyzer {
         } else {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
           Set<Expression> transformExpressions =
-              outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet());
+              outputExpressions.stream()
+                  .map(Pair::getLeft)
+                  .collect(Collectors.toCollection(LinkedHashSet::new));
 
           if (queryStatement.isGroupByLevel()) {
             // map from grouped expression to set of input expressions
@@ -294,7 +299,7 @@ public class Analyzer {
           }
 
           // generate sourceExpression according to transformExpressions
-          Set<Expression> sourceExpressions = new LinkedHashSet<>();
+          Set<Expression> sourceExpressions = new HashSet<>();
           boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
           boolean isRawDataSource =
               !queryStatement.isAggregationQuery()
@@ -470,7 +475,7 @@ public class Analyzer {
             measurementToDeviceTransformExpressions
                 .computeIfAbsent(
                     ExpressionAnalyzer.getMeasurementExpression(transformExpression),
-                    key -> new HashMap<>())
+                    key -> new LinkedHashMap<>())
                 .put(
                     device.getFullPath(),
                     ExpressionAnalyzer.removeAliasFromExpression(transformExpression));
@@ -517,7 +522,7 @@ public class Analyzer {
               Expression transformExpression =
                   deviceToTransformExpressionOfOneMeasurement.get(deviceName);
               deviceToTransformExpressions
-                  .computeIfAbsent(deviceName, key -> new HashSet<>())
+                  .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
                   .add(ExpressionAnalyzer.removeAliasFromExpression(transformExpression));
               deviceToMeasurementsMap
                   .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
