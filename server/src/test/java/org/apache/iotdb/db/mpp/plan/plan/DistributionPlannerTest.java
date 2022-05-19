@@ -93,7 +93,6 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
-    plan.getInstances().forEach(System.out::println);
     assertEquals(2, plan.getInstances().size());
   }
 
@@ -191,7 +190,6 @@ public class DistributionPlannerTest {
         new DistributionPlanner(
             analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root2));
     PlanNode newRoot2 = planner2.rewriteSource();
-    System.out.println(PlanNodeUtil.nodeToString(newRoot2));
     assertEquals(newRoot2.getChildren().get(0).getChildren().size(), 2);
   }
 
@@ -521,7 +519,6 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, insertRowNode));
     DistributedQueryPlan plan = planner.planFragments();
-    plan.getInstances().forEach(System.out::println);
     assertEquals(1, plan.getInstances().size());
   }
 
@@ -570,7 +567,6 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, node));
     DistributedQueryPlan plan = planner.planFragments();
-    plan.getInstances().forEach(System.out::println);
     assertEquals(1, plan.getInstances().size());
   }
 
