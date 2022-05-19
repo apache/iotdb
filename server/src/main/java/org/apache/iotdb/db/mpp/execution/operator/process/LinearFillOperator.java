@@ -44,11 +44,7 @@ public class LinearFillOperator implements ProcessOperator {
   private final List<TsBlock> cachedTsBlock;
   // next TsBlock Index for each Column
   private final int[] nextTsBlockIndex;
-  // cache already filled column in last unfinished filling
-  private final Column[] cachedFilledValueColumns;
 
-  // indicate which column we are filling
-  private int currentFilledColumnIndex;
   // indicate whether we can call child.next()
   // it's used to make sure that child.next() will only be called once in LinearFillOperator.next();
   private boolean canCallNext;
@@ -66,8 +62,6 @@ public class LinearFillOperator implements ProcessOperator {
     this.cachedTsBlock = new ArrayList<>();
     this.nextTsBlockIndex = new int[outputColumnCount];
     Arrays.fill(this.nextTsBlockIndex, 1);
-    this.cachedFilledValueColumns = new Column[outputColumnCount];
-    this.currentFilledColumnIndex = 0;
     this.canCallNext = false;
     this.noMoreTsBlock = true;
   }
@@ -97,74 +91,42 @@ public class LinearFillOperator implements ProcessOperator {
       }
     }
 
-    TsBlock block = cachedTsBlock.get(0);
-    long currentEndTime = block.getEndTime();
-    // use cached TsBlock to keep filling remaining column
-    while (currentFilledColumnIndex < outputColumnCount) {
+    TsBlock originTsBlock = cachedTsBlock.get(0);
+    long currentEndTime = originTsBlock.getEndTime();
+    // Step 1: judge whether we can fill current TsBlock, if TsBlock that we can get is not enough,
+    // we just return null
+    for (int columnIndex = 0; columnIndex < outputColumnCount; columnIndex++) {
       // current valueColumn can't be filled using current information
-      if (fillArray[currentFilledColumnIndex].needPrepareForNext(
-          currentEndTime, block.getColumn(currentFilledColumnIndex))) {
-
-        if (canCallNext) { // if we can call child.next(), we call that and cache it in
-          // cachedTsBlock
-          canCallNext = false;
-          TsBlock nextTsBlock = child.next();
-          // child operator's calculation is not finished, so we just return null
-          if (nextTsBlock == null || nextTsBlock.isEmpty()) {
-            return nextTsBlock;
-          } else { // otherwise, we cache it
-            cachedTsBlock.add(nextTsBlock);
+      if (fillArray[columnIndex].needPrepareForNext(
+          currentEndTime, originTsBlock.getColumn(columnIndex))) {
+        // current cached TsBlock is not enough to fill this column
+        while (!isCachedTsBlockEnough(columnIndex, currentEndTime)) {
+          // if we failed to get next TsBlock
+          if (!tryToGetNextTsBlock()) {
+            // there is no more TsBlock, so we have to fill this Column
+            if (noMoreTsBlock) {
+              // break the while-loop, continue to judge next Column
+              break;
+            } else {
+              // there is still more TsBlock, so current calculation is not finished, and we just
+              // return null
+              return null;
+            }
           }
         }
-
-        // next TsBlock has already been in the cachedTsBlock
-        while (nextTsBlockIndex[currentFilledColumnIndex] < cachedTsBlock.size()) {
-          TsBlock nextTsBlock = cachedTsBlock.get(nextTsBlockIndex[currentFilledColumnIndex]);
-          nextTsBlockIndex[currentFilledColumnIndex]++;
-          if (fillArray[currentFilledColumnIndex].prepareForNext(
-              currentEndTime,
-              nextTsBlock.getTimeColumn(),
-              nextTsBlock.getColumn(currentFilledColumnIndex))) {
-            cachedFilledValueColumns[currentFilledColumnIndex] =
-                fillArray[currentFilledColumnIndex].fill(
-                    block.getTimeColumn(), block.getColumn(currentFilledColumnIndex));
-            break;
-          }
-        }
-
-        // current column's filling is not finished using current owning TsBlock
-        if (cachedFilledValueColumns[currentFilledColumnIndex] == null) {
-          if (noMoreTsBlock) { // there is no more TsBlock, just use current owing TsBlock to fill
-            cachedFilledValueColumns[currentFilledColumnIndex] =
-                fillArray[currentFilledColumnIndex].fill(
-                    block.getTimeColumn(), block.getColumn(currentFilledColumnIndex));
-          } else { // next TsBlock is not ready, more TsBlocks is needed to do current column's
-            // fill, so current calculation is not finished, and we just return null
-            return null;
-          }
-        }
-      } else { // current valueColumn can be filled using current information
-        cachedFilledValueColumns[currentFilledColumnIndex] =
-            fillArray[currentFilledColumnIndex].fill(
-                block.getTimeColumn(), block.getColumn(currentFilledColumnIndex));
       }
-      currentFilledColumnIndex++;
     }
-
-    TsBlock originTsBlock = cachedTsBlock.remove(0);
-    checkArgument(
-        outputColumnCount == originTsBlock.getValueColumnCount(),
-        "outputColumnCount is not equal to value column count of child operator's TsBlock");
+    // Step 2: fill current TsBlock
+    originTsBlock = cachedTsBlock.remove(0);
+    Column[] columns = new Column[outputColumnCount];
+    for (int i = 0; i < outputColumnCount; i++) {
+      columns[i] = fillArray[i].fill(originTsBlock.getTimeColumn(), originTsBlock.getColumn(i));
+    }
     TsBlock result =
-        new TsBlock(
-            originTsBlock.getPositionCount(),
-            originTsBlock.getTimeColumn(),
-            cachedFilledValueColumns);
-    Arrays.fill(cachedFilledValueColumns, null);
+        new TsBlock(originTsBlock.getPositionCount(), originTsBlock.getTimeColumn(), columns);
     for (int i = 0; i < outputColumnCount; i++) {
       nextTsBlockIndex[i]--;
     }
-    currentFilledColumnIndex = 0;
     return result;
   }
 
@@ -185,5 +147,45 @@ public class LinearFillOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return cachedTsBlock.isEmpty() && child.isFinished();
+  }
+
+  /**
+   * Judge whether we can use current cached TsBlock to fill Column
+   *
+   * @param columnIndex index for column which need to be filled
+   * @param currentEndTime endTime of column which need to be filled
+   * @return true if current cached TsBlock is enough to fill Column at columnIndex, otherwise
+   *     false.
+   */
+  private boolean isCachedTsBlockEnough(int columnIndex, long currentEndTime) {
+    // next TsBlock has already been in the cachedTsBlock
+    while (nextTsBlockIndex[columnIndex] < cachedTsBlock.size()) {
+      TsBlock nextTsBlock = cachedTsBlock.get(nextTsBlockIndex[columnIndex]);
+      nextTsBlockIndex[columnIndex]++;
+      if (fillArray[columnIndex].prepareForNext(
+          currentEndTime, nextTsBlock.getTimeColumn(), nextTsBlock.getColumn(columnIndex))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @return true if we succeed to get next TsBlock and add it into cachedTsBlock, otherwise false
+   */
+  private boolean tryToGetNextTsBlock() {
+    if (canCallNext) { // if we can call child.next(), we call that and cache it in
+      // cachedTsBlock
+      canCallNext = false;
+      TsBlock nextTsBlock = child.next();
+      // child operator's calculation is not finished, so we just return null
+      if (nextTsBlock == null || nextTsBlock.isEmpty()) {
+        return false;
+      } else { // otherwise, we cache it
+        cachedTsBlock.add(nextTsBlock);
+        return true;
+      }
+    }
+    return false;
   }
 }
