@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
@@ -35,7 +36,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
-
 import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
@@ -74,7 +74,8 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
       List<AggregationDescriptor> aggregationDescriptorList) {
     super(id);
     this.alignedPath = alignedPath;
-    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.aggregationDescriptorList =
+        AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList);
   }
 
   public AlignedSeriesAggregationScanNode(
@@ -181,7 +182,7 @@ public class AlignedSeriesAggregationScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAlignedSeriesAggregate(this, context);
+    return visitor.visitAlignedSeriesAggregationScan(this, context);
   }
 
   @Override

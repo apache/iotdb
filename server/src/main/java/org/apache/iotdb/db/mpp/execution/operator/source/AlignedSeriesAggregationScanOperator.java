@@ -38,8 +38,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.isEndCalc;
 import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.skipOutOfTimeRangePoints;
@@ -71,7 +71,6 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
   public AlignedSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       AlignedPath seriesPath,
-      Set<String> allSensors,
       OperatorContext context,
       List<Aggregator> aggregators,
       Filter timeFilter,
@@ -82,7 +81,12 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
     this.ascending = ascending;
     this.alignedSeriesScanUtil =
         new AlignedSeriesScanUtil(
-            seriesPath, allSensors, context.getInstanceContext(), timeFilter, null, ascending);
+            seriesPath,
+            new HashSet<>(seriesPath.getMeasurementList()),
+            context.getInstanceContext(),
+            timeFilter,
+            null,
+            ascending);
     this.subSensorSize = seriesPath.getMeasurementList().size();
     this.aggregators = aggregators;
     List<TSDataType> dataTypes = new ArrayList<>();

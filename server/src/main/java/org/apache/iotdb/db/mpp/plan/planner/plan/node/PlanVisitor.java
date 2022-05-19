@@ -73,7 +73,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitAlignedSeriesAggregate(AlignedSeriesAggregationScanNode node, C context) {
+  public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
     return visitPlan(node, context);
   }
 

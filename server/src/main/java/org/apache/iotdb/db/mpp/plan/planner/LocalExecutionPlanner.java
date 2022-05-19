@@ -62,6 +62,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
@@ -94,6 +95,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
@@ -109,6 +111,7 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -232,6 +235,48 @@ public class LocalExecutionPlanner {
       context.addPath(seriesPath);
 
       return seriesScanOperator;
+    }
+
+    @Override
+    public Operator visitAlignedSeriesAggregationScan(
+        AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
+      AlignedPath seriesPath = node.getAlignedPath();
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              AlignedSeriesAggregationScanOperator.class.getSimpleName());
+      List<Aggregator> aggregators = new ArrayList<>();
+      for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+        // I am not sure that it's correct or not
+        String inputSeries = descriptor.getParametersString();
+        int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
+        TSDataType seriesDataType =
+            seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationType(), seriesDataType, ascending),
+                descriptor.getStep(),
+                Collections.singletonList(
+                    new InputLocation[] {new InputLocation(0, seriesIndex)})));
+      }
+
+      AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
+          new AlignedSeriesAggregationScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              operatorContext,
+              aggregators,
+              node.getTimeFilter(),
+              ascending,
+              node.getGroupByTimeParameter());
+
+      context.addSourceOperator(seriesAggregationScanOperator);
+      context.addPath(seriesPath);
+
+      return seriesAggregationScanOperator;
     }
 
     @Override

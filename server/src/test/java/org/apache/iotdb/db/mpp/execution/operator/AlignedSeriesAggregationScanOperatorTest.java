@@ -602,7 +602,6 @@ public class AlignedSeriesAggregationScanOperatorTest {
         new AlignedSeriesAggregationScanOperator(
             planNodeId,
             alignedPath,
-            allSensors,
             fragmentInstanceContext.getOperatorContexts().get(0),
             aggregators,
             timeFilter,
