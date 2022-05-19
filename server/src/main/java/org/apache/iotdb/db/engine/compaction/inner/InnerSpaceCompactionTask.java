@@ -59,7 +59,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList tsFileResourceList;
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
-  private TsFileResourceStatus[] originStatus;
 
   public InnerSpaceCompactionTask(
       long timePartition,
