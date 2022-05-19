@@ -524,6 +524,8 @@ public class Analyzer {
             for (String deviceName : deviceToTransformExpressionOfOneMeasurement.keySet()) {
               Expression transformExpression =
                   deviceToTransformExpressionOfOneMeasurement.get(deviceName);
+              ExpressionAnalyzer.updateTypeProvider(transformExpression, typeProvider);
+              transformExpression.inferTypes(typeProvider);
               deviceToTransformExpressions
                   .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
                   .add(ExpressionAnalyzer.removeAliasFromExpression(transformExpression));

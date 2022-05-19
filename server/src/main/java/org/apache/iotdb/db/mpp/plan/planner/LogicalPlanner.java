@@ -118,7 +118,7 @@ public class LogicalPlanner {
                       analysis.getDeviceToSourceExpressions().get(deviceName),
                       analysis.getDeviceToAggregationExpressions().get(deviceName),
                       analysis.getDeviceToAggregationTransformExpressions().get(deviceName),
-                      analysis.getDeviceToSourceExpressions().get(deviceName),
+                      analysis.getDeviceToTransformExpressions().get(deviceName),
                       analysis.getDeviceToQueryFilter() != null
                           ? analysis.getDeviceToQueryFilter().get(deviceName)
                           : null,
