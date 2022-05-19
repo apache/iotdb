@@ -105,7 +105,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.ZoneId;
@@ -1157,15 +1156,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+      // do not unescape string
+      String unWrappedString = src.substring(1, src.length() - 1);
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
+        String replaced = unWrappedString.replace("\"\"", "\"");
         return replaced.length() == 0 ? "" : replaced;
       }
       if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
+        String replaced = unWrappedString.replace("''", "'");
         return replaced.length() == 0 ? "" : replaced;
       }
     }
