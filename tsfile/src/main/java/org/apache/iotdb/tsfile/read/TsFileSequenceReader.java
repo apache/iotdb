@@ -218,8 +218,16 @@ public class TsFileSequenceReader implements AutoCloseable {
     return fileMetadataPos;
   }
 
-  public int getFileMetadataSize() {
+  public int getTsFileMetadataSize() {
     return fileMetadataSize;
+  }
+
+  /**
+   * Return the whole meta data size of this tsfile, including ChunkMetadata, TimeseriesMetadata and
+   * etc.
+   */
+  public long getFileMetadataSize() throws IOException {
+    return tsFileInput.size() - getFileMetadataPos();
   }
 
   /** this function does not modify the position of the file reader. */
@@ -877,7 +885,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* TimeseriesMetadata don't need deserialize chunk metadata list */
-  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata() throws IOException {
+  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata(boolean needChunkMetadata)
+      throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
@@ -897,7 +906,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           null,
           metadataIndexNode.getNodeType(),
           timeseriesMetadataMap,
-          false);
+          needChunkMetadata);
     }
     return timeseriesMetadataMap;
   }
