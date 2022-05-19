@@ -67,8 +67,9 @@ public class PermissionManager {
         }
       } catch (IOException | TException e) {
         logger.error(
-            "Failed to initialize cache,the initialization operation is {}",
-            authorReq.getAuthorType());
+            "Failed to initialize cache,the initialization operation is {}, the error is {}",
+            authorReq.getAuthorType(),
+            e);
       }
     }
     return status;

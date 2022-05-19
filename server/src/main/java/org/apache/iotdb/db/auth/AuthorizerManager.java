@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -58,17 +59,18 @@ public class AuthorizerManager implements IAuthorizer {
   private IAuthorizer iAuthorizer;
   private ReentrantReadWriteLock snapshotLock;
   private TPermissionInfoResp tPermissionInfoResp;
+  private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
 
   private LoadingCache<String, User> userCache =
       Caffeine.newBuilder()
-          .maximumSize(100)
-          .expireAfterAccess(30, TimeUnit.MINUTES)
+          .maximumSize(conf.getConfig().getAuthorCacheSize())
+          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build(this::cacheUser);
 
   private LoadingCache<String, Role> roleCache =
       Caffeine.newBuilder()
-          .maximumSize(100)
-          .expireAfterAccess(30, TimeUnit.MINUTES)
+          .maximumSize(conf.getConfig().getAuthorCacheSize())
+          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build(this::cacheRole);
 
   public AuthorizerManager() {
@@ -390,11 +392,15 @@ public class AuthorizerManager implements IAuthorizer {
                 status = false;
                 break;
               }
-              if (!role.checkPrivilege(path, permission)) {
+              if (role.checkPrivilege(path, permission)) {
+                status = true;
+                break;
+              } else {
                 status = false;
               }
             }
-            if (status == false) {
+            // Prove that neither the user nor his role has permission
+            if (!status) {
               break;
             }
           }

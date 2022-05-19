@@ -873,6 +873,12 @@ public class IoTDBConfig {
    */
   private int partitionCacheSize = 10000;
 
+  /** Cache size of user and role */
+  private int authorCacheSize = 100;
+
+  /** Cache expire time of user and role */
+  private int authorCacheExpireTime = 30;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -2743,5 +2749,21 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getAuthorCacheSize() {
+    return authorCacheSize;
+  }
+
+  public void setAuthorCacheSize(int authorCacheSize) {
+    this.authorCacheSize = authorCacheSize;
+  }
+
+  public int getAuthorCacheExpireTime() {
+    return authorCacheExpireTime;
+  }
+
+  public void setAuthorCacheExpireTime(int authorCacheExpireTime) {
+    this.authorCacheExpireTime = authorCacheExpireTime;
   }
 }

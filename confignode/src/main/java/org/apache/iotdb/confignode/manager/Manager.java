@@ -184,18 +184,10 @@ public interface Manager {
    */
   DataSet queryPermission(ConfigRequest configRequest);
 
-  /**
-   * login
-   *
-   * @return PermissionCacheInfo
-   */
+  /** login */
   TPermissionInfoResp login(String username, String password);
 
-  /**
-   * Check User Privileges
-   *
-   * @return PermissionCacheInfo
-   */
+  /** Check User Privileges */
   TPermissionInfoResp checkUserPrivileges(String username, List<String> paths, int permission);
 
   /**
