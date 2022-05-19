@@ -3486,6 +3486,10 @@ public class DataRegion {
         throws WriteProcessException;
   }
 
+  public List<Long> getTimePartitions() {
+    return new ArrayList<>(partitionMaxFileVersions.keySet());
+  }
+
   public String getInsertWriteLockHolder() {
     return insertWriteLockHolder;
   }
