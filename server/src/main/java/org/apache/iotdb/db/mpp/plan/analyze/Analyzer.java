@@ -330,10 +330,12 @@ public class Analyzer {
           FilterNullParameter filterNullParameter = new FilterNullParameter();
           filterNullParameter.setFilterNullPolicy(
               queryStatement.getFilterNullComponent().getWithoutPolicyType());
-          List<Expression> resultFilterNullColumns;
+          List<Expression> resultFilterNullColumns = new ArrayList<>();
           if (queryStatement.isAlignByDevice()) {
             resultFilterNullColumns =
-                analyzeWithoutNullAlignByDevice(queryStatement, outputExpressions);
+                analyzeWithoutNullAlignByDevice(
+                    queryStatement,
+                    outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet()));
           } else {
             resultFilterNullColumns =
                 analyzeWithoutNull(queryStatement, schemaTree, analysis.getTransformExpressions());
@@ -673,6 +675,30 @@ public class Analyzer {
       return groupByLevelExpressions;
     }
 
+    private List<Expression> analyzeWithoutNullAlignByDevice(
+        QueryStatement queryStatement, Set<Expression> outputExpressions) {
+      List<Expression> resultFilterNullColumns = new ArrayList<>();
+      List<Expression> rawFilterNullColumns =
+          queryStatement.getFilterNullComponent().getWithoutNullColumns();
+
+      // don't specify columns, by default, it is effective for all columns
+      if (rawFilterNullColumns.isEmpty()) {
+        resultFilterNullColumns.addAll(outputExpressions);
+        return resultFilterNullColumns;
+      }
+
+      for (Expression filterNullColumn : rawFilterNullColumns) {
+        if (!outputExpressions.contains(filterNullColumn)) {
+          throw new SemanticException(
+              String.format(
+                  "The without null column '%s' don't match the columns queried.",
+                  filterNullColumn));
+        }
+        resultFilterNullColumns.add(filterNullColumn);
+      }
+      return resultFilterNullColumns;
+    }
+
     private List<Expression> analyzeWithoutNull(
         QueryStatement queryStatement,
         SchemaTree schemaTree,
@@ -680,6 +706,13 @@ public class Analyzer {
       List<Expression> resultFilterNullColumns = new ArrayList<>();
       List<Expression> rawFilterNullColumns =
           queryStatement.getFilterNullComponent().getWithoutNullColumns();
+
+      // don't specify columns, by default, it is effective for all columns
+      if (rawFilterNullColumns.isEmpty()) {
+        resultFilterNullColumns.addAll(transformExpressions);
+        return resultFilterNullColumns;
+      }
+
       for (Expression filterNullColumn : rawFilterNullColumns) {
         List<Expression> resultExpressions =
             ExpressionAnalyzer.removeWildcardInExpression(filterNullColumn, schemaTree);
@@ -694,24 +727,6 @@ public class Analyzer {
           }
           resultFilterNullColumns.add(expressionWithoutAlias);
         }
-      }
-      // don't specify columns, by default, it is effective for all columns
-      if (rawFilterNullColumns.isEmpty()) {
-        resultFilterNullColumns.addAll(transformExpressions);
-      }
-      return resultFilterNullColumns;
-    }
-
-    private List<Expression> analyzeWithoutNullAlignByDevice(
-        QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
-      List<Expression> resultFilterNullColumns = new ArrayList<>();
-      List<Expression> rawFilterNullColumns =
-          queryStatement.getFilterNullComponent().getWithoutNullColumns();
-
-      // don't specify columns, by default, it is effective for all columns
-      if (rawFilterNullColumns.isEmpty()) {
-        resultFilterNullColumns.addAll(
-            outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toList()));
       }
       return resultFilterNullColumns;
     }
