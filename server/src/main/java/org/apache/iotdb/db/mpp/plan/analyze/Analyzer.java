@@ -245,7 +245,8 @@ public class Analyzer {
             for (Expression expression : transformExpressions) {
               updateSource(
                   expression,
-                  deviceToSourceExpressions.computeIfAbsent(deviceName, key -> new HashSet<>()),
+                  deviceToSourceExpressions.computeIfAbsent(
+                      deviceName, key -> new LinkedHashSet<>()),
                   isRawDataSource);
             }
             deviceToIsRawDataSource.put(deviceName, isRawDataSource);
@@ -264,7 +265,7 @@ public class Analyzer {
               updateSource(
                   queryFilter,
                   deviceToSourceExpressions.computeIfAbsent(
-                      devicePath.getFullPath(), key -> new HashSet<>()),
+                      devicePath.getFullPath(), key -> new LinkedHashSet<>()),
                   true);
             }
             analysis.setDeviceToQueryFilter(deviceToQueryFilter);

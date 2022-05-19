@@ -213,17 +213,17 @@ public class QueryLogicalPlanUtil {
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s3"),
+            OrderBy.TIMESTAMP_DESC));
+    sourceNodeList1.add(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            OrderBy.TIMESTAMP_DESC));
-    sourceNodeList1.add(
-        new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s3"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
@@ -245,9 +245,9 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             timeJoinNode1,
             new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s3")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s3"))
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))
             },
             predicate1,
             false,
