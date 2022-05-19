@@ -2120,6 +2120,9 @@ public class TSServiceImpl implements TSIEventHandler {
 
   // check whether measurement is legal according to syntax convention
   protected void isLegalMeasurements(String[] measurements) throws TException {
+    if (measurements == null) {
+      return;
+    }
     for (String measurement : measurements) {
       try {
         PathUtils.isLegalPath(measurement);
