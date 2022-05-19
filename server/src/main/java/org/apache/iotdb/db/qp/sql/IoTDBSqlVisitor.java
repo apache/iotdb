@@ -292,19 +292,20 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     createTimeSeriesOperator.setEncoding(encoding);
 
     CompressionType compressor;
-    List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
     if (ctx.compressor != null) {
       compressor = CompressionType.valueOf(ctx.compressor.getText().toUpperCase());
     } else {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
+
+    List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
     Map<String, String> props = null;
     if (ctx.attributePair(0) != null) {
       props = new HashMap<>(attributePairs.size());
       for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
-        props.put(
-            parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
-            parseAttributeValue(attributePair.attributeValue()).toLowerCase());
+        String key = parseAttributeKey(attributePair.attributeKey()).toLowerCase();
+        checkAttributeKeyInCreateTimeSeries(key);
+        props.put(key, parseAttributeValue(attributePair.attributeValue()).toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);
@@ -3117,6 +3118,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return parseStringLiteral(ctx.getText());
     }
     return parseIdentifier(ctx.getText());
+  }
+
+  private void checkAttributeKeyInCreateTimeSeries(String key) {
+    key = key.toLowerCase();
+    if ("encoding".equals(key)
+        || "datatype".equals(key)
+        || "compression".equals(key)
+        || "compressor".equals(key)) {
+      throw new SQLParserException(String.format("Unsupported %s", key));
+    }
   }
 
   private String parseAttributeValue(IoTDBSqlParser.AttributeValueContext ctx) {

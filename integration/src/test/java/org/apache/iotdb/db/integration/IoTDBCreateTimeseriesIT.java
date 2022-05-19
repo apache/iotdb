@@ -257,4 +257,47 @@ public class IoTDBCreateTimeseriesIT {
       Assert.assertTrue(collect.contains(timeseries));
     }
   }
+
+  @Test
+  public void testCreateTimeSeriesWithWrongAttribute() {
+    try {
+      statement.execute(
+          String.format("create timeseries %s with datatype=INT64, datatype = test", "root.sg.a"));
+      fail();
+    } catch (SQLException ignored) {
+    }
+
+    try {
+      statement.execute(
+          String.format("create timeseries %s with datatype=INT64, encoding=test", "root.sg.a"));
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals("303: Check metadata error: Unsupported encoding", e.getMessage());
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=test, compression=test",
+              "root.sg.a"));
+      fail();
+    } catch (SQLException ignored) {
+    }
+
+    try {
+      statement.execute(
+          String.format("create timeseries %s with datatype=INT64,compression=test", "root.sg.a"));
+      fail();
+    } catch (SQLException ignored) {
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=test",
+              "root.sg.a"));
+      fail();
+    } catch (SQLException ignored) {
+    }
+  }
 }
