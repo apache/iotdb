@@ -104,6 +104,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -319,8 +320,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // measurementAlias is also a nodeName
-      isLegalMeasurements(new String[] {req.getMeasurementAlias()});
-
+      isLegalMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -375,8 +375,10 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getMeasurements());
       }
 
-      isLegalMeasurements(req.getMeasurementAlias().toArray(new String[0]));
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurementAlias());
+
+      isLegalMeasurements(req.getMeasurements());
 
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
@@ -421,7 +423,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getPaths().get(0));
       }
 
-      isLegalMeasurements(req.getMeasurementAliasList().toArray(new String[0]));
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurementAliasList());
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
@@ -626,6 +629,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
       isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
@@ -673,6 +677,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
       isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
@@ -721,6 +726,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
       isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
@@ -769,7 +775,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -847,8 +854,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
-
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
@@ -895,6 +902,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
       isLegalMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
@@ -1092,7 +1100,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -1181,19 +1190,24 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   // check whether measurement is legal according to syntax convention
   protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+    if (measurementLists == null) {
+      return;
+    }
     for (List<String> measurementList : measurementLists) {
-      isLegalMeasurements(measurementList.toArray(new String[0]));
+      isLegalMeasurements(measurementList);
     }
   }
 
   // check whether measurement is legal according to syntax convention
-  protected void isLegalMeasurements(String[] measurements) throws TException {
+  protected void isLegalMeasurements(List<String> measurements) throws TException {
     if (measurements == null) {
       return;
     }
     for (String measurement : measurements) {
       try {
-        PathUtils.isLegalPath(measurement);
+        if (measurement != null) {
+          PathUtils.isLegalPath(measurement);
+        }
       } catch (IllegalPathException e) {
         throw new TException(e.getMessage());
       }

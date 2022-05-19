@@ -1260,7 +1260,7 @@ public class TSServiceImpl implements TSIEventHandler {
           req.prefixPath,
           req.getTimestamps().get(0));
     }
-
+    // check whether measurement is legal according to syntax convention
     isLegalMeasurementLists(req.getMeasurementsList());
 
     List<TSStatus> statusList = new ArrayList<>();
@@ -1309,7 +1309,7 @@ public class TSServiceImpl implements TSIEventHandler {
           req.prefixPath,
           req.getTimestamps().get(0));
     }
-
+    // check whether measurement is legal according to syntax convention
     isLegalMeasurementLists(req.getMeasurementsList());
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
@@ -1368,6 +1368,8 @@ public class TSServiceImpl implements TSIEventHandler {
           req.prefixPaths.get(0),
           req.getTimestamps().get(0));
     }
+
+    // check whether measurement is legal according to syntax convention
     isLegalMeasurementLists(req.getMeasurementsList());
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
@@ -1481,7 +1483,10 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+      // check whether measurement is legal according to syntax convention
+
+      isLegalMeasurements(req.getMeasurements());
+
       InsertRowPlan plan =
           new InsertRowPlan(
               new PartialPath(req.getPrefixPath()),
@@ -1512,7 +1517,9 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
+
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDevicePath(new PartialPath(req.getPrefixPath()));
       plan.setTime(req.getTimestamp());
@@ -1565,7 +1572,10 @@ public class TSServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+      // check whether measurement is legal according to syntax convention
+
+      isLegalMeasurements(req.getMeasurements());
+
       InsertTabletPlan insertTabletPlan =
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
@@ -1614,6 +1624,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
   private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
       throws IllegalPathException, TException {
+    // check whether measurement is legal according to syntax convention
     isLegalMeasurementLists(req.getMeasurementsList());
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(req.prefixPaths.get(i)), req.measurementsList.get(i));
@@ -1707,7 +1718,7 @@ public class TSServiceImpl implements TSIEventHandler {
       }
 
       // measurementAlias is also a nodeName
-      isLegalMeasurements(new String[] {req.measurementAlias});
+      isLegalMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       CreateTimeSeriesPlan plan =
           new CreateTimeSeriesPlan(
               new PartialPath(req.path),
@@ -1745,8 +1756,12 @@ public class TSServiceImpl implements TSIEventHandler {
                 req.encodings.get(0),
                 req.compressors.get(0)));
       }
-      isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
-      isLegalMeasurements(req.getMeasurementAlias().toArray(new String[0]));
+
+      // check whether measurement is legal according to syntax convention
+
+      isLegalMeasurements(req.getMeasurements());
+
+      isLegalMeasurements(req.getMeasurementAlias());
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
@@ -1806,7 +1821,8 @@ public class TSServiceImpl implements TSIEventHandler {
       }
 
       // measurementAlias is also a nodeName
-      isLegalMeasurements(req.measurementAliasList.toArray(new String[0]));
+
+      isLegalMeasurements(req.measurementAliasList);
 
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
       List<PartialPath> paths = new ArrayList<>(req.paths.size());
@@ -1925,6 +1941,7 @@ public class TSServiceImpl implements TSIEventHandler {
       // Construct plan from serialized request
       ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
       plan = CreateTemplatePlan.deserializeFromReq(buffer);
+      // check whether measurement is legal according to syntax convention
       isLegalMeasurementLists(plan.getMeasurements());
       TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
@@ -1937,7 +1954,10 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) throws TException {
-    isLegalMeasurements(req.getMeasurements().toArray(new String[0]));
+    // check whether measurement is legal according to syntax convention
+
+    isLegalMeasurements(req.getMeasurements());
+
     int size = req.getMeasurementsSize();
     String[] measurements = new String[size];
     TSDataType[] dataTypes = new TSDataType[size];
@@ -2113,19 +2133,24 @@ public class TSServiceImpl implements TSIEventHandler {
 
   // check whether measurement is legal according to syntax convention
   protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+    if (measurementLists == null) {
+      return;
+    }
     for (List<String> measurementList : measurementLists) {
-      isLegalMeasurements(measurementList.toArray(new String[0]));
+      isLegalMeasurements(measurementList);
     }
   }
 
   // check whether measurement is legal according to syntax convention
-  protected void isLegalMeasurements(String[] measurements) throws TException {
+  protected void isLegalMeasurements(List<String> measurements) throws TException {
     if (measurements == null) {
       return;
     }
     for (String measurement : measurements) {
       try {
-        PathUtils.isLegalPath(measurement);
+        if (measurement != null) {
+          PathUtils.isLegalPath(measurement);
+        }
       } catch (IllegalPathException e) {
         throw new TException(e.getMessage());
       }
