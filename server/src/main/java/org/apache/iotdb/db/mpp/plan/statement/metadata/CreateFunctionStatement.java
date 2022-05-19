@@ -27,33 +27,21 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class CreateFunctionStatement extends Statement implements IConfigStatement {
 
-  private String udfName;
-  private String className;
+  private final String udfName;
+  private final String className;
   private final List<URI> uris;
 
-  public CreateFunctionStatement(int tokenIntType) {
+  public CreateFunctionStatement(String udfName, String className, List<URI> uris) {
     super();
     statementType = StatementType.CREATE_FUNCTION;
-    uris = new ArrayList<>();
-  }
-
-  public void setUdfName(String udfName) {
     this.udfName = udfName;
-  }
-
-  public void setClassName(String className) {
     this.className = className;
-  }
-
-  public void addUri(String uri) throws URISyntaxException {
-    uris.add(new URI(uri));
+    this.uris = uris;
   }
 
   public String getUdfName() {
