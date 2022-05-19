@@ -19,15 +19,28 @@
 
 package org.apache.iotdb.metrics.utils;
 
-public enum PredefinedMetric {
-  JVM,
-  LOGBACK,
-  FILE,
-  PROCESS,
-  SYSTEM;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
+import java.util.function.ToLongFunction;
 
-  @Override
-  public String toString() {
-    return name();
+public class JvmUtils {
+  public static double getUsageValue(
+      MemoryPoolMXBean memoryPoolMXBean, ToLongFunction<MemoryUsage> getter) {
+    MemoryUsage usage = getUsage(memoryPoolMXBean);
+    if (usage == null) {
+      return Double.NaN;
+    }
+    return getter.applyAsLong(usage);
+  }
+
+  private static MemoryUsage getUsage(MemoryPoolMXBean memoryPoolMXBean) {
+    try {
+      return memoryPoolMXBean.getUsage();
+    } catch (InternalError e) {
+      // Defensive for potential InternalError with some specific JVM options. Based on its Javadoc,
+      // MemoryPoolMXBean.getUsage() should return null, not throwing InternalError, so it seems to
+      // be a JVM bug.
+      return null;
+    }
   }
 }

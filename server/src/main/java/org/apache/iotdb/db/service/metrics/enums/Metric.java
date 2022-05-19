@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.db.service.metrics.enums;
 
 public enum Metric {
   ENTRY,

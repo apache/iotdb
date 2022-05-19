@@ -17,18 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics;
+package org.apache.iotdb.metrics.predefined.jvm;
 
-import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
-public class DoNothingMetricService extends MetricService {
+public class JvmMetrics implements IMetricSet {
+  @Override
+  public void bindTo(MetricManager metricManager) {
+    JvmClassLoaderMetrics jvmClassLoaderMetricSet = new JvmClassLoaderMetrics();
+    jvmClassLoaderMetricSet.bindTo(metricManager);
+
+    JvmCompileMetrics jvmCompileMetricSet = new JvmCompileMetrics();
+    jvmCompileMetricSet.bindTo(metricManager);
+
+    JvmGcMetrics jvmGcMetricSet = new JvmGcMetrics();
+    jvmGcMetricSet.bindTo(metricManager);
+
+    JvmMemoryMetrics jvmMemoryMetricSet = new JvmMemoryMetrics();
+    jvmMemoryMetricSet.bindTo(metricManager);
+
+    JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();
+    jvmThreadMetrics.bindTo(metricManager);
+  }
 
   @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {}
-
-  @Override
-  protected void reloadProperties(ReloadLevel reloadLevel) {
-    // do nothing
+  public PredefinedMetric getType() {
+    return PredefinedMetric.JVM;
   }
 }
