@@ -30,8 +30,7 @@ public class ForwardEvent implements Event {
   private final Object value;
   private final PartialPath fullPath;
 
-  private static final String PAYLOAD_FORMATTER =
-      "{\"device\":\"%s\",\"measurement\":\"%s\",\"timestamp\":%d,\"value\":%s}";
+  private static final String PAYLOAD_FORMATTER = "{\"device\":\"%s\",\"measurement\":\"%s\",\"timestamp\":%d,\"value\":%s}";
 
   public ForwardEvent(long timestamp, Object value, PartialPath fullPath) {
     this.timestamp = timestamp;
@@ -40,18 +39,13 @@ public class ForwardEvent implements Event {
   }
 
   public String toJsonString() {
-    return String.format(
-        PAYLOAD_FORMATTER,
-        fullPath.getDevice(),
-        fullPath.getMeasurement(),
-        timestamp,
-        objectToJson(value));
+    return String.format(PAYLOAD_FORMATTER, fullPath.getDevice(), fullPath.getMeasurement(),
+        timestamp, objectToJson(value));
   }
 
   private static String objectToJson(Object object) {
-    return (object instanceof String || object instanceof Binary)
-        ? ('\"' + object.toString() + '\"')
-        : object.toString();
+    return (object instanceof String || object instanceof Binary) ? ('\"' + object.toString()
+        + '\"') : object.toString();
   }
 
   public long getTimestamp() {
