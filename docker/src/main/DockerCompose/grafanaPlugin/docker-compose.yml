@@ -22,11 +22,10 @@ version: "3.7"
 services:
   grafana:
     image: grafana/grafana:8.2.5
-    volumes:
-      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     ports:
       - 3000:3000
     environment:
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=iotdb
       - GF_INSTALL_PLUGINS=https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.14.0/apache-iotdb-0.14.0-grafana-plugin-bin.zip;apache-iotdb-0.14.0-grafana-plugin-bin
   iotdb:
     image: apache/iotdb0.14
