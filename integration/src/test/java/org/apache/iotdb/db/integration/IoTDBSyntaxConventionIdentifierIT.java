@@ -358,23 +358,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
   }
 
   @Test
-  public void testIllegalStorageGroup() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try {
-        statement.execute("set storage group to root.sg.");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
   public void testExpression() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

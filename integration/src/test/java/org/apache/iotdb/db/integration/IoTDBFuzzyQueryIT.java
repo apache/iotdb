@@ -160,7 +160,7 @@ public class IoTDBFuzzyQueryIT {
     hasResultSet =
         st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
     Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("\\\\", outputResultStr(st0.getResultSet()));
+    Assert.assertEquals("\\", outputResultStr(st0.getResultSet()));
   }
 
   @Test(expected = Exception.class)
