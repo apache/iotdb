@@ -556,6 +556,11 @@ public class ConfigManager implements Manager {
     return nodeManager.applyConfigNode(applyConfigNodeReq);
   }
 
+  @Override
+  public TSStatus createFunction(String udfName, String className, List<String> uris) {
+    throw new UnsupportedOperationException();
+  }
+
   public ProcedureManager getProcedureManager() {
     return procedureManager;
   }

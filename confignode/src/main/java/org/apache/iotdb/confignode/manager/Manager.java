@@ -202,4 +202,6 @@ public interface Manager {
    * @return status
    */
   TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
+
+  TSStatus createFunction(String udfName, String className, List<String> uris);
 }
