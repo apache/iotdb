@@ -17,23 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.multileader.asyncLogAppender;
+package org.apache.iotdb.consensus.multileader.conf;
 
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.multileader.IndexController;
-import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
+import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.ArrayBlockingQueue;
-
-public class AsyncLogAppender {
-
-  private MultiLeaderServerImpl impl;
-  private Peer peer;
-  private ArrayBlockingQueue<IConsensusRequest> pendingRequest;
-  private IndexController controller;
-
-  public long getCurrentSyncIndex() {
-    return controller.getCurrentIndex();
-  }
+// TODO make it configurable
+public class MultiLeaderConsensusConfig {
+  public static final int RPC_MAX_CONCURRENT_CLIENT_NUM = 65535;
+  public static final int THRIFT_SERVER_AWAIT_TIME_FOR_STOP_SERVICE = 60;
+  public static final boolean IS_RPC_THRIFT_COMPRESSION_ENABLED = false;
+  public static final int SELECTOR_NUM_OF_CLIENT_MANAGER = 1;
+  public static final int CONNECTION_TIMEOUT_IN_MS = (int) TimeUnit.SECONDS.toMillis(20);
+  public static final int MAX_PENDING_REQUEST_NUM_PER_NODE = 1000;
 }

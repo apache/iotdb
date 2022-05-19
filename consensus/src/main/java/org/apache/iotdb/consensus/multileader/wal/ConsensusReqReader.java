@@ -26,6 +26,9 @@ import java.util.concurrent.TimeoutException;
 
 /** This interface provides search interface for consensus requests via index. */
 public interface ConsensusReqReader {
+
+  long DEFAULT_SEARCH_INDEX = -1;
+
   /**
    * Gets the consensus request at the specified position.
    *

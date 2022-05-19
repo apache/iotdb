@@ -23,9 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.asyncLogAppender.AsyncLogAppender;
+import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,21 +37,21 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MultiLeaderServerImpl {
 
-  private final Logger logger = LoggerFactory.getLogger(MultiLeaderServerImpl.class);
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
+  private static final int DEFAULT_CONFIGURATION_BUFFER_SIZE = 1024 * 4;
+
+  private final Logger logger = LoggerFactory.getLogger(MultiLeaderServerImpl.class);
+
   private final Peer thisNode;
   private final IStateMachine stateMachine;
   private final String storageDir;
-  private List<Peer> configuration;
-  private IndexController currentNodeController;
-  private List<AsyncLogAppender> asyncLogAppenders = new ArrayList<>();
-
-  private static final int DEFAULT_BUFFER_SIZE = 1024 * 4;
+  private final List<Peer> configuration;
+  private final IndexController currentNodeController;
+  private final LogDispatcher logDispatcher;
 
   public MultiLeaderServerImpl(
       String storageDir, Peer thisNode, List<Peer> configuration, IStateMachine stateMachine) {
@@ -59,19 +61,12 @@ public class MultiLeaderServerImpl {
     this.currentNodeController =
         new IndexController(storageDir, Utils.fromTEndPointToString(thisNode.getEndpoint()), false);
     this.configuration = configuration;
-    persistConfiguration();
-    //    configuration.stream().filter(x -> !Objects.equals(x, thisNode)).
-
-  }
-
-  public MultiLeaderServerImpl(String storageDir, Peer thisNode, IStateMachine stateMachine) {
-    this.storageDir = storageDir;
-    this.thisNode = thisNode;
-    this.stateMachine = stateMachine;
-    this.currentNodeController =
-        new IndexController(storageDir, Utils.fromTEndPointToString(thisNode.getEndpoint()), false);
-    this.configuration = new ArrayList<>();
-    recoverConfiguration();
+    if (configuration.size() != 0) {
+      persistConfiguration();
+    } else {
+      recoverConfiguration();
+    }
+    logDispatcher = new LogDispatcher(this);
   }
 
   public IStateMachine getStateMachine() {
@@ -80,15 +75,20 @@ public class MultiLeaderServerImpl {
 
   public void start() {
     stateMachine.start();
+    logDispatcher.start();
   }
 
   public void stop() {
     stateMachine.stop();
+    logDispatcher.stop();
   }
 
   public TSStatus write(IConsensusRequest request) {
     synchronized (stateMachine) {
-      return stateMachine.write(buildIndexedConsensusRequest(request));
+      IndexedConsensusRequest indexedRequest = buildIndexedConsensusRequestForLocalRequest(request);
+      TSStatus result = stateMachine.write(indexedRequest);
+      logDispatcher.offer(indexedRequest);
+      return result;
     }
   }
 
@@ -105,7 +105,7 @@ public class MultiLeaderServerImpl {
   }
 
   public void persistConfiguration() {
-    ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+    ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_CONFIGURATION_BUFFER_SIZE);
     buffer.putInt(configuration.size());
     for (Peer peer : configuration) {
       peer.serialize(buffer);
@@ -135,13 +135,31 @@ public class MultiLeaderServerImpl {
     }
   }
 
-  public IndexedConsensusRequest buildIndexedConsensusRequest(IConsensusRequest request) {
+  public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
+      IConsensusRequest request) {
     return new IndexedConsensusRequest(
         currentNodeController.incrementAndGet(),
-        asyncLogAppenders.stream()
-            .mapToLong(AsyncLogAppender::getCurrentSyncIndex)
-            .min()
-            .orElseGet(currentNodeController::getCurrentIndex),
+        logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex),
         request);
+  }
+
+  public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
+      ByteBufferConsensusRequest request) {
+    return new IndexedConsensusRequest(
+        ConsensusReqReader.DEFAULT_SEARCH_INDEX,
+        logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex),
+        request);
+  }
+
+  public String getStorageDir() {
+    return storageDir;
+  }
+
+  public Peer getThisNode() {
+    return thisNode;
+  }
+
+  public List<Peer> getConfiguration() {
+    return configuration;
   }
 }

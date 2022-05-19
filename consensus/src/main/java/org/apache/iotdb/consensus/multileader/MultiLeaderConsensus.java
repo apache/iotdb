@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
 
@@ -42,6 +43,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -88,6 +90,7 @@ public class MultiLeaderConsensus implements IConsensus {
               new MultiLeaderServerImpl(
                   path.toString(),
                   new Peer(consensusGroupId, thisNode),
+                  Collections.emptyList(),
                   registry.apply(consensusGroupId)));
         }
       }
@@ -121,6 +124,12 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse addConsensusGroup(ConsensusGroupId groupId, List<Peer> peers) {
+    int consensusGroupSize = peers.size();
+    if (consensusGroupSize == 0) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new IllegalPeerNumException(consensusGroupSize))
+          .build();
+    }
     AtomicBoolean exist = new AtomicBoolean(true);
     stateMachineMap.computeIfAbsent(
         groupId,
