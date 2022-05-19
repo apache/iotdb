@@ -27,26 +27,23 @@ public class HTTPConnectionPool {
 
   private static volatile PoolingHttpClientConnectionManager clientConnectionManager;
 
-  private HTTPConnectionPool() {}
+  private HTTPConnectionPool() {
+  }
 
-  public static PoolingHttpClientConnectionManager getInstance(int maxTotal, int maxPerRoute) {
+  public static PoolingHttpClientConnectionManager getInstance() {
     if (clientConnectionManager == null) {
       synchronized (HTTPConnectionPool.class) {
         if (clientConnectionManager == null) {
           clientConnectionManager = new PoolingHttpClientConnectionManager();
           // Set the max number of connections
           clientConnectionManager.setMaxTotal(
-              Math.min(
-                  maxTotal,
-                  IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPoolSize()));
+              IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPoolSize());
           // Set the maximum number of connections per host and the specified number of connections
           // per website, which will not affect the access of other websites
           clientConnectionManager.setDefaultMaxPerRoute(
-              Math.min(
-                  maxPerRoute,
-                  IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getTriggerForwardHTTPPOOLMaxPerRoute()));
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getTriggerForwardHTTPPOOLMaxPerRoute());
         }
       }
     }

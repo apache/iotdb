@@ -76,11 +76,8 @@ public class ForwardTrigger implements Trigger {
       throws SinkException {
     String endpoint = attributes.getString("endpoint");
     boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
-    int poolSize = attributes.getIntOrDefault("poolSize", 200);
-    int poolMaxPerRoute = attributes.getIntOrDefault("poolMaxPerRoute", 20);
-
     HTTPForwardConfiguration forwardConfig =
-        new HTTPForwardConfiguration(endpoint, stopIfException, poolSize, poolMaxPerRoute);
+        new HTTPForwardConfiguration(endpoint, stopIfException);
     forwardConfig.checkConfig();
     return forwardConfig;
   }
