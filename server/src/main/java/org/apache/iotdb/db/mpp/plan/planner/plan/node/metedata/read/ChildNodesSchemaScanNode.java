@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -57,17 +56,11 @@ public class ChildNodesSchemaScanNode extends SchemaQueryScanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.CHILD_NODES_SCAN.serialize(byteBuffer);
-    ReadWriteIOUtils.write(prefixPath.getFullPath(), byteBuffer);
+    prefixPath.serialize(byteBuffer);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
-    String fullPath = ReadWriteIOUtils.readString(buffer);
-    PartialPath path;
-    try {
-      path = new PartialPath(fullPath);
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize ChildNodeScanNode", e);
-    }
+    PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new ChildNodesSchemaScanNode(planNodeId, path);
   }

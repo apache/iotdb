@@ -63,10 +63,6 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     return child;
   }
 
-  public void setChild(PlanNode child) {
-    this.child = child;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of(child);
@@ -112,8 +108,8 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     for (int i = 0; i < size; i++) {
       data.add(ReadWriteIOUtils.readString(byteBuffer));
     }
+    NodeManagementType type = NodeManagementType.findByValue(byteBuffer.get());
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new NodeManagementMemoryMergeNode(
-        planNodeId, data, NodeManagementType.findByValue(byteBuffer.get()));
+    return new NodeManagementMemoryMergeNode(planNodeId, data, type);
   }
 }

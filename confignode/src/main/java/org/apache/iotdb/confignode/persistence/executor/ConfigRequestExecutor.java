@@ -123,9 +123,8 @@ public class ConfigRequestExecutor {
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
       case GetChildPathsPartition:
-        return getSchemaNodeManagementPartiton((GetChildPathsPartitionReq) req);
       case GetChildNodesPartition:
-        return getSchemaNodeManagementPartiton((GetChildNodesPartitionReq) req);
+        return getSchemaNodeManagementPartiton(req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
