@@ -1032,7 +1032,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader(byte chunkType) throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
+    try {
+      return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
+    } catch (Throwable t) {
+      logger.error("Exception happened while reading chunk header of {}", file, t);
+      throw t;
+    }
   }
 
   /**
@@ -1042,7 +1047,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param chunkHeaderSize the size of chunk's header
    */
   private ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
+    try {
+      return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
+    } catch (Throwable t) {
+      logger.error("Exception happened while reading chunk header of {}", file, t);
+      throw t;
+    }
   }
 
   /**
@@ -1053,7 +1063,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   private ByteBuffer readChunk(long position, int dataSize) throws IOException {
-    return readData(position, dataSize);
+    try {
+      return readData(position, dataSize);
+    } catch (Throwable t) {
+      logger.error("Exception happened while reading chunk of {}", file, t);
+      throw t;
+    }
   }
 
   /**
@@ -1063,12 +1078,17 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return -chunk
    */
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
-    int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
-    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
-    ByteBuffer buffer =
-        readChunk(
-            metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
+    try {
+      int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
+      ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
+      ByteBuffer buffer =
+          readChunk(
+              metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
+      return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
+    } catch (Throwable t) {
+      logger.error("Exception happened while reading chunk of {}", file, t);
+      throw t;
+    }
   }
 
   /**
@@ -1094,7 +1114,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type, boolean hasStatistic) throws IOException {
-    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, hasStatistic);
+    try {
+      return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, hasStatistic);
+    } catch (Throwable t) {
+      logger.error("Exception happened while reading page header of {}", file, t);
+      throw t;
+    }
   }
 
   public long position() throws IOException {
@@ -1207,7 +1232,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return data that been read.
    */
   protected ByteBuffer readData(long start, long end) throws IOException {
-    return readData(start, (int) (end - start));
+    try {
+      return readData(start, (int) (end - start));
+    } catch (Throwable t) {
+      logger.error("Exception happened while reading data of {}", file, t);
+      throw t;
+    }
   }
 
   /** notice, the target bytebuffer are not flipped. */
