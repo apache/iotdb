@@ -3001,7 +3001,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
       // do not unescape string
-      String unWrappedString = src.substring(1, src.length() - 1);
+      String unWrappedString =
+          src.substring(1, src.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
         String replaced = unWrappedString.replace("\"\"", "\"");

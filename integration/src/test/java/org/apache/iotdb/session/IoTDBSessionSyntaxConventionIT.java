@@ -122,4 +122,34 @@ public class IoTDBSessionSyntaxConventionIT {
 
     session.close();
   }
+
+  @Test
+  public void testInsertIntoIllegalTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("a.b");
+    measurements.add("111");
+    measurements.add("`a");
+    measurements.add("a..b");
+
+    List<String> values = new ArrayList<>();
+    values.add("1");
+    values.add("1.2");
+    values.add("true");
+    values.add("dad");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    Assert.assertFalse(dataSet.hasNext());
+
+    session.close();
+  }
 }
