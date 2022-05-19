@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
@@ -55,6 +57,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -413,10 +417,12 @@ public class DistributionPlanner {
     private PlanNode planAggregationWithTimeJoin(
         TimeJoinNode root, DistributionPlanContext context) {
 
-      // Step 1: construct AggregationDescriptor for AggregationNode
+      List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
+          sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+      // construct AggregationDescriptor for AggregationNode
       List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
-      List<SeriesAggregationSourceNode> sources = new ArrayList<>();
-      Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
       for (PlanNode child : root.getChildren()) {
         SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
         handle
@@ -429,32 +435,7 @@ public class DistributionPlanner {
                           AggregationStep.FINAL,
                           descriptor.getInputExpressions()));
                 });
-        List<TRegionReplicaSet> dataDistribution =
-            analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
-        for (TRegionReplicaSet dataRegion : dataDistribution) {
-          SeriesAggregationSourceNode split = (SeriesAggregationSourceNode) handle.clone();
-          split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-          split.setRegionReplicaSet(dataRegion);
-          // Let each split reference different object of AggregationDescriptorList
-          split.setAggregationDescriptorList(
-              handle.getAggregationDescriptorList().stream()
-                  .map(AggregationDescriptor::deepClone)
-                  .collect(Collectors.toList()));
-          sources.add(split);
-        }
-        regionCountPerSeries.put(handle.getPartitionPath(), dataDistribution.size());
       }
-
-      // Step 2: change the step for each SeriesAggregationSourceNode according to its split count
-      for (SeriesAggregationSourceNode node : sources) {
-        boolean isFinal = regionCountPerSeries.get(node.getPartitionPath()) == 1;
-        node.getAggregationDescriptorList()
-            .forEach(d -> d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL));
-      }
-
-      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
-          sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
-
       AggregationNode aggregationNode =
           new AggregationNode(
               context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
@@ -480,6 +461,127 @@ public class DistributionPlanner {
           });
 
       return aggregationNode;
+    }
+
+    public PlanNode visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
+      // Firstly, we build the tree structure for GroupByLevelNode
+      List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
+          sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+      GroupByLevelNode newRoot = (GroupByLevelNode) root.clone();
+      final boolean[] addParent = {false};
+      sourceGroup.forEach(
+          (dataRegion, sourceNodes) -> {
+            if (sourceNodes.size() == 1) {
+              newRoot.addChild(sourceNodes.get(0));
+            } else {
+              if (!addParent[0]) {
+                sourceNodes.forEach(newRoot::addChild);
+                addParent[0] = true;
+              } else {
+                // We clone a TimeJoinNode from root to make the params to be consistent.
+                // But we need to assign a new ID to it
+                GroupByLevelNode parentOfGroup = (GroupByLevelNode) root.clone();
+                parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                sourceNodes.forEach(parentOfGroup::addChild);
+                newRoot.addChild(parentOfGroup);
+              }
+            }
+          });
+
+      // Then, we calculate the attributes for GroupByLevelNode in each level
+      calculateGroupByLevelNodeAttributes(newRoot, 0);
+      return null;
+    }
+
+    private void calculateGroupByLevelNodeAttributes(PlanNode node, int level) {
+      if (node == null) {
+        return;
+      }
+      node.getChildren().forEach(child -> calculateGroupByLevelNodeAttributes(child, level + 1));
+      if (!(node instanceof GroupByLevelNode)) {
+        return;
+      }
+      GroupByLevelNode handle = (GroupByLevelNode) node;
+
+      // Construct all outputColumns from children
+      List<String> childrenOutputColumns = new ArrayList<>();
+      handle
+          .getChildren()
+          .forEach(child -> childrenOutputColumns.addAll(child.getOutputColumnNames()));
+
+      // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
+      // AggregationDescriptor
+      List<String> outputColumnList = new ArrayList<>();
+      List<AggregationDescriptor> descriptorList = new ArrayList<>();
+      for (int i = 0; i < handle.getOutputColumnNames().size(); i++) {
+        String column = handle.getOutputColumnNames().get(i);
+        Set<Expression> originalExpressions =
+            analysis.getAggregationExpressions().getOrDefault(column, new HashSet<>());
+        List<Expression> descriptorExpression = new ArrayList<>();
+        for (String childColumn : childrenOutputColumns) {
+          if (childColumn.equals(column)) {
+            try {
+              descriptorExpression.add(new TimeSeriesOperand(new PartialPath(childColumn)));
+            } catch (IllegalPathException e) {
+              throw new RuntimeException("error when plan distribution aggregation query", e);
+            }
+            continue;
+          }
+          for (Expression exp : originalExpressions) {
+            if (exp.getExpressionString().equals(childColumn)) {
+              descriptorExpression.add(exp);
+            }
+          }
+        }
+        if (descriptorExpression.size() == 0) {
+          continue;
+        }
+        AggregationDescriptor descriptor = handle.getAggregationDescriptorList().get(i).deepClone();
+        descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.PARTIAL);
+        descriptor.setInputExpressions(descriptorExpression);
+
+        outputColumnList.add(column);
+        descriptorList.add(descriptor);
+      }
+      handle.getOutputColumnNames().clear();
+      handle.getOutputColumnNames().addAll(outputColumnList);
+      handle.getAggregationDescriptorList().clear();
+      handle.getAggregationDescriptorList().addAll(descriptorList);
+    }
+
+    private List<SeriesAggregationSourceNode> splitAggregationSourceByPartition(
+        MultiChildNode root, DistributionPlanContext context) {
+      // Step 1: split SeriesAggregationSourceNode according to data partition
+      List<SeriesAggregationSourceNode> sources = new ArrayList<>();
+      Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
+      for (PlanNode child : root.getChildren()) {
+        SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
+        List<TRegionReplicaSet> dataDistribution =
+            analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
+        for (TRegionReplicaSet dataRegion : dataDistribution) {
+          SeriesAggregationSourceNode split = (SeriesAggregationSourceNode) handle.clone();
+          split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+          split.setRegionReplicaSet(dataRegion);
+          // Let each split reference different object of AggregationDescriptorList
+          split.setAggregationDescriptorList(
+              handle.getAggregationDescriptorList().stream()
+                  .map(AggregationDescriptor::deepClone)
+                  .collect(Collectors.toList()));
+          sources.add(split);
+        }
+        regionCountPerSeries.put(handle.getPartitionPath(), dataDistribution.size());
+      }
+
+      // Step 2: change the step for each SeriesAggregationSourceNode according to its split count
+      for (SeriesAggregationSourceNode source : sources) {
+        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
+        source
+            .getAggregationDescriptorList()
+            .forEach(d -> d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL));
+      }
+      return sources;
     }
 
     public PlanNode visit(PlanNode node, DistributionPlanContext context) {

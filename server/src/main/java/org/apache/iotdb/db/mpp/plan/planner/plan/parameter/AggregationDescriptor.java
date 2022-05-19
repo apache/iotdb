@@ -42,7 +42,7 @@ public class AggregationDescriptor {
    *
    * <p>example: select sum(s1) from root.sg.d1; expression [root.sg.d1.s1] will be in this field.
    */
-  private final List<Expression> inputExpressions;
+  private List<Expression> inputExpressions;
 
   private String parametersString;
 
@@ -120,6 +120,10 @@ public class AggregationDescriptor {
 
   public void setStep(AggregationStep step) {
     this.step = step;
+  }
+
+  public void setInputExpressions(List<Expression> inputExpressions) {
+    this.inputExpressions = inputExpressions;
   }
 
   public AggregationDescriptor deepClone() {
