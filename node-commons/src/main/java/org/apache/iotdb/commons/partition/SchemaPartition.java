@@ -129,6 +129,12 @@ public class SchemaPartition extends Partition {
     }
   }
 
+  /**
+   * Get SchemaPartition by storageGroup name
+   *
+   * @param matchedStorageGroup List<String>
+   * @return Subset of current SchemaPartition which contains matchedStorageGroup
+   */
   public SchemaPartition getSchemaPartition(List<String> matchedStorageGroup) {
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
     matchedStorageGroup.forEach(

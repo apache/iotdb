@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
@@ -513,7 +514,7 @@ public class LogicalPlanner {
       return planBuilder
           .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath())
           .planSchemaQueryMerge(false)
-          .planMemorySource(analysis.getMatchedNodes())
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_PATHS)
           .getRoot();
     }
 
@@ -524,6 +525,7 @@ public class LogicalPlanner {
       return planBuilder
           .planChildNodesSchemaSource(showChildNodesStatement.getPartialPath())
           .planSchemaQueryMerge(false)
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_NODES)
           .getRoot();
     }
   }

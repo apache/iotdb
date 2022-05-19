@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -29,21 +30,33 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-public class MemorySourceNode extends ProcessNode {
-  private final List<String> data;
+public class NodeManagementMemoryMergeNode extends ProcessNode {
+  private final Set<String> data;
 
   private PlanNode child;
 
-  public MemorySourceNode(PlanNodeId id, List<String> data) {
+  private NodeManagementType type;
+
+  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<String> data, NodeManagementType type) {
     super(id);
     this.data = data;
+    this.type = type;
   }
 
-  public List<String> getData() {
+  public Set<String> getData() {
     return data;
+  }
+
+  public NodeManagementType getType() {
+    return type;
+  }
+
+  public void setType(NodeManagementType type) {
+    this.type = type;
   }
 
   public PlanNode getChild() {
@@ -66,7 +79,7 @@ public class MemorySourceNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new MemorySourceNode(getPlanNodeId(), this.data);
+    return new NodeManagementMemoryMergeNode(getPlanNodeId(), this.data, this.type);
   }
 
   @Override
@@ -81,24 +94,26 @@ public class MemorySourceNode extends ProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitMemorySource(this, context);
+    return visitor.visitNodeManagementMemoryMerge(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.MEMORY_SOURCE.serialize(byteBuffer);
+    PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE.serialize(byteBuffer);
     int size = data.size();
     ReadWriteIOUtils.write(size, byteBuffer);
     data.forEach(node -> ReadWriteIOUtils.write(node, byteBuffer));
+    byteBuffer.put((byte) type.ordinal());
   }
 
-  public static MemorySourceNode deserialize(ByteBuffer byteBuffer) {
-    List<String> data = new ArrayList<>();
+  public static NodeManagementMemoryMergeNode deserialize(ByteBuffer byteBuffer) {
+    Set<String> data = new HashSet<>();
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; i++) {
       data.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new MemorySourceNode(planNodeId, data);
+    return new NodeManagementMemoryMergeNode(
+        planNodeId, data, NodeManagementType.findByValue(byteBuffer.get()));
   }
 }

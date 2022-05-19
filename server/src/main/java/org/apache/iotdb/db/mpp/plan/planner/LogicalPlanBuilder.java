@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -35,7 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.MemorySourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -595,9 +596,10 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planMemorySource(List<String> data) {
-    MemorySourceNode memorySourceNode =
-        new MemorySourceNode(context.getQueryId().genPlanNodeId(), data);
+  public LogicalPlanBuilder planNodeManagementMemoryMerge(
+      Set<String> data, NodeManagementType type) {
+    NodeManagementMemoryMergeNode memorySourceNode =
+        new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data, type);
     memorySourceNode.addChild(this.getRoot());
     this.root = memorySourceNode;
     return this;

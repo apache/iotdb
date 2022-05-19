@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
@@ -121,7 +123,9 @@ public class ConfigRequestExecutor {
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
       case GetChildPathsPartition:
-        return getSchemaNodeManagementPartiiton((GetChildPathsPartitionReq) req);
+        return getSchemaNodeManagementPartiton((GetChildPathsPartitionReq) req);
+      case GetChildNodesPartition:
+        return getSchemaNodeManagementPartiton((GetChildNodesPartitionReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -246,31 +250,35 @@ public class ConfigRequestExecutor {
             });
   }
 
-  private DataSet getSchemaNodeManagementPartiiton(GetChildPathsPartitionReq req) {
-    PartialPath partialPath = req.getPartialPath();
-    String path = partialPath.getFullPath();
-    List<String> matchedChildPaths = new ArrayList<>();
+  private DataSet getSchemaNodeManagementPartiton(ConfigRequest req)
+      throws UnknownPhysicalPlanTypeException {
+    Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel;
     List<String> matchedStorageGroups = new ArrayList<>();
+    if (req.getType() == ConfigRequestType.GetChildPathsPartition) {
+      GetChildPathsPartitionReq getChildPathsPartitionReq = (GetChildPathsPartitionReq) req;
 
-    // Pair.left means already find matched child paths from MtreeAbove,
-    // Pair.right means need more info from DataNode's schemaRegion.
-    Pair<Set<String>, Set<PartialPath>> matchedChildNodePathInNextLevel =
-        clusterSchemaInfo.getChildNodePathInNextLevel(req.getPartialPath());
-    matchedChildNodePathInNextLevel.left.forEach(
-        childPath -> {
-          matchedChildPaths.add(childPath);
-        });
-    matchedChildNodePathInNextLevel.right.forEach(
-        childPath -> {
-          matchedStorageGroups.add(childPath.getFullPath());
-        });
+      // Pair.left means already find matched child paths from aboveMtree,
+      // Pair.right means need more info from DataNode's schemaRegion.
+      matchedChildInNextLevel =
+          clusterSchemaInfo.getChildNodePathInNextLevel(getChildPathsPartitionReq.getPartialPath());
+    } else if (req.getType() == ConfigRequestType.GetChildNodesPartition) {
+      GetChildNodesPartitionReq getChildNodesPartitionReq = (GetChildNodesPartitionReq) req;
 
+      // Pair.left means already find matched child paths from aboveMtree,
+      // Pair.right means need more info from DataNode's schemaRegion.
+      matchedChildInNextLevel =
+          clusterSchemaInfo.getChildNodeNameInNextLevel(getChildNodesPartitionReq.getPartialPath());
+    } else {
+      throw new UnknownPhysicalPlanTypeException(req.getType());
+    }
+    matchedChildInNextLevel.right.forEach(
+        childPath -> matchedStorageGroups.add(childPath.getFullPath()));
     SchemaNodeManagementResp schemaNodeManagementResp =
         (SchemaNodeManagementResp)
             partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);
     if (schemaNodeManagementResp.getStatus().getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      schemaNodeManagementResp.setMatchedNode(matchedChildPaths);
+      schemaNodeManagementResp.setMatchedNode(matchedChildInNextLevel.left);
     }
     return schemaNodeManagementResp;
   }

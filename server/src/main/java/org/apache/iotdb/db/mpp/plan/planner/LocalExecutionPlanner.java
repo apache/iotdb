@@ -59,7 +59,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.MemorySourceOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
@@ -79,7 +79,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.MemorySourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -393,15 +393,17 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitMemorySource(MemorySourceNode node, LocalExecutionPlanContext context) {
+    public Operator visitNodeManagementMemoryMerge(
+        NodeManagementMemoryMergeNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      return new MemorySourceOperator(
+      return new NodeManageMemoryMergeOperator(
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              MemorySourceOperator.class.getSimpleName()),
+              NodeManageMemoryMergeOperator.class.getSimpleName()),
           node.getData(),
-          child);
+          child,
+          node.getType());
     }
 
     @Override

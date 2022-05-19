@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -53,7 +54,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree) {
+      PathPatternTree patternTree, NodeManagementType type) {
     return null;
   }
 

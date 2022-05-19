@@ -22,19 +22,19 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SchemaNodeManagementPartition {
   SchemaPartition schemaPartition;
 
-  List<String> matchedNode;
+  Set<String> matchedNode;
 
   public SchemaNodeManagementPartition(
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap,
       String seriesSlotExecutorName,
       int seriesPartitionSlotNum,
-      List<String> matchedNode) {
+      Set<String> matchedNode) {
     this.schemaPartition =
         new SchemaPartition(schemaPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     this.matchedNode = matchedNode;
@@ -48,11 +48,11 @@ public class SchemaNodeManagementPartition {
     this.schemaPartition = schemaPartition;
   }
 
-  public List<String> getMatchedNode() {
+  public Set<String> getMatchedNode() {
     return matchedNode;
   }
 
-  public void setMatchedNode(List<String> matchedNode) {
+  public void setMatchedNode(Set<String> matchedNode) {
     this.matchedNode = matchedNode;
   }
 }

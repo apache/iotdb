@@ -155,11 +155,18 @@ public interface Manager {
   DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * create SchemaNodeManagementPartition
+   * create SchemaNodeManagementPartition for child paths node management
    *
    * @return SchemaNodeManagementPartitionDataSet
    */
-  DataSet getSchemaNodeManagementPartition(PartialPath partialPath);
+  DataSet getChildPathsPartition(PartialPath partialPath);
+
+  /**
+   * create SchemaNodeManagementPartition for child nodes node management
+   *
+   * @return SchemaNodeManagementPartitionDataSet
+   */
+  DataSet getChildNodesPartition(PartialPath partialPath);
 
   /**
    * Get DataPartition

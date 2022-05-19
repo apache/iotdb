@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
@@ -373,12 +374,26 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getSchemaNodeManagementPartition(PartialPath partialPath) {
+  public DataSet getChildPathsPartition(PartialPath partialPath) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetChildPathsPartitionReq getChildPathsPartitionReq = new GetChildPathsPartitionReq();
       getChildPathsPartitionReq.setPartialPath(partialPath);
-      return partitionManager.getSchemaNodeManagementPartition(getChildPathsPartitionReq);
+      return partitionManager.getChildPathsPartition(getChildPathsPartitionReq);
+    } else {
+      SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+  }
+
+  @Override
+  public DataSet getChildNodesPartition(PartialPath partialPath) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      GetChildNodesPartitionReq getChildNodesPartitionReq = new GetChildNodesPartitionReq();
+      getChildNodesPartitionReq.setPartialPath(partialPath);
+      return partitionManager.getChildNodesPartition(getChildNodesPartitionReq);
     } else {
       SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
       dataSet.setStatus(status);

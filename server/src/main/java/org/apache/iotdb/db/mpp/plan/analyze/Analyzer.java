@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -1126,7 +1127,8 @@ public class Analyzer {
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
           partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildPathsStatement.getPartialPath()));
+              new PathPatternTree(showChildPathsStatement.getPartialPath()),
+              NodeManagementType.CHILD_PATHS);
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1148,10 +1150,21 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showChildNodesStatement);
 
-      SchemaPartition schemaPartition =
-          partitionFetcher.getSchemaPartition(
-              new PathPatternTree(showChildNodesStatement.getPartialPath()));
-      analysis.setSchemaPartitionInfo(schemaPartition);
+      SchemaNodeManagementPartition schemaNodeManagementPartition =
+          partitionFetcher.getSchemaNodeManagementPartition(
+              new PathPatternTree(showChildNodesStatement.getPartialPath()),
+              NodeManagementType.CHILD_NODES);
+
+      if (schemaNodeManagementPartition == null) {
+        return analysis;
+      }
+      if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
+          && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size()
+              == 0) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+      analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
+      analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
       analysis.setRespDatasetHeader(HeaderConstant.showChildNodesHeader);
       return analysis;
     }

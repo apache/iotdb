@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -151,13 +152,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree) {
+      PathPatternTree patternTree, NodeManagementType type) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
-              constructSchemaNodeManagementPartitionReq(patternTree));
+              constructSchemaNodeManagementPartitionReq(patternTree, type));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (TException | IOException e) {
@@ -359,14 +360,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      PathPatternTree patternTree) {
+      PathPatternTree patternTree, NodeManagementType type) {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);
       ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
       serializedPatternTree.put(baos.getBuf(), 0, baos.size());
       serializedPatternTree.flip();
-      return new TSchemaNodeManagementReq(serializedPatternTree);
+      return new TSchemaNodeManagementReq(serializedPatternTree, type);
     } catch (IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }

@@ -35,7 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.MemorySourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -548,7 +548,8 @@ public class LogicalPlannerTest {
   public void testShowChildPaths() {
     String sql = "SHOW CHILD PATHS root.ln";
     try {
-      MemorySourceNode memorySourceNode = (MemorySourceNode) parseSQLToPlanNode(sql);
+      NodeManagementMemoryMergeNode memorySourceNode =
+          (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
       SchemaQueryMergeNode schemaQueryMergeNode =
           (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
       ChildPathsSchemaScanNode childPathsSchemaScanNode =
@@ -565,7 +566,10 @@ public class LogicalPlannerTest {
   public void testShowChildNodes() {
     String sql = "SHOW CHILD NODES root.ln";
     try {
-      SchemaQueryMergeNode schemaQueryMergeNode = (SchemaQueryMergeNode) parseSQLToPlanNode(sql);
+      NodeManagementMemoryMergeNode memorySourceNode =
+          (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
+      SchemaQueryMergeNode schemaQueryMergeNode =
+          (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
       ChildNodesSchemaScanNode childNodesSchemaScanNode =
           (ChildNodesSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
       Assert.assertNotNull(childNodesSchemaScanNode);

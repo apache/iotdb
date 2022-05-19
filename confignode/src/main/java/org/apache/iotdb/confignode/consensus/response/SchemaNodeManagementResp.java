@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.List;
+import java.util.Set;
 
 public class SchemaNodeManagementResp implements DataSet {
 
@@ -33,7 +33,7 @@ public class SchemaNodeManagementResp implements DataSet {
 
   private SchemaPartition schemaPartition;
 
-  private List<String> matchedNode;
+  private Set<String> matchedNode;
 
   public SchemaNodeManagementResp() {
     // empty constructor
@@ -55,17 +55,16 @@ public class SchemaNodeManagementResp implements DataSet {
     return schemaPartition;
   }
 
-  public List<String> getMatchedNode() {
+  public Set<String> getMatchedNode() {
     return matchedNode;
   }
 
-  public void setMatchedNode(List<String> matchedNode) {
+  public void setMatchedNode(Set<String> matchedNode) {
     this.matchedNode = matchedNode;
   }
 
   public void convertToRpcSchemaNodeManagementPartitionResp(TSchemaNodeManagementResp resp) {
     resp.setStatus(status);
-
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setSchemaRegionMap(schemaPartition.getSchemaPartitionMap());
       resp.setMatchedNode(matchedNode);
