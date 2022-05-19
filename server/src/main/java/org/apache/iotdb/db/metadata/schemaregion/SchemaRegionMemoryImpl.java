@@ -84,6 +84,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.apache.commons.io.FileUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -159,6 +160,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+
+  private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGMemoryImpl mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -186,11 +189,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   }
                 });
 
-    init(storageGroupMNode);
+    this.storageGroupMNode = storageGroupMNode;
+    init();
   }
 
   @SuppressWarnings("squid:S2093")
-  public synchronized void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+  public synchronized void init() throws MetadataException {
     if (initialized) {
       return;
     }
@@ -407,6 +411,79 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+  }
+
+  @Override
+  public synchronized boolean createSnapshot(File snapshotDir) {
+    File mLogSnapshotTmp =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT_TMP);
+    File mLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
+
+    try {
+      logWriter.copyTo(mLogSnapshotTmp);
+      if (mLogSnapshot.exists() && !mLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot file {} while creating snapshot for schemaRegion {}.",
+            mLogSnapshot.getName(),
+            schemaRegionId);
+        return false;
+      }
+
+      if (!mLogSnapshotTmp.renameTo(mLogSnapshot)) {
+        logger.error(
+            "Failed to rename {} to {} while creating snapshot for schemaRegion {}.",
+            mLogSnapshotTmp.getName(),
+            mLogSnapshot.getName(),
+            schemaRegionId);
+        mLogSnapshot.delete();
+        return false;
+      }
+
+      return tagManager.createSnapshot(snapshotDir);
+    } catch (IOException e) {
+      logger.error(
+          "Failed to create snapshot for schemaRegion {} due to {}",
+          schemaRegionId,
+          e.getMessage(),
+          e);
+      mLogSnapshot.delete();
+      return false;
+    } finally {
+      mLogSnapshotTmp.delete();
+    }
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    File mLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(
+            latestSnapshotRootDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
+    File tagSnapshot =
+        SystemFileFactory.INSTANCE.getFile(
+            latestSnapshotRootDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+
+    clear();
+
+    File mLog =
+        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
+    File tagFile =
+        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.TAG_LOG);
+    mLog.delete();
+    tagFile.delete();
+
+    try {
+      FileUtils.copyFile(mLogSnapshot, mLog);
+      FileUtils.copyFile(tagSnapshot, tagFile);
+
+      init();
+    } catch (IOException | MetadataException e) {
+      logger.error(
+          "Failed to load snapshot for schemaRegion {}  ue to {}",
+          schemaRegionId,
+          e.getMessage(),
+          e);
+    }
   }
 
   // endregion

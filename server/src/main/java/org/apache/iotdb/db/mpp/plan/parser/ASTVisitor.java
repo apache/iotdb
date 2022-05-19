@@ -310,9 +310,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // rename
     if (ctx.RENAME() != null) {
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
-      alterMap.put(
-          parseStringLiteral(ctx.beforeName.getText()),
-          parseStringLiteral(ctx.currentName.getText()));
+      alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
       // set
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
@@ -320,8 +318,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.DROP() != null) {
       // drop
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
-      for (int i = 0; i < ctx.STRING_LITERAL().size(); i++) {
-        alterMap.put(parseStringLiteral(ctx.STRING_LITERAL(i).getText()), null);
+      for (int i = 0; i < ctx.attributeKey().size(); i++) {
+        alterMap.put(parseAttributeKey(ctx.attributeKey().get(i)), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
