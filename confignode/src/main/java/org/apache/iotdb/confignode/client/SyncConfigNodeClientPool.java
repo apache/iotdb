@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
@@ -51,10 +52,10 @@ public class SyncConfigNodeClientPool {
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */
   public TConfigNodeRegisterResp registerConfigNode(
-      TEndPoint endPoint, TConfigNodeRegisterReq req) {
+      List<TEndPoint> endPointList, TConfigNodeRegisterReq req) {
     // TODO: Unified retry logic
     for (int retry = 0; retry < retryNum; retry++) {
-      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPointList.get(0))) {
         return client.registerConfigNode(req);
       } catch (Exception e) {
         LOGGER.warn("Register ConfigNode failed, retrying...", e);
@@ -68,10 +69,11 @@ public class SyncConfigNodeClientPool {
                 .setMessage("All retry failed."));
   }
 
-  public TSStatus applyConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
+  public TSStatus applyConfigNode(
+      List<TEndPoint> endPointList, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
     for (int retry = 0; retry < retryNum; retry++) {
-      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPointList.get(0))) {
         return client.applyConfigNode(configNodeLocation);
       } catch (Exception e) {
         LOGGER.warn("Apply ConfigNode failed, retrying...", e);

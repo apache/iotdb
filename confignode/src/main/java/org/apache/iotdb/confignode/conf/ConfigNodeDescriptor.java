@@ -30,6 +30,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 public class ConfigNodeDescriptor {
@@ -115,10 +118,16 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty("consensus_port", String.valueOf(conf.getConsensusPort()))));
 
-      String targetConfigNode = properties.getProperty("target_confignode", null);
-      if (targetConfigNode != null) {
-        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
+      List<String> targetConfigNodeList =
+          new ArrayList<>(
+              Arrays.asList(properties.getProperty("target_confignode", null).split(",")));
+      if (!targetConfigNodeList.isEmpty()) {
+        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(targetConfigNodeList));
       }
+      //      String targetConfigNode = properties.getProperty("target_confignode", null);
+      //      if (targetConfigNode != null) {
+      //        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
+      //      }
 
       conf.setSeriesPartitionSlotNum(
           Integer.parseInt(

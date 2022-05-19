@@ -37,7 +37,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -85,11 +86,14 @@ public class ConfigNodeStartupCheck {
     // the target_configNode needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass()
             .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")
-        && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-            || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
+        && (!isContainsRpcConfigNode())) {
+      StringBuffer sb = new StringBuffer();
+      for (TEndPoint endPoint : conf.getTargetConfigNodeList()) {
+        sb.append(endPoint.getIp()).append(":").append(endPoint.getPort()).append(",");
+      }
       throw new ConfigurationException(
           "target_confignode",
-          conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
+          sb.substring(0, sb.length() - 1),
           conf.getRpcAddress() + ":" + conf.getRpcPort());
     }
 
@@ -162,16 +166,35 @@ public class ConfigNodeStartupCheck {
    * @return True if the target_confignode points to itself
    */
   private boolean isSeedConfigNode() {
-    boolean result =
-        conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-            && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
+    boolean result = isContainsRpcConfigNode();
+
+    //    boolean result =
+    //        conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
+    //            && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties
-      conf.setConfigNodeList(
-          Collections.singletonList(
-              new TConfigNodeLocation(
-                  new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                  new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
+      List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
+      TEndPoint rpcEndPoint = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
+      for (TEndPoint endPoint : conf.getTargetConfigNodeList()) {
+        configNodeLocations.add(
+            new TConfigNodeLocation(
+                rpcEndPoint, new TEndPoint(endPoint.getIp(), conf.getConsensusPort())));
+      }
+      conf.setConfigNodeList(configNodeLocations);
+    }
+    return result;
+  }
+
+  /**
+   * Check if the SeedConfigNode contains the current ConfigNode.
+   *
+   * @return True if the target_confignode points to itself
+   */
+  private boolean isContainsRpcConfigNode() {
+    boolean result = false;
+    TEndPoint rpcConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
+    if (conf.getTargetConfigNodeList().contains(rpcConfigNode)) {
+      result = true;
     }
     return result;
   }
@@ -192,7 +215,8 @@ public class ConfigNodeStartupCheck {
             conf.getDataReplicationFactor());
 
     TConfigNodeRegisterResp resp =
-        SyncConfigNodeClientPool.getInstance().registerConfigNode(conf.getTargetConfigNode(), req);
+        SyncConfigNodeClientPool.getInstance()
+            .registerConfigNode(conf.getTargetConfigNodeList(), req);
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
       conf.setConfigNodeList(resp.getConfigNodeList());

@@ -42,6 +42,8 @@ public class ConfigNodeConf {
   /** Used for connecting to the ConfigNodeGroup */
   private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
 
+  private List<TEndPoint> targetConfigNodeList = new ArrayList<>();
+
   /** Mark if the ConfigNode needs to apply */
   private boolean needApply = false;
 
@@ -197,6 +199,14 @@ public class ConfigNodeConf {
 
   public void setTargetConfigNode(TEndPoint targetConfigNode) {
     this.targetConfigNode = targetConfigNode;
+  }
+
+  public List<TEndPoint> getTargetConfigNodeList() {
+    return targetConfigNodeList;
+  }
+
+  public void setTargetConfigNodeList(List<TEndPoint> targetConfigNodeList) {
+    this.targetConfigNodeList = targetConfigNodeList;
   }
 
   public int getPartitionRegionId() {

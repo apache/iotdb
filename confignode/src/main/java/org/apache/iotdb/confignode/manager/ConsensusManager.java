@@ -112,7 +112,7 @@ public class ConsensusManager {
       TSStatus status =
           SyncConfigNodeClientPool.getInstance()
               .applyConfigNode(
-                  conf.getTargetConfigNode(),
+                  conf.getTargetConfigNodeList(),
                   new TConfigNodeLocation(
                       new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                       new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
