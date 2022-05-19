@@ -26,7 +26,6 @@ import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.micrometer.type.*;
 import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
@@ -373,49 +372,6 @@ public class MicrometerMetricManager implements MetricManager {
       }
     }
     return metricMap;
-  }
-
-  @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    if (!isEnable) {
-      return;
-    }
-    switch (metric) {
-      case JVM:
-        enableJvmMetrics();
-        break;
-      case LOGBACK:
-        enableLogbackMetrics();
-        break;
-      default:
-        logger.warn("Unsupported metric type {}", metric);
-    }
-  }
-
-  /** bind default metric to registry(or reporter */
-  private void enableJvmMetrics() {
-    if (!isEnable()) {
-      return;
-    }
-    ClassLoaderMetrics classLoaderMetrics = new ClassLoaderMetrics();
-    classLoaderMetrics.bindTo(meterRegistry);
-    JvmCompilationMetrics jvmCompilationMetrics = new JvmCompilationMetrics();
-    jvmCompilationMetrics.bindTo(meterRegistry);
-    JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
-    JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics();
-    jvmGcMetrics.bindTo(meterRegistry);
-    jvmHeapPressureMetrics.bindTo(meterRegistry);
-    JvmMemoryMetrics jvmMemoryMetrics = new JvmMemoryMetrics();
-    jvmMemoryMetrics.bindTo(meterRegistry);
-    JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();
-    jvmThreadMetrics.bindTo(meterRegistry);
-  }
-
-  private void enableLogbackMetrics() {
-    if (!isEnable()) {
-      return;
-    }
-    new LogbackMetrics().bindTo(meterRegistry);
   }
 
   @Override

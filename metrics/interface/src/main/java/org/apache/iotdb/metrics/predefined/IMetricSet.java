@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,24 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service.metrics;
 
-public enum Operation {
-  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
-  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
-  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
-  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
-  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
-  EXECUTE_QUERY("EXECUTE_QUERY"),
-  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
+package org.apache.iotdb.metrics.predefined;
 
-  public String getName() {
-    return name;
-  }
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
-  String name;
+public interface IMetricSet {
+  /** bind related metric to metric manager */
+  void bindTo(MetricManager metricManager);
 
-  Operation(String name) {
-    this.name = name;
-  }
+  /** get type of metric set */
+  PredefinedMetric getType();
 }
