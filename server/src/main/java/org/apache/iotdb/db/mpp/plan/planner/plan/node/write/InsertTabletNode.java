@@ -537,6 +537,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   int subSerializeSize(int start, int end) {
     int size = 0;
+    size += Long.BYTES;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
@@ -612,6 +613,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
+    buffer.putLong(searchIndex);
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
@@ -723,6 +725,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void subDeserialize(DataInputStream stream) throws IllegalPathException, IOException {
+    searchIndex = stream.readLong();
     devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
     int measurementSize = stream.readInt();

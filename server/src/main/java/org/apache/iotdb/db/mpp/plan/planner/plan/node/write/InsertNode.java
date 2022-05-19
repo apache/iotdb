@@ -44,6 +44,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode implements IConsensusRequest {
+  /** this insert node doesn't need to participate in multi-leader consensus */
+  public static final long NO_CONSENSUS_INDEX = -1;
+  /** no multi-leader consensus, all insert nodes can be safely deleted */
+  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -67,14 +71,16 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
    */
   protected IDeviceID deviceID;
 
+  /** this index is used by wal search, its order should be protected by the upper layer */
+  protected long searchIndex = NO_CONSENSUS_INDEX;
+  /**
+   * this index pass info to wal, indicating that insert nodes whose search index are before this
+   * value can be deleted safely
+   */
+  protected long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
-
-  /** used by multi_leader_consensus */
-  protected long minSyncIndex = Long.MAX_VALUE;
-
-  /** used by multi_leader_consensus */
-  protected long currentIndex = -1;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -145,20 +151,20 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
     this.deviceID = deviceID;
   }
 
-  public long getMinSyncIndex() {
-    return minSyncIndex;
+  public long getSearchIndex() {
+    return searchIndex;
   }
 
-  public void setMinSyncIndex(long minSyncIndex) {
-    this.minSyncIndex = minSyncIndex;
+  public void setSearchIndex(long searchIndex) {
+    this.searchIndex = searchIndex;
   }
 
-  public long getCurrentIndex() {
-    return currentIndex;
+  public long getSafelyDeletedSearchIndex() {
+    return safelyDeletedSearchIndex;
   }
 
-  public void setCurrentIndex(long currentIndex) {
-    this.currentIndex = currentIndex;
+  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
+    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
   }
 
   /**
@@ -175,6 +181,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
 
+  // region Serialization methods for WAL
   /** Serialized size of measurement schemas, ignoring failed time series */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
@@ -209,6 +216,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
+  // endregion
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return dataRegionReplicaSet;

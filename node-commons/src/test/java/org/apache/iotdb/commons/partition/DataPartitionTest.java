@@ -24,11 +24,17 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,13 +53,21 @@ public class DataPartitionTest extends SerializeTest {
             generateCreateDataPartitionMap(
                 dataPartitionFlag, generateTConsensusGroupId(dataPartitionFlag));
     dataPartition.setDataPartitionMap(assignedDataPartition);
-    ByteBuffer buffer = ByteBuffer.allocate(10 * 1024);
-    dataPartition.serialize(buffer);
+
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataOutputStream);
+    TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+    dataPartition.serialize(dataOutputStream, protocol);
 
     DataPartition newDataPartition =
         new DataPartition(new HashMap<>(), seriesPartitionExecutorClass, 1);
-    buffer.flip();
-    newDataPartition.deserialize(buffer);
+    ByteArrayInputStream byteArrayInputStream =
+        new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+    DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
+    tioStreamTransport = new TIOStreamTransport(dataInputStream);
+    protocol = new TBinaryProtocol(tioStreamTransport);
+    newDataPartition.deserialize(dataInputStream, protocol);
     Assert.assertEquals(assignedDataPartition, newDataPartition.getDataPartitionMap());
   }
 }

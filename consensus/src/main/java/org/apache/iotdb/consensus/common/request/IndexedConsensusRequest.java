@@ -24,20 +24,26 @@ import java.nio.ByteBuffer;
 /** only used for multi-leader consensus */
 public class IndexedConsensusRequest implements IConsensusRequest {
 
-  private final long minSyncIndex;
-  private final long currentIndex;
+  /** this insert node doesn't need to participate in multi-leader consensus */
+  public static final long NO_CONSENSUS_INDEX = -1;
+  /** no multi-leader consensus, all insert nodes can be safely deleted */
+  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
+
+  private final long searchIndex;
+  private final long safelyDeletedSearchIndex;
   private final IConsensusRequest request;
 
-  public IndexedConsensusRequest(long minSyncIndex, long currentIndex, IConsensusRequest request) {
-    this.minSyncIndex = minSyncIndex;
-    this.currentIndex = currentIndex;
+  public IndexedConsensusRequest(
+      long searchIndex, long safelyDeletedSearchIndex, IConsensusRequest request) {
+    this.searchIndex = searchIndex;
+    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
     this.request = request;
   }
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
-    buffer.putLong(minSyncIndex);
-    buffer.putLong(currentIndex);
+    buffer.putLong(searchIndex);
+    buffer.putLong(safelyDeletedSearchIndex);
     request.serializeRequest(buffer);
   }
 
@@ -45,11 +51,11 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return request;
   }
 
-  public long getMinSyncIndex() {
-    return minSyncIndex;
+  public long getSearchIndex() {
+    return searchIndex;
   }
 
-  public long getCurrentIndex() {
-    return currentIndex;
+  public long getSafelyDeletedSearchIndex() {
+    return safelyDeletedSearchIndex;
   }
 }

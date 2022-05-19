@@ -47,9 +47,9 @@ public class MultiLeaderServerImpl {
   private final String storageDir;
   private List<Peer> configuration;
   private IndexController currentNodeController;
-  private List<AsyncLogAppender> asyncLogAppenders;
+  private List<AsyncLogAppender> asyncLogAppenders = new ArrayList<>();
 
-  private static final int DEFAULT_BUFFER_SIZE = 1024 * 2;
+  private static final int DEFAULT_BUFFER_SIZE = 1024 * 4;
 
   public MultiLeaderServerImpl(
       String storageDir, Peer thisNode, List<Peer> configuration, IStateMachine stateMachine) {
@@ -88,10 +88,7 @@ public class MultiLeaderServerImpl {
 
   public TSStatus write(IConsensusRequest request) {
     synchronized (stateMachine) {
-      IndexedConsensusRequest newRequest =
-          new IndexedConsensusRequest(
-              Long.MAX_VALUE, currentNodeController.incrementAndGet(), request);
-      return stateMachine.write(newRequest);
+      return stateMachine.write(buildIndexedConsensusRequest(request));
     }
   }
 
@@ -136,5 +133,15 @@ public class MultiLeaderServerImpl {
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }
+  }
+
+  public IndexedConsensusRequest buildIndexedConsensusRequest(IConsensusRequest request) {
+    return new IndexedConsensusRequest(
+        currentNodeController.incrementAndGet(),
+        asyncLogAppenders.stream()
+            .mapToLong(AsyncLogAppender::getCurrentSyncIndex)
+            .min()
+            .orElseGet(currentNodeController::getCurrentIndex),
+        request);
   }
 }

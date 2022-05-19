@@ -64,7 +64,9 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     List<TSStatus> status = new ArrayList<>();
     synchronized (impl.getStateMachine()) {
       for (ByteBuffer batch : req.getBatches()) {
-        status.add(impl.getStateMachine().write(new ByteBufferConsensusRequest(batch)));
+        status.add(
+            impl.getStateMachine()
+                .write(impl.buildIndexedConsensusRequest(new ByteBufferConsensusRequest(batch))));
       }
     }
     return new TSyncLogRes(status);

@@ -117,13 +117,13 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public void setMinSyncIndex(long index) {
-    insertTabletNodeList.forEach(plan -> plan.setMinSyncIndex(index));
+  public void setSearchIndex(long index) {
+    insertTabletNodeList.forEach(plan -> plan.setSearchIndex(index));
   }
 
   @Override
-  public void setCurrentIndex(long index) {
-    insertTabletNodeList.forEach(plan -> plan.setCurrentIndex(index));
+  public void setSafelyDeletedSearchIndex(long index) {
+    insertTabletNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
   }
 
   @Override

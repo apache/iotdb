@@ -87,13 +87,13 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   }
 
   @Override
-  public void setMinSyncIndex(long index) {
-    insertRowNodeList.forEach(plan -> plan.setMinSyncIndex(index));
+  public void setSearchIndex(long index) {
+    insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
   }
 
   @Override
-  public void setCurrentIndex(long index) {
-    insertRowNodeList.forEach(plan -> plan.setCurrentIndex(index));
+  public void setSafelyDeletedSearchIndex(long index) {
+    insertRowNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
   }
 
   public Map<Integer, TSStatus> getResults() {

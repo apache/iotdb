@@ -75,6 +75,16 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     return results;
   }
 
+  @Override
+  public void setSearchIndex(long index) {
+    insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
+  }
+
+  @Override
+  public void setSafelyDeletedSearchIndex(long index) {
+    insertRowNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }
@@ -135,16 +145,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public void setMinSyncIndex(long index) {
-    insertRowNodeList.forEach(plan -> plan.setMinSyncIndex(index));
-  }
-
-  @Override
-  public void setCurrentIndex(long index) {
-    insertRowNodeList.forEach(plan -> plan.setCurrentIndex(index));
   }
 
   @Override

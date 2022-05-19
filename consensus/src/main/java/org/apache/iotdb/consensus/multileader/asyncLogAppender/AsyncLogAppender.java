@@ -32,4 +32,8 @@ public class AsyncLogAppender {
   private Peer peer;
   private ArrayBlockingQueue<IConsensusRequest> pendingRequest;
   private IndexController controller;
+
+  public long getCurrentSyncIndex() {
+    return controller.getCurrentIndex();
+  }
 }

@@ -422,7 +422,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private int subSerializeSize() {
     int size = 0;
-    size += Long.BYTES;
+    size += Long.BYTES * 2;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
@@ -478,6 +478,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   private void subSerialize(IWALByteBufferView buffer) {
+    buffer.putLong(searchIndex);
     buffer.putLong(time);
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
@@ -534,6 +535,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       throws IOException, IllegalPathException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
+    insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
     insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
     insertNode.deserializeMeasurementsAndValues(stream);

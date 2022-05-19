@@ -54,11 +54,13 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return false;
+    return schemaRegion.createSnapshot(snapshotDir);
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    schemaRegion.loadSnapshot(latestSnapshotRootDir);
+  }
 
   @Override
   public TSStatus write(IConsensusRequest request) {
