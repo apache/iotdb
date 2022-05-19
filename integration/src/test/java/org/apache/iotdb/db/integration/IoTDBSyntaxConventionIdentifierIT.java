@@ -358,7 +358,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   }
 
   @Test
-  public void testIllegalStorageGroup(){
+  public void testIllegalStorageGroup() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -367,7 +367,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
         fail();
       } catch (Exception ignored) {
       }
-
 
     } catch (SQLException e) {
       e.printStackTrace();
