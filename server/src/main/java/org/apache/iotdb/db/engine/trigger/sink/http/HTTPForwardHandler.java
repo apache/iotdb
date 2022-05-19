@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.util.List;
 
 public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTTPForwardEvent> {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(HTTPForwardHandler.class);
 
   private static CloseableHttpClient client;
@@ -105,12 +106,12 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
   public void onEvent(List<HTTPForwardEvent> events) throws SinkException {
     CloseableHttpResponse response = null;
     try {
-      StringBuilder sb = new StringBuilder();
+      StringBuilder sb = new StringBuilder().append("[");
       for (HTTPForwardEvent event : events) {
         sb.append(event.toJsonString()).append(", ");
       }
-      sb.replace(sb.lastIndexOf(", "), sb.length(), "");
-      request.setEntity(new StringEntity("[" + sb + "]"));
+      sb.replace(sb.lastIndexOf(", "), sb.length(), "").append("]");
+      request.setEntity(new StringEntity(sb.toString()));
       response = client.execute(request);
       if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
         throw new SinkException(response.getStatusLine().toString());
