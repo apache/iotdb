@@ -99,7 +99,8 @@ public class StatementGenerator {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
-    selectComponent.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectComponent.addResultColumn(
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     // set query filter
     GreaterEqualExpression leftPredicate =
@@ -134,10 +135,11 @@ public class StatementGenerator {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
-    selectComponent.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectComponent.addResultColumn(
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     // set query filter
-    PartialPath timePath = new PartialPath(TIME);
+    PartialPath timePath = new PartialPath(TIME, false);
     BasicFunctionFilter basicFunctionFilter =
         new BasicFunctionFilter(
             FilterConstant.FilterType.GREATERTHANOREQUALTO,

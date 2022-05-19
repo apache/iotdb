@@ -96,12 +96,12 @@ public class CompactionScheduler {
       innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionSelector()
-              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
-              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition);
     }
     List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
