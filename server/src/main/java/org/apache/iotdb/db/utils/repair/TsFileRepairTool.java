@@ -45,15 +45,24 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * will be thrown into the corresponding unseq directory.
  */
 public class TsFileRepairTool {
+  // move bad seq files or not
+  private static boolean moveFile = false;
+  private static boolean printBadDevice = false;
+
   private static final Logger logger = LoggerFactory.getLogger(TsFileRepairTool.class);
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
   private static String baseDataDirPath;
 
+  /**
+   * Num of param should be three, which is [path of base data dir] [move file or not] [print device
+   * or not]. Eg: xxx/iotdb/data false true
+   */
   public static void main(String[] args) throws WriteProcessException, IOException {
     if (!checkArgs(args)) {
       System.exit(1);
     }
-    System.out.println("Start repairing...");
+    String msg = moveFile ? "with moving bad files" : "without moving bad files";
+    System.out.println("Start repairing " + msg + " ...");
     // get seq data dirs
     List<String> seqDataDirs =
         new ArrayList<>(
@@ -82,7 +91,7 @@ public class TsFileRepairTool {
         if (!checkIsDirectory(sgDir)) {
           continue;
         }
-        System.out.println("Repair files in storage group: " + sgDir.getAbsolutePath());
+        System.out.println("- Repair files in storage group: " + sgDir.getAbsolutePath());
         // get vsg data dirs
         File[] vsgDirs = sgDir.listFiles();
         for (File vsgDir : vsgDirs) {
@@ -96,8 +105,14 @@ public class TsFileRepairTool {
               continue;
             }
             // get all seq files under the time partition dir
-            File[] tsFiles =
-                timePartitionDir.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX));
+            List<File> tsFiles =
+                Arrays.asList(
+                    timePartitionDir.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX)));
+            tsFiles.sort(
+                (f1, f2) ->
+                    Long.compareUnsigned(
+                        Long.parseLong(f1.getName().split("-")[1]),
+                        Long.parseLong(f2.getName().split("-")[1])));
             moveBadSeqFilesToUnseqDir(tsFiles);
           }
         }
@@ -107,13 +122,16 @@ public class TsFileRepairTool {
   }
 
   public static boolean checkArgs(String[] args) {
-    if (args.length != 1) {
-      System.out.println("Num of param should be one, which is base data dir. Eg: xxx/iotdb/data");
+    if (args.length != 3) {
+      System.out.println(
+          "Num of param should be three, which is [path of base data dir] [move file or not] [print device or not]. Eg: xxx/iotdb/data false true");
       return false;
     } else {
       baseDataDirPath = args[0];
       if ((baseDataDirPath.endsWith("data") || baseDataDirPath.endsWith("data" + File.separator))
           && !baseDataDirPath.endsWith("data" + File.separator + "data")) {
+        moveFile = Boolean.parseBoolean(args[1]);
+        printBadDevice = Boolean.parseBoolean(args[2]);
         return true;
       }
       System.out.println("Please input correct base data dir. Eg: xxx/iotdb/data");
@@ -121,30 +139,46 @@ public class TsFileRepairTool {
     }
   }
 
-  private static void moveBadSeqFilesToUnseqDir(File[] tsFiles)
+  private static void moveBadSeqFilesToUnseqDir(List<File> tsFiles)
       throws WriteProcessException, IOException {
     // deviceID -> endTime
     Map<String, Long> deviceEndTime = new HashMap<>();
     for (File tsFile : tsFiles) {
       TsFileResource resource = new TsFileResource(tsFile);
-      resource.deserialize();
+      if (resource.resourceFileExists()) {
+        resource.deserialize();
+      } else {
+        logger.warn(
+            "{} does not exist ,skip it.",
+            resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX);
+      }
       boolean hasMoved = false;
       for (String deviceID : resource.getDevices()) {
         long startTime = resource.getStartTime(deviceID);
         if (startTime <= deviceEndTime.getOrDefault(deviceID, Long.MIN_VALUE)) {
           // find the corrupted seq file which device end time is less than previous seq files.
           // move the corrupted seq file to corresponding unseq dir.
-          if (hasMoved) {
-            continue;
+          if (!hasMoved) {
+            System.out.println("-- Find the corrupted file " + tsFile.getAbsolutePath());
           }
-          logger.info(
-              "Find the corrupted file {}, move it to unseq dir.", tsFile.getAbsolutePath());
-          String targetDirPath = resource.getTsFile().getParent().replace("sequence", "unsequence");
-          // corrupted files, including .tsfile, .resource and .mods file
-          File[] filesToBeMoved =
-              fsFactory.listFilesByPrefix(
-                  resource.getTsFile().getParent(), resource.getTsFile().getName());
-          moveFiles(filesToBeMoved, targetDirPath);
+          if (printBadDevice) {
+            System.out.println(
+                "---- Overlap device "
+                    + deviceID
+                    + ", startTime: "
+                    + startTime
+                    + ", previous endTime: "
+                    + deviceEndTime.get(deviceID));
+          }
+          if (!hasMoved && moveFile) {
+            String targetDirPath =
+                resource.getTsFile().getParent().replace("sequence", "unsequence");
+            // corrupted files, including .tsfile, .resource and .mods file
+            File[] filesToBeMoved =
+                fsFactory.listFilesByPrefix(
+                    resource.getTsFile().getParent(), resource.getTsFile().getName());
+            moveFiles(filesToBeMoved, targetDirPath);
+          }
           hasMoved = true;
         } else {
           deviceEndTime.put(deviceID, resource.getEndTime(deviceID));
