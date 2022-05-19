@@ -51,10 +51,10 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
     }
   }
 
-  private static synchronized void openClient(int maxTotal, int maxPerRoute) {
+  private static synchronized void openClient() {
     if (referenceCount++ == 0) {
       PoolingHttpClientConnectionManager connectionManager =
-          HTTPConnectionPool.getInstance(maxTotal, maxPerRoute);
+          HTTPConnectionPool.getInstance();
       client = HttpClients.custom().setConnectionManager(connectionManager).build();
     }
   }
@@ -73,7 +73,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
       request.setHeader("Content-type", "application/json");
     }
 
-    openClient(config.getPoolSize(), config.getPoolMaxPerRoute());
+    openClient();
   }
 
   @Override
