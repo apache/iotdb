@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.library.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.commons.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.api.collector.PointCollector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.math3.stat.descriptive.rank.Median;
