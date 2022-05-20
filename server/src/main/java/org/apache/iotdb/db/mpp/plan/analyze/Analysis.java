@@ -133,6 +133,13 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Schema Query Analysis
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // extra mesaage from config node, used for node management
+  private Set<String> matchedNodes;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -365,5 +372,13 @@ public class Analysis {
 
   public void setDeviceToIsRawDataSource(Map<String, Boolean> deviceToIsRawDataSource) {
     this.deviceToIsRawDataSource = deviceToIsRawDataSource;
+  }
+
+  public Set<String> getMatchedNodes() {
+    return matchedNodes;
+  }
+
+  public void setMatchedNodes(Set<String> matchedNodes) {
+    this.matchedNodes = matchedNodes;
   }
 }

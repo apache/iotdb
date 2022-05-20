@@ -59,6 +59,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -474,6 +476,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       path = new PartialPath(SQLConstant.getSingleRootArray());
     }
     return new CountStorageGroupStatement(path);
+  }
+
+  // Show Child Paths =====================================================================
+  @Override
+  public Statement visitShowChildPaths(IoTDBSqlParser.ShowChildPathsContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowChildPathsStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowChildPathsStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  // Show Child Nodes =====================================================================
+  @Override
+  public Statement visitShowChildNodes(IoTDBSqlParser.ShowChildNodesContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowChildNodesStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowChildNodesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
   }
 
   /** Data Manipulation Language (DML) */
