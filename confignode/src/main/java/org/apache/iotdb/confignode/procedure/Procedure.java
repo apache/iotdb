@@ -95,17 +95,14 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env the environment passed to the ProcedureExecutor
    * @return a set of sub-procedures to run or ourselves if there is more work to do or null if the
    *     procedure is done.
-   * @throws org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException the procedure
-   *     will be added back to the queue and retried later.
+   * @throws ProcedureYieldException the procedure will be added back to the queue and retried
+   *     later.
    * @throws InterruptedException the procedure will be added back to the queue and retried later.
-   * @throws org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException Signal to
-   *     the executor that Procedure has suspended itself and has set itself up waiting for an
-   *     external event to wake it back up again.
+   * @throws ProcedureSuspendedException Signal to the executor that Procedure has suspended itself
+   *     and has set itself up waiting for an external event to wake it back up again.
    */
   protected abstract Procedure<Env>[] execute(Env env)
-      throws org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException,
-          org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException,
-          InterruptedException;
+      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException;
 
   /**
    * The code to undo what was done by the execute() code. It is called when the procedure or one of
@@ -214,17 +211,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
         byteBuffer.get(messageBytes);
         errMsg = new String(messageBytes, StandardCharsets.UTF_8);
       }
-      org.apache.iotdb.confignode.procedure.exception.ProcedureException exception;
+      ProcedureException exception;
       try {
         exception =
-            (org.apache.iotdb.confignode.procedure.exception.ProcedureException)
-                exceptionClass.getConstructor(String.class).newInstance(errMsg);
+            (ProcedureException) exceptionClass.getConstructor(String.class).newInstance(errMsg);
       } catch (InstantiationException
           | IllegalAccessException
           | InvocationTargetException
           | NoSuchMethodException e) {
         LOG.warn("Instantiation exception class failed", e);
-        exception = new org.apache.iotdb.confignode.procedure.exception.ProcedureException(errMsg);
+        exception = new ProcedureException(errMsg);
       }
 
       setFailure(exception);
@@ -290,8 +286,8 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env environment
    * @return state of lock
    */
-  protected org.apache.iotdb.confignode.procedure.state.ProcedureLockState acquireLock(Env env) {
-    return org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_ACQUIRED;
+  protected ProcedureLockState acquireLock(Env env) {
+    return ProcedureLockState.LOCK_ACQUIRED;
   }
 
   /**
@@ -359,9 +355,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @return sub procedures
    */
   protected Procedure<Env>[] doExecute(Env env)
-      throws ProcedureYieldException,
-          org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException,
-          InterruptedException {
+      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
     try {
       updateTimestamp();
       return execute(env);
@@ -393,17 +387,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param store ProcedureStore
    * @return ProcedureLockState
    */
-  public final org.apache.iotdb.confignode.procedure.state.ProcedureLockState doAcquireLock(
-      Env env, IProcedureStore store) {
+  public final ProcedureLockState doAcquireLock(Env env, IProcedureStore store) {
     if (waitInitialized(env)) {
-      return org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_EVENT_WAIT;
+      return ProcedureLockState.LOCK_EVENT_WAIT;
     }
     if (lockedWhenLoading) {
       lockedWhenLoading = false;
       locked = true;
-      return org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_ACQUIRED;
+      return ProcedureLockState.LOCK_ACQUIRED;
     }
-    org.apache.iotdb.confignode.procedure.state.ProcedureLockState state = acquireLock(env);
+    ProcedureLockState state = acquireLock(env);
     if (state == ProcedureLockState.LOCK_ACQUIRED) {
       locked = true;
       store.update(this);
@@ -736,12 +729,10 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   protected void setFailure(final String source, final Throwable cause) {
-    setFailure(
-        new org.apache.iotdb.confignode.procedure.exception.ProcedureException(source, cause));
+    setFailure(new ProcedureException(source, cause));
   }
 
-  protected synchronized void setFailure(
-      final org.apache.iotdb.confignode.procedure.exception.ProcedureException exception) {
+  protected synchronized void setFailure(final ProcedureException exception) {
     this.exception = exception;
     if (!isFinished()) {
       setState(ProcedureState.FAILED);

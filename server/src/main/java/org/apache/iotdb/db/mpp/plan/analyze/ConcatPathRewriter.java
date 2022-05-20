@@ -54,26 +54,48 @@ public class ConcatPathRewriter {
     // prefix paths in the FROM clause
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
 
-    // concat SELECT with FROM
-    List<ResultColumn> resultColumns =
-        concatSelectWithFrom(
-            queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
-    queryStatement.getSelectComponent().setResultColumns(resultColumns);
+    if (queryStatement.isAlignByDevice()) {
+      queryStatement.getSelectComponent().getResultColumns().stream()
+          .map(ResultColumn::getExpression)
+          .forEach(
+              expression ->
+                  ExpressionAnalyzer.constructPatternTreeFromExpression(
+                      expression, prefixPaths, patternTree));
+    } else {
+      // concat SELECT with FROM
+      List<ResultColumn> resultColumns =
+          concatSelectWithFrom(
+              queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
+      queryStatement.getSelectComponent().setResultColumns(resultColumns);
+    }
 
     // concat WITHOUT NULL with FROM
     if (queryStatement.getFilterNullComponent() != null
         && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
-      List<Expression> withoutNullColumns =
-          concatWithoutNullColumnsWithFrom(
-              queryStatement.getFilterNullComponent(),
-              prefixPaths,
-              queryStatement.getSelectComponent().getAliasToColumnMap());
-      queryStatement.getFilterNullComponent().setWithoutNullColumns(withoutNullColumns);
+      FilterNullComponent filterNullComponent = queryStatement.getFilterNullComponent();
+      Map<String, Expression> aliasToColumnMap =
+          queryStatement.getSelectComponent().getAliasToColumnMap();
+
+      // replace alias
+      List<Expression> replacedWithoutNullColumns =
+          filterNullComponent.getWithoutNullColumns().stream()
+              .map(
+                  expression ->
+                      aliasToColumnMap.getOrDefault(expression.getExpressionString(), expression))
+              .collect(Collectors.toList());
+
+      if (queryStatement.isAlignByDevice()) {
+        queryStatement.getFilterNullComponent().setWithoutNullColumns(replacedWithoutNullColumns);
+      } else {
+        List<Expression> withoutNullColumns =
+            concatWithoutNullColumnsWithFrom(replacedWithoutNullColumns, prefixPaths);
+        queryStatement.getFilterNullComponent().setWithoutNullColumns(withoutNullColumns);
+      }
     }
 
     // concat WHERE with FROM
     if (queryStatement.getWhereCondition() != null) {
-      ExpressionAnalyzer.constructPatternTreeFromQueryFilter(
+      ExpressionAnalyzer.constructPatternTreeFromExpression(
           queryStatement.getWhereCondition().getPredicate(), prefixPaths, patternTree);
     }
     return queryStatement;
@@ -100,7 +122,10 @@ public class ConcatPathRewriter {
       }
       resultColumns.addAll(
           resultExpressions.stream()
-              .map(expression -> new ResultColumn(expression, resultColumn.getAlias()))
+              .map(
+                  expression ->
+                      new ResultColumn(
+                          expression, resultColumn.getAlias(), resultColumn.getColumnType()))
               .collect(Collectors.toList()));
     }
     return resultColumns;
@@ -111,20 +136,10 @@ public class ConcatPathRewriter {
    * full path pattern. And construct pattern tree.
    */
   private List<Expression> concatWithoutNullColumnsWithFrom(
-      FilterNullComponent filterNullComponent,
-      List<PartialPath> prefixPaths,
-      Map<String, Expression> aliasToColumnMap)
+      List<Expression> withoutNullColumns, List<PartialPath> prefixPaths)
       throws StatementAnalyzeException {
-    // raw expression after replace alias
-    List<Expression> rawWithoutNullColumns =
-        filterNullComponent.getWithoutNullColumns().stream()
-            .map(
-                expression ->
-                    aliasToColumnMap.getOrDefault(expression.getExpressionString(), expression))
-            .collect(Collectors.toList());
-
     // result after concat
-    return rawWithoutNullColumns.stream()
+    return withoutNullColumns.stream()
         .map(
             expression ->
                 ExpressionAnalyzer.concatExpressionWithSuffixPaths(

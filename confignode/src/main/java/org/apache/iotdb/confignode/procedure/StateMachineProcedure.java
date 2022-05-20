@@ -78,9 +78,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    *     another step.
    */
   protected abstract Flow executeFromState(Env env, TState state)
-      throws org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException,
-          org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException,
-          InterruptedException;
+      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException;
 
   /**
    * called to perform the rollback of the specified state

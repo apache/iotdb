@@ -100,7 +100,7 @@ public class StatementGenerator {
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
-        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("")), ResultColumn.ColumnType.RAW));
 
     // set query filter
     GreaterEqualExpression leftPredicate =
@@ -136,7 +136,7 @@ public class StatementGenerator {
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
-        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("")), ResultColumn.ColumnType.RAW));
 
     // set query filter
     PartialPath timePath = new PartialPath(TIME, false);

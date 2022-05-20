@@ -20,10 +20,14 @@ package org.apache.iotdb.confignode.persistence.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -43,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
+import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
@@ -52,6 +57,7 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -61,6 +67,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConfigRequestExecutor {
@@ -121,6 +128,9 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListUserRoles((AuthorReq) req);
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
+      case GetChildPathsPartition:
+      case GetChildNodesPartition:
+        return getSchemaNodeManagementPartiton(req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -243,6 +253,39 @@ public class ConfigRequestExecutor {
                 LOGGER.error(e.getMessage());
               }
             });
+  }
+
+  private DataSet getSchemaNodeManagementPartiton(ConfigRequest req)
+      throws UnknownPhysicalPlanTypeException {
+    Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel;
+    List<String> matchedStorageGroups = new ArrayList<>();
+    if (req.getType() == ConfigRequestType.GetChildPathsPartition) {
+      GetChildPathsPartitionReq getChildPathsPartitionReq = (GetChildPathsPartitionReq) req;
+
+      // Pair.left means already find matched child paths from aboveMtree,
+      // Pair.right means need more info from DataNode's schemaRegion.
+      matchedChildInNextLevel =
+          clusterSchemaInfo.getChildNodePathInNextLevel(getChildPathsPartitionReq.getPartialPath());
+    } else if (req.getType() == ConfigRequestType.GetChildNodesPartition) {
+      GetChildNodesPartitionReq getChildNodesPartitionReq = (GetChildNodesPartitionReq) req;
+
+      // Pair.left means already find matched child paths from aboveMtree,
+      // Pair.right means need more info from DataNode's schemaRegion.
+      matchedChildInNextLevel =
+          clusterSchemaInfo.getChildNodeNameInNextLevel(getChildNodesPartitionReq.getPartialPath());
+    } else {
+      throw new UnknownPhysicalPlanTypeException(req.getType());
+    }
+    matchedChildInNextLevel.right.forEach(
+        childPath -> matchedStorageGroups.add(childPath.getFullPath()));
+    SchemaNodeManagementResp schemaNodeManagementResp =
+        (SchemaNodeManagementResp)
+            partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);
+    if (schemaNodeManagementResp.getStatus().getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      schemaNodeManagementResp.setMatchedNode(matchedChildInNextLevel.left);
+    }
+    return schemaNodeManagementResp;
   }
 
   private List<SnapshotProcessor> getAllAttributes() {
