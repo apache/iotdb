@@ -6,7 +6,6 @@ import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowExceptio
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Queue;
 
