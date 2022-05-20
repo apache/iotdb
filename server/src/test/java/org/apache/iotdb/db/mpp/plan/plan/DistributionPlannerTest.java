@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -393,7 +394,7 @@ public class DistributionPlannerTest {
     QueryId queryId = new QueryId("test_group_by_level_two_children");
     String d1s1Path = "root.sg.d1.s1";
     String d2s1Path = "root.sg.d22.s1";
-    List<String> outputColumns = Collections.singletonList("root.sg.*.s1");
+    String groupedPath = "root.sg.*.s1";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -402,13 +403,13 @@ public class DistributionPlannerTest {
                 genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Collections.singletonList(
-                new AggregationDescriptor(
+                new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
-                        new TimeSeriesOperand(new PartialPath(d2s1Path))))),
-            outputColumns);
+                        new TimeSeriesOperand(new PartialPath(d2s1Path))),
+                    new TimeSeriesOperand(new PartialPath(groupedPath)))));
     Analysis analysis = constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -426,24 +427,24 @@ public class DistributionPlannerTest {
   @Test
   public void testAggregationWithMultiGroupByLevelNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_two_children");
-    String d1s1Path = "root.sg.d333.s1";
-    String d2s1Path = "root.sg.d4444.s1";
-    List<String> outputColumns = Collections.singletonList("root.sg.*.s1");
+    String d3s1Path = "root.sg.d333.s1";
+    String d4s1Path = "root.sg.d4444.s1";
+    String groupedPath = "root.sg.*.s1";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(
-                genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
-                genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
+                genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT),
+                genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT)),
             Collections.singletonList(
-                new AggregationDescriptor(
+                new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(new PartialPath(d1s1Path)),
-                        new TimeSeriesOperand(new PartialPath(d2s1Path))))),
-            outputColumns);
+                        new TimeSeriesOperand(new PartialPath(d3s1Path)),
+                        new TimeSeriesOperand(new PartialPath(d4s1Path))),
+                    new TimeSeriesOperand(new PartialPath(groupedPath)))));
     Analysis analysis = constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -452,8 +453,8 @@ public class DistributionPlannerTest {
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(3, plan.getInstances().size());
     Map<String, AggregationStep> expectedStep = new HashMap<>();
-    expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
-    expectedStep.put(d2s1Path, AggregationStep.FINAL);
+    expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
+    expectedStep.put(d4s1Path, AggregationStep.FINAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
     fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
   }
