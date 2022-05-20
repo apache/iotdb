@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
@@ -58,6 +59,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -309,9 +312,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // rename
     if (ctx.RENAME() != null) {
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
-      alterMap.put(
-          parseStringLiteral(ctx.beforeName.getText()),
-          parseStringLiteral(ctx.currentName.getText()));
+      alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
       // set
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
@@ -319,8 +320,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.DROP() != null) {
       // drop
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
-      for (int i = 0; i < ctx.STRING_LITERAL().size(); i++) {
-        alterMap.put(parseStringLiteral(ctx.STRING_LITERAL(i).getText()), null);
+      for (int i = 0; i < ctx.attributeKey().size(); i++) {
+        alterMap.put(parseAttributeKey(ctx.attributeKey().get(i)), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
@@ -477,6 +478,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CountStorageGroupStatement(path);
   }
 
+  // Show Child Paths =====================================================================
+  @Override
+  public Statement visitShowChildPaths(IoTDBSqlParser.ShowChildPathsContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowChildPathsStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowChildPathsStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  // Show Child Nodes =====================================================================
+  @Override
+  public Statement visitShowChildNodes(IoTDBSqlParser.ShowChildNodesContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowChildNodesStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowChildNodesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement ========================================================================
@@ -543,7 +564,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (resultColumnContext.AS() != null) {
       alias = parseAlias(resultColumnContext.alias());
     }
-    return new ResultColumn(expression, alias);
+    ResultColumn.ColumnType columnType = ExpressionAnalyzer.identifyOutputColumnType(expression);
+    return new ResultColumn(expression, alias, columnType);
   }
 
   // From Clause

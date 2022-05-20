@@ -35,8 +35,6 @@ public class SelectComponent extends StatementNode {
   private boolean hasLast = false;
 
   private boolean hasBuiltInAggregationFunction = false;
-  private boolean hasTimeSeriesGeneratingFunction = false;
-  private boolean hasUserDefinedAggregationFunction = false;
 
   private List<ResultColumn> resultColumns = new ArrayList<>();
 
@@ -54,24 +52,11 @@ public class SelectComponent extends StatementNode {
     return hasBuiltInAggregationFunction;
   }
 
-  public boolean isHasTimeSeriesGeneratingFunction() {
-    return hasTimeSeriesGeneratingFunction;
-  }
-
-  public boolean isHasUserDefinedAggregationFunction() {
-    return hasUserDefinedAggregationFunction;
-  }
-
   public void addResultColumn(ResultColumn resultColumn) {
     resultColumns.add(resultColumn);
-    if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
-      hasUserDefinedAggregationFunction = true;
-    }
-    if (resultColumn.getExpression().isBuiltInAggregationFunctionExpression()) {
+    ResultColumn.ColumnType columnType = resultColumn.getColumnType();
+    if (columnType == ResultColumn.ColumnType.AGGREGATION) {
       hasBuiltInAggregationFunction = true;
-    }
-    if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
-      hasTimeSeriesGeneratingFunction = true;
     }
   }
 
@@ -97,5 +82,9 @@ public class SelectComponent extends StatementNode {
 
   public void setHasLast(boolean hasLast) {
     this.hasLast = hasLast;
+  }
+
+  public void setHasBuiltInAggregationFunction(boolean hasBuiltInAggregationFunction) {
+    this.hasBuiltInAggregationFunction = hasBuiltInAggregationFunction;
   }
 }

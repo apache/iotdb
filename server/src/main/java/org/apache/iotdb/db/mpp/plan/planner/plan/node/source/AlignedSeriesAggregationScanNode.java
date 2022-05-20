@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
@@ -71,6 +72,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       List<AggregationDescriptor> aggregationDescriptorList) {
     super(id, aggregationDescriptorList);
     this.alignedPath = alignedPath;
+    this.aggregationDescriptorList =
+        AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList);
   }
 
   public AlignedSeriesAggregationScanNode(
@@ -173,7 +176,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAlignedSeriesAggregate(this, context);
+    return visitor.visitAlignedSeriesAggregationScan(this, context);
   }
 
   @Override

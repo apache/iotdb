@@ -60,7 +60,6 @@ public class Aggregator {
     checkArgument(
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
-    // TODO Aligned TimeSeries
     if (inputLocationList == null) {
       accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
     } else {
@@ -108,6 +107,17 @@ public class Aggregator {
 
   public void processStatistics(Statistics statistics) {
     accumulator.addStatistics(statistics);
+  }
+
+  /** Used for AlignedSeriesAggregateScanOperator. */
+  public void processStatistics(Statistics[] statistics) {
+    for (InputLocation[] inputLocations : inputLocationList) {
+      checkArgument(
+          inputLocations[0].getTsBlockIndex() == 0,
+          "AlignedSeriesAggregateScanOperator can only process one tsBlock input.");
+      int valueIndex = inputLocations[0].getValueColumnIndex();
+      accumulator.addStatistics(statistics[valueIndex]);
+    }
   }
 
   public TSDataType[] getOutputType() {

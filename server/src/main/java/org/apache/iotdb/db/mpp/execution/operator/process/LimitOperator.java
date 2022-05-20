@@ -53,6 +53,9 @@ public class LimitOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     TsBlock block = child.next();
+    if (block == null) {
+      return null;
+    }
     TsBlock res = block;
     if (block.getPositionCount() <= remainingLimit) {
       remainingLimit -= block.getPositionCount();

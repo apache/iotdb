@@ -106,7 +106,8 @@ public class Path implements Serializable, Comparable<Path> {
       String[] deviceNodes = PathNodesGenerator.splitPathToNodes(device);
       this.device = transformNodesToString(deviceNodes, deviceNodes.length);
       this.measurement = measurement;
-      this.fullPath = device;
+      // for aligned path, sensor name for time column is ""
+      this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
     } else if (!StringUtils.isEmpty(measurement)) {
       String[] measurementNodes = PathNodesGenerator.splitPathToNodes(measurement);
       this.measurement = transformNodesToString(measurementNodes, measurementNodes.length);
