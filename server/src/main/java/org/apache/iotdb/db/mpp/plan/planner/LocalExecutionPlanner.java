@@ -553,14 +553,14 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        List<String> outputColumnNames = descriptor.getOutputColumnNames();
+        List<String> inputColumnNames = descriptor.getInputColumnNames();
         // it may include double parts
-        List<List<InputLocation>> inputLocationParts = new ArrayList<>(outputColumnNames.size());
-        outputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
+        inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
 
         List<InputLocation[]> inputLocationList = new ArrayList<>();
         for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-          if (outputColumnNames.size() == 1) {
+          if (inputColumnNames.size() == 1) {
             inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
           } else {
             inputLocationList.add(

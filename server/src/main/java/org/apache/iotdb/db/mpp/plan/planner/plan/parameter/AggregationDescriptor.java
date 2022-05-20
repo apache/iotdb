@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class AggregationDescriptor {
 
@@ -72,6 +73,12 @@ public class AggregationDescriptor {
   }
 
   public List<String> getInputColumnNames() {
+    if (step.isInputRaw()) {
+      return inputExpressions.stream()
+          .map(Expression::getExpressionString)
+          .collect(Collectors.toList());
+    }
+
     List<AggregationType> inputAggregationTypes = getActualAggregationTypes(step.isInputPartial());
     List<String> inputColumnNames = new ArrayList<>();
     for (Expression expression : inputExpressions) {
