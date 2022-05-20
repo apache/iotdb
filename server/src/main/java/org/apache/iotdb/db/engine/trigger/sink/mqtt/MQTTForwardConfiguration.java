@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 import org.fusesource.mqtt.client.QoS;
 
 public class MQTTForwardConfiguration implements Configuration {
-
   private final String host;
   private final int port;
   private final String username;

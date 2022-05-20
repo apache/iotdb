@@ -31,7 +31,7 @@ import java.util.Map;
 
 public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
 
-  // Each host:port corresponds to a singleton instance
+  // Each host:port,username corresponds to a singleton instance
   private static final Map<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP = new HashMap<>();
   private static final Map<String, Integer> MQTT_CONNECTION_REFERENCE_COUNT = new HashMap<>();
 

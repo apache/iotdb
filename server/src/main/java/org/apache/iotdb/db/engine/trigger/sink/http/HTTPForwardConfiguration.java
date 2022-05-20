@@ -23,14 +23,10 @@ import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
 public class HTTPForwardConfiguration implements Configuration {
-
+  private final String endpoint;
   private final boolean stopIfException;
 
-  // HTTP config items
-  private final String endpoint;
-
-  public HTTPForwardConfiguration(
-      String endpoint, boolean stopIfException) {
+  public HTTPForwardConfiguration(String endpoint, boolean stopIfException) {
     this.endpoint = endpoint;
     this.stopIfException = stopIfException;
   }

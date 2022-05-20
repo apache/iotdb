@@ -54,8 +54,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
 
   private static synchronized void openClient() {
     if (referenceCount++ == 0) {
-      PoolingHttpClientConnectionManager connectionManager =
-          HTTPConnectionPool.getInstance();
+      PoolingHttpClientConnectionManager connectionManager = HTTPConnectionPool.getInstance();
       client = HttpClients.custom().setConnectionManager(connectionManager).build();
     }
   }

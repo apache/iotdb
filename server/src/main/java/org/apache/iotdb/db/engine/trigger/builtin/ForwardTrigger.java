@@ -84,7 +84,6 @@ public class ForwardTrigger implements Trigger {
 
   private MQTTForwardConfiguration createMQTTConfiguration(TriggerAttributes attributes)
       throws SinkException {
-    boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
     String host = attributes.getString("host");
     int port = attributes.getInt("port");
     String username = attributes.getString("username");
@@ -95,6 +94,7 @@ public class ForwardTrigger implements Trigger {
     String qos = attributes.getStringOrDefault("qos", "exactly_once");
     int poolSize = attributes.getIntOrDefault("poolSize", 4);
     boolean retain = attributes.getBooleanOrDefault("retain", false);
+    boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
 
     MQTTForwardConfiguration forwardConfig =
         new MQTTForwardConfiguration(
