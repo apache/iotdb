@@ -167,10 +167,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
-      if (!unseqFile.getTsFile().exists()
-          || unseqFile.isCompacting()
-          || !unseqFile.isClosed()
-          || unseqFile.isCompactionCandidate()) {
+      if (!unseqFile.getTsFile().exists() || unseqFile.isDeleted()) {
         break;
       }
 
