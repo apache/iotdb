@@ -66,6 +66,9 @@ public class Analysis {
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
 
+  // map from raw path to grouped path in `GROUP BY LEVEL` clause
+  private Map<Expression, Expression> rawPathToGroupedPathMap;
+
   // parameter of `WITHOUT NULL` clause
   private FilterNullParameter filterNullParameter;
 
@@ -195,6 +198,20 @@ public class Analysis {
 
   public void setGroupByLevelExpressions(Map<Expression, Set<Expression>> groupByLevelExpressions) {
     this.groupByLevelExpressions = groupByLevelExpressions;
+  }
+
+  public void setRawPathToGroupedPathMap(Map<Expression, Expression> rawPathToGroupedPathMap) {
+    this.rawPathToGroupedPathMap = rawPathToGroupedPathMap;
+  }
+
+  public Expression getGroupedExpressionByLevel(Expression expression) {
+    if(rawPathToGroupedPathMap.containsKey(expression)) {
+      return rawPathToGroupedPathMap.get(expression);
+    }
+    if(rawPathToGroupedPathMap.containsValue(expression)) {
+      return expression;
+    }
+    throw new IllegalArgumentException(String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
   }
 
   public FilterNullParameter getFilterNullParameter() {
