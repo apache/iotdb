@@ -133,6 +133,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -797,14 +798,17 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        List<String> outputColumnNames = descriptor.getOutputColumnNames();
+        List<String> inputColumnNames =
+            descriptor.getInputExpressions().stream()
+                .map(Expression::getExpressionString)
+                .collect(Collectors.toList());
         // it may include double parts
-        List<List<InputLocation>> inputLocationParts = new ArrayList<>(outputColumnNames.size());
-        outputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
+        inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
 
         List<InputLocation[]> inputLocationList = new ArrayList<>();
         for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-          if (outputColumnNames.size() == 1) {
+          if (inputColumnNames.size() == 1) {
             inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
           } else {
             inputLocationList.add(
