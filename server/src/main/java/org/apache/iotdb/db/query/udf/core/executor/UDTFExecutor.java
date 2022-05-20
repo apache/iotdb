@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.executor;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
@@ -37,57 +34,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 
 public class UDTFExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDTFExecutor.class);
 
-  protected final FunctionExpression expression;
+  protected final String functionName;
   protected final UDTFConfigurations configurations;
 
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
 
-  public UDTFExecutor(FunctionExpression expression, ZoneId zoneId) {
-    this.expression = expression;
+  public UDTFExecutor(String functionName, ZoneId zoneId) {
+    this.functionName = functionName;
     configurations = new UDTFConfigurations(zoneId);
   }
 
-  public void beforeStart(long queryId, float collectorMemoryBudgetInMB, TypeProvider typeProvider)
-      throws QueryProcessException {
-    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(expression);
-
-    UDFParameters parameters = new UDFParameters(expression, typeProvider);
-
-    try {
-      udtf.validate(new UDFParameterValidator(parameters));
-    } catch (Exception e) {
-      onError("validate(UDFParameterValidator)", e);
-    }
-
-    try {
-      udtf.beforeStart(parameters, configurations);
-    } catch (Exception e) {
-      onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
-    }
-    configurations.check();
-
-    collector =
-        ElasticSerializableTVList.newElasticSerializableTVList(
-            configurations.getOutputDataType(), queryId, collectorMemoryBudgetInMB, 1);
-  }
-
-  // TODO: remove it after MPP finished
-  @Deprecated
   public void beforeStart(
       long queryId,
       float collectorMemoryBudgetInMB,
-      Map<Expression, TSDataType> expressionDataTypeMap)
-      throws QueryProcessException {
-    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(expression);
+      List<String> childExpressions,
+      List<PartialPath> maybeTimeSeriesPaths,
+      List<TSDataType> childExpressionDataTypes,
+      Map<String, String> attributes) {
+    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
 
-    UDFParameters parameters = new UDFParameters(expression, expressionDataTypeMap);
+    final UDFParameters parameters =
+        new UDFParameters(
+            childExpressions, maybeTimeSeriesPaths, childExpressionDataTypes, attributes);
 
     try {
       udtf.validate(new UDFParameterValidator(parameters));
@@ -107,7 +83,7 @@ public class UDTFExecutor {
             configurations.getOutputDataType(), queryId, collectorMemoryBudgetInMB, 1);
   }
 
-  public void execute(Row row, boolean isCurrentRowNull) throws QueryProcessException {
+  public void execute(Row row, boolean isCurrentRowNull) {
     try {
       if (isCurrentRowNull) {
         // A null row will never trigger any UDF computing
@@ -120,7 +96,7 @@ public class UDTFExecutor {
     }
   }
 
-  public void execute(RowWindow rowWindow) throws QueryProcessException {
+  public void execute(RowWindow rowWindow) {
     try {
       udtf.transform(rowWindow, collector);
     } catch (Exception e) {
@@ -128,7 +104,7 @@ public class UDTFExecutor {
     }
   }
 
-  public void terminate() throws QueryProcessException {
+  public void terminate() {
     try {
       udtf.terminate(collector);
     } catch (Exception e) {
@@ -142,16 +118,12 @@ public class UDTFExecutor {
     }
   }
 
-  private void onError(String methodName, Exception e) throws QueryProcessException {
+  private void onError(String methodName, Exception e) {
     LOGGER.warn("Error occurred during executing UDTF", e);
-    throw new QueryProcessException(
+    throw new RuntimeException(
         String.format(
                 "Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
             + e);
-  }
-
-  public FunctionExpression getExpression() {
-    return expression;
   }
 
   public UDTFConfigurations getConfigurations() {

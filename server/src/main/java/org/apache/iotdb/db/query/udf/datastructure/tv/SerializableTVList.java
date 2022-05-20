@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.tv;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -47,8 +46,7 @@ public abstract class SerializableTVList extends BatchData implements Serializab
     }
   }
 
-  protected static int calculateCapacity(TSDataType dataType, float memoryLimitInMB)
-      throws QueryProcessException {
+  protected static int calculateCapacity(TSDataType dataType, float memoryLimitInMB) {
     int size;
     switch (dataType) {
       case INT32:
@@ -76,7 +74,7 @@ public abstract class SerializableTVList extends BatchData implements Serializab
     }
 
     if (size <= 0) {
-      throw new QueryProcessException("Memory is not enough for current query.");
+      throw new RuntimeException("Memory is not enough for current query.");
     }
     return size;
   }

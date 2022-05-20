@@ -92,13 +92,9 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   }
 
   private void initESTVList(TSDataType dataType) {
-    try {
-      tvList =
-          ElasticSerializableTVList.newElasticSerializableTVList(
-              dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
+    tvList =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     assertEquals(0, tvList.size());
   }
 
@@ -160,7 +156,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
           }
           break;
       }
-    } catch (IOException | QueryProcessException e) {
+    } catch (IOException e) {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, tvList.size());

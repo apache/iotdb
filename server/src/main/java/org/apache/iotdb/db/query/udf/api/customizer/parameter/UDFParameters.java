@@ -21,15 +21,10 @@ package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -47,40 +42,28 @@ import java.util.Map;
  */
 public class UDFParameters {
 
-  private final List<Expression> expressions;
-  private final List<PartialPath> paths;
+  private final List<String> childExpressions;
+  private final List<PartialPath> maybeTimeSeriesPaths;
+  private final List<TSDataType> childExpressionDataTypes;
   private final Map<String, String> attributes;
-  private final List<TSDataType> dataTypes;
 
   public UDFParameters(
-      FunctionExpression functionExpression, Map<Expression, TSDataType> expressionDataTypeMap)
-      throws QueryProcessException {
-    expressions = functionExpression.getExpressions();
-    paths = functionExpression.getPaths();
-    attributes = functionExpression.getFunctionAttributes();
-    dataTypes = new ArrayList<>();
-    for (Expression expression : expressions) {
-      dataTypes.add(expressionDataTypeMap.get(expression));
-    }
+      List<String> childExpressions,
+      List<PartialPath> maybeTimeSeriesPaths,
+      List<TSDataType> childExpressionDataTypes,
+      Map<String, String> attributes) {
+    this.childExpressions = childExpressions;
+    this.maybeTimeSeriesPaths = maybeTimeSeriesPaths;
+    this.childExpressionDataTypes = childExpressionDataTypes;
+    this.attributes = attributes;
   }
 
-  public UDFParameters(FunctionExpression functionExpression, TypeProvider typeProvider)
-      throws QueryProcessException {
-    expressions = functionExpression.getExpressions();
-    paths = functionExpression.getPaths();
-    attributes = functionExpression.getFunctionAttributes();
-    dataTypes = new ArrayList<>();
-    for (Expression expression : expressions) {
-      dataTypes.add(typeProvider.getType(expression.toString()));
-    }
-  }
-
-  public List<Expression> getExpressions() {
-    return expressions;
+  public List<String> getChildExpressions() {
+    return childExpressions;
   }
 
   public List<PartialPath> getPaths() {
-    return paths;
+    return maybeTimeSeriesPaths;
   }
 
   public Map<String, String> getAttributes() {
@@ -88,15 +71,15 @@ public class UDFParameters {
   }
 
   public List<TSDataType> getDataTypes() throws MetadataException {
-    return dataTypes;
+    return childExpressionDataTypes;
   }
 
   public PartialPath getPath(int index) {
-    return paths.get(index);
+    return maybeTimeSeriesPaths.get(index);
   }
 
   public TSDataType getDataType(int index) throws MetadataException {
-    return dataTypes.get(index);
+    return childExpressionDataTypes.get(index);
   }
 
   public boolean hasAttribute(String attributeKey) {

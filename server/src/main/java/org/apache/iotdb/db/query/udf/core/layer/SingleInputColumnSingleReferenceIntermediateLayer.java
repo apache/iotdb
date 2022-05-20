@@ -113,8 +113,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
   @Override
   protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
-      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException {
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
     return new LayerRowWindowReader() {
 

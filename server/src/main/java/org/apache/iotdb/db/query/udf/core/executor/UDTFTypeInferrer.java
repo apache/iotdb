@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.core.executor;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
@@ -33,22 +32,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 
 public class UDTFTypeInferrer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDTFTypeInferrer.class);
 
-  protected final FunctionExpression expression;
+  protected final String functionName;
 
-  public UDTFTypeInferrer(FunctionExpression expression) {
-    this.expression = expression;
+  public UDTFTypeInferrer(String functionName) {
+    this.functionName = functionName;
   }
 
-  public TSDataType inferOutputType(TypeProvider typeProvider) {
+  public TSDataType inferOutputType(
+      List<String> childExpressions,
+      List<PartialPath> maybeTimeSeriesPaths,
+      List<TSDataType> childExpressionDataTypes,
+      Map<String, String> attributes) {
     try {
-      UDTF udtf = (UDTF) UDFRegistrationService.getInstance().reflect(expression);
+      UDTF udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
 
-      UDFParameters parameters = new UDFParameters(expression, typeProvider);
+      UDFParameters parameters =
+          new UDFParameters(
+              childExpressions, maybeTimeSeriesPaths, childExpressionDataTypes, attributes);
       udtf.validate(new UDFParameterValidator(parameters));
 
       // use ZoneId.systemDefault() because UDF's data type is ZoneId independent

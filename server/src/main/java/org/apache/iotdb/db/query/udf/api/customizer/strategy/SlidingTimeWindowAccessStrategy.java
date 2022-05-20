@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -61,7 +60,7 @@ import java.time.ZoneId;
  *       parameters.getLong(0),       // display window begin
  *       parameters.getLong(10000))); // display window end
  * }</pre>
- * <p>Style 2:
+ * <p>Style 2 (deprecated since v0.14):
  * <pre>{@code
  * @Override
  * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
@@ -77,21 +76,16 @@ import java.time.ZoneId;
  */
 public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
-  private final boolean inputInString;
-
-  private String timeIntervalString;
-  private String slidingStepString;
-  private String displayWindowBeginString;
-  private String displayWindowEndString;
-
-  private long timeInterval;
-  private long slidingStep;
-  private long displayWindowBegin;
-  private long displayWindowEnd;
+  private final long timeInterval;
+  private final long slidingStep;
+  private final long displayWindowBegin;
+  private final long displayWindowEnd;
 
   private ZoneId zoneId;
 
   /**
+   * Deprecated since v0.14.
+   *
    * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
    * @param slidingStepString sliding step in string. examples: 12d8m9ns, 1y1mo, etc. supported
@@ -100,49 +94,48 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    *     2011-12-03T10:15:30+01:00.
    * @param displayWindowEndString display window end in string. format: 2011-12-03T10:15:30 or
    *     2011-12-03T10:15:30+01:00.
-   * @see DatetimeUtils.DurationUnit
+   * @throws UnsupportedOperationException deprecated since v0.14
    */
+  @Deprecated
   public SlidingTimeWindowAccessStrategy(
       String timeIntervalString,
       String slidingStepString,
       String displayWindowBeginString,
       String displayWindowEndString) {
-    inputInString = true;
-    this.timeIntervalString = timeIntervalString;
-    this.slidingStepString = slidingStepString;
-    this.displayWindowBeginString = displayWindowBeginString;
-    this.displayWindowEndString = displayWindowEndString;
+    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
   }
 
   /**
-   * Display window begin will be set to the same as the minimum timestamp of the query result set,
-   * and display window end will be set to the same as the maximum timestamp of the query result
-   * set.
+   * Deprecated since v0.14.
+   *
+   * <p>Display window begin will be set to the same as the minimum timestamp of the query result
+   * set, and display window end will be set to the same as the maximum timestamp of the query
+   * result set.
    *
    * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
    * @param slidingStepString sliding step in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
-   * @see DatetimeUtils.DurationUnit
+   * @throws UnsupportedOperationException deprecated since v0.14
    */
+  @Deprecated
   public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString) {
-    inputInString = true;
-    this.timeIntervalString = timeIntervalString;
-    this.slidingStepString = slidingStepString;
+    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
   }
 
   /**
-   * Sliding step will be set to the same as the time interval, display window begin will be set to
-   * the same as the minimum timestamp of the query result set, and display window end will be set
-   * to the same as the maximum timestamp of the query result set.
+   * Deprecated since v0.14.
+   *
+   * <p>Sliding step will be set to the same as the time interval, display window begin will be set
+   * to the same as the minimum timestamp of the query result set, and display window end will be
+   * set to the same as the maximum timestamp of the query result set.
    *
    * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
-   * @see DatetimeUtils.DurationUnit
+   * @throws UnsupportedOperationException deprecated since v0.14
    */
   public SlidingTimeWindowAccessStrategy(String timeIntervalString) {
-    inputInString = true;
-    this.timeIntervalString = timeIntervalString;
+    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
   }
 
   /**
@@ -153,7 +146,6 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    */
   public SlidingTimeWindowAccessStrategy(
       long timeInterval, long slidingStep, long displayWindowBegin, long displayWindowEnd) {
-    inputInString = false;
     this.timeInterval = timeInterval;
     this.slidingStep = slidingStep;
     this.displayWindowBegin = displayWindowBegin;
@@ -169,7 +161,6 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    * @param slidingStep 0 < slidingStep
    */
   public SlidingTimeWindowAccessStrategy(long timeInterval, long slidingStep) {
-    inputInString = false;
     this.timeInterval = timeInterval;
     this.slidingStep = slidingStep;
     this.displayWindowBegin = Long.MIN_VALUE;
@@ -184,7 +175,6 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    * @param timeInterval 0 < timeInterval
    */
   public SlidingTimeWindowAccessStrategy(long timeInterval) {
-    inputInString = false;
     this.timeInterval = timeInterval;
     this.slidingStep = timeInterval;
     this.displayWindowBegin = Long.MIN_VALUE;
@@ -193,10 +183,6 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
   @Override
   public void check() {
-    if (inputInString) {
-      parseStringParameters();
-    }
-
     if (timeInterval <= 0) {
       throw new RuntimeException(
           String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
@@ -240,21 +226,5 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   @Override
   public AccessStrategyType getAccessStrategyType() {
     return AccessStrategyType.SLIDING_TIME_WINDOW;
-  }
-
-  private void parseStringParameters() {
-    timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
-    slidingStep =
-        slidingStepString == null
-            ? timeInterval
-            : DatetimeUtils.convertDurationStrToLong(slidingStepString);
-    displayWindowBegin =
-        displayWindowBeginString == null
-            ? Long.MIN_VALUE
-            : DatetimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
-    displayWindowEnd =
-        displayWindowEndString == null
-            ? Long.MAX_VALUE
-            : DatetimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
   }
 }

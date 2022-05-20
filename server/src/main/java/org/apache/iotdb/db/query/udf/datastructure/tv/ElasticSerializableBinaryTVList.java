@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.tv;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -36,8 +35,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
 
-  public ElasticSerializableBinaryTVList(long queryId, float memoryLimitInMB, int cacheSize)
-      throws QueryProcessException {
+  public ElasticSerializableBinaryTVList(long queryId, float memoryLimitInMB, int cacheSize) {
     super(TSDataType.TEXT, queryId, memoryLimitInMB, cacheSize);
     byteArrayLengthForMemoryControl = INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
     totalByteArrayLengthLimit = 0;

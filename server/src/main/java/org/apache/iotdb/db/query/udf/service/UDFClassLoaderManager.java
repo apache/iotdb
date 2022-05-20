@@ -46,9 +46,8 @@ public class UDFClassLoaderManager implements IService {
   /**
    * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
    * user executes CREATE FUNCTION or after the user executes DROP FUNCTION. Therefore, we need to
-   * continuously maintain the activeClassLoader so that the classes it loads are always up to date.
+   * continuously maintain the activeClassLoader so that the classes it loads are always up-to-date.
    */
-  @SuppressWarnings("squid:S3077")
   private volatile UDFClassLoader activeClassLoader;
 
   UDFClassLoaderManager() {

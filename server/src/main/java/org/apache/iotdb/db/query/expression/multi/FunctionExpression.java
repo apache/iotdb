@@ -240,7 +240,7 @@ public class FunctionExpression extends Expression {
     for (Expression expression : expressions) {
       expression.constructUdfExecutors(expressionName2Executor, zoneId);
     }
-    expressionName2Executor.put(expressionString, new UDTFExecutor(this, zoneId));
+    expressionName2Executor.put(expressionString, new UDTFExecutor(functionName, zoneId));
   }
 
   @Override
@@ -254,7 +254,15 @@ public class FunctionExpression extends Expression {
 
       if (isTimeSeriesGeneratingFunctionExpression()) {
         typeProvider.setType(
-            expressionString, new UDTFTypeInferrer(this).inferOutputType(typeProvider));
+            expressionString,
+            new UDTFTypeInferrer(functionName)
+                .inferOutputType(
+                    expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+                    getPaths(),
+                    expressions.stream()
+                        .map(f -> typeProvider.getType(f.toString()))
+                        .collect(Collectors.toList()),
+                    functionAttributes));
       } else {
         if (expressions.size() != 1) {
           throw new SemanticException(
@@ -381,7 +389,15 @@ public class FunctionExpression extends Expression {
       throws QueryProcessException, IOException {
     UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
 
-    executor.beforeStart(queryId, memoryAssigner.assign(), typeProvider);
+    executor.beforeStart(
+        queryId,
+        memoryAssigner.assign(),
+        expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+        getPaths(),
+        expressions.stream()
+            .map(f -> typeProvider.getType(f.toString()))
+            .collect(Collectors.toList()),
+        functionAttributes);
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
@@ -487,7 +503,13 @@ public class FunctionExpression extends Expression {
       throws QueryProcessException, IOException {
     UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
 
-    executor.beforeStart(queryId, memoryAssigner.assign(), expressionDataTypeMap);
+    executor.beforeStart(
+        queryId,
+        memoryAssigner.assign(),
+        expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+        getPaths(),
+        expressions.stream().map(expressionDataTypeMap::get).collect(Collectors.toList()),
+        functionAttributes);
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
