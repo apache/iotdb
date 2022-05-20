@@ -1,0 +1,96 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
+
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.expression.Expression;
+
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Objects;
+
+public class GroupByLevelDescriptor extends AggregationDescriptor {
+
+  private final Expression outputExpression;
+
+  public GroupByLevelDescriptor(
+      AggregationType aggregationType,
+      AggregationStep step,
+      List<Expression> inputExpressions,
+      Expression outputExpression) {
+    super(aggregationType, step, inputExpressions);
+    this.outputExpression = outputExpression;
+  }
+
+  public GroupByLevelDescriptor(
+      AggregationDescriptor aggregationDescriptor, Expression outputExpression) {
+    super(aggregationDescriptor);
+    this.outputExpression = outputExpression;
+  }
+
+  public Expression getOutputExpression() {
+    return outputExpression;
+  };
+
+  @Override
+  protected String getParametersString() {
+    return outputExpression.getExpressionString();
+  }
+
+  public GroupByLevelDescriptor deepClone() {
+    return new GroupByLevelDescriptor(
+        this.getAggregationType(),
+        this.getStep(),
+        this.getInputExpressions(),
+        this.getOutputExpression());
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    Expression.serialize(outputExpression, byteBuffer);
+  }
+
+  public static GroupByLevelDescriptor deserialize(ByteBuffer byteBuffer) {
+    AggregationDescriptor aggregationDescriptor = AggregationDescriptor.deserialize(byteBuffer);
+    Expression outputExpression = Expression.deserialize(byteBuffer);
+    return new GroupByLevelDescriptor(aggregationDescriptor, outputExpression);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    GroupByLevelDescriptor that = (GroupByLevelDescriptor) o;
+    return Objects.equals(outputExpression, that.outputExpression);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), outputExpression);
+  }
+}

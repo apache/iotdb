@@ -171,6 +171,8 @@ public class GroupByLevelNode extends AggregationNode {
   }
 
   public String toString() {
-    return String.format("GroupByLevelNode-%s: Output: %s, Input: %s", getPlanNodeId(), getOutputColumnNames(), aggregationDescriptorList.size());
+    return String.format(
+        "GroupByLevelNode-%s: Output: %s, Input: %s",
+        getPlanNodeId(), getOutputColumnNames(), aggregationDescriptorList.size());
   }
 }

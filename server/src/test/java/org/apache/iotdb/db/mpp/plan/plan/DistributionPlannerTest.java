@@ -398,7 +398,8 @@ public class DistributionPlannerTest {
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
-            Arrays.asList(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
+            Arrays.asList(
+                genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Collections.singletonList(
                 new AggregationDescriptor(
@@ -432,7 +433,8 @@ public class DistributionPlannerTest {
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
-            Arrays.asList(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
+            Arrays.asList(
+                genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Collections.singletonList(
                 new AggregationDescriptor(
@@ -456,7 +458,8 @@ public class DistributionPlannerTest {
     fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
   }
 
-  private SeriesAggregationSourceNode genAggregationSourceNode(QueryId queryId, String path, AggregationType type) throws IllegalPathException {
+  private SeriesAggregationSourceNode genAggregationSourceNode(
+      QueryId queryId, String path, AggregationType type) throws IllegalPathException {
     List<AggregationDescriptor> descriptors = new ArrayList<>();
     descriptors.add(
         new AggregationDescriptor(
@@ -465,9 +468,7 @@ public class DistributionPlannerTest {
             Collections.singletonList(new TimeSeriesOperand(new PartialPath(path)))));
 
     return new SeriesAggregationScanNode(
-        queryId.genPlanNodeId(),
-        new MeasurementPath(path, TSDataType.INT32),
-        descriptors);
+        queryId.genPlanNodeId(), new MeasurementPath(path, TSDataType.INT32), descriptors);
   }
 
   @Test
@@ -527,16 +528,16 @@ public class DistributionPlannerTest {
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new String[]{
-                "s1",
+            new String[] {
+              "s1",
             },
-            new TSDataType[]{TSDataType.INT32},
+            new TSDataType[] {TSDataType.INT32},
             1L,
-            new Object[]{10},
+            new Object[] {10},
             false);
     insertRowNode.setMeasurementSchemas(
-        new MeasurementSchema[]{
-            new MeasurementSchema("s1", TSDataType.INT32),
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
         });
 
     Analysis analysis = constructAnalysis();
@@ -558,14 +559,14 @@ public class DistributionPlannerTest {
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new String[]{"s1"},
-            new TSDataType[]{TSDataType.INT32},
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT32},
             1L,
-            new Object[]{10},
+            new Object[] {10},
             false);
     insertRowNode1.setMeasurementSchemas(
-        new MeasurementSchema[]{
-            new MeasurementSchema("s1", TSDataType.INT32),
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
         });
 
     InsertRowNode insertRowNode2 =
@@ -573,14 +574,14 @@ public class DistributionPlannerTest {
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new String[]{"s1"},
-            new TSDataType[]{TSDataType.INT32},
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT32},
             100000L,
-            new Object[]{10},
+            new Object[] {10},
             false);
     insertRowNode2.setMeasurementSchemas(
-        new MeasurementSchema[]{
-            new MeasurementSchema("s1", TSDataType.INT32),
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
         });
 
     InsertRowsNode node = new InsertRowsNode(queryId.genPlanNodeId());

@@ -31,10 +31,10 @@ import java.util.Objects;
 public class AggregationDescriptor {
 
   // aggregation function name
-  private final AggregationType aggregationType;
+  protected final AggregationType aggregationType;
 
   // indicate the input and output type
-  private AggregationStep step;
+  protected AggregationStep step;
 
   /**
    * Input of aggregation function. Currently, we only support one series in the aggregation
@@ -42,7 +42,7 @@ public class AggregationDescriptor {
    *
    * <p>example: select sum(s1) from root.sg.d1; expression [root.sg.d1.s1] will be in this field.
    */
-  private List<Expression> inputExpressions;
+  protected List<Expression> inputExpressions;
 
   private String parametersString;
 
@@ -53,9 +53,37 @@ public class AggregationDescriptor {
     this.inputExpressions = inputExpressions;
   }
 
+  public AggregationDescriptor(AggregationDescriptor other) {
+    this.aggregationType = other.getAggregationType();
+    this.step = other.getStep();
+    this.inputExpressions = other.getInputExpressions();
+  }
+
   public List<String> getOutputColumnNames() {
+    List<AggregationType> outputAggregationTypes =
+        getActualAggregationTypes(step.isOutputPartial());
+    List<String> outputColumnNames = new ArrayList<>();
+    for (AggregationType funcName : outputAggregationTypes) {
+      outputColumnNames.add(funcName.toString().toLowerCase() + "(" + getParametersString() + ")");
+    }
+    return outputColumnNames;
+  }
+
+  public List<String> getInputColumnNames() {
+    List<AggregationType> inputAggregationTypes = getActualAggregationTypes(step.isInputPartial());
+    List<String> inputColumnNames = new ArrayList<>();
+    for (Expression expression : inputExpressions) {
+      for (AggregationType funcName : inputAggregationTypes) {
+        inputColumnNames.add(
+            funcName.toString().toLowerCase() + "(" + expression.getExpressionString() + ")");
+      }
+    }
+    return inputColumnNames;
+  }
+
+  protected List<AggregationType> getActualAggregationTypes(boolean isPartial) {
     List<AggregationType> outputAggregationTypes = new ArrayList<>();
-    if (step.isOutputPartial()) {
+    if (isPartial) {
       switch (aggregationType) {
         case AVG:
           outputAggregationTypes.add(AggregationType.COUNT);
@@ -75,12 +103,7 @@ public class AggregationDescriptor {
     } else {
       outputAggregationTypes.add(aggregationType);
     }
-    List<String> outputColumnNames = new ArrayList<>();
-    for (AggregationType outputType : outputAggregationTypes) {
-      outputColumnNames.add(
-          outputType.toString().toLowerCase() + "(" + getParametersString() + ")");
-    }
-    return outputColumnNames;
+    return outputAggregationTypes;
   }
 
   /**
@@ -92,7 +115,7 @@ public class AggregationDescriptor {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
    */
-  public String getParametersString() {
+  protected String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!inputExpressions.isEmpty()) {
@@ -128,7 +151,7 @@ public class AggregationDescriptor {
 
   public AggregationDescriptor deepClone() {
     return new AggregationDescriptor(
-        this.getAggregationType(), this.step, this.getInputExpressions());
+        this.getAggregationType(), this.getStep(), this.getInputExpressions());
   }
 
   public void serialize(ByteBuffer byteBuffer) {
