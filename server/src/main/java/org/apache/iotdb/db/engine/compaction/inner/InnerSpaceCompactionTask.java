@@ -336,9 +336,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       if (isHoldingReadLock[i]) {
         resource.readUnlock();
+        LOGGER.info("Release read lock of {}", resource);
       }
       if (isHoldingWriteLock[i]) {
         resource.writeUnlock();
+        LOGGER.info("Release write lock of {}", resource);
       }
       try {
         if (!resource.isDeleted()) {
