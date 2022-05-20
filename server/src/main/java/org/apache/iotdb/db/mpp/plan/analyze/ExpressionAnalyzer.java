@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -53,15 +52,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import com.google.common.collect.Sets;
-import org.apache.commons.lang.Validate;
-
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
@@ -391,6 +384,14 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * Concat expression with the device path in the FROM clause.And then, bind schema ({@link
+   * PartialPath} -> {@link MeasurementPath}) and removes wildcards in Expression. This method used
+   * in ALIGN BY DEVICE query.
+   *
+   * @param devicePath device path in the FROM clause
+   * @return expression list with full path and after binding schema
+   */
   public static List<Expression> concatDeviceAndRemoveWildcard(
       Expression expression,
       PartialPath devicePath,
@@ -670,31 +671,6 @@ public class ExpressionAnalyzer {
     }
   }
 
-  /** Returns all the timeseries path in the expression */
-  public static Set<PartialPath> collectPaths(Expression expression) {
-    if (expression instanceof BinaryExpression) {
-      Set<PartialPath> resultSet =
-          collectPaths(((BinaryExpression) expression).getLeftExpression());
-      resultSet.addAll(collectPaths(((BinaryExpression) expression).getRightExpression()));
-      return resultSet;
-    } else if (expression instanceof UnaryExpression) {
-      return collectPaths(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof FunctionExpression) {
-      Set<PartialPath> resultSet = new HashSet<>();
-      for (Expression childExpression : expression.getExpressions()) {
-        resultSet.addAll(collectPaths(childExpression));
-      }
-      return resultSet;
-    } else if (expression instanceof TimeSeriesOperand) {
-      return Sets.newHashSet(((TimeSeriesOperand) expression).getPath());
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
-      return Collections.emptySet();
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
   /** Update typeProvider by expression. */
   public static void updateTypeProvider(Expression expression, TypeProvider typeProvider) {
     if (expression instanceof BinaryExpression) {
@@ -768,60 +744,6 @@ public class ExpressionAnalyzer {
     }
   }
 
-  /**
-   * Remove alias from measurement expression according to map. This method is used in ALIGN BY
-   * DEVICE query. eg: status -> s2, sum(status) -> sum(s2)
-   *
-   * @param aliasToMeasurementNameMap a map from alias to measurement name
-   * @return expression after removing alias
-   */
-  public static Expression removeAliasInMeasurementExpression(
-      Expression expression, Map<String, String> aliasToMeasurementNameMap) {
-    if (expression instanceof BinaryExpression) {
-      Expression leftExpression =
-          removeAliasInMeasurementExpression(
-              ((BinaryExpression) expression).getLeftExpression(), aliasToMeasurementNameMap);
-      Expression rightExpression =
-          removeAliasInMeasurementExpression(
-              ((BinaryExpression) expression).getRightExpression(), aliasToMeasurementNameMap);
-      return reconstructBinaryExpressions(
-              expression.getExpressionType(),
-              Collections.singletonList(leftExpression),
-              Collections.singletonList(rightExpression))
-          .get(0);
-    } else if (expression instanceof UnaryExpression) {
-      Expression childExpression =
-          removeAliasInMeasurementExpression(
-              ((UnaryExpression) expression).getExpression(), aliasToMeasurementNameMap);
-      return reconstructUnaryExpressions(
-              (UnaryExpression) expression, Collections.singletonList(childExpression))
-          .get(0);
-    } else if (expression instanceof FunctionExpression) {
-      List<Expression> childExpressions = new ArrayList<>();
-      for (Expression suffixExpression : expression.getExpressions()) {
-        childExpressions.add(
-            removeAliasInMeasurementExpression(suffixExpression, aliasToMeasurementNameMap));
-      }
-      return reconstructFunctionExpressions(
-              (FunctionExpression) expression, Collections.singletonList(childExpressions))
-          .get(0);
-    } else if (expression instanceof TimeSeriesOperand) {
-      String rawMeasurement = ((TimeSeriesOperand) expression).getPath().getFullPath();
-      if (aliasToMeasurementNameMap.containsKey(rawMeasurement)) {
-        PartialPath newPath =
-            new PartialPath(new String[] {aliasToMeasurementNameMap.get(rawMeasurement)});
-        return new TimeSeriesOperand(newPath);
-      }
-      return expression;
-    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
-      // do nothing
-      return expression;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
   /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */
   public static boolean checkIsNeedTransform(Expression expression) {
     if (expression instanceof BinaryExpression) {
@@ -842,45 +764,6 @@ public class ExpressionAnalyzer {
   // Method can only be used in source expression
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public static Expression replacePathInSourceExpression(
-      Expression expression, PartialPath replacedPath) {
-    if (expression instanceof TimeSeriesOperand) {
-      return new TimeSeriesOperand(replacedPath);
-    } else if (expression instanceof FunctionExpression) {
-      return new FunctionExpression(
-          ((FunctionExpression) expression).getFunctionName(),
-          ((FunctionExpression) expression).getFunctionAttributes(),
-          Collections.singletonList(new TimeSeriesOperand(replacedPath)));
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
-  public static Expression replacePathInSourceExpression(
-      Expression expression, String replacedPathString) {
-    PartialPath replacedPath;
-    try {
-      replacedPath = new PartialPath(replacedPathString);
-    } catch (IllegalPathException e) {
-      throw new SemanticException("illegal path: " + replacedPathString);
-    }
-    return replacePathInSourceExpression(expression, replacedPath);
-  }
-
-  public static PartialPath getPathInSourceExpression(Expression expression) {
-    if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath();
-    } else if (expression instanceof FunctionExpression) {
-      Validate.isTrue(expression.getExpressions().size() == 1);
-      Validate.isTrue(expression.getExpressions().get(0) instanceof TimeSeriesOperand);
-      return ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
   public static String getDeviceNameInSourceExpression(Expression expression) {
     if (expression instanceof BinaryExpression) {
       String leftDeviceName =
@@ -900,42 +783,6 @@ public class ExpressionAnalyzer {
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
-  public static Pair<Expression, String> getMeasurementWithAliasInSourceExpression(
-      Expression expression, String alias) {
-    if (expression instanceof TimeSeriesOperand) {
-      String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-      if (alias != null && measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-        throw new SemanticException(
-            String.format(
-                "ALIGN BY DEVICE: alias '%s' can only be matched with one measurement", alias));
-      }
-      Expression measurementExpression;
-      try {
-        measurementExpression = new TimeSeriesOperand(new PartialPath(measurement));
-        return new Pair<>(measurementExpression, alias);
-      } catch (IllegalPathException e) {
-        throw new SemanticException("ALIGN BY DEVICE: illegal measurement name: " + measurement);
-      }
-    } else if (expression instanceof FunctionExpression) {
-      if (expression.getExpressions().size() > 1) {
-        throw new SemanticException(
-            "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
-      }
-      Expression measurementFunctionExpression =
-          new FunctionExpression(
-              ((FunctionExpression) expression).getFunctionName(),
-              ((FunctionExpression) expression).getFunctionAttributes(),
-              Collections.singletonList(
-                  getMeasurementWithAliasInSourceExpression(
-                          expression.getExpressions().get(0), alias)
-                      .left));
-      return new Pair<>(measurementFunctionExpression, alias);
-    } else {
-      throw new SemanticException(
-          "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
     }
   }
 
