@@ -19,37 +19,38 @@
 
 package org.apache.iotdb.db.integration;
 
+import com.sun.net.httpserver.HttpServer;
+import org.apache.http.HttpStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.trigger.sink.forward.ForwardEvent;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
-import java.util.HashMap;
-import java.util.Map;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class IoTDBTriggerForwardIT {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTriggerForwardIT.class);
+
   private volatile long count = 0;
   private volatile Exception exception = null;
 
@@ -88,23 +89,32 @@ public class IoTDBTriggerForwardIT {
   }
 
   @Test
-  @Ignore
-  public void testForwardHTTPTrigger() {
+  public void testForwardHTTPTrigger() throws InterruptedException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      startHTTPService();
       statement.execute(
           "create trigger trigger_forward_http_before before insert on root.vehicle.a.b.c.d1.s1 "
               + "as 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' "
-              + "with ( 'protocol' = 'http', 'endpoint' = 'http://127.0.0.1:8079/demo/echo')");
+              + "with ('protocol' = 'http', 'endpoint' = 'http://127.0.0.1:8080/')");
       statement.execute(
           "create trigger trigger_forward_http_after after insert on root.vehicle.a.b.c.d1.s2 "
               + "as 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' "
-              + "with ('protocol' = 'http', 'endpoint' = 'http://127.0.0.1:8079/demo/echo')");
-      // TODO need to find a way to e2e test HTTPTrigger
-    } catch (SQLException e) {
+              + "with ('protocol' = 'http', 'endpoint' = 'http://127.0.0.1:8080/')");
+      startDataGenerator();
+      waitCountIncreaseBy(500);
+      stopDataGenerator();
+      if (exception != null) {
+        return;
+      }
+      // Wait 30s, let the queue send all msg
+      Thread.sleep(30 * 1000);
+    } catch (SQLException | InterruptedException | IOException e) {
       fail(e.getMessage());
+    } finally {
+      stopDataGenerator();
     }
   }
 
@@ -132,15 +142,6 @@ public class IoTDBTriggerForwardIT {
       if (exception != null) {
         return;
       }
-      await()
-          .atMost(1, MINUTES)
-          .until(
-              () ->
-                  count
-                      == checkSingleSensorHandlerResult(
-                          "root.vehicle.a.b.c.d2",
-                          "Time,root.vehicle.a.b.c.d2.s3,root.vehicle.a.b.c.d2.s4",
-                          new int[] {Types.TIMESTAMP, Types.FLOAT, Types.FLOAT}));
 
     } catch (SQLException | InterruptedException e) {
       fail(e.getMessage());
@@ -206,48 +207,35 @@ public class IoTDBTriggerForwardIT {
     }
   }
 
-  private int checkSingleSensorHandlerResult(
-      String path, String expectedHeaderStrings, int[] expectedTypes)
-      throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    int forwardCount = 0;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from " + path));
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, expectedHeaderStrings, expectedTypes);
-
-        while (resultSet.next()) {
-          ++forwardCount;
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            assertEquals(forwardCount, Double.parseDouble(resultSet.getString(i)), 0.0);
+  private void startHTTPService() throws IOException {
+    HttpServer httpServer = HttpServer.create(new InetSocketAddress(8080), 0);
+    httpServer.createContext(
+        "/",
+        exchange -> {
+          String entity = "";
+          try {
+            InputStream in = exchange.getRequestBody();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] b = new byte[1024 * 8];
+            int len;
+            while ((len = in.read(b)) != -1) {
+              out.write(b, 0, len);
+            }
+            entity = out.toString();
+          } catch (Exception e) {
+            e.printStackTrace();
           }
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    return forwardCount;
+
+          if (!checkPayload(entity)) {
+            httpServer.stop(0);
+            throw new IOException("Request payload error");
+          }
+          exchange.sendResponseHeaders(HttpStatus.SC_OK, -1);
+        });
+    httpServer.start();
   }
 
-  private void checkHeader(
-      ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
-      throws SQLException {
-    String[] expectedHeaders = expectedHeaderStrings.split(",");
-    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
-    for (int i = 0; i < expectedHeaders.length; ++i) {
-      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
-    }
-
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
-      Assert.assertNotNull(typeIndex);
-      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
-    }
+  private boolean checkPayload(String payload) {
+    return payload.matches(ForwardEvent.PAYLOADS_FORMATTER_REGEX);
   }
 }
