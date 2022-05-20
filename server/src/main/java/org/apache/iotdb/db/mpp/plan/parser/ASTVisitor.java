@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
@@ -563,7 +564,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (resultColumnContext.AS() != null) {
       alias = parseAlias(resultColumnContext.alias());
     }
-    return new ResultColumn(expression, alias);
+    ResultColumn.ColumnType columnType = ExpressionAnalyzer.identifyOutputColumnType(expression);
+    return new ResultColumn(expression, alias, columnType);
   }
 
   // From Clause
