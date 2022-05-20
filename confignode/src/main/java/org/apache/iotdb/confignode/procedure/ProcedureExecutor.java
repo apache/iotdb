@@ -71,7 +71,6 @@ public class ProcedureExecutor<Env> {
 
   private int corePoolSize;
   private int maxPoolSize;
-  private volatile long keepAliveTime;
 
   private final ProcedureScheduler scheduler;
 
@@ -112,15 +111,6 @@ public class ProcedureExecutor<Env> {
 
     scheduler.start();
     recover();
-  }
-
-  public void setKeepAliveTime(final long keepAliveTime, final TimeUnit timeUnit) {
-    this.keepAliveTime = timeUnit.toMillis(keepAliveTime);
-    this.scheduler.signalAll();
-  }
-
-  public long getKeepAliveTime(final TimeUnit timeUnit) {
-    return timeUnit.convert(keepAliveTime, TimeUnit.MILLISECONDS);
   }
 
   private void recover() {
@@ -728,6 +718,7 @@ public class ProcedureExecutor<Env> {
   private class WorkerThread extends StoppableThread {
     private final AtomicLong startTime = new AtomicLong(Long.MAX_VALUE);
     private volatile Procedure<Env> activeProcedure;
+    protected long keepAliveTime = -1;
 
     public WorkerThread(ThreadGroup threadGroup) {
       this(threadGroup, "ProcExecWorker-");
@@ -748,7 +739,7 @@ public class ProcedureExecutor<Env> {
       long lastUpdated = System.currentTimeMillis();
       try {
         while (isRunning() && keepAlive(lastUpdated)) {
-          Procedure<Env> procedure = scheduler.poll();
+          Procedure<Env> procedure = scheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
           if (procedure == null) {
             continue;
           }
@@ -794,8 +785,10 @@ public class ProcedureExecutor<Env> {
   // A worker thread which can be added when core workers are stuck. Will timeout after
   // keepAliveTime if there is no procedure to run.
   private final class KeepAliveWorkerThread extends WorkerThread {
+
     public KeepAliveWorkerThread(ThreadGroup group) {
       super(group, "KAProcExecWorker-");
+      this.keepAliveTime = TimeUnit.SECONDS.toMillis(10);
     }
 
     @Override
@@ -811,10 +804,6 @@ public class ProcedureExecutor<Env> {
 
     private static final float DEFAULT_WORKER_ADD_STUCK_PERCENTAGE = 0.5f; // 50% stuck
 
-    private float addWorkerStuckPercentage = DEFAULT_WORKER_ADD_STUCK_PERCENTAGE;
-    private int timeoutInterval = DEFAULT_WORKER_MONITOR_INTERVAL;
-    private int stuckThreshold = DEFAULT_WORKER_STUCK_THRESHOLD;
-
     public WorkerMonitor() {
       super(DEFAULT_WORKER_MONITOR_INTERVAL);
       updateTimestamp();
@@ -824,7 +813,8 @@ public class ProcedureExecutor<Env> {
       // check if any of the worker is stuck
       int stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
-        if (worker.activeProcedure == null || worker.getCurrentRunTime() < stuckThreshold) {
+        if (worker.activeProcedure == null
+            || worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
           continue;
         }
 
@@ -845,7 +835,7 @@ public class ProcedureExecutor<Env> {
       final float stuckPerc = ((float) stuckCount) / workerThreads.size();
       // let's add new worker thread more aggressively, as they will timeout finally if there is no
       // work to do.
-      if (stuckPerc >= addWorkerStuckPercentage && workerThreads.size() < maxPoolSize) {
+      if (stuckPerc >= DEFAULT_WORKER_ADD_STUCK_PERCENTAGE && workerThreads.size() < maxPoolSize) {
         final KeepAliveWorkerThread worker = new KeepAliveWorkerThread(threadGroup);
         workerThreads.add(worker);
         worker.start();
