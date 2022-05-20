@@ -51,7 +51,7 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
   }
 
   @Override
-  protected String getParametersString() {
+  public String getParametersString() {
     return outputExpression.getExpressionString();
   }
 

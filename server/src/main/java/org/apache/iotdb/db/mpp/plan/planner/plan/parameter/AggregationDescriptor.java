@@ -145,7 +145,7 @@ public class AggregationDescriptor {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
    */
-  protected String getParametersString() {
+  public String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!inputExpressions.isEmpty()) {

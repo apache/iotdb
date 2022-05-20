@@ -133,7 +133,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -485,7 +484,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SeriesAggregateScanOperator.class.getSimpleName());
+              SeriesAggregationScanOperator.class.getSimpleName());
 
       List<Aggregator> aggregators = new ArrayList<>();
       node.getAggregationDescriptorList()
@@ -831,7 +830,7 @@ public class LocalExecutionPlanner {
             context.instanceContext.addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                    RawDataAggregationOperator.class.getSimpleName());
+                RawDataAggregationOperator.class.getSimpleName());
         return new RawDataAggregationOperator(
             operatorContext,
             aggregators,
@@ -843,7 +842,7 @@ public class LocalExecutionPlanner {
             context.instanceContext.addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                    AggregationOperator.class.getSimpleName());
+                AggregationOperator.class.getSimpleName());
         return new AggregationOperator(
             operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
       }

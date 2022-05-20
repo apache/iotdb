@@ -283,15 +283,18 @@ public class Analyzer {
                   .map(Pair::getLeft)
                   .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        if (queryStatement.isGroupByLevel()) {
-          // map from grouped expression to set of input expressions
-          Map<Expression, Expression> rawPathToGroupedPathMap = new HashMap<>();
-          Map<Expression, Set<Expression>> groupByLevelExpressions =
-              analyzeGroupByLevel(
-                  queryStatement, outputExpressions, selectExpressions, rawPathToGroupedPathMap);
-          analysis.setGroupByLevelExpressions(groupByLevelExpressions);
-          analysis.setRawPathToGroupedPathMap(rawPathToGroupedPathMap);
-        }
+          if (queryStatement.isGroupByLevel()) {
+            // map from grouped expression to set of input expressions
+            Map<Expression, Expression> rawPathToGroupedPathMap = new HashMap<>();
+            Map<Expression, Set<Expression>> groupByLevelExpressions =
+                analyzeGroupByLevel(
+                    queryStatement,
+                    outputExpressions,
+                    transformExpressions,
+                    rawPathToGroupedPathMap);
+            analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+            analysis.setRawPathToGroupedPathMap(rawPathToGroupedPathMap);
+          }
 
           // true if nested expressions and UDFs exist in aggregation function
           // i.e. select sum(s1 + 1) from root.sg.d1
@@ -633,7 +636,7 @@ public class Analyzer {
     private Map<Expression, Set<Expression>> analyzeGroupByLevel(
         QueryStatement queryStatement,
         List<Pair<Expression, String>> outputExpressions,
-        Set<Expression> transformExpressions
+        Set<Expression> transformExpressions,
         Map<Expression, Expression> rawPathToGroupedPathMap) {
       GroupByLevelController groupByLevelController =
           new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
