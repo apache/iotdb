@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class GroupByLevelDescriptor extends AggregationDescriptor {
@@ -47,11 +48,21 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
 
   public Expression getOutputExpression() {
     return outputExpression;
-  };
+  }
 
   @Override
   protected String getParametersString() {
     return outputExpression.getExpressionString();
+  }
+
+  @Override
+  public Map<String, Expression> getInputColumnCandidateMap() {
+    Map<String, Expression> inputColumnNameToExpressionMap = super.getInputColumnCandidateMap();
+    List<String> outputColumnNames = getOutputColumnNames();
+    for (String outputColumnName : outputColumnNames) {
+      inputColumnNameToExpressionMap.put(outputColumnName, outputExpression);
+    }
+    return inputColumnNameToExpressionMap;
   }
 
   public GroupByLevelDescriptor deepClone() {

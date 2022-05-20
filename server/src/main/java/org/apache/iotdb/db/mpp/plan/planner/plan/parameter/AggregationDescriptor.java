@@ -25,7 +25,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class AggregationDescriptor {
@@ -79,6 +81,27 @@ public class AggregationDescriptor {
       }
     }
     return inputColumnNames;
+  }
+
+  public List<String> getInputColumnNames(Expression inputExpression) {
+    List<AggregationType> inputAggregationTypes = getActualAggregationTypes(step.isInputPartial());
+    List<String> inputColumnNames = new ArrayList<>();
+    for (AggregationType funcName : inputAggregationTypes) {
+      inputColumnNames.add(
+          funcName.toString().toLowerCase() + "(" + inputExpression.getExpressionString() + ")");
+    }
+    return inputColumnNames;
+  }
+
+  public Map<String, Expression> getInputColumnCandidateMap() {
+    Map<String, Expression> inputColumnNameToExpressionMap = new HashMap<>();
+    for (Expression inputExpression : inputExpressions) {
+      List<String> inputColumnNames = getInputColumnNames(inputExpression);
+      for (String inputColumnName : inputColumnNames) {
+        inputColumnNameToExpressionMap.put(inputColumnName, inputExpression);
+      }
+    }
+    return inputColumnNameToExpressionMap;
   }
 
   protected List<AggregationType> getActualAggregationTypes(boolean isPartial) {
