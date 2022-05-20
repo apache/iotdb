@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import com.sun.net.httpserver.HttpServer;
-import org.apache.http.HttpStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.forward.ForwardEvent;
@@ -30,6 +28,9 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import com.sun.net.httpserver.HttpServer;
+import org.apache.http.HttpStatus;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
