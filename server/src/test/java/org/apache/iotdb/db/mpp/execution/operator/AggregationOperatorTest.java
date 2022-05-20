@@ -33,8 +33,8 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
-import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -59,9 +59,9 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 
-public class AggregateOperatorTest {
+public class AggregationOperatorTest {
 
-  private static final String AGGREGATE_OPERATOR_TEST_SG = "root.AggregateOperatorTest";
+  private static final String AGGREGATION_OPERATOR_TEST_SG = "root.AggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -73,7 +73,7 @@ public class AggregateOperatorTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unSeqResources, AGGREGATE_OPERATOR_TEST_SG);
+        measurementSchemas, deviceIds, seqResources, unSeqResources, AGGREGATION_OPERATOR_TEST_SG);
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
   }
@@ -101,11 +101,11 @@ public class AggregateOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(1, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-    AggregateOperator aggregateOperator =
-        initAggregateOperator(aggregationTypes, null, inputLocations);
+    AggregationOperator aggregationOperator =
+        initAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (aggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = aggregateOperator.next();
+    while (aggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = aggregationOperator.next();
       assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
       assertEquals(6524750.0, resultTsBlock.getColumn(1).getDouble(0), 0.0001);
       assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
@@ -133,11 +133,11 @@ public class AggregateOperatorTest {
           new InputLocation[] {new InputLocation(1, 2 * i), new InputLocation(1, 2 * i + 1)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-    AggregateOperator aggregateOperator =
-        initAggregateOperator(aggregationTypes, null, inputLocations);
+    AggregationOperator aggregationOperator =
+        initAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (aggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = aggregateOperator.next();
+    while (aggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = aggregationOperator.next();
       assertEquals(13049.5, resultTsBlock.getColumn(0).getDouble(0), 0.001);
       assertEquals(20000, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(10499, resultTsBlock.getColumn(2).getInt(0));
@@ -172,11 +172,11 @@ public class AggregateOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(1, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-    AggregateOperator aggregateOperator =
-        initAggregateOperator(aggregationTypes, groupByTimeParameter, inputLocations);
+    AggregationOperator aggregationOperator =
+        initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (aggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = aggregateOperator.next();
+    while (aggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = aggregationOperator.next();
       assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
       assertEquals(result[0][count], resultTsBlock.getColumn(0).getLong(0));
       assertEquals(result[1][count], resultTsBlock.getColumn(1).getDouble(0), 0.0001);
@@ -211,11 +211,11 @@ public class AggregateOperatorTest {
           new InputLocation[] {new InputLocation(1, 2 * i), new InputLocation(1, 2 * i + 1)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-    AggregateOperator aggregateOperator =
-        initAggregateOperator(aggregationTypes, groupByTimeParameter, inputLocations);
+    AggregationOperator aggregationOperator =
+        initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (aggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = aggregateOperator.next();
+    while (aggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = aggregationOperator.next();
       assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
       assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(0), 0.001);
       assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(0));
@@ -230,7 +230,7 @@ public class AggregateOperatorTest {
    * @param groupByTimeParameter group by time parameter
    * @param inputLocations each inputLocation is used in one aggregator
    */
-  private AggregateOperator initAggregateOperator(
+  private AggregationOperator initAggregationOperator(
       List<AggregationType> aggregationTypes,
       GroupByTimeParameter groupByTimeParameter,
       List<List<InputLocation[]>> inputLocations)
@@ -245,21 +245,21 @@ public class AggregateOperatorTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     PlanNodeId planNodeId1 = new PlanNodeId("1");
     fragmentInstanceContext.addOperatorContext(
-        1, planNodeId1, SeriesAggregateScanOperator.class.getSimpleName());
+        1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
     PlanNodeId planNodeId2 = new PlanNodeId("2");
     fragmentInstanceContext.addOperatorContext(
-        2, planNodeId2, SeriesAggregateScanOperator.class.getSimpleName());
+        2, planNodeId2, SeriesAggregationScanOperator.class.getSimpleName());
     PlanNodeId planNodeId3 = new PlanNodeId("3");
     fragmentInstanceContext.addOperatorContext(
-        3, planNodeId3, AggregateOperator.class.getSimpleName());
+        3, planNodeId3, AggregationOperator.class.getSimpleName());
 
     MeasurementPath measurementPath1 =
-        new MeasurementPath(AGGREGATE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+        new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.PARTIAL)));
-    SeriesAggregateScanOperator seriesAggregateScanOperator1 =
-        new SeriesAggregateScanOperator(
+    SeriesAggregationScanOperator seriesAggregationScanOperator1 =
+        new SeriesAggregationScanOperator(
             planNodeId1,
             measurementPath1,
             Collections.singleton("sensor0"),
@@ -277,11 +277,11 @@ public class AggregateOperatorTest {
     unSeqResources1.add(unSeqResources.get(1));
     unSeqResources1.add(unSeqResources.get(3));
     unSeqResources1.add(unSeqResources.get(5));
-    seriesAggregateScanOperator1.initQueryDataSource(
+    seriesAggregationScanOperator1.initQueryDataSource(
         new QueryDataSource(seqResources1, unSeqResources1));
 
-    SeriesAggregateScanOperator seriesAggregateScanOperator2 =
-        new SeriesAggregateScanOperator(
+    SeriesAggregationScanOperator seriesAggregationScanOperator2 =
+        new SeriesAggregationScanOperator(
             planNodeId2,
             measurementPath1,
             Collections.singleton("sensor0"),
@@ -296,12 +296,12 @@ public class AggregateOperatorTest {
     seqResources2.add(seqResources.get(4));
     unSeqResources2.add(unSeqResources.get(2));
     unSeqResources2.add(unSeqResources.get(4));
-    seriesAggregateScanOperator2.initQueryDataSource(
+    seriesAggregationScanOperator2.initQueryDataSource(
         new QueryDataSource(seqResources2, unSeqResources2));
 
     List<Operator> children = new ArrayList<>();
-    children.add(seriesAggregateScanOperator1);
-    children.add(seriesAggregateScanOperator2);
+    children.add(seriesAggregationScanOperator1);
+    children.add(seriesAggregationScanOperator2);
 
     List<Aggregator> finalAggregators = new ArrayList<>();
     List<Accumulator> accumulators =
@@ -311,7 +311,7 @@ public class AggregateOperatorTest {
           new Aggregator(accumulators.get(i), AggregationStep.FINAL, inputLocations.get(i)));
     }
 
-    return new AggregateOperator(
+    return new AggregationOperator(
         fragmentInstanceContext.getOperatorContexts().get(2),
         finalAggregators,
         children,
