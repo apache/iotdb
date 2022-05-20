@@ -59,6 +59,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
@@ -83,7 +89,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 public class InternalServiceImpl implements InternalService.Iface {
@@ -92,6 +100,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
   private final IConsensus consensusImpl = ConsensusImpl.getInstance();
+  private final double loadBalanceThreshold = 0.1;
 
   public InternalServiceImpl() {
     super();
@@ -266,8 +275,54 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
-    // TODO: Return load balancing messages
-    return new THeartbeatResp(req.getHeartbeatTimestamp());
+    THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp());
+    Random whetherToGetMetric = new Random();
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
+        && whetherToGetMetric.nextDouble() < loadBalanceThreshold) {
+      long cpuLoad =
+          MetricsService.getInstance()
+              .getMetricManager()
+              .getOrCreateGauge(
+                  Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
+              .value();
+      if (cpuLoad != 0) {
+        resp.setCpu((short) cpuLoad);
+      }
+      long usedMemory = getMemory("jvm.memory.used.bytes");
+      long maxMemory = getMemory("jvm.memory.max.bytes");
+      if (usedMemory != 0 && maxMemory != 0) {
+        resp.setMemory((short) (usedMemory * 100 / maxMemory));
+      }
+    }
+    return resp;
+  }
+
+  private long getMemory(String gaugeName) {
+    long result = 0;
+    try {
+      //
+      List<String> heapIds = Arrays.asList("PS Eden Space", "PS Old Eden", "Ps Survivor Space");
+      List<String> noHeapIds = Arrays.asList("Code Cache", "Compressed Class Space", "Metaspace");
+
+      for (String id : heapIds) {
+        Gauge gauge =
+            MetricsService.getInstance()
+                .getMetricManager()
+                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
+        result += gauge.value();
+      }
+      for (String id : noHeapIds) {
+        Gauge gauge =
+            MetricsService.getInstance()
+                .getMetricManager()
+                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
+        result += gauge.value();
+      }
+    } catch (Exception e) {
+      LOGGER.error("Failed to get memory from metric because {}", e.getMessage());
+      return 0;
+    }
+    return result;
   }
 
   @Override
