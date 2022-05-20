@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.exception;
+package org.apache.iotdb.commons.udf.api.exception;
 
-public class UDFAttributeNotProvidedException extends UDFParameterNotValidException {
+public class UDFParameterNotValidException extends UDFException {
 
-  public UDFAttributeNotProvidedException(String requiredAttribute) {
-    super(String.format("attribute \"%s\" is required but was not provided.", requiredAttribute));
+  public UDFParameterNotValidException(String message) {
+    super(message);
   }
 }

@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.query.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.db.query.udf.api.exception.UDFException;
+import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.commons.udf.api.exception.UDFException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class UDTFEqualSizeBucketSample implements UDTF {

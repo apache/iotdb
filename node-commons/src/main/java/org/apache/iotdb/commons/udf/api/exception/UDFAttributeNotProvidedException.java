@@ -17,14 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.exception;
+package org.apache.iotdb.commons.udf.api.exception;
 
-public class UDFOutputSeriesDataTypeNotValidException extends UDFParameterNotValidException {
+public class UDFAttributeNotProvidedException extends UDFParameterNotValidException {
 
-  public UDFOutputSeriesDataTypeNotValidException(int index, String types) {
-    super(
-        String.format(
-            "the data type of the output series (index: %d) is not valid. expected: %s.",
-            index, types));
+  public UDFAttributeNotProvidedException(String requiredAttribute) {
+    super(String.format("attribute \"%s\" is required but was not provided.", requiredAttribute));
   }
 }

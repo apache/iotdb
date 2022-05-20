@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer.parameter;
+package org.apache.iotdb.commons.udf.api.customizer.parameter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.query.udf.api.exception.UDFAttributeNotProvidedException;
-import org.apache.iotdb.db.query.udf.api.exception.UDFException;
-import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesIndexNotValidException;
-import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesNumberNotValidException;
-import org.apache.iotdb.db.query.udf.api.exception.UDFParameterNotValidException;
+import org.apache.iotdb.commons.udf.api.exception.UDFAttributeNotProvidedException;
+import org.apache.iotdb.commons.udf.api.exception.UDFException;
+import org.apache.iotdb.commons.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.commons.udf.api.exception.UDFInputSeriesIndexNotValidException;
+import org.apache.iotdb.commons.udf.api.exception.UDFInputSeriesNumberNotValidException;
+import org.apache.iotdb.commons.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class UDFParameterValidator {

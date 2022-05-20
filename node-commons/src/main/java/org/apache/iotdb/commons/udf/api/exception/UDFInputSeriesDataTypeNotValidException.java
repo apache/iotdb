@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.exception;
+package org.apache.iotdb.commons.udf.api.exception;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 

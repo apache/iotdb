@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.udf.datastructure.tv;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.commons.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.datastructure.Cache;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;

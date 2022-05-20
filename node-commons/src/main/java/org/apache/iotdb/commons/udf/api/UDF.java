@@ -17,31 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.access;
+package org.apache.iotdb.commons.udf.api;
 
-import java.io.IOException;
+import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
 
-public interface RowIterator {
-
-  /**
-   * Returns {@code true} if the iteration has more rows.
-   *
-   * @return {@code true} if the iteration has more rows
-   */
-  boolean hasNextRow();
+public interface UDF {
 
   /**
-   * Returns the next row in the iteration.
+   * This method is mainly used to validate {@link UDFParameters} and it is executed before {@link
+   * UDTF#beforeStart(UDFParameters, UDTFConfigurations)} is called.
    *
-   * <p>Note that the Row instance returned by this method each time is the same instance. In other
-   * words, calling {@code next()} will only change the member variables inside the Row instance,
-   * but will not generate a new Row instance.
-   *
-   * @return the next element in the iteration
-   * @throws IOException if any I/O errors occur
+   * @param validator the validator used to validate {@link UDFParameters}
+   * @throws Exception if any parameter is not valid
    */
-  Row next() throws IOException;
+  @SuppressWarnings("squid:S112")
+  default void validate(UDFParameterValidator validator) throws Exception {}
 
-  /** Resets the iteration. */
-  void reset();
+  /** This method is mainly used to release the resources used in the UDF. */
+  default void beforeDestroy() {}
 }

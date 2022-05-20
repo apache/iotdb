@@ -17,21 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer.config;
+package org.apache.iotdb.commons.udf.api.exception;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+public class UDFException extends Exception {
 
-public abstract class UDFConfigurations {
-
-  protected TSDataType outputDataType;
-
-  public TSDataType getOutputDataType() {
-    return outputDataType;
+  public UDFException(String message) {
+    super(message);
   }
 
-  public void check() {
-    if (outputDataType == null) {
-      throw new RuntimeException("UDF outputDataType is not set.");
-    }
+  public UDFException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

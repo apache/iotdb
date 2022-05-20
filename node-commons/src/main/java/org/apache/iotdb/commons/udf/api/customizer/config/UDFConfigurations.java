@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.exception;
+package org.apache.iotdb.commons.udf.api.customizer.config;
 
-public class UDFInputSeriesIndexNotValidException extends UDFParameterNotValidException {
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-  public UDFInputSeriesIndexNotValidException(int providedIndex, int validIndexUpperBound) {
-    super(
-        String.format(
-            "the index (%d) of the input series is not valid. valid index range: [0, %d).",
-            providedIndex, validIndexUpperBound));
+public abstract class UDFConfigurations {
+
+  protected TSDataType outputDataType;
+
+  public TSDataType getOutputDataType() {
+    return outputDataType;
+  }
+
+  public void check() {
+    if (outputDataType == null) {
+      throw new RuntimeException("UDF outputDataType is not set.");
+    }
   }
 }

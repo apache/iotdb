@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.access;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
