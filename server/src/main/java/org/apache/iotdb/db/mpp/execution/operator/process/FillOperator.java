@@ -18,39 +18,77 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+
+/** Used for previous and constant value fill */
 public class FillOperator implements ProcessOperator {
+
+  private final OperatorContext operatorContext;
+  private final IFill[] fillArray;
+  private final Operator child;
+  private final int outputColumnCount;
+
+  public FillOperator(OperatorContext operatorContext, IFill[] fillArray, Operator child) {
+    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
+    checkArgument(
+        fillArray != null && fillArray.length > 0, "fillArray should not be null or empty");
+    this.fillArray = fillArray;
+    this.child = requireNonNull(child, "child operator is null");
+    this.outputColumnCount = fillArray.length;
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
-    return null;
+    return operatorContext;
   }
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    return ProcessOperator.super.isBlocked();
+    return child.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    return null;
+    TsBlock block = child.next();
+    if (block == null) {
+      return null;
+    }
+
+    checkArgument(
+        outputColumnCount == block.getValueColumnCount(),
+        "outputColumnCount is not equal to value column count of child operator's TsBlock");
+
+    Column[] valueColumns = new Column[outputColumnCount];
+
+    for (int i = 0; i < outputColumnCount; i++) {
+      valueColumns[i] = fillArray[i].fill(block.getColumn(i));
+    }
+
+    return TsBlock.wrapBlocksWithoutCopy(
+        block.getPositionCount(), block.getTimeColumn(), valueColumns);
   }
 
   @Override
   public boolean hasNext() {
-    return false;
+    return child.hasNext();
   }
 
   @Override
   public void close() throws Exception {
-    ProcessOperator.super.close();
+    child.close();
   }
 
   @Override
   public boolean isFinished() {
-    return false;
+    return child.isFinished();
   }
 }

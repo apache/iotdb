@@ -31,8 +31,6 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,19 +49,17 @@ public class SchemaPartitionTest extends SerializeTest {
             schemaPartitionFlag, generateTConsensusGroupId(schemaPartitionFlag));
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataOutputStream);
+    TIOStreamTransport tioStreamTransport = new TIOStreamTransport(byteArrayOutputStream);
     TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-    schemaPartition.serialize(dataOutputStream, protocol);
+    schemaPartition.serialize(byteArrayOutputStream, protocol);
 
     SchemaPartition newSchemaPartition =
         new SchemaPartition(new HashMap<>(), seriesPartitionExecutorClass, 1);
     ByteArrayInputStream byteArrayInputStream =
         new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
-    DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
-    tioStreamTransport = new TIOStreamTransport(dataInputStream);
+    tioStreamTransport = new TIOStreamTransport(byteArrayInputStream);
     protocol = new TBinaryProtocol(tioStreamTransport);
-    newSchemaPartition.deserialize(dataInputStream, protocol);
+    newSchemaPartition.deserialize(byteArrayInputStream, protocol);
     Assert.assertEquals(schemaPartitionMap, newSchemaPartition.getSchemaPartitionMap());
   }
 }

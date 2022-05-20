@@ -39,10 +39,6 @@ public class BooleanLiteral extends Literal {
     this.value = value;
   }
 
-  public boolean getValue() {
-    return value;
-  }
-
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.BOOLEAN.ordinal(), byteBuffer);
@@ -69,5 +65,10 @@ public class BooleanLiteral extends Literal {
   @Override
   public int hashCode() {
     return Objects.hash(value);
+  }
+
+  @Override
+  public boolean getBoolean() {
+    return value;
   }
 }
