@@ -24,7 +24,18 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
-public class SlidingWindowAggregator {
+import java.util.Deque;
+
+public abstract class SlidingWindowAggregator {
+
+  // current aggregate window
+  protected TimeRange curTimeRange;
+
+  // cached AggregateResult of pre-aggregate windows
+  protected Deque<TsBlock[]> deque;
+
+  // output aggregate result
+  protected TsBlock[] aggregateResult;
 
   public TSDataType[] getOutputType() {
     return null;
@@ -34,5 +45,11 @@ public class SlidingWindowAggregator {
 
   public void processTsBlocks(TsBlock[] inputTsBlocks) {}
 
-  public void setTimeRange(TimeRange curTimeRange) {}
+  public void setTimeRange(TimeRange curTimeRange) {
+    this.curTimeRange = curTimeRange;
+    evictingExpiredValue();
+  }
+
+  /** evicting expired element in queue and reset expired aggregateResult */
+  protected abstract void evictingExpiredValue();
 }

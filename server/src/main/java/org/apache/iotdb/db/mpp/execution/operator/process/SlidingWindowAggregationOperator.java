@@ -88,7 +88,7 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       aggregator.processTsBlocks(inputTsBlocks);
     }
     // output result from aggregator
-    return null;
+    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   public static TsBlock updateResultTsBlockFromAggregators(
