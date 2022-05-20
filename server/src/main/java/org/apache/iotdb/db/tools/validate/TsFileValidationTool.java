@@ -1,6 +1,23 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.tools.validate;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -25,6 +42,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,42 +51,47 @@ import java.util.Objects;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
+/**
+ * This tool can be used to check the correctness of tsfile and point out errors in specific
+ * timeseries or devices. The types of errors include the following:
+ *
+ * <p>Device overlap between files
+ *
+ * <p>Timeseries overlap between files
+ *
+ * <p>Timeseries overlap between chunks
+ *
+ * <p>Timeseries overlap between pages
+ *
+ * <p>Timeseries overlap within one page
+ */
 public class TsFileValidationTool {
-  private static final boolean printDetails = true;
+  private static boolean printDetails = true;
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileValidationTool.class);
-  private static String baseDataDirPath;
+  private static final List<File> seqDataDirList = new ArrayList<>();
+  private static final List<File> fileList = new ArrayList<>();
   private static int badFileNum = 0;
 
   /**
-   * Num of param should be three, which is [path of base data dir] [move file or not] [print device
-   * or not]. Eg: xxx/iotdb/data false true
+   * The form of param is: [path of data dir or tsfile] [print details or not]. Eg:
+   * xxx/iotdb/data/data1 xxx/xxx.tsfile -pd=true
    */
   public static void main(String[] args) throws WriteProcessException, IOException {
     if (!checkArgs(args)) {
       System.exit(1);
     }
     System.out.println("Start checking seq files ...");
-    // get seq data dirs
-    List<String> seqDataDirs =
-        new ArrayList<>(
-            Arrays.asList(
-                Objects.requireNonNull(
-                    new File(baseDataDirPath)
-                        .list((dir, name) -> (!name.equals("system") && !name.equals("wal"))))));
-    for (int i = 0; i < Objects.requireNonNull(seqDataDirs).size(); i++) {
-      seqDataDirs.set(
-          i,
-          baseDataDirPath
-              + File.separator
-              + seqDataDirs.get(i)
-              + File.separator
-              + IoTDBConstant.SEQUENCE_FLODER_NAME);
+
+    // check tsfile, which will only check for correctness inside a single tsfile
+    for (File f : fileList) {
+      findUncorrectFiles(Collections.singletonList(f));
     }
 
-    for (String seqDataPath : seqDataDirs) {
+    // check tsfiles in data dir, which will check for correctness inside one single tsfile and
+    // between files
+    for (File seqDataDir : seqDataDirList) {
       // get sg data dirs
-      File seqDataDir = new File(seqDataPath);
       if (!checkIsDirectory(seqDataDir)) {
         continue;
       }
@@ -154,7 +177,13 @@ public class TsFileValidationTool {
               long currentChunkEndTime = Long.MIN_VALUE;
               String measurementID = deviceID + PATH_SEPARATOR + header.getMeasurementID();
               hasMeasurementPrintedDetails.computeIfAbsent(measurementID, k -> new boolean[4]);
-              measurementLastTime.computeIfAbsent(measurementID, k -> new long[2]);
+              measurementLastTime.computeIfAbsent(
+                  measurementID,
+                  k -> {
+                    long[] arr = new long[2];
+                    Arrays.fill(arr, Long.MIN_VALUE);
+                    return arr;
+                  });
               Decoder defaultTimeDecoder =
                   Decoder.getDecoderByType(
                       TSEncoding.valueOf(
@@ -287,7 +316,6 @@ public class TsFileValidationTool {
                   Math.max(
                       lashChunkEndTime.getOrDefault(measurementID, Long.MIN_VALUE),
                       currentChunkEndTime));
-              // measurementEndTimeInCurrentFile.put(measurementID, lastChunkEndTime);
               break;
             case MetaMarker.CHUNK_GROUP_HEADER:
               if (!deviceID.equals("")) {
@@ -325,23 +353,46 @@ public class TsFileValidationTool {
           Long endTime = Math.max(measurementLastTime.get(entry.getKey())[1], entry.getValue());
           measurementLastTime.get(entry.getKey())[1] = endTime;
         }
+      } catch (Throwable e) {
+        logger.error("Meet errors in reading file {}", tsFile.getAbsolutePath(), e);
       }
     }
   }
 
   public static boolean checkArgs(String[] args) {
-    if (args.length != 1) {
+    if (args.length < 1) {
       System.out.println(
-          "Num of param should be three, which is [path of base data dir] [move file or not] [print device or not]. Eg: xxx/iotdb/data false true");
+          "Please input correct param, which is [path of data dir] [print details or not]. Eg: xxx/iotdb/data/data -pd=true");
       return false;
     } else {
-      baseDataDirPath = args[0];
-      if ((baseDataDirPath.endsWith("data") || baseDataDirPath.endsWith("data" + File.separator))
-          && !baseDataDirPath.endsWith("data" + File.separator + "data")) {
-        return true;
+      for (String arg : args) {
+        if (arg.startsWith("-pd")) {
+          printDetails = Boolean.parseBoolean(arg.split("=")[1]);
+        } else {
+          File f = new File(arg);
+          if (f.isDirectory()
+              && Objects.requireNonNull(
+                          f.list(
+                              (dir, name) ->
+                                  (name.equals("sequence") || name.equals("unsequence"))))
+                      .length
+                  == 2) {
+            File seqDataDir = new File(f, "sequence");
+            seqDataDirList.add(seqDataDir);
+          } else if (arg.endsWith(TSFILE_SUFFIX) && f.isFile()) {
+            fileList.add(f);
+          } else {
+            System.out.println(arg + " is not a correct data directory or tsfile of IOTDB.");
+            return false;
+          }
+        }
       }
-      System.out.println("Please input correct base data dir. Eg: xxx/iotdb/data");
-      return false;
+      if (seqDataDirList.size() == 0 && fileList.size() == 0) {
+        System.out.println(
+            "Please input correct param, which is [path of data dir or tsfile] [print details or not]. Eg: xxx/iotdb/data/data -pd=true");
+        return false;
+      }
+      return true;
     }
   }
 
