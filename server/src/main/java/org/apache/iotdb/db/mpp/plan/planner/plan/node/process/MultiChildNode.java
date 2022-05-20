@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public abstract class MultiChildNode extends ProcessNode {
@@ -31,6 +32,11 @@ public abstract class MultiChildNode extends ProcessNode {
   public MultiChildNode(PlanNodeId id, List<PlanNode> children) {
     super(id);
     this.children = children;
+  }
+
+  public MultiChildNode(PlanNodeId id) {
+    super(id);
+    this.children = new ArrayList<>();
   }
 
   public void setChildren(List<PlanNode> children) {
