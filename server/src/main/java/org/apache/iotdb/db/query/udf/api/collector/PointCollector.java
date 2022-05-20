@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.collector;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
@@ -116,10 +115,10 @@ public interface PointCollector {
    * @param timestamp timestamp to collect
    * @param value Binary value to collect
    * @throws IOException if any I/O errors occur
-   * @throws QueryProcessException if memory is not enough to continue collecting data points
+   * @throws RuntimeException if memory is not enough to continue collecting data points
    * @see TSDataType
    */
-  void putBinary(long timestamp, Binary value) throws IOException, QueryProcessException;
+  void putBinary(long timestamp, Binary value) throws IOException;
 
   /**
    * Collects a String data point with timestamp.
@@ -131,8 +130,8 @@ public interface PointCollector {
    * @param timestamp timestamp to collect
    * @param value String value to collect
    * @throws IOException if any I/O errors occur
-   * @throws QueryProcessException if memory is not enough to continue collecting data points
+   * @throws RuntimeException if memory is not enough to continue collecting data points
    * @see TSDataType
    */
-  void putString(long timestamp, String value) throws IOException, QueryProcessException;
+  void putString(long timestamp, String value) throws IOException;
 }

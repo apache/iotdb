@@ -45,7 +45,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   }
 
   @Override
-  public void putBinary(long timestamp, Binary value) throws IOException, QueryProcessException {
+  public void putBinary(long timestamp, Binary value) throws IOException {
     super.putBinary(timestamp, value);
     totalByteArrayLengthLimit += byteArrayLengthForMemoryControl;
     totalByteArrayLength += value.getLength();
@@ -53,7 +53,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   }
 
   @Override
-  public void putString(long timestamp, String value) throws IOException, QueryProcessException {
+  public void putString(long timestamp, String value) throws IOException {
     Binary binary = Binary.valueOf(value);
     super.putBinary(timestamp, binary);
     totalByteArrayLengthLimit += byteArrayLengthForMemoryControl;
@@ -61,13 +61,13 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     checkMemoryUsage();
   }
 
-  protected void checkMemoryUsage() throws IOException, QueryProcessException {
+  protected void checkMemoryUsage() throws IOException {
     if (size % MEMORY_CHECK_THRESHOLD != 0 || totalByteArrayLength <= totalByteArrayLengthLimit) {
       return;
     }
 
     int newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl;
-    while (newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
+    while ((long) newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
       newByteArrayLengthForMemoryControl *= 2;
     }
     int newInternalTVListCapacity =
@@ -98,12 +98,11 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
       return;
     }
 
-    throw new QueryProcessException("Memory is not enough for current query.");
+    throw new RuntimeException("Memory is not enough for current query.");
   }
 
   protected void applyNewMemoryControlParameters(
-      int newByteArrayLengthForMemoryControl, int newInternalTVListCapacity)
-      throws IOException, QueryProcessException {
+      int newByteArrayLengthForMemoryControl, int newInternalTVListCapacity) throws IOException {
     ElasticSerializableTVList newElasticSerializableTVList =
         new ElasticSerializableTVList(
             TSDataType.TEXT, queryId, memoryLimitInMB, newInternalTVListCapacity, cacheSize);

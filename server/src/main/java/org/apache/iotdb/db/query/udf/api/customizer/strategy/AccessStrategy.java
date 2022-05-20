@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
@@ -32,22 +31,28 @@ public interface AccessStrategy {
 
   enum AccessStrategyType {
 
-    /** @see RowByRowAccessStrategy */
+    /**
+     * @see RowByRowAccessStrategy
+     */
     ROW_BY_ROW,
 
-    /** @see SlidingTimeWindowAccessStrategy */
+    /**
+     * @see SlidingTimeWindowAccessStrategy
+     */
     SLIDING_TIME_WINDOW,
 
-    /** @see SlidingSizeWindowAccessStrategy */
+    /**
+     * @see SlidingSizeWindowAccessStrategy
+     */
     SLIDING_SIZE_WINDOW
   }
 
   /**
    * Used by the system to check the access strategy.
    *
-   * @throws QueryProcessException if invalid strategy is set
+   * @throws RuntimeException if invalid strategy is set
    */
-  void check() throws QueryProcessException;
+  void check();
 
   /**
    * Returns the actual access strategy type.

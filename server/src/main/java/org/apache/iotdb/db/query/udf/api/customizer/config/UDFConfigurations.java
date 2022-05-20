@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.config;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class UDFConfigurations {
@@ -30,9 +29,9 @@ public abstract class UDFConfigurations {
     return outputDataType;
   }
 
-  public void check() throws QueryProcessException {
+  public void check() {
     if (outputDataType == null) {
-      throw new QueryProcessException("UDF outputDataType is not set.");
+      throw new RuntimeException("UDF outputDataType is not set.");
     }
   }
 }

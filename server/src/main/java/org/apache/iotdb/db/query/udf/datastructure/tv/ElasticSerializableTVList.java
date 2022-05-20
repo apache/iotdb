@@ -218,20 +218,20 @@ public class ElasticSerializableTVList implements PointCollector {
   }
 
   @Override
-  public void putBinary(long timestamp, Binary value) throws IOException, QueryProcessException {
+  public void putBinary(long timestamp, Binary value) throws IOException {
     checkExpansion();
     cache.get(size / internalTVListCapacity).putBinary(timestamp, value);
     ++size;
   }
 
   @Override
-  public void putString(long timestamp, String value) throws IOException, QueryProcessException {
+  public void putString(long timestamp, String value) throws IOException {
     checkExpansion();
     cache.get(size / internalTVListCapacity).putBinary(timestamp, Binary.valueOf(value));
     ++size;
   }
 
-  public void putNull(long timestamp) throws IOException, QueryProcessException {
+  public void putNull(long timestamp) throws IOException {
     switch (dataType) {
       case INT32:
         putInt(timestamp, 0);

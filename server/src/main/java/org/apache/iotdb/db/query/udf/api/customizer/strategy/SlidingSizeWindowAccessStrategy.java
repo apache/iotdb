@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -98,13 +97,13 @@ public class SlidingSizeWindowAccessStrategy implements AccessStrategy {
   }
 
   @Override
-  public void check() throws QueryProcessException {
+  public void check() {
     if (windowSize <= 0) {
-      throw new QueryProcessException(
+      throw new RuntimeException(
           String.format("Parameter windowSize(%d) should be positive.", windowSize));
     }
     if (slidingStep <= 0) {
-      throw new QueryProcessException(
+      throw new RuntimeException(
           String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
     }
   }

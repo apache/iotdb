@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
@@ -193,21 +192,21 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   }
 
   @Override
-  public void check() throws QueryProcessException {
+  public void check() {
     if (inputInString) {
       parseStringParameters();
     }
 
     if (timeInterval <= 0) {
-      throw new QueryProcessException(
+      throw new RuntimeException(
           String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
     }
     if (slidingStep <= 0) {
-      throw new QueryProcessException(
+      throw new RuntimeException(
           String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
     }
     if (displayWindowEnd < displayWindowBegin) {
-      throw new QueryProcessException(
+      throw new RuntimeException(
           String.format(
               "displayWindowEnd(%d) < displayWindowBegin(%d)",
               displayWindowEnd, displayWindowBegin));
@@ -243,7 +242,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
     return AccessStrategyType.SLIDING_TIME_WINDOW;
   }
 
-  private void parseStringParameters() throws QueryProcessException {
+  private void parseStringParameters() {
     timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
     slidingStep =
         slidingStepString == null

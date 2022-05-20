@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.config;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
@@ -96,10 +95,10 @@ public class UDTFConfigurations extends UDFConfigurations {
   }
 
   @Override
-  public void check() throws QueryProcessException {
+  public void check() {
     super.check();
     if (accessStrategy == null) {
-      throw new QueryProcessException("Access strategy is not set.");
+      throw new RuntimeException("Access strategy is not set.");
     }
     accessStrategy.check();
   }
