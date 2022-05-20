@@ -36,14 +36,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
 
 /**
- * AggregateOperator can process the situation: aggregation of intermediate aggregate result, it
+ * AggregationOperator can process the situation: aggregation of intermediate aggregate result, it
  * will output one result based on time interval. One intermediate tsBlock input will only contain
  * the result of one time interval exactly.
  */
-public class AggregateOperator implements ProcessOperator {
+public class AggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Aggregator> aggregators;
@@ -57,7 +57,7 @@ public class AggregateOperator implements ProcessOperator {
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
-  public AggregateOperator(
+  public AggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       List<Operator> children,

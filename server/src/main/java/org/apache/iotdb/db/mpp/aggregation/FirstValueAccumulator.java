@@ -63,6 +63,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case BOOLEAN:
         addBooleanInput(column, timeRange);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in FirstValue: %s", seriesDataType));
@@ -118,8 +119,10 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
         updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
+        break;
       case BOOLEAN:
         updateBooleanFirstValue((boolean) statistics.getFirstValue(), statistics.getStartTime());
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in FirstValue: %s", seriesDataType));

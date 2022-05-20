@@ -33,7 +33,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerger;
@@ -65,9 +65,9 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 
-public class RawDataAggregateOperatorTest {
+public class RawDataAggregationOperatorTest {
 
-  private static final String AGGREGATE_OPERATOR_TEST_SG = "root.RawDataAggregateOperatorTest";
+  private static final String AGGREGATION_OPERATOR_TEST_SG = "root.RawDataAggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -78,7 +78,7 @@ public class RawDataAggregateOperatorTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unSeqResources, AGGREGATE_OPERATOR_TEST_SG);
+        measurementSchemas, deviceIds, seqResources, unSeqResources, AGGREGATION_OPERATOR_TEST_SG);
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
   }
@@ -117,11 +117,11 @@ public class RawDataAggregateOperatorTest {
       }
     }
 
-    RawDataAggregateOperator rawDataAggregateOperator =
-        initRawDataAggregateOperator(aggregationTypes, null, inputLocations);
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (rawDataAggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = rawDataAggregateOperator.next();
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
       for (int i = 0; i < 2; i++) {
         assertEquals(500, resultTsBlock.getColumn(6 * i).getLong(0));
         assertEquals(6524750.0, resultTsBlock.getColumn(6 * i + 1).getDouble(0), 0.0001);
@@ -167,11 +167,11 @@ public class RawDataAggregateOperatorTest {
       inputLocations.add(inputLocationForOneAggregator);
     }
 
-    RawDataAggregateOperator rawDataAggregateOperator =
-        initRawDataAggregateOperator(aggregationTypes, null, inputLocations);
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (rawDataAggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = rawDataAggregateOperator.next();
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
       for (int i = 0; i < 2; i++) {
         assertEquals(13049.5, resultTsBlock.getColumn(i).getDouble(0), 0.001);
       }
@@ -215,11 +215,11 @@ public class RawDataAggregateOperatorTest {
     }
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
 
-    RawDataAggregateOperator rawDataAggregateOperator =
-        initRawDataAggregateOperator(aggregationTypes, groupByTimeParameter, inputLocations);
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (rawDataAggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = rawDataAggregateOperator.next();
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
       assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
       for (int i = 0; i < 2; i++) {
         assertEquals(result[0][count], resultTsBlock.getColumn(6 * i).getLong(0));
@@ -264,11 +264,11 @@ public class RawDataAggregateOperatorTest {
       inputLocations.add(inputLocationForOneAggregator);
     }
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
-    RawDataAggregateOperator rawDataAggregateOperator =
-        initRawDataAggregateOperator(aggregationTypes, groupByTimeParameter, inputLocations);
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (rawDataAggregateOperator.hasNext()) {
-      TsBlock resultTsBlock = rawDataAggregateOperator.next();
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
       assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
       for (int i = 0; i < 2; i++) {
         assertEquals(result[0][count], resultTsBlock.getColumn(i).getDouble(0), 0.001);
@@ -284,7 +284,7 @@ public class RawDataAggregateOperatorTest {
     assertEquals(4, count);
   }
 
-  private RawDataAggregateOperator initRawDataAggregateOperator(
+  private RawDataAggregationOperator initRawDataAggregationOperator(
       List<AggregationType> aggregationTypes,
       GroupByTimeParameter groupByTimeParameter,
       List<List<InputLocation[]>> inputLocations)
@@ -293,7 +293,7 @@ public class RawDataAggregateOperatorTest {
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
     MeasurementPath measurementPath1 =
-        new MeasurementPath(AGGREGATE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+        new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
     Set<String> allSensors = new HashSet<>();
     allSensors.add("sensor0");
     allSensors.add("sensor1");
@@ -313,7 +313,7 @@ public class RawDataAggregateOperatorTest {
     fragmentInstanceContext.addOperatorContext(
         3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
     fragmentInstanceContext.addOperatorContext(
-        4, new PlanNodeId("4"), RawDataAggregateOperatorTest.class.getSimpleName());
+        4, new PlanNodeId("4"), RawDataAggregationOperatorTest.class.getSimpleName());
     SeriesScanOperator seriesScanOperator1 =
         new SeriesScanOperator(
             planNodeId1,
@@ -327,7 +327,7 @@ public class RawDataAggregateOperatorTest {
     seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
     MeasurementPath measurementPath2 =
-        new MeasurementPath(AGGREGATE_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
+        new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
     SeriesScanOperator seriesScanOperator2 =
         new SeriesScanOperator(
             planNodeId2,
@@ -358,7 +358,7 @@ public class RawDataAggregateOperatorTest {
       aggregators.add(
           new Aggregator(accumulators.get(i), AggregationStep.SINGLE, inputLocations.get(i)));
     }
-    return new RawDataAggregateOperator(
+    return new RawDataAggregationOperator(
         fragmentInstanceContext.getOperatorContexts().get(3),
         aggregators,
         timeJoinOperator,

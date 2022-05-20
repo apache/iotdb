@@ -130,9 +130,6 @@ public class Util {
       case DOUBLE:
         pc.putDouble(t, (Double) o);
         break;
-      case TEXT:
-        pc.putString(t, (String) o);
-        break;
       case BOOLEAN:
         pc.putBoolean(t, (Boolean) o);
     }
