@@ -29,31 +29,40 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import com.google.common.collect.Lists;
 import com.sun.net.httpserver.HttpServer;
+import io.moquette.BrokerConstants;
+import io.moquette.broker.Server;
+import io.moquette.broker.config.IConfig;
+import io.moquette.broker.config.MemoryConfig;
+import io.moquette.interception.AbstractInterceptHandler;
+import io.moquette.interception.InterceptHandler;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import org.apache.http.HttpStatus;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
+import java.util.Properties;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 public class IoTDBTriggerForwardIT {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTriggerForwardIT.class);
-
   private volatile long count = 0;
   private volatile Exception exception = null;
+  private HttpServer httpServer;
+  private Server mqttServer;
 
   private final Thread dataGenerator =
       new Thread() {
@@ -107,6 +116,7 @@ public class IoTDBTriggerForwardIT {
       startDataGenerator();
       waitCountIncreaseBy(500);
       stopDataGenerator();
+      // ensure no exception occurs when inserting data
       if (exception != null) {
         return;
       }
@@ -115,39 +125,47 @@ public class IoTDBTriggerForwardIT {
     } catch (SQLException | InterruptedException | IOException e) {
       fail(e.getMessage());
     } finally {
+      if (httpServer != null) {
+        httpServer.stop(0);
+      }
       stopDataGenerator();
     }
   }
 
   @Test
-  @Ignore
   public void testForwardMQTTTrigger() throws InterruptedException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      startMQTTService();
       statement.execute(
           "create trigger trigger_forward_mqtt_before before insert on root.vehicle.a.b.c.d1.s3 "
               + "as 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' "
-              + "with ('protocol' = 'mqtt', 'host' = '127.0.0.1', 'port' = '1883',"
+              + "with ('protocol' = 'mqtt', 'host' = '127.0.0.1', 'port' = '1884',"
               + " 'username' = 'root', 'password' = 'root', 'topic' = 'mqtt-test')");
       statement.execute(
           "create trigger trigger_forward_mqtt_after after insert on root.vehicle.a.b.c.d1.s4 "
               + "as 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' "
-              + "with ('protocol' = 'mqtt', 'host' = '127.0.0.1', 'port' = '1883',"
+              + "with ('protocol' = 'mqtt', 'host' = '127.0.0.1', 'port' = '1884',"
               + " 'username' = 'root', 'password' = 'root', 'topic' = 'mqtt-test')");
-      // TODO
       startDataGenerator();
       waitCountIncreaseBy(500);
       stopDataGenerator();
+      // ensure no exception occurs when inserting data
       if (exception != null) {
         return;
       }
-
-    } catch (SQLException | InterruptedException e) {
+      // Wait 30s, let the queue send all msg
+      Thread.sleep(30 * 1000);
+      assertNull(exception);
+    } catch (SQLException | InterruptedException | IOException e) {
       fail(e.getMessage());
     } finally {
       stopDataGenerator();
+      if (mqttServer != null) {
+        mqttServer.stopServer();
+      }
     }
   }
 
@@ -209,7 +227,7 @@ public class IoTDBTriggerForwardIT {
   }
 
   private void startHTTPService() throws IOException {
-    HttpServer httpServer = HttpServer.create(new InetSocketAddress(8080), 0);
+    httpServer = HttpServer.create(new InetSocketAddress(8080), 0);
     httpServer.createContext(
         "/",
         exchange -> {
@@ -228,7 +246,6 @@ public class IoTDBTriggerForwardIT {
           }
 
           if (!checkPayload(entity)) {
-            httpServer.stop(0);
             throw new IOException("Request payload error");
           }
           exchange.sendResponseHeaders(HttpStatus.SC_OK, -1);
@@ -236,7 +253,36 @@ public class IoTDBTriggerForwardIT {
     httpServer.start();
   }
 
+  private void startMQTTService() throws IOException {
+    Properties properties = new Properties();
+    properties.setProperty(BrokerConstants.HOST_PROPERTY_NAME, "0.0.0.0");
+    properties.setProperty(BrokerConstants.PORT_PROPERTY_NAME, "1884");
+    properties.setProperty(BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE, "1");
+    IConfig config = new MemoryConfig(properties);
+
+    List<InterceptHandler> handlers = Lists.newArrayList(new ForwardTestHandler());
+
+    mqttServer = new Server();
+    mqttServer.startServer(config, handlers);
+  }
+
+  private class ForwardTestHandler extends AbstractInterceptHandler {
+    @Override
+    public String getID() {
+      return "forward-test-handler";
+    }
+
+    @Override
+    public void onPublish(InterceptPublishMessage msg) {
+      checkPayload(msg.getPayload().toString(StandardCharsets.UTF_8));
+    }
+  }
+
   private boolean checkPayload(String payload) {
-    return payload.matches(ForwardEvent.PAYLOADS_FORMATTER_REGEX);
+    boolean pass = payload.matches(ForwardEvent.PAYLOADS_FORMATTER_REGEX);
+    if (!pass) {
+      exception = new IOException("Payload formatter error");
+    }
+    return pass;
   }
 }
