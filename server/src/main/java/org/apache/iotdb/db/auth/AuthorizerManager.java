@@ -57,7 +57,7 @@ public class AuthorizerManager implements IAuthorizer {
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerManager.class);
 
   private IAuthorizer iAuthorizer;
-  private ReentrantReadWriteLock snapshotLock;
+  private ReentrantReadWriteLock authReadWriteLock;
   private TPermissionInfoResp tPermissionInfoResp;
   private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
 
@@ -76,7 +76,7 @@ public class AuthorizerManager implements IAuthorizer {
   public AuthorizerManager() {
     try {
       iAuthorizer = BasicAuthorizer.getInstance();
-      snapshotLock = new ReentrantReadWriteLock();
+      authReadWriteLock = new ReentrantReadWriteLock();
     } catch (AuthException e) {
       logger.error(e.getMessage());
     }
@@ -95,146 +95,146 @@ public class AuthorizerManager implements IAuthorizer {
 
   @Override
   public boolean login(String username, String password) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.login(username, password);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void createUser(String username, String password) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.createUser(username, password);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.deleteUser(username);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.grantPrivilegeToUser(username, path, privilegeId);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void revokePrivilegeFromUser(String username, String path, int privilegeId)
       throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.revokePrivilegeFromUser(username, path, privilegeId);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void createRole(String roleName) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.createRole(roleName);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void deleteRole(String roleName) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.deleteRole(roleName);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void grantPrivilegeToRole(String roleName, String path, int privilegeId)
       throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.grantPrivilegeToRole(roleName, path, privilegeId);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void revokePrivilegeFromRole(String roleName, String path, int privilegeId)
       throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.revokePrivilegeFromRole(roleName, path, privilegeId);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void grantRoleToUser(String roleName, String username) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.grantRoleToUser(roleName, username);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void revokeRoleFromUser(String roleName, String username) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.revokeRoleFromUser(roleName, username);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public Set<Integer> getPrivileges(String username, String path) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.getPrivileges(username, path);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void updateUserPassword(String username, String newPassword) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.updateUserPassword(username, newPassword);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public boolean checkUserPrivileges(String username, String path, int privilegeId)
       throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.checkUserPrivileges(username, path, privilegeId);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
@@ -245,137 +245,137 @@ public class AuthorizerManager implements IAuthorizer {
 
   @Override
   public List<String> listAllUsers() {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.listAllUsers();
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public List<String> listAllRoles() {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.listAllRoles();
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public Role getRole(String roleName) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.getRole(roleName);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public User getUser(String username) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.getUser(username);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public boolean isUserUseWaterMark(String userName) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.isUserUseWaterMark(userName);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.setUserUseWaterMark(userName, useWaterMark);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public Map<String, Boolean> getAllUserWaterMarkStatus() {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.getAllUserWaterMarkStatus();
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public Map<String, User> getAllUsers() {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.getAllUsers();
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public Map<String, Role> getAllRoles() {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return iAuthorizer.getAllRoles();
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void replaceAllUsers(Map<String, User> users) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.replaceAllUsers(users);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
-    snapshotLock.readLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       iAuthorizer.replaceAllRoles(roles);
     } finally {
-      snapshotLock.readLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    snapshotLock.writeLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       return iAuthorizer.processTakeSnapshot(snapshotDir);
     } finally {
-      snapshotLock.writeLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    snapshotLock.writeLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.processLoadSnapshot(snapshotDir);
     } finally {
-      snapshotLock.writeLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   public TSStatus checkPath(String username, List<String> allPath, int permission)
       throws AuthException {
-    snapshotLock.writeLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);
       boolean status = true;
@@ -418,13 +418,13 @@ public class AuthorizerManager implements IAuthorizer {
         return tPermissionInfoResp.getStatus();
       }
     } finally {
-      snapshotLock.writeLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   /** Check the user */
   public TSStatus checkUser(String username, String password) {
-    snapshotLock.writeLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);
       if (user != null
@@ -441,27 +441,27 @@ public class AuthorizerManager implements IAuthorizer {
         return tPermissionInfoResp.getStatus();
       }
     } finally {
-      snapshotLock.writeLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
   public SettableFuture<ConfigTaskResult> queryPermission(
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
-    snapshotLock.writeLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       return ClusterAuthorizer.queryPermission(authorizerReq, configNodeClient);
     } finally {
-      snapshotLock.writeLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   public SettableFuture<ConfigTaskResult> operatePermission(
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
-    snapshotLock.writeLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       return ClusterAuthorizer.operatePermission(authorizerReq, configNodeClient);
     } finally {
-      snapshotLock.writeLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 

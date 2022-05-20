@@ -173,10 +173,6 @@ public class ClusterAuthorizer {
     } catch (TException e) {
       logger.error("Failed to connect to config node.");
       future.setException(e);
-    } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
