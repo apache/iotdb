@@ -376,7 +376,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| avg\_series\_point\_number\_threshold |
 |:---:|:---|
-|Description| max average number of point of each series in memtable|
+|Description| Max average number of point of each series in memtable, reaching the trigger flush.This parameter mainly affects the query performance. If the query load is biased towards long-term historical data of a small number of sequences, it is recommended to increase it. If the query load is biased towards the recent data of multiple sequences, it is recommended to decrease it, but not less than 10000. |
 |Type|Int32|
 |Default| 10000 |
 |Effective|After restarting system|
