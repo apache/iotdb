@@ -314,6 +314,7 @@ public class CompactionTaskManager implements IService {
       storageGroupTasks
           .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
           .put(compactionTask, future);
+      logger.info("Submit a task {}", compactionTask);
       return future;
     }
     logger.warn(
