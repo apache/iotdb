@@ -523,7 +523,7 @@ public class DistributionPlanner {
       for (int i = 0; i < handle.getOutputColumnNames().size(); i++) {
         String column = handle.getOutputColumnNames().get(i);
         Set<Expression> originalExpressions =
-            analysis.getAggregationExpressions().getOrDefault(column, new HashSet<>());
+            analysis.getGroupByLevelExpressions().getOrDefault(column, new HashSet<>());
         List<Expression> descriptorExpression = new ArrayList<>();
         for (String childColumn : childrenOutputColumns) {
           if (childColumn.equals(column)) {
