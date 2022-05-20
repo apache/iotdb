@@ -25,9 +25,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -170,30 +170,30 @@ public class SchemaPartition extends Partition {
         .put(seriesPartitionSlot, regionReplicaSet);
   }
 
-  public void serialize(DataOutputStream dataOutputStream, TProtocol protocol)
+  public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
-    dataOutputStream.writeInt(schemaPartitionMap.size());
+    ReadWriteIOUtils.write(schemaPartitionMap.size(), outputStream);
     for (Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> entry :
         schemaPartitionMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), dataOutputStream);
-      writeMap(entry.getValue(), dataOutputStream, protocol);
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      writeMap(entry.getValue(), outputStream, protocol);
     }
   }
 
-  public void deserialize(DataInputStream dataInputStream, TProtocol protocol)
+  public void deserialize(InputStream inputStream, TProtocol protocol)
       throws TException, IOException {
-    int size = dataInputStream.readInt();
+    int size = ReadWriteIOUtils.readInt(inputStream);
     while (size > 0) {
-      String key = ReadWriteIOUtils.readString(dataInputStream);
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> value = readMap(dataInputStream, protocol);
+      String key = ReadWriteIOUtils.readString(inputStream);
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> value = readMap(inputStream, protocol);
       schemaPartitionMap.put(key, value);
       size--;
     }
   }
 
   private Map<TSeriesPartitionSlot, TRegionReplicaSet> readMap(
-      DataInputStream dataInputStream, TProtocol protocol) throws TException, IOException {
-    int size = dataInputStream.readInt();
+      InputStream inputStream, TProtocol protocol) throws TException, IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
     Map<TSeriesPartitionSlot, TRegionReplicaSet> result = new HashMap<>();
     while (size > 0) {
       TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot();
@@ -208,10 +208,10 @@ public class SchemaPartition extends Partition {
 
   private void writeMap(
       Map<TSeriesPartitionSlot, TRegionReplicaSet> valueMap,
-      DataOutputStream dataOutputStream,
+      OutputStream outputStream,
       TProtocol protocol)
       throws TException, IOException {
-    dataOutputStream.writeInt(valueMap.size());
+    ReadWriteIOUtils.write(valueMap.size(), outputStream);
     for (Entry<TSeriesPartitionSlot, TRegionReplicaSet> entry : valueMap.entrySet()) {
       entry.getKey().write(protocol);
       entry.getValue().write(protocol);
