@@ -215,7 +215,8 @@ public class Analyzer {
           // map from grouped expression to set of input expressions
           Map<Expression, Expression> rawPathToGroupedPathMap = new HashMap<>();
           Map<Expression, Set<Expression>> groupByLevelExpressions =
-              analyzeGroupByLevel(queryStatement, outputExpressions, selectExpressions, rawPathToGroupedPathMap);
+              analyzeGroupByLevel(
+                  queryStatement, outputExpressions, selectExpressions, rawPathToGroupedPathMap);
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
           analysis.setRawPathToGroupedPathMap(rawPathToGroupedPathMap);
         }

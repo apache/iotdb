@@ -80,7 +80,7 @@ public class GroupByLevelController {
 
     Expression rawPathExpression = new TimeSeriesOperand(rawPath);
     Expression groupedPathExpression = new TimeSeriesOperand(groupedPath);
-    if(!rawPathToGroupedPathMap.containsKey(rawPathExpression)) {
+    if (!rawPathToGroupedPathMap.containsKey(rawPathExpression)) {
       rawPathToGroupedPathMap.put(rawPathExpression, groupedPathExpression);
     }
 

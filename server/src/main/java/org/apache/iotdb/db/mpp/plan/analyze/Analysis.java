@@ -205,13 +205,14 @@ public class Analysis {
   }
 
   public Expression getGroupedExpressionByLevel(Expression expression) {
-    if(rawPathToGroupedPathMap.containsKey(expression)) {
+    if (rawPathToGroupedPathMap.containsKey(expression)) {
       return rawPathToGroupedPathMap.get(expression);
     }
-    if(rawPathToGroupedPathMap.containsValue(expression)) {
+    if (rawPathToGroupedPathMap.containsValue(expression)) {
       return expression;
     }
-    throw new IllegalArgumentException(String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
+    throw new IllegalArgumentException(
+        String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
   }
 
   public FilterNullParameter getFilterNullParameter() {
