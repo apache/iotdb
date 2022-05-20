@@ -35,6 +35,7 @@ services:
     volumes:
       - ./iotdb/conf/iotdb-rest.properties:/iotdb/conf/iotdb-rest.properties
       - ./iotdb/data/:/iotdb/data
+      - ./iotdb/logs:/iotdb/logs
     ports:
       - 6667:6667
       - 18080:18080
