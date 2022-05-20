@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.forward;
 
+
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ForwardEvent implements Event {
+
   private final long timestamp;
   private final Object value;
   private final PartialPath fullPath;
 
-  private static final String PAYLOAD_FORMATTER =
-      "{\"device\":\"%s\",\"measurements\":[\"%s\"],\"timestamp\":%d,\"values\":[%s]}";
+  private static final String PAYLOAD_FORMATTER = "{\"device\":\"%s\",\"measurement\":\"%s\",\"timestamp\":%d,\"value\":%s}";
 
   public ForwardEvent(long timestamp, Object value, PartialPath fullPath) {
     this.timestamp = timestamp;
@@ -38,18 +39,13 @@ public class ForwardEvent implements Event {
   }
 
   public String toJsonString() {
-    return String.format(
-        PAYLOAD_FORMATTER,
-        fullPath.getDevice(),
-        fullPath.getMeasurement(),
-        timestamp,
-        objectToJson(value));
+    return String.format(PAYLOAD_FORMATTER, fullPath.getDevice(), fullPath.getMeasurement(),
+        timestamp, objectToJson(value));
   }
 
   private static String objectToJson(Object object) {
-    return (object instanceof String || object instanceof Binary)
-        ? ('\"' + object.toString() + '\"')
-        : object.toString();
+    return (object instanceof String || object instanceof Binary) ? ('\"' + object.toString()
+        + '\"') : object.toString();
   }
 
   public long getTimestamp() {
@@ -63,4 +59,5 @@ public class ForwardEvent implements Event {
   public PartialPath getFullPath() {
     return fullPath;
   }
+
 }

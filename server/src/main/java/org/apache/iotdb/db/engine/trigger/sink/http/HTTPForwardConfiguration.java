@@ -23,19 +23,16 @@ import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
 public class HTTPForwardConfiguration implements Configuration {
+
   private final boolean stopIfException;
 
   // HTTP config items
   private final String endpoint;
-  private final int poolSize;
-  private final int poolMaxPerRoute;
 
   public HTTPForwardConfiguration(
-      String endpoint, boolean stopIfException, int poolSize, int poolMaxPerRoute) {
+      String endpoint, boolean stopIfException) {
     this.endpoint = endpoint;
     this.stopIfException = stopIfException;
-    this.poolSize = poolSize;
-    this.poolMaxPerRoute = poolMaxPerRoute;
   }
 
   public void checkConfig() throws SinkException {
@@ -50,13 +47,5 @@ public class HTTPForwardConfiguration implements Configuration {
 
   public String getEndpoint() {
     return endpoint;
-  }
-
-  public int getPoolSize() {
-    return poolSize;
-  }
-
-  public int getPoolMaxPerRoute() {
-    return poolMaxPerRoute;
   }
 }
