@@ -503,6 +503,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     return uris;
+  }
 
   // Show Child Paths =====================================================================
   @Override
