@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -42,12 +47,15 @@ public class PermissionManager {
 
   private final ConfigManager configManager;
   private final AuthorInfo authorInfo;
-  private ConfigNodeProcedureEnv env;
+  private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      INTERNAL_SERVICE_CLIENT_MANAGER =
+          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+              .createClientManager(
+                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   public PermissionManager(ConfigManager configManager, AuthorInfo authorInfo) {
     this.configManager = configManager;
     this.authorInfo = authorInfo;
-    this.env = new ConfigNodeProcedureEnv(configManager);
   }
 
   /**
@@ -63,7 +71,7 @@ public class PermissionManager {
         // If the permissions change, clear the cache content affected by the operation
         if (authorReq.getAuthorType() != ConfigRequestType.CreateUser
             || authorReq.getAuthorType() != ConfigRequestType.CreateRole) {
-          authorInfo.invalidateCache(env, authorReq.getUserName(), authorReq.getRoleName());
+          invalidateCache(authorReq.getUserName(), authorReq.getRoleName());
         }
       } catch (IOException | TException e) {
         logger.error(
@@ -96,5 +104,21 @@ public class PermissionManager {
   public TPermissionInfoResp checkUserPrivileges(
       String username, List<String> paths, int permission) {
     return authorInfo.checkUserPrivileges(username, paths, permission);
+  }
+
+  /**
+   * When the permission information of a user or role is changed, the permission cache information
+   * of all DataNode is initialized, and only the affected cache is initialized.
+   */
+  public void invalidateCache(String username, String roleName) throws IOException, TException {
+    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
+    TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
+    req.setUsername(username);
+    req.setRoleName(roleName);
+    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
+      INTERNAL_SERVICE_CLIENT_MANAGER
+          .borrowClient(dataNodeInfo.getLocation().getInternalEndPoint())
+          .invalidatePermissionCache(req);
+    }
   }
 }

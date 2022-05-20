@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
@@ -37,11 +36,9 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -383,22 +380,6 @@ public class AuthorInfo implements SnapshotProcessor {
       FileUtils.deleteDirectory(roleFolder);
     }
     authorizer.reset();
-  }
-
-  /**
-   * When the permission information of a user or role is changed, the permission cache information
-   * of all DataNode is initialized, and only the affected cache is initialized.
-   */
-  public void invalidateCache(ConfigNodeProcedureEnv env, String username, String roleName)
-      throws IOException, TException {
-    List<TDataNodeInfo> allDataNodes =
-        env.getConfigManager().getNodeManager().getOnlineDataNodes(-1);
-    TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
-    req.setUsername(username);
-    req.setRoleName(roleName);
-    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
-      env.getDataNodeClient(dataNodeInfo.getLocation()).invalidatePermissionCache(req);
-    }
   }
 
   /**
