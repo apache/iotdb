@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
@@ -123,7 +124,7 @@ public class IoTDBFuzzyQueryIT {
     hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals(
-        "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\", outputResultStr(st0.getResultSet()));
+        "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\\\", outputResultStr(st0.getResultSet()));
 
     hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '1%'");
     Assert.assertTrue(hasResultSet);
@@ -160,7 +161,7 @@ public class IoTDBFuzzyQueryIT {
     hasResultSet =
         st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
     Assert.assertTrue(hasResultSet);
-    Assert.assertEquals("\\", outputResultStr(st0.getResultSet()));
+    Assert.assertEquals("\\\\", outputResultStr(st0.getResultSet()));
   }
 
   @Test(expected = Exception.class)
@@ -290,5 +291,12 @@ public class IoTDBFuzzyQueryIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testPattern(){
+    String pattern = "'\\d'";
+    Pattern pattern1 = Pattern.compile(pattern);
+    System.out.println(pattern1.matcher("'1'").matches());
   }
 }

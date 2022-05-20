@@ -213,6 +213,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
         } else {
           assertFalse(Boolean.parseBoolean(resultSet.getString(2)));
         }
+        System.out.println(resultSet.getString(2 + 1));
         assertTrue(Boolean.parseBoolean(resultSet.getString(2 + 1)));
       }
       resultSet.close();
