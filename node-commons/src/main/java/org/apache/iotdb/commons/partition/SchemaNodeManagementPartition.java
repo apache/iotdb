@@ -25,10 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * SchemaPartition for Node Management, matchedNode for Node info aboveMtree which can find from
- * ConfigNode, schemaPartition for Node info belowMtree which needs to find from DataNode
- */
 public class SchemaNodeManagementPartition {
   SchemaPartition schemaPartition;
 

@@ -60,6 +60,14 @@ public class FillDescriptor {
     }
   }
 
+  public FillPolicy getFillPolicy() {
+    return fillPolicy;
+  }
+
+  public Literal getFillValue() {
+    return fillValue;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

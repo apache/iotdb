@@ -36,10 +36,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
 
 /**
- * RawDataAggregateOperator is used to process raw data tsBlock input calculating using value
+ * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
  * filter. It's possible that there is more than one tsBlock input in one time interval. And it's
  * also possible that one tsBlock can cover multiple time intervals too.
  *
@@ -48,7 +48,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateS
  *
  * <p>Return aggregation result in one time interval once.
  */
-public class RawDataAggregateOperator implements ProcessOperator {
+public class RawDataAggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Aggregator> aggregators;
@@ -63,7 +63,7 @@ public class RawDataAggregateOperator implements ProcessOperator {
   // Using for building result tsBlock
   private final TsBlockBuilder tsBlockBuilder;
 
-  public RawDataAggregateOperator(
+  public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       Operator child,
@@ -111,7 +111,7 @@ public class RawDataAggregateOperator implements ProcessOperator {
     }
 
     // 3. Update result using aggregators
-    return AggregateOperator.updateResultTsBlockFromAggregators(
+    return AggregationOperator.updateResultTsBlockFromAggregators(
         tsBlockBuilder, aggregators, timeRangeIterator);
   }
 

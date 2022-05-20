@@ -37,15 +37,36 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FilterOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregateOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BinaryConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BooleanConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.DoubleConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.FloatConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.IntConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.DoubleLinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.FloatLinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.IntLinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LongLinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.BinaryPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.BooleanPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.DoublePreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.FloatPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.DescTimeComparator;
@@ -65,10 +86,11 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -100,13 +122,18 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
+import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -115,6 +142,7 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -238,6 +266,48 @@ public class LocalExecutionPlanner {
       context.addPath(seriesPath);
 
       return seriesScanOperator;
+    }
+
+    @Override
+    public Operator visitAlignedSeriesAggregationScan(
+        AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
+      AlignedPath seriesPath = node.getAlignedPath();
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              AlignedSeriesAggregationScanOperator.class.getSimpleName());
+      List<Aggregator> aggregators = new ArrayList<>();
+      for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+        // I am not sure that it's correct or not
+        String inputSeries = descriptor.getParametersString();
+        int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
+        TSDataType seriesDataType =
+            seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationType(), seriesDataType, ascending),
+                descriptor.getStep(),
+                Collections.singletonList(
+                    new InputLocation[] {new InputLocation(0, seriesIndex)})));
+      }
+
+      AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
+          new AlignedSeriesAggregationScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              operatorContext,
+              aggregators,
+              node.getTimeFilter(),
+              ascending,
+              node.getGroupByTimeParameter());
+
+      context.addSourceOperator(seriesAggregationScanOperator);
+      context.addPath(seriesPath);
+
+      return seriesAggregationScanOperator;
     }
 
     @Override
@@ -428,8 +498,8 @@ public class LocalExecutionPlanner {
                               node.getSeriesPath().getSeriesType(),
                               ascending),
                           o.getStep())));
-      SeriesAggregateScanOperator aggregateScanOperator =
-          new SeriesAggregateScanOperator(
+      SeriesAggregationScanOperator aggregateScanOperator =
+          new SeriesAggregationScanOperator(
               node.getPlanNodeId(),
               seriesPath,
               context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
@@ -497,7 +567,131 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitFill(FillNode node, LocalExecutionPlanContext context) {
-      return super.visitFill(node, context);
+      Operator child = node.getChild().accept(this, context);
+      return getFillOperator(node, context, child);
+    }
+
+    private ProcessOperator getFillOperator(
+        FillNode node, LocalExecutionPlanContext context, Operator child) {
+      FillDescriptor descriptor = node.getFillDescriptor();
+      List<TSDataType> inputDataTypes = getOutputColumnTypes(node.getChild(), context.typeProvider);
+      int inputColumns = inputDataTypes.size();
+      FillPolicy fillPolicy = descriptor.getFillPolicy();
+      switch (fillPolicy) {
+        case VALUE:
+          Literal literal = descriptor.getFillValue();
+          return new FillOperator(
+              context.instanceContext.addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  FillOperator.class.getSimpleName()),
+              getConstantFill(inputColumns, inputDataTypes, literal),
+              child);
+        case PREVIOUS:
+          return new FillOperator(
+              context.instanceContext.addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  FillOperator.class.getSimpleName()),
+              getPreviousFill(inputColumns, inputDataTypes),
+              child);
+        case LINEAR:
+          return new LinearFillOperator(
+              context.instanceContext.addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  LinearFillOperator.class.getSimpleName()),
+              getLinearFill(inputColumns, inputDataTypes),
+              child);
+        default:
+          throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
+      }
+    }
+
+    private IFill[] getConstantFill(
+        int inputColumns, List<TSDataType> inputDataTypes, Literal literal) {
+      IFill[] constantFill = new IFill[inputColumns];
+      for (int i = 0; i < inputColumns; i++) {
+        switch (inputDataTypes.get(i)) {
+          case BOOLEAN:
+            constantFill[i] = new BooleanConstantFill(literal.getBoolean());
+            break;
+          case TEXT:
+            constantFill[i] = new BinaryConstantFill(literal.getBinary());
+            break;
+          case INT32:
+            constantFill[i] = new IntConstantFill(literal.getInt());
+            break;
+          case INT64:
+            constantFill[i] = new LongConstantFill(literal.getLong());
+            break;
+          case FLOAT:
+            constantFill[i] = new FloatConstantFill(literal.getFloat());
+            break;
+          case DOUBLE:
+            constantFill[i] = new DoubleConstantFill(literal.getDouble());
+            break;
+          default:
+            throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
+        }
+      }
+      return constantFill;
+    }
+
+    private IFill[] getPreviousFill(int inputColumns, List<TSDataType> inputDataTypes) {
+      IFill[] previousFill = new IFill[inputColumns];
+      for (int i = 0; i < inputColumns; i++) {
+        switch (inputDataTypes.get(i)) {
+          case BOOLEAN:
+            previousFill[i] = new BooleanPreviousFill();
+            break;
+          case TEXT:
+            previousFill[i] = new BinaryPreviousFill();
+            break;
+          case INT32:
+            previousFill[i] = new IntPreviousFill();
+            break;
+          case INT64:
+            previousFill[i] = new LongPreviousFill();
+            break;
+          case FLOAT:
+            previousFill[i] = new FloatPreviousFill();
+            break;
+          case DOUBLE:
+            previousFill[i] = new DoublePreviousFill();
+            break;
+          default:
+            throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
+        }
+      }
+      return previousFill;
+    }
+
+    private LinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
+      LinearFill[] linearFill = new LinearFill[inputColumns];
+      for (int i = 0; i < inputColumns; i++) {
+        switch (inputDataTypes.get(i)) {
+          case INT32:
+            linearFill[i] = new IntLinearFill();
+            break;
+          case INT64:
+            linearFill[i] = new LongLinearFill();
+            break;
+          case FLOAT:
+            linearFill[i] = new FloatLinearFill();
+            break;
+          case DOUBLE:
+            linearFill[i] = new DoubleLinearFill();
+            break;
+          case BOOLEAN:
+          case TEXT:
+            throw new UnsupportedOperationException(
+                "DataType: " + inputDataTypes.get(i) + " doesn't support linear fill.");
+          default:
+            throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
+        }
+      }
+      return linearFill;
     }
 
     @Override
@@ -604,14 +798,17 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        List<String> outputColumnNames = descriptor.getOutputColumnNames();
+        List<String> inputColumnNames =
+            descriptor.getInputExpressions().stream()
+                .map(Expression::getExpressionString)
+                .collect(Collectors.toList());
         // it may include double parts
-        List<List<InputLocation>> inputLocationParts = new ArrayList<>(outputColumnNames.size());
-        outputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
+        inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
 
         List<InputLocation[]> inputLocationList = new ArrayList<>();
         for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-          if (outputColumnNames.size() == 1) {
+          if (inputColumnNames.size() == 1) {
             inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
           } else {
             inputLocationList.add(
@@ -636,14 +833,14 @@ public class LocalExecutionPlanner {
       boolean inputRaw = node.getAggregationDescriptorList().get(0).getStep().isInputRaw();
       if (inputRaw) {
         checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
-        return new RawDataAggregateOperator(
+        return new RawDataAggregationOperator(
             operatorContext,
             aggregators,
             children.get(0),
             ascending,
             node.getGroupByTimeParameter());
       } else {
-        return new AggregateOperator(
+        return new AggregationOperator(
             operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
       }
     }
