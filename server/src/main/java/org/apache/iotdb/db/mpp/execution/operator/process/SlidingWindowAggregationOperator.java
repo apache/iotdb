@@ -35,7 +35,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class TimeSlidingWindowAggregationOperator implements ProcessOperator {
+public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
@@ -49,7 +49,7 @@ public class TimeSlidingWindowAggregationOperator implements ProcessOperator {
 
   private final TsBlockBuilder tsBlockBuilder;
 
-  public TimeSlidingWindowAggregationOperator(
+  public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
       List<Operator> children,
       List<TSDataType> outputDataTypes,
