@@ -20,14 +20,11 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.cli.TemporaryClient;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -36,125 +33,58 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Collections;
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.List;
+import java.util.Map;
+
+/** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
 
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int schemaReplicationFactor = conf.getSchemaReplicationFactor();
-  private static final int dataReplicationFactor = conf.getDataReplicationFactor();
-  private static final int initialSchemaRegionCount = conf.getInitialSchemaRegionCount();
-  private static final int initialDataRegionCount = conf.getInitialDataRegionCount();
-
-  private static final ClusterSchemaInfo clusterSchemaInfo = ClusterSchemaInfo.getInstance();
-  private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
   private final Manager configManager;
+  private final ClusterSchemaInfo clusterSchemaInfo;
 
-  public ClusterSchemaManager(Manager configManager) {
+  public ClusterSchemaManager(Manager configManager, ClusterSchemaInfo clusterSchemaInfo) {
     this.configManager = configManager;
+    this.clusterSchemaInfo = clusterSchemaInfo;
   }
 
   /**
-   * Set StorageGroup and allocate the default amount Regions
+   * Set StorageGroup
    *
-   * @return SUCCESS_STATUS if the StorageGroup is set and region allocation successful.
-   *     NOT_ENOUGH_DATA_NODE if there are not enough DataNode for Region allocation.
-   *     STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup is already set.
+   * @return SUCCESS_STATUS if the StorageGroup is set successfully. STORAGE_GROUP_ALREADY_EXISTS if
+   *     the StorageGroup is already set. PERSISTENCE_FAILURE if fail to set StorageGroup in
+   *     MTreeAboveSG.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
     TSStatus result;
-    if (configManager.getDataNodeManager().getOnlineDataNodeCount()
-        < Math.max(initialSchemaRegionCount, initialDataRegionCount)) {
-      result = new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
-      result.setMessage("DataNode is not enough, please register more.");
+    if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
+      // Reject if StorageGroup already set
+      result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+      result.setMessage(
+          String.format(
+              "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
     } else {
-      if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
-        result.setMessage(
-            String.format(
-                "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
-      } else {
-        CreateRegionsReq createRegionsReq = new CreateRegionsReq();
-        createRegionsReq.setStorageGroup(setStorageGroupReq.getSchema().getName());
-
-        // Allocate default Regions
-        allocateRegions(TConsensusGroupType.SchemaRegion, createRegionsReq, setStorageGroupReq);
-        allocateRegions(TConsensusGroupType.DataRegion, createRegionsReq, setStorageGroupReq);
-
-        // Persist StorageGroup and Regions
-        getConsensusManager().write(setStorageGroupReq);
-        result = getConsensusManager().write(createRegionsReq).getStatus();
-
-        // Create Regions in DataNode
-        // TODO: use client pool
-        for (TRegionReplicaSet regionReplicaSet : createRegionsReq.getRegionReplicaSets()) {
-          for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-            switch (regionReplicaSet.getRegionId().getType()) {
-              case SchemaRegion:
-                TemporaryClient.getInstance()
-                    .createSchemaRegion(
-                        dataNodeLocation.getDataNodeId(),
-                        createRegionsReq.getStorageGroup(),
-                        regionReplicaSet);
-                break;
-              case DataRegion:
-                TemporaryClient.getInstance()
-                    .createDataRegion(
-                        dataNodeLocation.getDataNodeId(),
-                        createRegionsReq.getStorageGroup(),
-                        regionReplicaSet,
-                        setStorageGroupReq.getSchema().getTTL());
-            }
-          }
-        }
-      }
+      // Persist StorageGroupSchema
+      result = getConsensusManager().write(setStorageGroupReq).getStatus();
     }
     return result;
   }
 
-  /** TODO: Allocate by LoadManager */
-  private void allocateRegions(
-      TConsensusGroupType type, CreateRegionsReq createRegionsReq, SetStorageGroupReq setSGReq) {
-
-    // TODO: Use CopySet algorithm to optimize region allocation policy
-
-    int replicaCount =
-        type.equals(TConsensusGroupType.SchemaRegion)
-            ? schemaReplicationFactor
-            : dataReplicationFactor;
-    int regionCount =
-        type.equals(TConsensusGroupType.SchemaRegion)
-            ? initialSchemaRegionCount
-            : initialDataRegionCount;
-    List<TDataNodeLocation> onlineDataNodes = getDataNodeInfoManager().getOnlineDataNodes();
-    for (int i = 0; i < regionCount; i++) {
-      Collections.shuffle(onlineDataNodes);
-
-      TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
-      TConsensusGroupId consensusGroupId =
-          new TConsensusGroupId(type, partitionInfo.generateNextRegionGroupId());
-      regionReplicaSet.setRegionId(consensusGroupId);
-      regionReplicaSet.setDataNodeLocations(onlineDataNodes.subList(0, replicaCount));
-      createRegionsReq.addRegion(regionReplicaSet);
-
-      switch (type) {
-        case SchemaRegion:
-          setSGReq.getSchema().addToSchemaRegionGroupIds(consensusGroupId);
-          break;
-        case DataRegion:
-          setSGReq.getSchema().addToDataRegionGroupIds(consensusGroupId);
-      }
-    }
+  public TSStatus deleteStorageGroup(DeleteStorageGroupReq deleteStorageGroupReq) {
+    return getConsensusManager().write(deleteStorageGroupReq).getStatus();
   }
 
   /**
-   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup
+   * Only leader use this interface. Get the SchemaRegionGroupIds or DataRegionGroupIds from the
+   * specific StorageGroup.
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
@@ -163,6 +93,29 @@ public class ClusterSchemaManager {
    */
   public List<TConsensusGroupId> getRegionGroupIds(String storageGroup, TConsensusGroupType type) {
     return clusterSchemaInfo.getRegionGroupIds(storageGroup, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param storageGroup StorageGroupName
+   * @return the matched StorageGroupSchema
+   * @throws MetadataException when the specific StorageGroup doesn't exist
+   */
+  public TStorageGroupSchema getStorageGroupSchemaByName(String storageGroup)
+      throws MetadataException {
+    return clusterSchemaInfo.getMatchedStorageGroupSchemaByName(storageGroup);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param rawPathList List<StorageGroupName>
+   * @return the matched StorageGroupSchemas
+   */
+  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
+      List<String> rawPathList) {
+    return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {
@@ -194,7 +147,7 @@ public class ClusterSchemaManager {
    * @return CountStorageGroupResp
    */
   public CountStorageGroupResp countMatchedStorageGroups(
-      GetOrCountStorageGroupReq countStorageGroupReq) {
+      CountStorageGroupReq countStorageGroupReq) {
     ConsensusReadResponse readResponse = getConsensusManager().read(countStorageGroupReq);
     return (CountStorageGroupResp) readResponse.getDataset();
   }
@@ -205,17 +158,13 @@ public class ClusterSchemaManager {
    * @return StorageGroupSchemaDataSet
    */
   public StorageGroupSchemaResp getMatchedStorageGroupSchema(
-      GetOrCountStorageGroupReq getStorageGroupReq) {
+      GetStorageGroupReq getStorageGroupReq) {
     ConsensusReadResponse readResponse = getConsensusManager().read(getStorageGroupReq);
     return (StorageGroupSchemaResp) readResponse.getDataset();
   }
 
   public List<String> getStorageGroupNames() {
     return clusterSchemaInfo.getStorageGroupNames();
-  }
-
-  private DataNodeManager getDataNodeInfoManager() {
-    return configManager.getDataNodeManager();
   }
 
   private ConsensusManager getConsensusManager() {

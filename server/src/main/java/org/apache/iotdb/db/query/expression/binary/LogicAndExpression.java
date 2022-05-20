@@ -22,12 +22,12 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.LogicAndTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.LogicBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.LogicAndTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.LogicBinaryTransformer;
 
 import java.nio.ByteBuffer;
 
-public class LogicAndExpression extends BinaryExpression {
+public class LogicAndExpression extends LogicBinaryExpression {
 
   public LogicAndExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

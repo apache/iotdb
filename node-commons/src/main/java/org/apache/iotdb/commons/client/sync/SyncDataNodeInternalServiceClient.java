@@ -35,17 +35,19 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
+import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
-public class SyncDataNodeInternalServiceClient extends InternalService.Client {
+public class SyncDataNodeInternalServiceClient extends InternalService.Client
+    implements SyncThriftClient, AutoCloseable {
 
-  private final TEndPoint endpoint;
+  private final TEndPoint endPoint;
   private final ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
   public SyncDataNodeInternalServiceClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
-      TEndPoint endpoint,
+      TEndPoint endPoint,
       ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
       throws TTransportException {
     super(
@@ -53,17 +55,17 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
-                    endpoint.getIp(),
-                    endpoint.getPort(),
+                    endPoint.getIp(),
+                    endPoint.getPort(),
                     connectionTimeout))));
-    this.endpoint = endpoint;
+    this.endPoint = endPoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
   }
 
   @TestOnly
   public TEndPoint getTEndpoint() {
-    return endpoint;
+    return endPoint;
   }
 
   @TestOnly
@@ -71,9 +73,9 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
     return clientManager;
   }
 
-  public void returnSelf() {
+  public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(endpoint, this);
+      clientManager.returnClient(endPoint, this);
     }
   }
 
@@ -82,8 +84,13 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
-  public void close() {
+  public void invalidate() {
     getInputProtocol().getTransport().close();
+  }
+
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endPoint);
   }
 
   public int getTimeout() throws SocketException {
@@ -92,7 +99,7 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
 
   @Override
   public String toString() {
-    return String.format("SyncDataNodeInternalServiceClient{%s}", endpoint);
+    return String.format("SyncDataNodeInternalServiceClient{%s}", endPoint);
   }
 
   public static class Factory
@@ -107,14 +114,19 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
     @Override
     public void destroyObject(
         TEndPoint endpoint, PooledObject<SyncDataNodeInternalServiceClient> pooledObject) {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override
     public PooledObject<SyncDataNodeInternalServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
+      Constructor<SyncDataNodeInternalServiceClient> constructor =
+          SyncDataNodeInternalServiceClient.class.getConstructor(
+              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
-          new SyncDataNodeInternalServiceClient(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              SyncDataNodeInternalServiceClient.class,
+              constructor,
               clientFactoryProperty.getProtocolFactory(),
               clientFactoryProperty.getConnectionTimeoutMs(),
               endpoint,

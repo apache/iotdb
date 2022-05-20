@@ -20,17 +20,25 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+
+import java.util.List;
 
 /**
  * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
@@ -50,7 +58,7 @@ public interface Manager {
    *
    * @return DataNodeManager instance
    */
-  DataNodeManager getDataNodeManager();
+  NodeManager getNodeManager();
 
   /**
    * Get ConsensusManager
@@ -72,6 +80,13 @@ public interface Manager {
    * @return PartitionManager instance
    */
   PartitionManager getPartitionManager();
+
+  /**
+   * Get LoadManager
+   *
+   * @return LoadManager instance
+   */
+  LoadManager getLoadManager();
 
   /**
    * Register DataNode
@@ -100,14 +115,14 @@ public interface Manager {
    *
    * @return The number of matched StorageGroups
    */
-  DataSet countMatchedStorageGroups(GetOrCountStorageGroupReq countStorageGroupReq);
+  DataSet countMatchedStorageGroups(CountStorageGroupReq countStorageGroupReq);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(GetOrCountStorageGroupReq getOrCountStorageGroupReq);
+  DataSet getMatchedStorageGroupSchemas(GetStorageGroupReq getOrCountStorageGroupReq);
 
   /**
    * Set StorageGroup
@@ -115,6 +130,14 @@ public interface Manager {
    * @return status
    */
   TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
+
+  /**
+   * Delete StorageGroups
+   *
+   * @param deletedPaths List<StringPattern>
+   * @return status
+   */
+  TSStatus deleteStorageGroups(List<String> deletedPaths);
 
   /**
    * Get SchemaPartition
@@ -135,7 +158,7 @@ public interface Manager {
    *
    * @return DataPartitionDataSet
    */
-  DataSet getDataPartition(GetOrCreateDataPartitionReq getDataPartitionReq);
+  DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq);
 
   /**
    * Get or create DataPartition
@@ -159,4 +182,24 @@ public interface Manager {
    * @return PermissionInfoDataSet
    */
   DataSet queryPermission(ConfigRequest configRequest);
+
+  /** login */
+  TSStatus login(String username, String password);
+
+  /** Check User Privileges */
+  TSStatus checkUserPrivileges(String username, List<String> paths, int permission);
+
+  /**
+   * Register ConfigNode when it is first startup
+   *
+   * @return TConfigNodeRegisterResp
+   */
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
+
+  /**
+   * Apply ConfigNode when it is first startup
+   *
+   * @return status
+   */
+  TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
 }

@@ -22,12 +22,12 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.CompareBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.CompareLessThanTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareLessThanTransformer;
 
 import java.nio.ByteBuffer;
 
-public class LessThanExpression extends BinaryExpression {
+public class LessThanExpression extends CompareBinaryExpression {
 
   public LessThanExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

@@ -20,27 +20,21 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
+import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
+import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -49,7 +43,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
       FragmentInstanceManager.getInstance();
 
-  private final DataRegion region;
+  private DataRegion region;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
@@ -62,46 +56,45 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
-  public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
-    return false;
+  public boolean takeSnapshot(File snapshotDir) {
+    try {
+      return new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+    } catch (Exception e) {
+      logger.error(
+          "Exception occurs when taking snapshot for {}-{} in {}",
+          region.getLogicalStorageGroupName(),
+          region.getDataRegionId(),
+          snapshotDir,
+          e);
+      return false;
+    }
   }
 
   @Override
-  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-    return null;
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    DataRegion newRegion =
+        new SnapshotLoader(
+                latestSnapshotRootDir.getAbsolutePath(),
+                region.getLogicalStorageGroupName(),
+                region.getDataRegionId())
+            .loadSnapshotForStateMachine();
+    if (newRegion == null) {
+      logger.error("Fail to load snapshot from {}", latestSnapshotRootDir);
+      return;
+    }
+    this.region = newRegion;
+    try {
+      StorageEngineV2.getInstance()
+          .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
+    } catch (Exception e) {
+      logger.error("Exception occurs when replacing data region in storage engine.", e);
+    }
   }
-
-  @Override
-  public void loadSnapshot(SnapshotMeta latest) {}
-
-  @Override
-  public void cleanUpOldSnapshots(File snapshotDir) {}
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
-    PlanNode insertNode = fragmentInstance.getFragment().getRoot();
-    try {
-      if (insertNode instanceof InsertRowNode) {
-        region.insert((InsertRowNode) insertNode);
-      } else if (insertNode instanceof InsertTabletNode) {
-        region.insertTablet((InsertTabletNode) insertNode);
-      } else if (insertNode instanceof InsertRowsNode) {
-        region.insert((InsertRowsNode) insertNode);
-      } else if (insertNode instanceof InsertMultiTabletsNode) {
-        region.insertTablets((InsertMultiTabletsNode) (insertNode));
-      } else if (insertNode instanceof InsertRowsOfOneDeviceNode) {
-        region.insert((InsertRowsOfOneDeviceNode) insertNode);
-      } else {
-        logger.error("Unsupported plan node for writing to data region : {}", insertNode);
-        return StatusUtils.UNSUPPORTED_OPERATION;
-      }
-    } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
-    } catch (Exception e) {
-      logger.error("Error in executing plan node: {}", insertNode);
-      return StatusUtils.EXECUTE_STATEMENT_ERROR;
-    }
-    return StatusUtils.OK;
+    PlanNode planNode = fragmentInstance.getFragment().getRoot();
+    return planNode.accept(new DataExecutionVisitor(), region);
   }
 
   @Override

@@ -22,12 +22,12 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticSubtractionTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticSubtractionTransformer;
 
 import java.nio.ByteBuffer;
 
-public class SubtractionExpression extends BinaryExpression {
+public class SubtractionExpression extends ArithmeticBinaryExpression {
 
   public SubtractionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

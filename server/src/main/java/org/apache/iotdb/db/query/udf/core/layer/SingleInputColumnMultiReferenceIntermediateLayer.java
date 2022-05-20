@@ -46,7 +46,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       LoggerFactory.getLogger(SingleInputColumnMultiReferenceIntermediateLayer.class);
 
   private final LayerPointReader parentLayerPointReader;
-  private final TSDataType dataType;
+  private final TSDataType parentLayerPointReaderDataType;
+  private final boolean isParentLayerPointReaderConstant;
   private final ElasticSerializableTVList tvList;
   private final SafetyLine safetyLine;
 
@@ -59,10 +60,11 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
     super(expression, queryId, memoryBudgetInMB);
     this.parentLayerPointReader = parentLayerPointReader;
 
-    dataType = parentLayerPointReader.getDataType();
+    parentLayerPointReaderDataType = parentLayerPointReader.getDataType();
+    isParentLayerPointReaderConstant = parentLayerPointReader.isConstantPointReader();
     tvList =
         ElasticSerializableTVList.newElasticSerializableTVList(
-            dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+            parentLayerPointReaderDataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     safetyLine = new SafetyLine();
   }
 
@@ -78,14 +80,15 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       @Override
       public boolean isConstantPointReader() {
-        return parentLayerPointReader.isConstantPointReader();
+        return isParentLayerPointReaderConstant;
       }
 
       @Override
       public boolean next() throws QueryProcessException, IOException {
         if (!hasCached
             && (currentPointIndex < tvList.size() - 1
-                || LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList))) {
+                || LayerCacheUtils.cachePoint(
+                    parentLayerPointReaderDataType, parentLayerPointReader, tvList))) {
           ++currentPointIndex;
           hasCached = true;
         }
@@ -103,7 +106,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       @Override
       public TSDataType getDataType() {
-        return dataType;
+        return parentLayerPointReaderDataType;
       }
 
       @Override
@@ -164,7 +167,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       public boolean next() throws QueryProcessException, IOException {
         if (!hasCached
             && ((currentRowIndex < tvList.size() - 1)
-                || LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList))) {
+                || LayerCacheUtils.cachePoint(
+                    parentLayerPointReaderDataType, parentLayerPointReader, tvList))) {
           row.seek(++currentRowIndex);
           hasCached = true;
         }
@@ -182,7 +186,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[] {dataType};
+        return new TSDataType[] {parentLayerPointReaderDataType};
       }
 
       @Override
@@ -238,7 +242,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         int pointsToBeCollected = endIndex - tvList.size();
         if (0 < pointsToBeCollected) {
           LayerCacheUtils.cachePoints(
-              dataType, parentLayerPointReader, tvList, pointsToBeCollected);
+              parentLayerPointReaderDataType, parentLayerPointReader, tvList, pointsToBeCollected);
           if (tvList.size() <= beginIndex) {
             return false;
           }
@@ -267,7 +271,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[] {dataType};
+        return new TSDataType[] {parentLayerPointReaderDataType};
       }
 
       @Override
@@ -292,7 +296,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
     long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
     if (tvList.size() == 0
-        && LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList)
+        && LayerCacheUtils.cachePoint(
+            parentLayerPointReaderDataType, parentLayerPointReader, tvList)
         && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
       // display window begin should be set to the same as the min timestamp of the query result
       // set
@@ -319,7 +324,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
         while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
-          if (!LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList)) {
+          if (!LayerCacheUtils.cachePoint(
+              parentLayerPointReaderDataType, parentLayerPointReader, tvList)) {
             break;
           }
         }
@@ -362,7 +368,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[] {dataType};
+        return new TSDataType[] {parentLayerPointReaderDataType};
       }
 
       @Override

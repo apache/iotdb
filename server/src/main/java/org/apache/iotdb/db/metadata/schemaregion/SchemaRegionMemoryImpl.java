@@ -19,18 +19,20 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -46,7 +48,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -83,6 +84,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.apache.commons.io.FileUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -158,6 +160,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+
+  private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGMemoryImpl mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -185,11 +189,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   }
                 });
 
-    init(storageGroupMNode);
+    this.storageGroupMNode = storageGroupMNode;
+    init();
   }
 
   @SuppressWarnings("squid:S2093")
-  public synchronized void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+  public synchronized void init() throws MetadataException {
     if (initialized) {
       return;
     }
@@ -408,6 +413,79 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
+  @Override
+  public synchronized boolean createSnapshot(File snapshotDir) {
+    File mLogSnapshotTmp =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT_TMP);
+    File mLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
+
+    try {
+      logWriter.copyTo(mLogSnapshotTmp);
+      if (mLogSnapshot.exists() && !mLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot file {} while creating snapshot for schemaRegion {}.",
+            mLogSnapshot.getName(),
+            schemaRegionId);
+        return false;
+      }
+
+      if (!mLogSnapshotTmp.renameTo(mLogSnapshot)) {
+        logger.error(
+            "Failed to rename {} to {} while creating snapshot for schemaRegion {}.",
+            mLogSnapshotTmp.getName(),
+            mLogSnapshot.getName(),
+            schemaRegionId);
+        mLogSnapshot.delete();
+        return false;
+      }
+
+      return tagManager.createSnapshot(snapshotDir);
+    } catch (IOException e) {
+      logger.error(
+          "Failed to create snapshot for schemaRegion {} due to {}",
+          schemaRegionId,
+          e.getMessage(),
+          e);
+      mLogSnapshot.delete();
+      return false;
+    } finally {
+      mLogSnapshotTmp.delete();
+    }
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    File mLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(
+            latestSnapshotRootDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
+    File tagSnapshot =
+        SystemFileFactory.INSTANCE.getFile(
+            latestSnapshotRootDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+
+    clear();
+
+    File mLog =
+        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
+    File tagFile =
+        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.TAG_LOG);
+    mLog.delete();
+    tagFile.delete();
+
+    try {
+      FileUtils.copyFile(mLogSnapshot, mLog);
+      FileUtils.copyFile(tagSnapshot, tagFile);
+
+      init();
+    } catch (IOException | MetadataException e) {
+      logger.error(
+          "Failed to load snapshot for schemaRegion {}  ue to {}",
+          schemaRegionId,
+          e.getMessage(),
+          e);
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -420,9 +498,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {
@@ -532,9 +608,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {

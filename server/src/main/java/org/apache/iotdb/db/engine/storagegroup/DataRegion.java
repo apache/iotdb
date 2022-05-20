@@ -22,6 +22,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,7 +35,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -52,19 +55,16 @@ import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -75,9 +75,9 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
@@ -690,6 +690,9 @@ public class DataRegion {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
+      if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
+      }
       try {
         tsFileResource.close();
       } catch (IOException e) {
@@ -862,6 +865,13 @@ public class DataRegion {
       // TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowNode);
     } finally {
       writeUnlock();
+    }
+
+    if (insertRowNode.hasFailedMeasurements()) {
+      logger.warn(
+          "Fail to insert measurements {} caused by {}",
+          insertRowNode.getFailedMeasurements(),
+          insertRowNode.getFailedMessages());
     }
   }
 
@@ -1077,6 +1087,13 @@ public class DataRegion {
       //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
+    }
+
+    if (insertTabletNode.hasFailedMeasurements()) {
+      logger.warn(
+          "Fail to insert measurements {} caused by {}",
+          insertTabletNode.getFailedMeasurements(),
+          insertTabletNode.getFailedMessages());
     }
   }
 
@@ -1554,7 +1571,7 @@ public class DataRegion {
     try {
       File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
       if (storageGroupFolder.exists()) {
-        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     } finally {
       writeUnlock();
@@ -1611,7 +1628,7 @@ public class DataRegion {
       File storageGroupFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
       if (storageGroupFolder.exists()) {
-        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     }
   }
@@ -2716,7 +2733,7 @@ public class DataRegion {
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, -1L) + 1;
+    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
     tsFileResource.setVersion(version);
     return version;
@@ -3348,7 +3365,7 @@ public class DataRegion {
 
   @TestOnly
   public long getPartitionMaxFileVersions(long partitionId) {
-    return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
+    return partitionMaxFileVersions.getOrDefault(partitionId, 0L);
   }
 
   public void addSettleFilesToList(
@@ -3467,6 +3484,10 @@ public class DataRegion {
 
     void call(TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
         throws WriteProcessException;
+  }
+
+  public List<Long> getTimePartitions() {
+    return new ArrayList<>(partitionMaxFileVersions.keySet());
   }
 
   public String getInsertWriteLockHolder() {

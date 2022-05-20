@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.query.expression;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -39,12 +39,15 @@ import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.InExpression;
+import org.apache.iotdb.db.query.expression.unary.LikeExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -56,6 +59,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -66,11 +70,9 @@ import java.util.Set;
 /** A skeleton class for expression */
 public abstract class Expression {
 
-  private String expressionStringCache;
-
-  protected Boolean isConstantOperandCache = null;
-
-  protected Integer inputColumnIndex = null;
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Expression type inferring for execution plan generation //////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public boolean isBuiltInAggregationFunctionExpression() {
     return false;
@@ -84,33 +86,67 @@ public abstract class Expression {
     return false;
   }
 
-  public abstract void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree);
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Operations for time series paths
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // TODO: remove after MPP finish
+  @Deprecated
   public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
 
-  public abstract void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws StatementAnalyzeException;
-
   // TODO: remove after MPP finish
+  @Deprecated
   public abstract void removeWildcards(
       org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
       List<Expression> resultExpressions)
       throws LogicalOptimizeException;
 
+  // TODO: remove after MPP finish
+  @Deprecated
   public abstract void collectPaths(Set<PartialPath> pathSet);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For UDF instances initialization
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public abstract void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // type inference
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  public abstract TSDataType inferTypes(TypeProvider typeProvider);
+
+  protected static void checkInputExpressionDataType(
+      String expressionString, TSDataType actual, TSDataType... expected) {
+    for (TSDataType type : expected) {
+      if (actual.equals(type)) {
+        return;
+      }
+    }
+    throw new SemanticException(
+        String.format(
+            "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
+            expressionString, actual.name(), Arrays.toString(expected)));
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For expression evaluation DAG building
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected Integer inputColumnIndex = null;
+
+  // TODO: remove after MPP finish
+  @Deprecated
   public abstract void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan);
+
+  public abstract void bindInputLayerColumnIndexWithExpression(
+      Map<String, List<InputLocation>> inputLocations);
 
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
+  // TODO: remove after MPP finish
+  @Deprecated
   public abstract IntermediateLayer constructIntermediateLayer(
       long queryId,
       UDTFContext udtfContext,
@@ -120,13 +156,20 @@ public abstract class Expression {
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
 
-  /** Sub-classes should override this method indicating if the expression is a constant operand */
-  protected abstract boolean isConstantOperandInternal();
+  public abstract IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException;
 
-  /**
-   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
-   */
-  public abstract List<Expression> getExpressions();
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // isConstantOperand
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected Boolean isConstantOperandCache = null;
 
   /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
   public final boolean isConstantOperand() {
@@ -136,11 +179,20 @@ public abstract class Expression {
     return isConstantOperandCache;
   }
 
-  /**
-   * Sub-classes should override this method to provide valid string representation of this object.
-   * See {@link #getExpressionString()}
-   */
-  protected abstract String getExpressionStringInternal();
+  /** Sub-classes should override this method indicating if the expression is a constant operand */
+  protected abstract boolean isConstantOperandInternal();
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // toString
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private String expressionStringCache;
+
+  /** Sub-classes must not override this method. */
+  @Override
+  public final String toString() {
+    return getExpressionString();
+  }
 
   /**
    * Get the representation of the expression in string. The hash code of the returned value will be
@@ -154,6 +206,16 @@ public abstract class Expression {
     }
     return expressionStringCache;
   }
+
+  /**
+   * Sub-classes should override this method to provide valid string representation of this object.
+   * See {@link #getExpressionString()}
+   */
+  protected abstract String getExpressionStringInternal();
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // hashCode & equals
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /** Sub-classes must not override this method. */
   @Override
@@ -175,11 +237,9 @@ public abstract class Expression {
     return getExpressionString().equals(((Expression) o).getExpressionString());
   }
 
-  /** Sub-classes must not override this method. */
-  @Override
-  public final String toString() {
-    return getExpressionString();
-  }
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // iterator: level-order traversal iterator
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /** returns an iterator to traverse all the successor expressions in a level-order */
   public final Iterator<Expression> iterator() {
@@ -215,7 +275,14 @@ public abstract class Expression {
     }
   }
 
-  public abstract ExpressionType getExpressionType();
+  /**
+   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
+   */
+  public abstract List<Expression> getExpressions();
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // serialize & deserialize
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static void serialize(Expression expression, ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(
@@ -229,73 +296,86 @@ public abstract class Expression {
     }
   }
 
-  protected abstract void serialize(ByteBuffer byteBuffer);
-
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);
 
     Expression expression;
     switch (type) {
-      case 0:
-        expression = new AdditionExpression(byteBuffer);
-        break;
-      case 1:
-        expression = new DivisionExpression(byteBuffer);
-        break;
-      case 2:
-        expression = new EqualToExpression(byteBuffer);
-        break;
-      case 3:
-        expression = new GreaterEqualExpression(byteBuffer);
-        break;
-      case 4:
-        expression = new GreaterThanExpression(byteBuffer);
-        break;
-      case 5:
-        expression = new LessEqualExpression(byteBuffer);
-        break;
-      case 6:
-        expression = new LessThanExpression(byteBuffer);
-        break;
-      case 7:
-        expression = new LogicAndExpression(byteBuffer);
-        break;
-      case 8:
-        expression = new LogicOrExpression(byteBuffer);
-        break;
-      case 9:
-        expression = new ModuloExpression(byteBuffer);
-        break;
-      case 10:
-        expression = new MultiplicationExpression(byteBuffer);
-        break;
-      case 11:
-        expression = new NonEqualExpression(byteBuffer);
-        break;
-      case 12:
-        expression = new SubtractionExpression(byteBuffer);
-        break;
-      case 13:
-        expression = new FunctionExpression(byteBuffer);
-        break;
-      case 14:
-        expression = new LogicNotExpression(byteBuffer);
-        break;
-      case 15:
-        expression = new NegationExpression(byteBuffer);
-        break;
-      case 16:
-        expression = new TimeSeriesOperand(byteBuffer);
-        break;
-      case 17:
+      case -4:
         expression = new ConstantOperand(byteBuffer);
         break;
-      case 18:
-        expression = null;
+      case -3:
+        expression = new TimestampOperand(byteBuffer);
         break;
-      case 19:
+      case -2:
+        expression = new TimeSeriesOperand(byteBuffer);
+        break;
+      case -1:
+        expression = new FunctionExpression(byteBuffer);
+        break;
+
+      case 0:
+        expression = new NegationExpression(byteBuffer);
+        break;
+      case 1:
+        expression = new LogicNotExpression(byteBuffer);
+        break;
+
+      case 2:
+        expression = new MultiplicationExpression(byteBuffer);
+        break;
+      case 3:
+        expression = new DivisionExpression(byteBuffer);
+        break;
+      case 4:
+        expression = new ModuloExpression(byteBuffer);
+        break;
+
+      case 5:
+        expression = new AdditionExpression(byteBuffer);
+        break;
+      case 6:
+        expression = new SubtractionExpression(byteBuffer);
+        break;
+
+      case 7:
+        expression = new EqualToExpression(byteBuffer);
+        break;
+      case 8:
+        expression = new NonEqualExpression(byteBuffer);
+        break;
+      case 9:
+        expression = new GreaterEqualExpression(byteBuffer);
+        break;
+      case 10:
+        expression = new GreaterThanExpression(byteBuffer);
+        break;
+      case 11:
+        expression = new LessEqualExpression(byteBuffer);
+        break;
+      case 12:
+        expression = new LessThanExpression(byteBuffer);
+        break;
+
+      case 13:
+        expression = new LikeExpression(byteBuffer);
+        break;
+      case 14:
         expression = new RegularExpression(byteBuffer);
         break;
+
+      case 15:
+        expression = new InExpression(byteBuffer);
+        break;
+
+      case 16:
+        expression = new LogicAndExpression(byteBuffer);
+        break;
+
+      case 17:
+        expression = new LogicOrExpression(byteBuffer);
+        break;
+
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }
@@ -307,4 +387,8 @@ public abstract class Expression {
 
     return expression;
   }
+
+  public abstract ExpressionType getExpressionType();
+
+  protected abstract void serialize(ByteBuffer byteBuffer);
 }

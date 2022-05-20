@@ -46,8 +46,8 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -451,7 +451,7 @@ public class SyncClientAdaptorTest {
         lastResult,
         SyncClientAdaptor.last(
             dataClient,
-            Collections.singletonList(new PartialPath("1")),
+            Collections.singletonList(new PartialPath("`1`")),
             Collections.singletonList(TSDataType.INT64.ordinal()),
             null,
             new QueryContext(),

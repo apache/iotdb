@@ -19,48 +19,67 @@
 
 package org.apache.iotdb.db.client;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.CommonUtils;
+import org.apache.iotdb.commons.client.BaseClientFactory;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientPoolProperty;
+import org.apache.iotdb.commons.client.sync.SyncThriftClient;
+import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
-public class ConfigNodeClient {
+public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
-
-  private static final int TIMEOUT_MS = 10000;
 
   private static final int RETRY_NUM = 5;
 
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check server it";
+
+  private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
   private ConfigIService.Iface client;
 
@@ -70,85 +89,122 @@ public class ConfigNodeClient {
 
   private List<TEndPoint> configNodes;
 
-  public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
+  private int cursor = 0;
+
+  ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+
+  PartitionRegionId partitionRegionId = ConfigNodeInfo.partitionRegionId;
+
+  TProtocolFactory protocolFactory;
+
+  public ConfigNodeClient() throws TException {
     // Read config nodes from configuration
-    configNodes =
-        CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
+    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
+    protocolFactory =
+        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
+            ? new TCompactProtocol.Factory()
+            : new TBinaryProtocol.Factory();
+
     init();
   }
 
-  public ConfigNodeClient(List<TEndPoint> configNodes) throws IoTDBConnectionException {
-    this.configNodes = configNodes;
+  public ConfigNodeClient(
+      TProtocolFactory protocolFactory,
+      long connectionTimeout,
+      ClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      throws TException {
+    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
+    this.protocolFactory = protocolFactory;
+    this.connectionTimeout = connectionTimeout;
+    this.clientManager = clientManager;
+
     init();
   }
 
-  public ConfigNodeClient(List<TEndPoint> configNodes, TEndPoint configLeader)
-      throws IoTDBConnectionException {
-    this.configNodes = configNodes;
-    this.configLeader = configLeader;
-    init();
-  }
-
-  public void init() throws IoTDBConnectionException {
+  public void init() throws TException {
     reconnect();
   }
 
-  public void connect(TEndPoint endpoint) throws IoTDBConnectionException {
+  public void connect(TEndPoint endpoint) throws TException {
     try {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), TIMEOUT_MS);
+              endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
       transport.open();
     } catch (TTransportException e) {
-      throw new IoTDBConnectionException(e);
+      throw new TException(e);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
-      client = new ConfigIService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new ConfigIService.Client(new TBinaryProtocol(transport));
+    client = new ConfigIService.Client(protocolFactory.getProtocol(transport));
+  }
+
+  private void reconnect() throws TException {
+    try {
+      tryToConnect();
+    } catch (TException e) {
+      // can not connect to each config node
+      syncLatestConfigNodeList();
+      tryToConnect();
     }
   }
 
-  private void reconnect() throws IoTDBConnectionException {
+  private void tryToConnect() throws TException {
     if (configLeader != null) {
       try {
         connect(configLeader);
         return;
-      } catch (IoTDBConnectionException e) {
+      } catch (TException e) {
         logger.warn("The current node may have been down {},try next node", configLeader);
         configLeader = null;
       }
     }
 
-    Random random = new Random();
     if (transport != null) {
       transport.close();
     }
-    int currHostIndex = random.nextInt(configNodes.size());
-    int tryHostNum = 0;
-    for (int j = currHostIndex; j < configNodes.size(); j++) {
-      if (tryHostNum == configNodes.size()) {
-        break;
-      }
-      TEndPoint tryEndpoint = configNodes.get(j);
-      if (j == configNodes.size() - 1) {
-        j = -1;
-      }
-      tryHostNum++;
+
+    for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
+      cursor = (cursor + 1) % configNodes.size();
+      TEndPoint tryEndpoint = configNodes.get(cursor);
+
       try {
         connect(tryEndpoint);
         return;
-      } catch (IoTDBConnectionException e) {
+      } catch (TException e) {
         logger.warn("The current node may have been down {},try next node", tryEndpoint);
       }
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  public TTransport getTransport() {
+    return transport;
+  }
+
+  public void syncLatestConfigNodeList() {
+    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
+    cursor = 0;
+  }
+
+  @Override
   public void close() {
+    if (clientManager != null) {
+      clientManager.returnClient(partitionRegionId, this);
+    } else {
+      invalidate();
+    }
+  }
+
+  @Override
+  public void invalidate() {
     transport.close();
+  }
+
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(ConfigNodeInfo.partitionRegionId);
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
@@ -164,28 +220,35 @@ public class ConfigNodeClient {
     return false;
   }
 
-  public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
+
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
-        logger.info("Register current node using request {} with response {}", req, resp);
+
+        // set latest config node list
+        List<TEndPoint> newConfigNodes = new ArrayList<>();
+        for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
+          newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+        }
+        configNodes = newConfigNodes;
       } catch (TException e) {
         configLeader = null;
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataNodeLocationResp getDataNodeLocations(int dataNodeID)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataNodeInfoResp getDataNodeInfo(int dataNodeId) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataNodeLocationResp resp = client.getDataNodeLocations(dataNodeID);
+        TDataNodeInfoResp resp = client.getDataNodeInfo(dataNodeId);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -194,10 +257,11 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.setStorageGroup(req);
@@ -209,10 +273,11 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.deleteStorageGroup(req);
@@ -224,11 +289,45 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  @Override
+  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.deleteStorageGroups(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
-      throws IoTDBConnectionException {
+      throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TStorageGroupSchemaResp resp =
@@ -241,11 +340,75 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TSStatus setTTL(TSetTTLReq setTTLReq) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setTTL(setTTLReq);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setSchemaReplicationFactor(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setDataReplicationFactor(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setTimePartitionInterval(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getSchemaPartition(req);
@@ -257,11 +420,12 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  @Override
   public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
-      throws IoTDBConnectionException {
+      throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getOrCreateSchemaPartition(req);
@@ -273,11 +437,11 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataPartitionResp getDataPartition(TDataPartitionReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getDataPartition(req);
@@ -289,11 +453,11 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getOrCreateDataPartition(req);
@@ -305,10 +469,11 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus operatePermission(TAuthorizerReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.operatePermission(req);
@@ -320,10 +485,11 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws IoTDBConnectionException {
+  @Override
+  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TAuthorizerResp resp = client.queryPermission(req);
@@ -335,6 +501,106 @@ public class ConfigNodeClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus login(TLoginReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.login(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.checkUserPrivileges(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TConfigNodeRegisterResp resp = client.registerConfigNode(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.applyConfigNode(configNodeLocation);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {
+
+    public Factory(
+        ClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
+        ClientFactoryProperty clientFactoryProperty) {
+      super(clientManager, clientFactoryProperty);
+    }
+
+    @Override
+    public void destroyObject(
+        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+      pooledObject.getObject().invalidate();
+    }
+
+    @Override
+    public PooledObject<ConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
+        throws Exception {
+      Constructor<ConfigNodeClient> constructor =
+          ConfigNodeClient.class.getConstructor(
+              TProtocolFactory.class, long.class, clientManager.getClass());
+      return new DefaultPooledObject<>(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              ConfigNodeClient.class,
+              constructor,
+              clientFactoryProperty.getProtocolFactory(),
+              clientFactoryProperty.getConnectionTimeoutMs(),
+              clientManager));
+    }
+
+    @Override
+    public boolean validateObject(
+        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+      return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
+    }
   }
 }

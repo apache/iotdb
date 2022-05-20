@@ -94,13 +94,13 @@ select * from root.ln.sg1 WITHOUT NULL ALL(s1, s2)
 
 ```sql
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null all (s2+s4, s2)
-``` 
+```
 
 2. 计算s2+s4和s2这两列是否至少有一列为null,如果是则过滤
 
 ```sql
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (s2+s4, s2)
-``` 
+```
 
 ### 别名
 
@@ -172,13 +172,13 @@ select avg(s4), sum(s2), count(s3) from root.test.sg1 group by ([1,10), 2ms) wit
 1. 指定`root.test.sg1.s2`, `root.test.sg2.s3`两列都为null则过滤
 
 ```sql
-select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, `root.test.sg2.s3`)
+select s2, s3 from root.test.** without null all(root.test.sg1.s2, root.test.sg2.s3)
 ```
 
 2. 指定`root.test.sg1.s2`, `root.test.sg1.s3`, `root.test.sg2.s3`三列都为null则过滤
 
 ```sql
-select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, s3)
+select s2, s3 from root.test.** without null all(root.test.sg1.s2, s3)
 ```
 
 ### 对齐序列查询

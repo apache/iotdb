@@ -16,10 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.utils;
-
-import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
 
 public class BitConstructor {
 

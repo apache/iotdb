@@ -136,6 +136,23 @@ public class Session {
   // The version number of the client which used for compatibility in the server
   protected Version version;
 
+  public static void main(String args[])
+      throws IoTDBConnectionException, StatementExecutionException {
+    Session session = new Session("127.0.0.1", 6667);
+    session.open();
+
+    long timestamp = 1649949302008L;
+    for (int i = 0; i < 10000; i++) {
+      String sql =
+          String.format(
+              "insert into root.sg.d1(time,s1,s2,s3,s4) values(%d,%d,%d,%d,%d);",
+              timestamp, i * 10 + 1, i * 10 + 2, i * 10 + 3, i * 10 + 4);
+      session.executeNonQueryStatement(sql);
+      timestamp++;
+    }
+    session.close();
+  }
+
   public Session(String host, int rpcPort) {
     this(
         host,
@@ -2134,12 +2151,12 @@ public class Session {
    * Create a template with flat measurements, not tree structured. Need to specify datatype,
    * encoding and compressor of each measurement, and alignment of these measurements at once.
    *
-   * @oaram templateName name of template to create
    * @param measurements flat measurements of the template, cannot contain character dot
    * @param dataTypes datatype of each measurement in the template
    * @param encodings encodings of each measurement in the template
    * @param compressors compression type of each measurement in the template
    * @param isAligned specify whether these flat measurements are aligned
+   * @oaram templateName name of template to create
    */
   public void createSchemaTemplate(
       String templateName,

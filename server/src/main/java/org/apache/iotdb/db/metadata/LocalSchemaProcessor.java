@@ -19,11 +19,12 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -216,8 +216,9 @@ public class LocalSchemaProcessor {
         break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
-        // cause we only has one path for one DeleteTimeSeriesPlan
-        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
+        for (PartialPath path : deleteTimeSeriesPlan.getPaths()) {
+          deleteTimeseries(path);
+        }
         break;
       case SET_STORAGE_GROUP:
         SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
@@ -1259,16 +1260,14 @@ public class LocalSchemaProcessor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    try {
-      return getBelongedSchemaRegion(plan.getDevicePath()).getSeriesSchemasAndReadLockDevice(plan);
-    } catch (StorageGroupNotSetException e) {
-      if (config.isAutoCreateSchemaEnabled()) {
-        return getBelongedSchemaRegionWithAutoCreate(plan.getDevicePath())
-            .getSeriesSchemasAndReadLockDevice(plan);
-      } else {
-        throw e;
-      }
+    ISchemaRegion schemaRegion;
+    if (config.isAutoCreateSchemaEnabled()) {
+      schemaRegion = getBelongedSchemaRegionWithAutoCreate(plan.getDevicePath());
+    } else {
+      schemaRegion = getBelongedSchemaRegion(plan.getDevicePath());
     }
+
+    return schemaRegion.getSeriesSchemasAndReadLockDevice(plan);
   }
 
   // endregion

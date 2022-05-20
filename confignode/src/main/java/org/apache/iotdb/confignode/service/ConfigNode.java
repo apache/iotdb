@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.confignode.service;
 
-import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
@@ -44,19 +42,27 @@ public class ConfigNode implements ConfigNodeMBean {
   private final RegisterManager registerManager = new RegisterManager();
 
   private final ConfigNodeRPCService configNodeRPCService;
+  private final ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
   private ConfigManager configManager;
 
-  public ConfigNode() {
-    this.configNodeRPCService = new ConfigNodeRPCService();
-
+  private ConfigNode() {
+    // Init ConfigManager
     try {
       this.configManager = new ConfigManager();
     } catch (IOException e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
-      stop();
-      System.exit(0);
+      try {
+        stop();
+      } catch (IOException e2) {
+        LOGGER.error("Meet error when stop ConfigNode!", e);
+      }
+      System.exit(-1);
     }
+
+    // Init RPC service
+    this.configNodeRPCService = new ConfigNodeRPCService();
+    this.configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
   }
 
   public static void main(String[] args) {
@@ -69,7 +75,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
-    configNodeRPCService.initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor(configManager));
+    configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
     LOGGER.info("Init rpc server success");
   }
@@ -79,29 +85,40 @@ public class ConfigNode implements ConfigNodeMBean {
       setUp();
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
-      deactivate();
+      try {
+        deactivate();
+      } catch (IOException e2) {
+        LOGGER.error("Meet error when stop ConfigNode!", e);
+      }
       return;
     }
 
-    LOGGER.info("{} has started.", ConfigNodeConstant.GLOBAL_NAME);
+    LOGGER.info(
+        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
-  public void deactivate() {
+  public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
+    configManager.close();
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
-  @TestOnly
-  public void shutdown() throws ShutdownException {
-    LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
-    registerManager.shutdownAll();
-    JMXService.deregisterMBean(mbeanName);
-    LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
-  }
-
-  public void stop() {
+  public void stop() throws IOException {
     deactivate();
+  }
+
+  private static class ConfigNodeHolder {
+
+    private static final ConfigNode INSTANCE = new ConfigNode();
+
+    private ConfigNodeHolder() {
+      // Empty constructor
+    }
+  }
+
+  public static ConfigNode getInstance() {
+    return ConfigNodeHolder.INSTANCE;
   }
 }

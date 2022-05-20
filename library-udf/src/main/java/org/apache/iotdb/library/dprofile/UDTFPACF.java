@@ -29,7 +29,6 @@ import org.apache.iotdb.library.dprofile.util.YuleWalker;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.stat.StatUtils;
 
 import java.util.ArrayList;
@@ -78,7 +77,7 @@ public class UDTFPACF implements UDTF {
     n = value.size();
     if (n > 1) {
       if (lag < 0 || lag > value.size() - 1) {
-        lag = (int) Math.min(10 * Math.log10(value.size()), value.size() - 1);
+        lag = Math.min((int) (10 * Math.log10(value.size())), value.size() - 1);
       }
       double[] x =
           Arrays.stream(value.toArray(new Double[0])).mapToDouble(Double::valueOf).toArray();

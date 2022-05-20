@@ -26,21 +26,22 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.service.thrift.impl.InternalServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
@@ -85,7 +86,7 @@ public class InternalServiceImplTest {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     ConsensusImpl.getInstance()
         .addConsensusGroup(
-            ConsensusGroupId.Factory.convertFromTConsensusGroupId(regionReplicaSet.getRegionId()),
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
             genPeerList(regionReplicaSet));
     internalServiceImpl = new InternalServiceImpl();
   }
@@ -95,7 +96,7 @@ public class InternalServiceImplTest {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     ConsensusImpl.getInstance()
         .removeConsensusGroup(
-            ConsensusGroupId.Factory.convertFromTConsensusGroupId(regionReplicaSet.getRegionId()));
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()));
     FileUtils.deleteFully(new File(conf.getConsensusDir()));
   }
 
@@ -225,6 +226,105 @@ public class InternalServiceImplTest {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment =
         new PlanFragment(new PlanFragmentId("2", 3), createAlignedTimeSeriesNode);
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            planFragment,
+            planFragment.getId().genFragmentInstanceId(),
+            new GroupByFilter(1, 2, 3, 4),
+            QueryType.WRITE);
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
+
+    // serialize fragmentInstance
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    fragmentInstance.serializeRequest(byteBuffer);
+    byteBuffer.flip();
+
+    // put serialized fragmentInstance to TSendFragmentInstanceReq
+    TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
+    TFragmentInstance tFragmentInstance = new TFragmentInstance();
+    tFragmentInstance.setBody(byteBuffer);
+    request.setFragmentInstance(tFragmentInstance);
+    request.setConsensusGroupId(regionReplicaSet.getRegionId());
+    request.setQueryType(QueryType.WRITE.toString());
+
+    // Use consensus layer to execute request
+    TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
+
+    Assert.assertTrue(response.accepted);
+  }
+
+  @Test
+  public void testCreateMultiTimeSeries() throws MetadataException {
+    CreateMultiTimeSeriesNode createMultiTimeSeriesNode =
+        new CreateMultiTimeSeriesNode(
+            new PlanNodeId("0"),
+            new ArrayList<PartialPath>() {
+              {
+                add(new PartialPath("root.ln.d3.s1"));
+                add(new PartialPath("root.ln.d3.s2"));
+              }
+            },
+            new ArrayList<TSDataType>() {
+              {
+                add(TSDataType.FLOAT);
+                add(TSDataType.FLOAT);
+              }
+            },
+            new ArrayList<TSEncoding>() {
+              {
+                add(TSEncoding.PLAIN);
+                add(TSEncoding.PLAIN);
+              }
+            },
+            new ArrayList<CompressionType>() {
+              {
+                add(CompressionType.SNAPPY);
+                add(CompressionType.SNAPPY);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("MAX_POINT_NUMBER", "3");
+                      }
+                    });
+                add(null);
+              }
+            },
+            new ArrayList<String>() {
+              {
+                add("meter1");
+                add(null);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("tag1", "t1");
+                      }
+                    });
+                add(null);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("tag1", "t1");
+                      }
+                    });
+                add(null);
+              }
+            });
+
+    TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    PlanFragment planFragment =
+        new PlanFragment(new PlanFragmentId("2", 3), createMultiTimeSeriesNode);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             planFragment,

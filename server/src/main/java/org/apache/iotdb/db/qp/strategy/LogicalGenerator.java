@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
@@ -35,7 +35,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -114,14 +114,14 @@ public class LogicalGenerator {
       PartialPath path = new PartialPath(p);
       fromOp.addPrefixTablePath(path);
     }
-    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     queryOp.setSelectComponent(selectOp);
     queryOp.setFromComponent(fromOp);
 
     // set time filter operator
     FilterOperator filterOp = new FilterOperator(FilterType.KW_AND);
-    PartialPath timePath = new PartialPath(TIME);
+    PartialPath timePath = new PartialPath(TIME, false);
     filterOp.setSinglePath(timePath);
     Set<PartialPath> pathSet = new HashSet<>();
     pathSet.add(timePath);
@@ -151,7 +151,7 @@ public class LogicalGenerator {
     FromComponent fromOp = new FromComponent();
     SelectComponent selectOp = new SelectComponent(zoneId);
 
-    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     for (String p : req.getPaths()) {
       PartialPath path = new PartialPath(p);
@@ -161,7 +161,7 @@ public class LogicalGenerator {
     queryOp.setSelectComponent(selectOp);
     queryOp.setFromComponent(fromOp);
 
-    PartialPath timePath = new PartialPath(TIME);
+    PartialPath timePath = new PartialPath(TIME, false);
 
     BasicFunctionOperator basicFunctionOperator =
         new BasicFunctionOperator(
