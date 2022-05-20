@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.commons.udf.api.access.Row;
 import org.apache.iotdb.commons.udf.api.access.RowWindow;
 import org.apache.iotdb.commons.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.commons.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.access.ElasticSerializableTVListBackedSingleColumnRow;
 import org.apache.iotdb.db.query.udf.core.access.ElasticSerializableTVListBackedSingleColumnWindow;
 import org.apache.iotdb.db.query.udf.core.layer.SafetyLine.SafetyPile;

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.commons.udf.api.customizer.strategy;
 
+import org.apache.iotdb.commons.udf.api.UDTF;
 import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.UDTF;
 
 /**
  * Used to customize the strategy for accessing raw data in {@link UDTF#beforeStart(UDFParameters,

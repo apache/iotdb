@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.core.reader;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.commons.udf.api.access.RowWindow;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;

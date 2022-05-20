@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.commons.udf.api.customizer.config;
 
+import org.apache.iotdb.commons.udf.api.UDTF;
 import org.apache.iotdb.commons.udf.api.access.Row;
 import org.apache.iotdb.commons.udf.api.access.RowWindow;
 import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.UDTF;
 import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.commons.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
