@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -40,12 +41,12 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -288,38 +289,48 @@ public class NodeInfo implements SnapshotProcessor {
     configNodeInfoReadWriteLock.readLock().lock();
     dataNodeInfoReadWriteLock.readLock().lock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-        DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataOutputStream)) {
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
 
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
-      dataOutputStream.writeInt(nextDataNodeId.get());
+      ReadWriteIOUtils.write(nextDataNodeId.get(), fileOutputStream);
 
-      serializeOnlineDataNode(dataOutputStream, protocol);
+      serializeOnlineDataNode(fileOutputStream, protocol);
 
-      serializeDrainingDataNodes(dataOutputStream, protocol);
+      serializeDrainingDataNodes(fileOutputStream, protocol);
 
       fileOutputStream.flush();
+
+      fileOutputStream.close();
+
+      return tmpFile.renameTo(snapshotFile);
+
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
       dataNodeInfoReadWriteLock.readLock().unlock();
+      for (int retry = 0; retry < 5; retry++) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
     }
-
-    return tmpFile.renameTo(snapshotFile);
   }
 
-  private void serializeOnlineDataNode(DataOutputStream outputStream, TProtocol protocol)
+  private void serializeOnlineDataNode(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
-    outputStream.writeInt(onlineDataNodes.size());
+    ReadWriteIOUtils.write(onlineDataNodes.size(), outputStream);
     for (Entry<Integer, TDataNodeInfo> entry : onlineDataNodes.entrySet()) {
-      outputStream.writeInt(entry.getKey());
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().write(protocol);
     }
   }
 
-  private void serializeDrainingDataNodes(DataOutputStream outputStream, TProtocol protocol)
+  private void serializeDrainingDataNodes(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
-    outputStream.writeInt(drainingDataNodes.size());
+    ReadWriteIOUtils.write(drainingDataNodes.size(), outputStream);
     for (TDataNodeLocation tDataNodeLocation : drainingDataNodes) {
       tDataNodeLocation.write(protocol);
     }
@@ -340,17 +351,16 @@ public class NodeInfo implements SnapshotProcessor {
     dataNodeInfoReadWriteLock.writeLock().lock();
 
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        DataInputStream dataInputStream = new DataInputStream(fileInputStream);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataInputStream)) {
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       clear();
 
-      nextDataNodeId.set(dataInputStream.readInt());
+      nextDataNodeId.set(ReadWriteIOUtils.readInt(fileInputStream));
 
-      deserializeOnlineDataNode(dataInputStream, protocol);
+      deserializeOnlineDataNode(fileInputStream, protocol);
 
-      deserializeDrainingDataNodes(dataInputStream, protocol);
+      deserializeDrainingDataNodes(fileInputStream, protocol);
 
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
@@ -358,11 +368,11 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void deserializeOnlineDataNode(DataInputStream inputStream, TProtocol protocol)
+  private void deserializeOnlineDataNode(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
-    int size = inputStream.readInt();
+    int size = ReadWriteIOUtils.readInt(inputStream);
     while (size > 0) {
-      int dataNodeId = inputStream.readInt();
+      int dataNodeId = ReadWriteIOUtils.readInt(inputStream);
       TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
       dataNodeInfo.read(protocol);
       onlineDataNodes.put(dataNodeId, dataNodeInfo);
@@ -370,9 +380,9 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  private void deserializeDrainingDataNodes(DataInputStream inputStream, TProtocol protocol)
+  private void deserializeDrainingDataNodes(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
-    int size = inputStream.readInt();
+    int size = ReadWriteIOUtils.readInt(inputStream);
     while (size > 0) {
       TDataNodeLocation tDataNodeLocation = new TDataNodeLocation();
       tDataNodeLocation.read(protocol);

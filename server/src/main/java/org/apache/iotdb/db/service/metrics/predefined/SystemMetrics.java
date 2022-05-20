@@ -16,26 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.db.service.metrics.predefined;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.sun.management.OperatingSystemMXBean;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
 
-public class SysRunMetricsMonitor {
-  private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
+public class SystemMetrics implements IMetricSet {
   private com.sun.management.OperatingSystemMXBean osMXBean;
 
-  private SysRunMetricsMonitor() {
+  public SystemMetrics() {
     osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
   }
 
-  public void collectSystemCpuInfo() {
+  @Override
+  public void bindTo(MetricManager metricManager) {
+    collectSystemCpuInfo(metricManager);
+    collectSystemDiskInfo(metricManager);
+    collectSystemMEMInfo(metricManager);
+  }
+
+  @Override
+  public PredefinedMetric getType() {
+    return PredefinedMetric.SYSTEM;
+  }
+
+  private void collectSystemCpuInfo(MetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_CPU_LOAD.toString(),
         MetricLevel.CORE,
@@ -50,7 +65,7 @@ public class SysRunMetricsMonitor {
         .set(osMXBean.getAvailableProcessors());
   }
 
-  public void collectSystemMEMInfo() {
+  private void collectSystemMEMInfo(MetricManager metricManager) {
     metricManager
         .getOrCreateGauge(
             Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
@@ -88,7 +103,7 @@ public class SysRunMetricsMonitor {
         "system");
   }
 
-  public void collectSystemDiskInfo() {
+  private void collectSystemDiskInfo(MetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
@@ -122,13 +137,5 @@ public class SysRunMetricsMonitor {
       sysFreeSpace += file.getFreeSpace();
     }
     return sysFreeSpace;
-  }
-
-  public static SysRunMetricsMonitor getInstance() {
-    return SysRunMetricsMonitor.SysRunMetricsMonitorHolder.INSTANCE;
-  }
-
-  private static class SysRunMetricsMonitorHolder {
-    private static final SysRunMetricsMonitor INSTANCE = new SysRunMetricsMonitor();
   }
 }

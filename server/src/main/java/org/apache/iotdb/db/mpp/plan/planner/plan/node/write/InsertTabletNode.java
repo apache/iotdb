@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -537,6 +538,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   int subSerializeSize(int start, int end) {
     int size = 0;
+    size += Long.BYTES;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
@@ -612,6 +614,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
+    buffer.putLong(searchIndex);
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
@@ -723,6 +726,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void subDeserialize(DataInputStream stream) throws IllegalPathException, IOException {
+    searchIndex = stream.readLong();
     devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
     int measurementSize = stream.readInt();
@@ -824,5 +828,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     return true;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertTablet(this, context);
   }
 }

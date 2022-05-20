@@ -21,6 +21,7 @@ parser grammar IoTDBSqlParser;
 
 options { tokenVocab=SqlLexer; }
 
+import IdentifierParser;
 
 /**
  * 1. Top Level Description
@@ -160,7 +161,7 @@ alterTimeseries
 alterClause
     : RENAME beforeName=attributeKey TO currentName=attributeKey
     | SET attributePair (COMMA attributePair)*
-    | DROP STRING_LITERAL (COMMA STRING_LITERAL)*
+    | DROP attributeKey (COMMA attributeKey)*
     | ADD TAGS attributePair (COMMA attributePair)*
     | ADD ATTRIBUTES attributePair (COMMA attributePair)*
     | UPSERT aliasClause? tagClause? attributeClause?
@@ -786,14 +787,6 @@ nodeNameWithoutWildcard
 wildcard
     : STAR
     | DOUBLE_STAR
-    ;
-
-
-// Identifier
-
-identifier
-    : ID
-    | QUOTED_ID
     ;
 
 

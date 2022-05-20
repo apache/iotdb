@@ -72,9 +72,9 @@ public class MetaUtilsTest {
   public void testGroupAlignedPath() throws MetadataException {
     List<PartialPath> pathList = new ArrayList<>();
 
-    MeasurementPath path1 = new MeasurementPath(new PartialPath("root.sg.device.s1"), null);
+    MeasurementPath path1 = new MeasurementPath(new PartialPath("root.sg.device1.s1"), null);
     pathList.add(path1);
-    MeasurementPath path2 = new MeasurementPath(new PartialPath("root.sg.device.s2"), null);
+    MeasurementPath path2 = new MeasurementPath(new PartialPath("root.sg.device1.s2"), null);
     pathList.add(path2);
 
     MeasurementPath path3 = new MeasurementPath(new PartialPath("root.sg.aligned_device.s1"), null);

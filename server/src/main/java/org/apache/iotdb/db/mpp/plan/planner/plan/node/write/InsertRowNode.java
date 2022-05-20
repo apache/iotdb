@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -422,7 +423,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private int subSerializeSize() {
     int size = 0;
-    size += Long.BYTES;
+    size += Long.BYTES * 2;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
@@ -478,6 +479,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   private void subSerialize(IWALByteBufferView buffer) {
+    buffer.putLong(searchIndex);
     buffer.putLong(time);
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
@@ -534,6 +536,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       throws IOException, IllegalPathException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
+    insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
     insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
     insertNode.deserializeMeasurementsAndValues(stream);
@@ -605,5 +608,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     int result = Objects.hash(super.hashCode(), time, isNeedInferType);
     result = 31 * result + Arrays.hashCode(values);
     return result;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertRow(this, context);
   }
 }

@@ -17,22 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.db.service.metrics.predefined;
 
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.sun.management.OperatingSystemMXBean;
 
 import java.lang.management.ManagementFactory;
 
-public class ProcessMetricsMonitor {
-
-  private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
+public class ProcessMetrics implements IMetricSet {
   private OperatingSystemMXBean sunOsMXBean;
   private Runtime runtime;
 
-  public void collectProcessCPUInfo() {
+  public ProcessMetrics() {
+    sunOsMXBean =
+        (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    runtime = Runtime.getRuntime();
+  }
+
+  @Override
+  public void bindTo(MetricManager metricManager) {
+    collectProcessCPUInfo(metricManager);
+    collectProcessMemInfo(metricManager);
+    collectProcessStatusInfo(metricManager);
+    collectThreadInfo(metricManager);
+  }
+
+  @Override
+  public PredefinedMetric getType() {
+    return PredefinedMetric.PROCESS;
+  }
+
+  private void collectProcessCPUInfo(MetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_CPU_LOAD.toString(),
         MetricLevel.CORE,
@@ -50,7 +71,7 @@ public class ProcessMetricsMonitor {
         "process");
   }
 
-  public void collectProcessMemInfo() {
+  private void collectProcessMemInfo(MetricManager metricManager) {
     Runtime runtime = Runtime.getRuntime();
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_MAX_MEM.toString(),
@@ -89,7 +110,7 @@ public class ProcessMetricsMonitor {
         "process");
   }
 
-  public void collectThreadInfo() {
+  private void collectThreadInfo(MetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_THREADS_COUNT.toString(),
         MetricLevel.CORE,
@@ -99,7 +120,7 @@ public class ProcessMetricsMonitor {
         "process");
   }
 
-  public void collectProcessStatusInfo() {
+  private void collectProcessStatusInfo(MetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_STATUS.toString(),
         MetricLevel.CORE,
@@ -107,12 +128,6 @@ public class ProcessMetricsMonitor {
         a -> (getProcessStatus()),
         Tag.NAME.toString(),
         "process");
-  }
-
-  private ProcessMetricsMonitor() {
-    sunOsMXBean =
-        (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    runtime = Runtime.getRuntime();
   }
 
   private long getProcessUsedMemory() {
@@ -136,13 +151,5 @@ public class ProcessMetricsMonitor {
     long processUsedMemory = getProcessUsedMemory();
     long totalPhysicalMemorySize = sunOsMXBean.getTotalPhysicalMemorySize();
     return (double) processUsedMemory / (double) totalPhysicalMemorySize * 100;
-  }
-
-  public static ProcessMetricsMonitor getInstance() {
-    return ThreadMetricsMonitorHolder.INSTANCE;
-  }
-
-  private static class ThreadMetricsMonitorHolder {
-    private static final ProcessMetricsMonitor INSTANCE = new ProcessMetricsMonitor();
   }
 }
