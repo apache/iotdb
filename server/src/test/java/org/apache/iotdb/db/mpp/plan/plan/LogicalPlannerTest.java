@@ -32,7 +32,10 @@ import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -535,6 +538,42 @@ public class LogicalPlannerTest {
       Assert.assertEquals(20, showDevicesNode2.getLimit());
       Assert.assertEquals(10, showDevicesNode2.getOffset());
       Assert.assertTrue(showDevicesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowChildPaths() {
+    String sql = "SHOW CHILD PATHS root.ln";
+    try {
+      NodeManagementMemoryMergeNode memorySourceNode =
+          (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
+      SchemaQueryMergeNode schemaQueryMergeNode =
+          (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
+      ChildPathsSchemaScanNode childPathsSchemaScanNode =
+          (ChildPathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      Assert.assertNotNull(childPathsSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), childPathsSchemaScanNode.getPrefixPath());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowChildNodes() {
+    String sql = "SHOW CHILD NODES root.ln";
+    try {
+      NodeManagementMemoryMergeNode memorySourceNode =
+          (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
+      SchemaQueryMergeNode schemaQueryMergeNode =
+          (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
+      ChildNodesSchemaScanNode childNodesSchemaScanNode =
+          (ChildNodesSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      Assert.assertNotNull(childNodesSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), childNodesSchemaScanNode.getPrefixPath());
     } catch (Exception e) {
       e.printStackTrace();
       fail();

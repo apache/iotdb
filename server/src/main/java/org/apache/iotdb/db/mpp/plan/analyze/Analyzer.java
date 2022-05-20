@@ -22,8 +22,10 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -61,6 +63,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -1112,6 +1116,56 @@ public class Analyzer {
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.countLevelTimeSeriesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowChildPaths(
+        ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showChildPathsStatement);
+
+      SchemaNodeManagementPartition schemaNodeManagementPartition =
+          partitionFetcher.getSchemaNodeManagementPartition(
+              new PathPatternTree(showChildPathsStatement.getPartialPath()),
+              NodeManagementType.CHILD_PATHS);
+
+      if (schemaNodeManagementPartition == null) {
+        return analysis;
+      }
+      if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
+          && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size()
+              == 0) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+      analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
+      analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
+      analysis.setRespDatasetHeader(HeaderConstant.showChildPathsHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowChildNodes(
+        ShowChildNodesStatement showChildNodesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showChildNodesStatement);
+
+      SchemaNodeManagementPartition schemaNodeManagementPartition =
+          partitionFetcher.getSchemaNodeManagementPartition(
+              new PathPatternTree(showChildNodesStatement.getPartialPath()),
+              NodeManagementType.CHILD_NODES);
+
+      if (schemaNodeManagementPartition == null) {
+        return analysis;
+      }
+      if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
+          && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size()
+              == 0) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+      analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
+      analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
+      analysis.setRespDatasetHeader(HeaderConstant.showChildNodesHeader);
       return analysis;
     }
   }

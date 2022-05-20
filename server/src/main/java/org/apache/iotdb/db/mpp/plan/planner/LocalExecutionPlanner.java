@@ -74,10 +74,13 @@ import org.apache.iotdb.db.mpp.execution.operator.process.merge.MultiColumnMerge
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.NonOverlappedMultiColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.ChildNodesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.ChildPathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
@@ -91,10 +94,13 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -271,6 +277,10 @@ public class LocalExecutionPlanner {
         return visitTimeSeriesCount((TimeSeriesCountNode) node, context);
       } else if (node instanceof LevelTimeSeriesCountNode) {
         return visitLevelTimeSeriesCount((LevelTimeSeriesCountNode) node, context);
+      } else if (node instanceof ChildPathsSchemaScanNode) {
+        return visitChildPathsSchemaScan((ChildPathsSchemaScanNode) node, context);
+      } else if (node instanceof ChildNodesSchemaScanNode) {
+        return visitChildNodesSchemaScan((ChildNodesSchemaScanNode) node, context);
       }
       return visitPlan(node, context);
     }
@@ -380,6 +390,44 @@ public class LocalExecutionPlanner {
           node.getPath(),
           node.isPrefixPath(),
           node.getLevel());
+    }
+
+    @Override
+    public Operator visitChildPathsSchemaScan(
+        ChildPathsSchemaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              ChildPathsSchemaScanNode.class.getSimpleName());
+      return new ChildPathsSchemaScanOperator(
+          node.getPlanNodeId(), operatorContext, node.getPrefixPath());
+    }
+
+    @Override
+    public Operator visitChildNodesSchemaScan(
+        ChildNodesSchemaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              ChildNodesSchemaScanNode.class.getSimpleName());
+      return new ChildNodesSchemaScanOperator(
+          node.getPlanNodeId(), operatorContext, node.getPrefixPath());
+    }
+
+    @Override
+    public Operator visitNodeManagementMemoryMerge(
+        NodeManagementMemoryMergeNode node, LocalExecutionPlanContext context) {
+      Operator child = node.getChild().accept(this, context);
+      return new NodeManageMemoryMergeOperator(
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              NodeManageMemoryMergeOperator.class.getSimpleName()),
+          node.getData(),
+          child,
+          node.getType());
     }
 
     @Override
