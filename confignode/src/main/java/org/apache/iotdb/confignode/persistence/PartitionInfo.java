@@ -499,13 +499,13 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  /** Get SchemaNodeManagementPartition */
-  public DataSet getSchemaNodeManagementPartition(List<String> matchedStroageGroups) {
+  /** Get SchemaNodeManagementPartition through matched storageGroup */
+  public DataSet getSchemaNodeManagementPartition(List<String> matchedStorageGroups) {
     SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
     schemaPartitionReadWriteLock.readLock().lock();
     try {
       schemaNodeManagementResp.setSchemaPartition(
-          schemaPartition.getSchemaPartition(matchedStroageGroups));
+          schemaPartition.getSchemaPartition(matchedStorageGroups));
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
       schemaNodeManagementResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
