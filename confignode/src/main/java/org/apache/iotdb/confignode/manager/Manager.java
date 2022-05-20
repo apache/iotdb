@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -153,6 +154,20 @@ public interface Manager {
    * @return SchemaPartitionDataSet
    */
   DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
+
+  /**
+   * create SchemaNodeManagementPartition for child paths node management
+   *
+   * @return SchemaNodeManagementPartitionDataSet
+   */
+  DataSet getChildPathsPartition(PartialPath partialPath);
+
+  /**
+   * create SchemaNodeManagementPartition for child nodes node management
+   *
+   * @return SchemaNodeManagementPartitionDataSet
+   */
+  DataSet getChildNodesPartition(PartialPath partialPath);
 
   /**
    * Get DataPartition

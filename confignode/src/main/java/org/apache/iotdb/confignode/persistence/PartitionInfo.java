@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -495,6 +496,20 @@ public class PartitionInfo implements SnapshotProcessor {
     } finally {
       unlockAllWrite();
     }
+  }
+
+  /** Get SchemaNodeManagementPartition */
+  public DataSet getSchemaNodeManagementPartition(List<String> matchedStroageGroups) {
+    SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
+    schemaPartitionReadWriteLock.readLock().lock();
+    try {
+      schemaNodeManagementResp.setSchemaPartition(
+          schemaPartition.getSchemaPartition(matchedStroageGroups));
+    } finally {
+      schemaPartitionReadWriteLock.readLock().unlock();
+      schemaNodeManagementResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    }
+    return schemaNodeManagementResp;
   }
 
   private void lockAllWrite() {
