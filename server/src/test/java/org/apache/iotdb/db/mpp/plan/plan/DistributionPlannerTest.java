@@ -736,7 +736,7 @@ public class DistributionPlannerTest {
 
     aggregationExpression.put("root.sg.*.s1", s1Expression);
     aggregationExpression.put("root.sg.*.s2", s2Expression);
-    analysis.setAggregationExpressions(aggregationExpression);
+    // analysis.setAggregationExpressions(aggregationExpression);
 
     // construct schema partition
     SchemaPartition schemaPartition =
