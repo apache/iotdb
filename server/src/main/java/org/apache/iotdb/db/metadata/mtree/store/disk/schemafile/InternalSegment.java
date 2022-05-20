@@ -6,6 +6,7 @@ import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowExceptio
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Queue;
 
@@ -226,8 +227,6 @@ public class InternalSegment implements ISegment {
                   - COMPOUND_POINT_LENGTH * pointNum
                   + searchKey.getBytes().length
                   + 4);
-      // spareSpace = (short) (this.spareSpace - COMPOUND_POINT_LENGTH - 4 -
-      // searchKey.getBytes().length);
 
       // only key in this.buffer
       this.pointNum = 2;
@@ -566,8 +565,8 @@ public class InternalSegment implements ISegment {
   }
 
   private String getKeyByIndex(int index) {
-    if (index == 0) {
-      return null;
+    if (index <= 0 || index >= pointNum) {
+      throw new IndexOutOfBoundsException();
     }
     return getKeyByOffset(keyOffset(getPointerByIndex(index)));
   }
