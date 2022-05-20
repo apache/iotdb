@@ -90,6 +90,13 @@ public interface Manager {
   LoadManager getLoadManager();
 
   /**
+   * Get UDFManager
+   *
+   * @return UDFManager instance
+   */
+  UDFManager getUDFManager();
+
+  /**
    * Register DataNode
    *
    * @return DataNodeConfigurationDataSet

@@ -598,6 +598,11 @@ public class ConfigManager implements Manager {
         : status;
   }
 
+  @Override
+  public UDFManager getUDFManager() {
+    return udfManager;
+  }
+
   public ProcedureManager getProcedureManager() {
     return procedureManager;
   }
