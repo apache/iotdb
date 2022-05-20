@@ -504,11 +504,8 @@ public class AuthorizerManager implements IAuthorizer {
    * <p>If the permission information of the role changes, only the role cache information is
    * cleared. During permission checking, if the role belongs to a user, the user will be
    * initialized.
-   *
-   * @param username
-   * @param roleName
    */
-  public void invalidateCache(String username, String roleName) {
+  public boolean invalidateCache(String username, String roleName) {
     if (userCache.getIfPresent(username) != null) {
       List<String> roleList = userCache.getIfPresent(username).getRoleList();
       if (!roleList.isEmpty()) {
@@ -519,6 +516,11 @@ public class AuthorizerManager implements IAuthorizer {
     if (roleCache.getIfPresent(roleName) != null) {
       roleCache.invalidate(roleName);
     }
+    if (userCache.getIfPresent(username) != null && roleCache.getIfPresent(roleName) != null) {
+      logger.error("datanode cache initialization failed");
+      return false;
+    }
+    return true;
   }
 
   /**

@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -65,22 +66,23 @@ public class PermissionManager {
    * @return TSStatus
    */
   public TSStatus operatePermission(AuthorReq authorReq) {
-    TSStatus status = getConsensusManager().write(authorReq).getStatus();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      try {
-        // If the permissions change, clear the cache content affected by the operation
-        if (authorReq.getAuthorType() != ConfigRequestType.CreateUser
-            || authorReq.getAuthorType() != ConfigRequestType.CreateRole) {
-          invalidateCache(authorReq.getUserName(), authorReq.getRoleName());
-        }
-      } catch (IOException | TException e) {
-        logger.error(
-            "Failed to initialize cache,the initialization operation is {}, the error is {}",
-            authorReq.getAuthorType(),
-            e);
+    TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    try {
+      // If the permissions change, clear the cache content affected by the operation
+      if (authorReq.getAuthorType() != ConfigRequestType.CreateUser
+          && authorReq.getAuthorType() != ConfigRequestType.CreateRole) {
+        tsStatus = invalidateCache(authorReq.getUserName(), authorReq.getRoleName());
       }
+    } catch (IOException | TException e) {
+      logger.error(
+          "Failed to initialize cache,the initialization operation is {}, the error is {}",
+          authorReq.getAuthorType(),
+          e);
     }
-    return status;
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return tsStatus;
+    }
+    return getConsensusManager().write(authorReq).getStatus();
   }
 
   /**
@@ -107,18 +109,30 @@ public class PermissionManager {
   }
 
   /**
-   * When the permission information of a user or role is changed, the permission cache information
-   * of all DataNode is initialized, and only the affected cache is initialized.
+   * When the permission information of a user or role is changed will clear all datanode
+   * permissions related to the user or role
    */
-  public void invalidateCache(String username, String roleName) throws IOException, TException {
+  public TSStatus invalidateCache(String username, String roleName) throws IOException, TException {
     List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
+    TSStatus status;
     req.setUsername(username);
     req.setRoleName(roleName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
-      INTERNAL_SERVICE_CLIENT_MANAGER
-          .borrowClient(dataNodeInfo.getLocation().getInternalEndPoint())
-          .invalidatePermissionCache(req);
+      TEndPoint internalEndPoint = dataNodeInfo.getLocation().getInternalEndPoint();
+      status =
+          INTERNAL_SERVICE_CLIENT_MANAGER
+              .borrowClient(internalEndPoint)
+              .invalidatePermissionCache(req);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        status.setMessage(
+            "datanode cache initialization failed, ip: "
+                + internalEndPoint.getIp()
+                + ", port: "
+                + internalEndPoint.getPort());
+        return status;
+      }
     }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 }

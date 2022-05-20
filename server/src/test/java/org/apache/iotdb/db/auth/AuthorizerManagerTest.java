@@ -40,7 +40,6 @@ import java.util.Set;
 public class AuthorizerManagerTest {
 
   AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
-  TPermissionInfoResp tPermissionInfoResp = new TPermissionInfoResp();
 
   @Test
   public void permissionCacheTest() {

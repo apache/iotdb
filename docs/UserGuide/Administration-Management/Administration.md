@@ -344,3 +344,7 @@ A path pattern's result set contains all the elements of its sub pattern's
 result set. For example, `root.sg.d.*` is a sub pattern of
 `root.sg.*.*`, while `root.sg.**` is not a sub pattern of
 `root.sg.*.*`. When a user is granted privilege on a pattern, the pattern used in his DDL or DML must be a sub pattern of the privilege pattern, which guarantees that the user won't access the timeseries exceed his privilege scope.
+
+### Permission cache
+
+In distributed related permission operations, when changing permissions other than creating users and roles, all the cache information of `dataNode` related to the user (role) will be cleared first. If any `dataNode` cache information is clear and fails, the permission change task will fail.

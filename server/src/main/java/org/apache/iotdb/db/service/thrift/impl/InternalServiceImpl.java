@@ -83,6 +83,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -329,8 +330,10 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) throws TException {
-    AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName());
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
   }
 
   @Override
