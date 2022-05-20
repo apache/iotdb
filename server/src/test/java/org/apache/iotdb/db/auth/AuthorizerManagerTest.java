@@ -28,26 +28,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AuthorizerManagerTest {
 
-  AuthorizerManager authorizerManager;
-  TPermissionInfoResp tPermissionInfoResp;
-
-  @Before
-  public void setUp() throws Exception {
-    authorizerManager = AuthorizerManager.getInstance();
-    tPermissionInfoResp = new TPermissionInfoResp();
-  }
+  AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  TPermissionInfoResp tPermissionInfoResp = new TPermissionInfoResp();
 
   @Test
   public void permissionCacheTest() {
@@ -112,11 +100,13 @@ public class AuthorizerManagerTest {
 
     User user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
     Role role1 = authorizerManager.getRoleCache().getIfPresent(role.getName());
+    assert user1 != null;
     Assert.assertEquals(user.getName(), user1.getName());
     Assert.assertEquals(user.getPassword(), user1.getPassword());
     Assert.assertEquals(user.getPrivilegeList(), user1.getPrivilegeList());
     Assert.assertEquals(user.getRoleList(), user1.getRoleList());
 
+    assert role1 != null;
     Assert.assertEquals(role.getName(), role1.getName());
     Assert.assertEquals(role.getPrivilegeList(), role1.getPrivilegeList());
 
@@ -125,7 +115,7 @@ public class AuthorizerManagerTest {
     user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
     role1 = authorizerManager.getRoleCache().getIfPresent(role.getName());
 
-    Assert.assertEquals(user1, null);
-    Assert.assertEquals(role1, null);
+    Assert.assertNull(user1);
+    Assert.assertNull(role1);
   }
 }
