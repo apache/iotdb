@@ -132,7 +132,6 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");

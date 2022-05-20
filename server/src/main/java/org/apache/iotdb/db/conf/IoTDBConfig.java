@@ -159,7 +159,9 @@ public class IoTDBConfig {
   private WALMode walMode = WALMode.ASYNC;
 
   /** WAL directories */
-  private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
+  private String[] walDirs = {
+    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
+  };
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
   private volatile long fsyncWalDelayInMs = 10;
@@ -216,28 +218,29 @@ public class IoTDBConfig {
    */
   private int tlogBufferSize = 1024 * 1024;
 
-  /** default base dir, stores all IoTDB runtime files */
-  private static final String DEFAULT_BASE_DIR = "data";
-
   /** System directory, including version file for each storage group and metadata */
-  private String systemDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+  private String systemDir =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /** Schema directory, including storage set of values. */
   private String schemaDir =
-      DEFAULT_BASE_DIR
+      IoTDBConstant.DEFAULT_BASE_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
   /** Sync directory, including the log and hardlink tsfiles */
-  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+  private String syncDir =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
-  private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
+  private String tracingDir =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
 
   /** Query directory, stores temporary files of query */
-  private String queryDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+  private String queryDir =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -255,13 +258,15 @@ public class IoTDBConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
   /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
-  private String[] dataDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME};
+  private String[] dataDirs = {
+    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
+  };
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
   /** Consensus directory. */
-  private String consensusDir = DEFAULT_BASE_DIR + File.separator + "consensus";
+  private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
