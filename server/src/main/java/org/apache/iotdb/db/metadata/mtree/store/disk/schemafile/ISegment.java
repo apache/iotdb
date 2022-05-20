@@ -39,6 +39,15 @@ public interface ISegment {
   int insertRecord(String key, ByteBuffer buffer) throws RecordDuplicatedException;
 
   /**
+   * Insert B+Tree entry for {@link InternalSegment}.
+   *
+   * @param key
+   * @param point address of a segment which has minimum key as first parameter
+   * @return spare space if succeeds, -1 if overflow
+   */
+  int insertRecord(String key, int point);
+
+  /**
    * @param key name of the record, not the alias
    * @param buffer content of the updated record
    * @return index of keyAddressList, -1 for not found, exception for space run out
@@ -56,6 +65,14 @@ public interface ISegment {
    * @return node instance
    */
   IMNode getRecordAsIMNode(String key) throws MetadataException;
+
+  /**
+   * Get page index which may contain passing key.
+   *
+   * @param key search key.
+   * @return page index.
+   */
+  int getPageIndexContains(String key);
 
   boolean hasRecordKey(String key);
 

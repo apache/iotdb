@@ -38,4 +38,11 @@ public class SegmentOverflowException extends MetadataException {
         TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
         true);
   }
+
+  public SegmentOverflowException(String key) {
+    super(
+        String.format("Segment not enough space even after compact to inset key: " + key),
+        TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
+        true);
+  }
 }

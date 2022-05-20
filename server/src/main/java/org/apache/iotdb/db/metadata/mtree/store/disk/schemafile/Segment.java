@@ -50,16 +50,16 @@ public class Segment implements ISegment {
   private static final Logger logger = LoggerFactory.getLogger(Segment.class);
 
   // members load from buffer
-  final ByteBuffer buffer;
-  short length, freeAddr, recordNum, pairLength;
-  boolean delFlag;
-  long prevSegAddress, nextSegAddress;
+  private final ByteBuffer buffer;
+  private short length, freeAddr, recordNum, pairLength;
+  private boolean delFlag;
+  private long prevSegAddress, nextSegAddress;
 
   // reconstruct from key-address pair buffer
-  List<Pair<String, Short>> keyAddressList;
+  private List<Pair<String, Short>> keyAddressList;
 
   // reconstruct every initiation after keyAddressList but not write into buffer
-  List<Pair<String, String>> aliasKeyList;
+  private List<Pair<String, String>> aliasKeyList;
 
   /**
    * Init Segment with a buffer, which contains all information about this segment
@@ -209,6 +209,11 @@ public class Segment implements ISegment {
   }
 
   @Override
+  public int insertRecord(String key, int pointer) {
+    return -1;
+  }
+
+  @Override
   public IMNode getRecordAsIMNode(String key) throws MetadataException {
     // index means order for target node in keyAddressList, NOT aliasKeyList
     int index = getRecordIndexByKey(key);
@@ -244,6 +249,11 @@ public class Segment implements ISegment {
       logger.error(e.toString());
       throw e;
     }
+  }
+
+  @Override
+  public int getPageIndexContains(String key) {
+    return -1;
   }
 
   @Override

@@ -234,6 +234,39 @@ public class SchemaFile implements ISchemaFile {
     return true;
   }
 
+  /**
+   * Pseudocode for complete write process. No more segment-list, but segment-tree.
+   *
+   * <p>loop for nc in new_child: // notice that fPage is a leaf page fPage, segId, fAddr, cBuffer
+   * // prepare first page and buffer res = fPage.writeWithRearrange(segId, cBuffer) if res failed:
+   * if page.segSize(segId) < FULL_SEG: // getMinPageAndTrs() else: insertLeaf(fPage, segId, nc)
+   *
+   * <p>// a variant b+ tree that: 1) split by inserted key; 2) maintains root address unchanged.
+   * insertLeaf(fPage, segId, nc.key, nc.buffer) { // notice fPage must be a leaf nPage =
+   * allocPage();
+   *
+   * <p>// notice, oriMinKeyFPage may not be smaller than nc.key (as in left-most leaf)
+   * oriMinKeyFPage = fPage.getMinKey(segId); // TODO: Page.getMinKey
+   *
+   * <p>pPage = getPageInstance(fPage.getPageIdx, segId) if (pPage == null) { // TODO: alloc a new
+   * leaf split from fPage pPage = allocPage(); pPage.allocSegment();
+   *
+   * <p>// TODO: split fPage into nPage and pPage fPage.splitWithKeys(nPage, pPage, nc.key);
+   *
+   * <p>fPage.transformToInternal(); insertInternal(fPage, pPage.getMinKey, nPage, pPage) } else {
+   * fPage.splitWithKey(nPage, segId, nc.key, nc.buffer); // TODO: move records >= nc.key to nPage
+   * mKeyInNPage = nPage.getMinKey(); new_key, new_point <- page contains smaller min key among
+   * fPage and nPage insertInternal(pPage, new_key, new_point) } }
+   *
+   * <p>// insert into an existed internal insertInternal(fPage, nk, np) { if space_not_enough {
+   * pPage <- parent of fPage if (pPage == null) { allocate 2 page, split fPage into them clean
+   * fPage and insert entries of above 2 pages } else { allocate 1 page, split half fPage into it
+   * insertInternal(fPage, new_key, new_point) } } insert into slot and record }
+   *
+   * <p>// insert into an empty internal insertInternal() {
+   *
+   * <p>}
+   */
   @Override
   public void writeMNode(IMNode node) throws MetadataException, IOException {
     int pageIndex;
