@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -28,6 +29,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -38,11 +41,12 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-
   private final List<Operator> children;
   private final int inputOperatorsCount;
+
   private final TsBlock[] inputTsBlocks;
 
+  private final List<SlidingWindowAggregator> aggregators;
   private final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
@@ -51,11 +55,13 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
+      List<SlidingWindowAggregator> aggregators,
       List<Operator> children,
       List<TSDataType> outputDataTypes,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
     this.operatorContext = operatorContext;
+    this.aggregators = aggregators;
     this.children = children;
 
     this.inputOperatorsCount = children.size();
@@ -76,7 +82,35 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
     for (int i = 0; i < inputOperatorsCount; i++) {
       inputTsBlocks[i] = children.get(i).next();
     }
+    // consume current input tsBlocks
+    for (SlidingWindowAggregator aggregator : aggregators) {
+      aggregator.setTimeRange(curTimeRange);
+      aggregator.processTsBlocks(inputTsBlocks);
+    }
+    // output result from aggregator
     return null;
+  }
+
+  public static TsBlock updateResultTsBlockFromAggregators(
+      TsBlockBuilder tsBlockBuilder,
+      List<SlidingWindowAggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator) {
+    tsBlockBuilder.reset();
+    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    // Use start time of current time range as time column
+    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    int columnIndex = 0;
+    for (SlidingWindowAggregator aggregator : aggregators) {
+      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
+      columnBuilder[0] = columnBuilders[columnIndex++];
+      if (columnBuilder.length > 1) {
+        columnBuilder[1] = columnBuilders[columnIndex++];
+      }
+      aggregator.outputResult(columnBuilder);
+    }
+    tsBlockBuilder.declarePosition();
+    return tsBlockBuilder.build();
   }
 
   @Override
