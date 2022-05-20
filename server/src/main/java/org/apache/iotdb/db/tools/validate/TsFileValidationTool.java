@@ -66,7 +66,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * <p>Timeseries overlap within one page
  */
 public class TsFileValidationTool {
-  private static boolean printDetails = true;
+  private static boolean printDetails = false;
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileValidationTool.class);
   private static final List<File> seqDataDirList = new ArrayList<>();
