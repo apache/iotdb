@@ -910,8 +910,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testDeleteInSelection() throws Exception {
-    RewriteCrossSpaceCompactionResource resource =
-        new RewriteCrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     AtomicBoolean fail = new AtomicBoolean(false);
