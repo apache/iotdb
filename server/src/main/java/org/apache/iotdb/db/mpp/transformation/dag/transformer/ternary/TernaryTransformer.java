@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.query.udf.core.transformer.ternary;
+package org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;

@@ -1,11 +1,11 @@
-package org.apache.iotdb.db.query.expression.ternary;
+package org.apache.iotdb.db.mpp.plan.expression.ternary;
 
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ternary.BetweenTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ternary.TernaryTransformer;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary.BetweenTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary.TernaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
