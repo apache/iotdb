@@ -122,7 +122,7 @@ public class SchemaPage implements ISchemaPage {
 
   @Override
   public long write(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
-    ISegment tarSeg = getSegment(segIdx);
+    ISegment<ByteBuffer, IMNode> tarSeg = getSegment(segIdx);
     int res = tarSeg.insertRecord(key, buffer);
 
     if (res < 0) {
@@ -151,9 +151,9 @@ public class SchemaPage implements ISchemaPage {
 
   @Override
   public IMNode read(short segIdx, String key) throws SegmentNotFoundException {
-    ISegment seg = getSegment(segIdx);
+    ISegment<ByteBuffer, IMNode> seg = getSegment(segIdx);
     try {
-      return seg.getRecordAsIMNode(key);
+      return seg.getRecordByKey(key);
     } catch (MetadataException e) {
       e.printStackTrace();
       return null;
@@ -467,7 +467,11 @@ public class SchemaPage implements ISchemaPage {
     }
 
     // allocate buffer slice successfully
-    seg.extendsTo(newBuffer);
+    try {
+      seg.extendsTo(newBuffer);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
     ISegment newSeg = Segment.loadAsSegment(newBuffer);
 
     // since this buffer is allocated from pageSpareOffset, new spare offset can simply add size up
@@ -558,7 +562,11 @@ public class SchemaPage implements ISchemaPage {
 
     // extend to a temporary buffer
     ByteBuffer newBuffer = ByteBuffer.allocate(newSize);
-    getSegment(segId).extendsTo(newBuffer);
+    try {
+      getSegment(segId).extendsTo(newBuffer);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
 
     // write back the buffer content
     pageBuffer.clear();
@@ -582,7 +590,11 @@ public class SchemaPage implements ISchemaPage {
   protected void extendsSegmentTo(ByteBuffer dstBuffer, short segId)
       throws SegmentNotFoundException {
     ISegment sf = getSegment(segId);
-    sf.extendsTo(dstBuffer);
+    try {
+      sf.extendsTo(dstBuffer);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    }
   }
 
   protected void updateRecordSegAddr(short segId, String key, long newSegAddr)

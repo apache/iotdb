@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.InternalSegment;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -53,7 +54,7 @@ public class InternalSegmentTest {
   public void initTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(1000);
 
-    ISegment seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
     String[] test =
         new String[] {"abc", "key3", "key4", "key9", "key5", "key6", "key112", "key888"};
 
@@ -61,21 +62,21 @@ public class InternalSegmentTest {
       seg.insertRecord(test[i], i);
     }
     seg.syncBuffer();
-    ISegment seg2 = InternalSegment.loadInternalSegment(buffer);
+    ISegment<Integer, Integer> seg2 = InternalSegment.loadInternalSegment(buffer);
     Assert.assertEquals(seg.inspect(), seg2.inspect());
 
     Assert.assertTrue(seg2.hasRecordKey("key5"));
     Assert.assertFalse(seg2.hasRecordKey("key51"));
-    Assert.assertEquals(2, seg2.getPageIndexContains("key41"));
-    Assert.assertEquals(0, seg2.getPageIndexContains("abd"));
-    Assert.assertEquals(3, seg2.getPageIndexContains("zzz"));
+    Assert.assertEquals(2, seg2.getRecordByKey("key41").intValue());
+    Assert.assertEquals(0, seg2.getRecordByKey("abd").intValue());
+    Assert.assertEquals(3, seg2.getRecordByKey("zzz").intValue());
   }
 
   @Test
   public void evenSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(150);
 
-    ISegment seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = 0; i < test.length; i++) {
@@ -86,17 +87,17 @@ public class InternalSegmentTest {
     String sk = ((InternalSegment) seg).splitByKey("a8", 666, buf2);
 
     Assert.assertEquals("a5", sk);
-    ISegment seg2 = InternalSegment.loadInternalSegment(buf2);
-    Assert.assertEquals(4, seg2.getPageIndexContains("a5"));
-    Assert.assertEquals(5, seg2.getPageIndexContains("a6"));
-    Assert.assertEquals(999, seg.getPageIndexContains("a"));
+    ISegment<Integer, Integer> seg2 = InternalSegment.loadInternalSegment(buf2);
+    Assert.assertEquals(4, seg2.getRecordByKey("a5").intValue());
+    Assert.assertEquals(5, seg2.getRecordByKey("a6").intValue());
+    Assert.assertEquals(999, seg.getRecordByKey("a").intValue());
   }
 
   @Test
   public void increasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
-    ISegment seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = 0; i < test.length; i++) {
@@ -113,7 +114,7 @@ public class InternalSegmentTest {
     String sk = ((InternalSegment) seg).splitByKey("a99", 666, buf2);
 
     Assert.assertEquals("a9", sk);
-    Assert.assertEquals(7, InternalSegment.loadInternalSegment(buf2).getPageIndexContains("a91"));
+    Assert.assertEquals(7, InternalSegment.loadInternalSegment(buf2).getRecordByKey("a91"));
 
     Assert.assertEquals(124, seg.insertRecord("a1", 0));
 
@@ -133,7 +134,7 @@ public class InternalSegmentTest {
     sk = ((InternalSegment) seg).splitByKey("a24", 24, buf2);
 
     Assert.assertEquals("a23", sk);
-    Assert.assertEquals(24, InternalSegment.loadInternalSegment(buf2).getPageIndexContains("a24"));
+    Assert.assertEquals(24, InternalSegment.loadInternalSegment(buf2).getRecordByKey("a24"));
 
     Assert.assertEquals(179, seg.insertRecord("a1", 0));
     Assert.assertEquals(166, InternalSegment.loadInternalSegment(buf2).insertRecord("a24", 0));
@@ -143,7 +144,7 @@ public class InternalSegmentTest {
   public void decreasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
-    ISegment seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = test.length - 1; i >= 0; i--) {
@@ -166,12 +167,34 @@ public class InternalSegmentTest {
     sk = ((InternalSegment) seg).splitByKey("a11", 110, buf2);
     Assert.assertEquals("a11", sk);
     Assert.assertEquals(253, seg.insertRecord("a0", 1));
-    Assert.assertEquals(110, InternalSegment.loadInternalSegment(buf2).getPageIndexContains("a11"));
+    Assert.assertEquals(110, InternalSegment.loadInternalSegment(buf2).getRecordByKey("a11"));
   }
 
   @Test
-  public void allTestsWithNoBulkSplit() throws MetadataException {
-    InternalSegment.BULK_SPLIT = false;
+  public void increasingOnLowIndex() throws MetadataException{
+    ByteBuffer buffer = ByteBuffer.allocate(300);
+
+    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
+    String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"};
+
+    for (int i = 0; i < test.length; i++) {
+      seg.insertRecord(test[i], i);
+    }
+
+    seg.insertRecord("a01", 10);
+    seg.insertRecord("a02", 20);
+
+    ByteBuffer buf2 = ByteBuffer.allocate(300);
+
+    // split when insert the biggest key
+    String sk = seg.splitByKey("a04", 30, buf2);
+    Assert.assertEquals("a3", sk);
+    Assert.assertEquals(6, seg.getAllRecords().size());
+  }
+
+  @Test
+  public void allTestsWithSwitchedBulkSplit() throws MetadataException {
+    SchemaFile.BULK_SPLIT = !SchemaFile.BULK_SPLIT;
     decreasingSplitTest();
     increasingSplitTest();
     evenSplitTest();

@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.InternalSegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -137,6 +140,110 @@ public class SegmentTest {
     System.out.println(b[0]);
   }
 
+
+  @Test
+  public void evenSplitTest() throws MetadataException {
+    ByteBuffer buffer = ByteBuffer.allocate(500);
+    ISegment<ByteBuffer, IMNode> seg = Segment.initAsSegment(buffer);
+    String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"};
+    IMNode mNode = getMeasurementNode(null, "m", null);
+    ByteBuffer buf = RecordUtils.node2Buffer(mNode);
+
+    for (int i = 0; i < test.length; i++) {
+      seg.insertRecord(test[i], buf);
+    }
+
+    ByteBuffer buf2 = ByteBuffer.allocate(500);
+    String sk = seg.splitByKey("a55", buf, buf2);
+
+    Assert.assertEquals("a5", sk);
+    Assert.assertEquals(4, seg.getAllRecords().size());
+    Assert.assertEquals(6, Segment.loadAsSegment(buf2).getAllRecords().size());
+
+    seg.syncBuffer();
+    ISegment seg3 = Segment.loadAsSegment(buffer);
+    Assert.assertEquals(seg.getAllRecords().size(), seg3.getAllRecords().size());
+  }
+
+  @Test
+  public void increasingSplitTest() throws MetadataException {
+    ByteBuffer buffer = ByteBuffer.allocate(500);
+    ByteBuffer buf2 = ByteBuffer.allocate(500);
+    ISegment<ByteBuffer, IMNode> seg = Segment.initAsSegment(buffer);
+    String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
+    IMNode mNode = new InternalMNode(null, "m");
+    ByteBuffer buf = RecordUtils.node2Buffer(mNode);
+
+    for (int i = 0; i < test.length; i++) {
+      seg.insertRecord(test[i], buf);
+    }
+    // at largest
+    String sk = seg.splitByKey("a9", buf, buf2);
+    Assert.assertEquals("a9", sk);
+    Assert.assertEquals(1, Segment.loadAsSegment(buf2).getAllRecords().size());
+
+    // at second-largest
+    seg.insertRecord("a71", buf);
+    seg.insertRecord("a72", buf);
+    buf2.clear();
+    sk = seg.splitByKey("a73", buf, buf2);
+    Assert.assertEquals("a73", sk);
+    Assert.assertEquals(2, Segment.loadAsSegment(buf2).getAllRecords().size());
+
+    // at lower half
+    seg.insertRecord("a00", buf);
+    seg.insertRecord("a01", buf);
+    buf2.clear();
+    sk = seg.splitByKey("a02", buf, buf2);
+    Assert.assertEquals("a3", sk);
+    Assert.assertEquals(5, seg.getAllRecords().size());
+  }
+
+  @Test
+  public void decreasingSplitTest() throws MetadataException {
+    ByteBuffer buffer = ByteBuffer.allocate(500);
+    ByteBuffer buf2 = ByteBuffer.allocate(500);
+    ISegment<ByteBuffer, IMNode> seg = Segment.initAsSegment(buffer);
+    String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
+    IMNode mNode = new InternalMNode(null, "m");
+    ByteBuffer buf = RecordUtils.node2Buffer(mNode);
+
+    for (int i = test.length-1; i >= 0; i--) {
+      seg.insertRecord(test[i], buf);
+    }
+    // at second-smallest
+    seg.insertRecord("a12", buf);
+    seg.insertRecord("a11", buf);
+
+    print(seg.inspect());
+
+    String sk = seg.splitByKey("a10", buf, buf2);
+    Assert.assertEquals("a10", sk);
+    Assert.assertEquals(1, seg.getAllRecords().size());
+    Assert.assertEquals(10, Segment.loadAsSegment(buf2).getAllRecords().size());
+
+    // at higher half
+    test = new String[] {"a5", "a6", "a7", "a8"};
+    for (int i = test.length-1; i >= 0; i--) {
+      seg.insertRecord(test[i], buf);
+    }
+    seg.insertRecord("a84", buf);
+    seg.insertRecord("a83", buf);
+    buf2.clear();
+    sk = seg.splitByKey("a82", buf, buf2);
+
+    Assert.assertEquals("a7", sk);
+    Assert.assertEquals(3, seg.getAllRecords().size());
+  }
+
+  public void print(ByteBuffer buf) {
+    System.out.println(Segment.loadAsSegment(buf).inspect());
+  }
+
+  public void print(Object s) {
+    System.out.println(s);
+  }
+
   private void printBuffer(ByteBuffer buf) {
     int pos = buf.position();
     int lim = buf.limit();
@@ -147,5 +254,12 @@ public class SegmentTest {
       pos++;
     }
     System.out.println("");
+  }
+
+  private IMNode getMeasurementNode(IMNode par, String name, String alias) {
+    IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
+    IMeasurementMNode mNode =
+        MeasurementMNode.getMeasurementMNode(par != null ? par.getAsEntityMNode() : null, name, schema, alias);
+    return mNode;
   }
 }

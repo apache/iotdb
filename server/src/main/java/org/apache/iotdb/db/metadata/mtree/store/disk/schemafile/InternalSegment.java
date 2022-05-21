@@ -25,18 +25,15 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.Queue;
 
 /**
  * Work like an internal node within a B+ tree constitute of segments. <br>
  * Content of this segment is pointers to other segments, and keys suggesting information.
  */
-public class InternalSegment implements ISegment {
+public class InternalSegment implements ISegment<Integer, Integer> {
   public static int COMPOUND_POINT_LENGTH = 8;
-  // segment may split into 2 part with different entries
-  public static boolean INCLINED_SPLIT = true;
-  // split may implement a fast bulk way
-  public static boolean BULK_SPLIT = true;
 
   // members load from buffer
   private final ByteBuffer buffer;
@@ -77,12 +74,13 @@ public class InternalSegment implements ISegment {
    * </ul>
    *
    * (--- checksum, parent record address, max/min record key may be contained further ---)
-   * <li>var length: compoundPointers, begin at 25 bytes offset, each entry occupies 8 bytes <br>
+   * <li>var length: compoundPointers, begin at 25 bytes offset, each occupies 8 bytes <br>
    *     ... spare space ...
    * <li>var length: keys, search code within the b+ tree
    */
   private InternalSegment(ByteBuffer buf, boolean override, int p0) {
     this.buffer = buf;
+    this.buffer.clear();
     if (override) {
       this.freeAddr = (short) this.buffer.capacity();
       this.pointNum = 1;
@@ -95,7 +93,6 @@ public class InternalSegment implements ISegment {
       this.buffer.position(SEG_HEADER_SIZE);
       ReadWriteIOUtils.write(compoundPointer(p0, Short.MIN_VALUE), this.buffer);
     } else {
-      this.buffer.clear();
       this.freeAddr = ReadWriteIOUtils.readShort(this.buffer);
       this.pointNum = ReadWriteIOUtils.readShort(this.buffer);
       this.spareSpace = ReadWriteIOUtils.readShort(this.buffer);
@@ -124,14 +121,15 @@ public class InternalSegment implements ISegment {
   }
 
   // region Interface Implementation
-
+  /**
+   * Insert B+Tree entry for {@link InternalSegment}.
+   *
+   * @param key
+   * @param pointer address of a segment which has minimum key as first parameter
+   * @return spare space if succeeds, -1 if overflow
+   */
   @Override
-  public int insertRecord(String key, ByteBuffer buffer) throws RecordDuplicatedException {
-    return -1;
-  }
-
-  @Override
-  public int insertRecord(String key, int pointer) {
+  public int insertRecord(String key, Integer pointer) {
     int pos = getIndexByKey(key);
     // key already exists
     if (pos != 0 && getKeyByIndex(pos).equals(key)) {
@@ -186,23 +184,24 @@ public class InternalSegment implements ISegment {
    * Notice that split segment must be right sibling to the original one.
    *
    * @param key key occurs split
-   * @param pk point occurs split
+   * @param tPk boxed point occurs split
    * @param dstBuffer split segment buffer
    * @return search key for split segment
    */
-  public synchronized String splitByKey(String key, int pk, ByteBuffer dstBuffer)
+  public synchronized String splitByKey(String key, Integer tPk, ByteBuffer dstBuffer)
       throws MetadataException {
     if (dstBuffer.capacity() != this.buffer.capacity()) {
-      throw new MetadataException("Segments only split with same size.");
+      throw new MetadataException("Segments only split with same capacity.");
     }
 
     if (this.pointNum < 2) {
       throw new MetadataException("Segment has less than 2 pointers can not be split.");
     }
 
+    int pk = tPk;
     // whether to implement inclined split
     boolean monotonic =
-        INCLINED_SPLIT
+        SchemaFile.INCLINED_SPLIT
             && (lastKey != null)
             && (penulKey != null)
             && ((key.compareTo(lastKey)) * (lastKey.compareTo(penulKey)) > 0);
@@ -220,8 +219,8 @@ public class InternalSegment implements ISegment {
     this.buffer.clear();
 
     int pos = getIndexByKey(key);
-    // first two branches are specific optimization
-    if (BULK_SPLIT && pos == 0 && monotonic) {
+    // bulk split will not compact buffer immediately, thus save some time
+    if (SchemaFile.BULK_SPLIT && pos == 0 && monotonic) {
       // bulk way migrates all keys while k1, which is then the search key, is unnecessary
       freeAddr = this.freeAddr;
       dstBuffer.position(this.freeAddr);
@@ -256,7 +255,7 @@ public class InternalSegment implements ISegment {
       ReadWriteIOUtils.write(key, this.buffer);
       this.buffer.position(SEG_HEADER_SIZE + COMPOUND_POINT_LENGTH);
       ReadWriteIOUtils.write(compoundPointer(pk, this.freeAddr), this.buffer);
-    } else if (BULK_SPLIT && pos == this.pointNum - 1 && monotonic) {
+    } else if (SchemaFile.BULK_SPLIT && pos == this.pointNum - 1 && monotonic) {
       // only p_n-1 and key will be written into split segment
       freeAddr = (short) (dstBuffer.capacity() - key.getBytes().length - 4);
       dstBuffer.position(freeAddr);
@@ -274,13 +273,21 @@ public class InternalSegment implements ISegment {
       this.pointNum -= 1;
       this.spareSpace += (short) (removedKey.getBytes().length + 4 + COMPOUND_POINT_LENGTH);
     } else {
-      // supposing splitPos is an index of a virtual array of ordered keys including the new one,
-      // from 1 to n
-      // the middle of it is (1+n)/2, and splitPos could equal to pos if monotonic
-      int splitPos = monotonic ? pos : (this.pointNum + 1) / 2;
+      // supposing splitPos is an index of a virtual array of ordered keys
+      // the virtual array includes the insert, indexed from 1 to n (n for this.pointNum)
+
+      int splitPos;
+      // ensure that trending direction always gets more space
+      if (monotonic) {
+        splitPos = key.compareTo(lastKey) > 0
+            ? Math.max(pos, (this.pointNum + 1) / 2)
+            : Math.min(pos, (this.pointNum + 1) / 2);
+      } else {
+        splitPos = (this.pointNum + 1) / 2;
+      }
 
       // since an edge key cannot be split, it shall not be 1 or n
-      if (splitPos == 0 || splitPos == 1 || splitPos == this.pointNum) {
+      if (splitPos <= 1 || splitPos == this.pointNum) {
         splitPos = splitPos <= 1 ? 2 : this.pointNum - 1;
       }
 
@@ -308,7 +315,7 @@ public class InternalSegment implements ISegment {
         }
 
         pointNum++;
-        // mPtr has an invalid offset, need correction except that stores as first ptr
+        // mPtr has an invalid offset, needs correction except that stores as first ptr
         if (vi == splitPos) {
           // split key will not be migrated
           searchKey = mKey;
@@ -355,7 +362,7 @@ public class InternalSegment implements ISegment {
   }
 
   @Override
-  public int updateRecord(String key, ByteBuffer buffer)
+  public int updateRecord(String key, Integer updPtr)
       throws SegmentOverflowException, RecordDuplicatedException {
     return 0;
   }
@@ -365,13 +372,14 @@ public class InternalSegment implements ISegment {
     return 0;
   }
 
+  /**
+   * Get page index which may contain passing key.
+   *
+   * @param key search key.
+   * @return page index.
+   */
   @Override
-  public IMNode getRecordAsIMNode(String key) throws MetadataException {
-    return null;
-  }
-
-  @Override
-  public int getPageIndexContains(String key) {
+  public Integer getRecordByKey(String key) {
     return pageIndex(getPointerByIndex(getIndexByKey(key)));
   }
 
@@ -388,8 +396,12 @@ public class InternalSegment implements ISegment {
   }
 
   @Override
-  public Queue<IMNode> getAllRecords() throws MetadataException {
-    return null;
+  public Queue<Integer> getAllRecords() {
+    Queue<Integer> res = new ArrayDeque<>(this.pointNum);
+    for (int i = 0; i < this.pointNum ; i++) {
+      res.add(pageIndex(getPointerByIndex(i)));
+    }
+    return res;
   }
 
   @Override
@@ -434,8 +446,16 @@ public class InternalSegment implements ISegment {
   }
 
   @Override
-  public void extendsTo(ByteBuffer newBuffer) {
-    // nothing to do
+  public void extendsTo(ByteBuffer newBuffer) throws MetadataException {
+    if (newBuffer.capacity() != this.buffer.capacity()) {
+      throw new MetadataException("Internal Segment can only extend to buffer with same capacity.");
+    }
+
+    flushBufferHeader();
+    this.buffer.clear();
+    newBuffer.clear();
+
+    newBuffer.put(this.buffer);
   }
 
   @Override
@@ -464,6 +484,11 @@ public class InternalSegment implements ISegment {
   @Override
   public String toString() {
     return inspect();
+  }
+
+  @Override
+  public boolean isInternalSegment() {
+    return true;
   }
 
   // endregion

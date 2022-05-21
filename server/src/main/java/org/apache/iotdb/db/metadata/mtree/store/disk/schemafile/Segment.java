@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
@@ -46,7 +47,7 @@ import java.util.Queue;
  * records methods. <br>
  * Act like a wrapper of a bytebuffer which reflects a segment.
  */
-public class Segment implements ISegment {
+public class Segment implements ISegment<ByteBuffer, IMNode> {
   private static final Logger logger = LoggerFactory.getLogger(Segment.class);
 
   // members load from buffer
@@ -60,6 +61,9 @@ public class Segment implements ISegment {
 
   // reconstruct every initiation after keyAddressList but not write into buffer
   private List<Pair<String, String>> aliasKeyList;
+
+  // assess monotonic
+  String penuKey=null, lastKey=null;
 
   /**
    * Init Segment with a buffer, which contains all information about this segment
@@ -83,7 +87,7 @@ public class Segment implements ISegment {
    */
   public Segment(ByteBuffer buffer, boolean override) {
     this.buffer = buffer;
-    // determine from 3 kind: BLANK, EXISTED, CRACKED
+    this.buffer.clear();
     if (override) {
       // blank segment
       length = (short) buffer.capacity();
@@ -176,7 +180,7 @@ public class Segment implements ISegment {
   // region Interface Implementation
 
   @Override
-  public int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
+  public synchronized int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
     buf.clear();
 
     int recordStartAddr = freeAddr - buf.capacity();
@@ -205,16 +209,122 @@ public class Segment implements ISegment {
     this.freeAddr = (short) recordStartAddr;
     this.recordNum++;
 
+    penuKey = lastKey;
+    lastKey = key;
     return recordStartAddr - pairLength - Segment.SEG_HEADER_SIZE;
   }
 
   @Override
-  public int insertRecord(String key, int pointer) {
-    return -1;
+  public synchronized String splitByKey(String key, ByteBuffer recBuf, ByteBuffer dstBuffer) throws MetadataException {
+    if (this.buffer.capacity() != dstBuffer.capacity()) {
+      throw new MetadataException("Segments only splits with same capacity.");
+    }
+
+    boolean monotonic = penuKey != null && lastKey != null && SchemaFile.INCLINED_SPLIT
+        && (key.compareTo(lastKey)) * (lastKey.compareTo(penuKey)) > 0;
+
+    int n = keyAddressList.size();
+
+    // actual index of key just smaller than the insert
+    int pos = binaryInsertPairList(keyAddressList, key) - 1;
+
+    if (pos == -1) {
+      throw new MetadataException("The key occurs split cannot be the smallest within segment.");
+    }
+
+    int sp;  // virtual index to split
+    if (monotonic) {
+      sp = key.compareTo(lastKey) > 0 ? Math.max(pos+1, n/2) : Math.min(pos+1, n/2);
+    } else {
+      sp = n / 2;
+    }
+
+    // little different from InternalSegment, only the front edge key can not split
+    sp = sp <= 0 ? 1 : sp;
+    // if (sp <= 0 || sp == n - 1) {
+    //   sp = sp <= 0 ? 1 : n;  //
+    // }
+
+    // prepare header for dstBuffer
+    short length = this.length, freeAddr = (short) dstBuffer.capacity(), recordNum = 0, pairLength = 0;
+    boolean delFlag = false;
+    long prevSegAddress = -1, nextSegAddress = this.nextSegAddress;
+
+    int recSize, keySize;
+    String mKey, sKey = null;
+    ByteBuffer srcBuf;
+    int aix; // aix for actual index on keyAddressList
+    // TODO: implement bulk split further
+    for (int ix = sp; ix <= n; ix++) {
+      if (ix == pos + 1) {
+        // migrate newly insert
+        srcBuf = recBuf;
+        recSize = recBuf.capacity();
+        mKey = key;
+        keySize = 4 + mKey.getBytes().length;
+
+        recBuf.clear();
+      } else {
+        srcBuf = this.buffer;
+        aix = ix > pos ? ix - 1 : ix;
+        mKey = keyAddressList.get(aix).left;
+        keySize = 4 + mKey.getBytes().length;
+
+        // prepare on this.buffer
+        this.buffer.clear();
+        this.buffer.position(keyAddressList.get(aix).right);
+        recSize = RecordUtils.getRecordLength(this.buffer);
+        this.buffer.limit(this.buffer.position() + recSize);
+
+        this.recordNum --;
+      }
+
+      if (ix == sp) {
+        // search key is the first key in split segment
+        sKey = mKey;
+      }
+
+      freeAddr -= recSize;
+      dstBuffer.position(freeAddr);
+      dstBuffer.put(srcBuf);
+
+      dstBuffer.position(SEG_HEADER_SIZE + pairLength);
+      ReadWriteIOUtils.write(mKey, dstBuffer);
+      ReadWriteIOUtils.write(freeAddr, dstBuffer);
+
+      recordNum ++;
+      pairLength += keySize + 2;
+    }
+
+    // compact and update status
+    this.keyAddressList = this.keyAddressList.subList(0, this.recordNum);
+    this.aliasKeyList.clear();
+    compactRecords();
+    reconstructAliasAddressList();
+    if (sp > pos + 1) {
+      // new insert shall be in this
+      if (insertRecord(key, recBuf) < 0) {
+        throw new SegmentOverflowException(key);
+      }
+    }
+
+    // flush dstBuffer header
+    dstBuffer.clear();
+    ReadWriteIOUtils.write(length, dstBuffer);
+    ReadWriteIOUtils.write(freeAddr, dstBuffer);
+    ReadWriteIOUtils.write(recordNum, dstBuffer);
+    ReadWriteIOUtils.write(pairLength, dstBuffer);
+    ReadWriteIOUtils.write(prevSegAddress, dstBuffer);
+    ReadWriteIOUtils.write(nextSegAddress, dstBuffer);
+    ReadWriteIOUtils.write(delFlag, dstBuffer);
+
+    penuKey = null;
+    lastKey = null;
+    return sKey;
   }
 
   @Override
-  public IMNode getRecordAsIMNode(String key) throws MetadataException {
+  public IMNode getRecordByKey(String key) throws MetadataException {
     // index means order for target node in keyAddressList, NOT aliasKeyList
     int index = getRecordIndexByKey(key);
 
@@ -252,11 +362,6 @@ public class Segment implements ISegment {
   }
 
   @Override
-  public int getPageIndexContains(String key) {
-    return -1;
-  }
-
-  @Override
   public boolean hasRecordKey(String key) {
     return getRecordIndexByKey(key) > -1;
   }
@@ -268,7 +373,7 @@ public class Segment implements ISegment {
 
   @Override
   public Queue<IMNode> getAllRecords() throws MetadataException {
-    Queue<IMNode> res = new ArrayDeque<>();
+    Queue<IMNode> res = new ArrayDeque<>(keyAddressList.size());
     ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
     roBuffer.clear();
     for (Pair<String, Short> p : keyAddressList) {
@@ -410,15 +515,16 @@ public class Segment implements ISegment {
   }
 
   @Override
-  public void extendsTo(ByteBuffer newBuffer) {
+  public void extendsTo(ByteBuffer newBuffer) throws MetadataException {
     short sizeGap = (short) (newBuffer.capacity() - length);
+
+    if (sizeGap < 0) {
+      throw new MetadataException("Leaf Segment cannot extend to a smaller buffer.");
+    }
 
     this.buffer.clear();
     newBuffer.clear();
 
-    if (sizeGap < 0) {
-      return;
-    }
     if (sizeGap == 0) {
       this.syncBuffer();
       this.buffer.clear();
@@ -471,6 +577,11 @@ public class Segment implements ISegment {
     this.nextSegAddress = nextSegAddress;
   }
 
+  @Override
+  public boolean isInternalSegment() {
+    return false;
+  }
+
   // endregion
 
   // region Segment & Record Buffer Operation
@@ -491,6 +602,34 @@ public class Segment implements ISegment {
     this.buffer.clear();
     this.buffer.position(offset);
     RecordUtils.updateSegAddr(this.buffer, newSegAddr);
+  }
+
+  private void compactRecords() {
+    // compact by existed item on keyAddressList
+    ByteBuffer tempBuf = ByteBuffer.allocate(this.buffer.capacity() - this.freeAddr);
+    int accSiz = 0;
+    this.pairLength = 0;
+    for (Pair<String, Short> pair : keyAddressList) {
+      this.pairLength += pair.left.getBytes().length + 4 + 2;
+      this.buffer.clear();
+      this.buffer.position(pair.right);
+      this.buffer.limit(pair.right + RecordUtils.getRecordLength(this.buffer));
+
+      accSiz += this.buffer.remaining();
+      pair.right = (short) (this.buffer.capacity() - accSiz);
+
+      tempBuf.position(tempBuf.capacity() - accSiz);
+      tempBuf.put(this.buffer);
+    }
+    tempBuf.clear();
+    tempBuf.position(tempBuf.capacity() - accSiz);
+    this.freeAddr = (short) (this.buffer.capacity() - accSiz);
+
+    this.buffer.clear();
+    this.buffer.position(this.freeAddr);
+    this.buffer.put(tempBuf);
+
+    syncBuffer();
   }
 
   // endregion
@@ -561,66 +700,58 @@ public class Segment implements ISegment {
    */
   private <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
       throws RecordDuplicatedException {
-    int tarIdx = 0;
+    if (list.size() == 0) {
+      return 0;
+    }
 
+    int tarIdx = 0;
     int head = 0;
     int tail = list.size() - 1;
 
-    if (tail == -1) {
-      // no element
-      tarIdx = 0;
-    } else if (tail == 0) {
-      // only one element
-      if (list.get(0).left.compareTo(key) == 0) {
-        throw new RecordDuplicatedException(key);
-      }
-      tarIdx = list.get(0).left.compareTo(key) > 0 ? 0 : 1;
-    } else if (list.get(head).left.compareTo(key) == 0 || list.get(tail).left.compareTo(key) == 0) {
+    if (list.get(head).left.compareTo(key) == 0 || list.get(tail).left.compareTo(key) == 0) {
       throw new RecordDuplicatedException(key);
-    } else if (list.get(head).left.compareTo(key) > 0) {
-      tarIdx = 0;
-    } else if (list.get(tail).left.compareTo(key) < 0) {
-      tarIdx = list.size();
-    } else {
-      while (head != tail) {
-        int pivot = (head + tail) / 2;
-        if (pivot == list.size() - 1) {
-          tarIdx = pivot;
-          break;
-        }
-
-        if (list.get(pivot).left.compareTo(key) == 0
-            || list.get(pivot + 1).left.compareTo(key) == 0) {
-          throw new RecordDuplicatedException(key);
-        }
-
-        if (list.get(pivot).left.compareTo(key) < 0
-            && list.get(pivot + 1).left.compareTo(key) > 0) {
-          tarIdx = pivot + 1;
-          break;
-        }
-
-        if (pivot == head || pivot == tail) {
-          if (list.get(head).left.compareTo(key) > 0) {
-            tarIdx = head;
-          }
-          if (list.get(tail).left.compareTo(key) < 0) {
-            tarIdx = tail + 1;
-          }
-          break;
-        }
-
-        // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
-        if (list.get(pivot).left.compareTo(key) > 0) {
-          tail = pivot;
-        }
-
-        if (list.get(pivot + 1).left.compareTo(key) < 0) {
-          head = pivot;
-        }
-      }
     }
 
+    if (key.compareTo(list.get(head).left) < 0) {
+      return 0;
+    }
+
+    if (key.compareTo(list.get(tail).left) > 0) {
+      return list.size();
+    }
+
+    int pivot;
+    while (head != tail) {
+      pivot = (head + tail) / 2;
+      // notice pivot always smaller than list.size()-1
+      if (list.get(pivot).left.compareTo(key) == 0
+          || list.get(pivot + 1).left.compareTo(key) == 0) {
+        throw new RecordDuplicatedException(key);
+      }
+
+      if (list.get(pivot).left.compareTo(key) < 0
+          && list.get(pivot + 1).left.compareTo(key) > 0) {
+        return pivot + 1;
+      }
+
+      if (pivot == head || pivot == tail) {
+        if (list.get(head).left.compareTo(key) > 0) {
+          return head;
+        }
+        if (list.get(tail).left.compareTo(key) < 0) {
+          return tail + 1;
+        }
+      }
+
+      // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
+      if (list.get(pivot).left.compareTo(key) > 0) {
+        tail = pivot;
+      }
+
+      if (list.get(pivot + 1).left.compareTo(key) < 0) {
+        head = pivot;
+      }
+    }
     return tarIdx;
   }
 
@@ -642,7 +773,10 @@ public class Segment implements ISegment {
           builder.append(
               String.format(
                   "(%s -> %s),",
-                  pair.left, Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
+                  pair.left,
+                  RecordUtils.getRecordSegAddr(bufferR) == -1
+                      ? -1
+                      : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
         } else if (RecordUtils.getRecordType(bufferR) == 4) {
           builder.append(
               String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(bufferR)));
@@ -683,7 +817,7 @@ public class Segment implements ISegment {
                   "(%s, %s, %s),",
                   pair.left,
                   RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned",
-                  Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
+                  RecordUtils.getRecordSegAddr(bufferR) == -1 ? -1 : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
         } else if (RecordUtils.getRecordType(bufferR) == 4) {
           byte[] schemaBytes = RecordUtils.getSchemaBytes(bufferR);
           builder.append(
@@ -741,28 +875,8 @@ public class Segment implements ISegment {
   }
 
   @TestOnly
-  public ByteBuffer getInnerBuffer() {
-    return this.buffer;
-  }
-
-  @TestOnly
   public List<Pair<String, Short>> getKeyOffsetList() {
     return keyAddressList;
-  }
-
-  @TestOnly
-  private void bufferChecker(ByteBuffer buf) {
-    byte type = RecordUtils.getRecordType(buf);
-
-    if (((type != 0) && (type != 1) && (type != 4)) || RecordUtils.getRecordLength(buf) <= 0) {
-      throw new BufferOverflowException();
-    }
-
-    if ((type == 0) || (type == 1)) {
-      if (RecordUtils.getRecordLength(buf) != 16) {
-        throw new BufferOverflowException();
-      }
-    }
   }
 
   // endregion

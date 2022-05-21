@@ -26,8 +26,11 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import java.nio.ByteBuffer;
 import java.util.Queue;
 
-/** This interface interacts with segment bytebuffer. */
-public interface ISegment {
+/**
+ * This interface interacts with bytebuffer as a segment.
+ * Generic T denotes the type of its entries, while R denotes the type of the return.
+ */
+public interface ISegment<T, R> {
   int SEG_HEADER_SIZE = 25; // in bytes
 
   /**
@@ -36,16 +39,7 @@ public interface ISegment {
    *
    * @return -1 for segment overflow, otherwise for spare space
    */
-  int insertRecord(String key, ByteBuffer buffer) throws RecordDuplicatedException;
-
-  /**
-   * Insert B+Tree entry for {@link InternalSegment}.
-   *
-   * @param key
-   * @param point address of a segment which has minimum key as first parameter
-   * @return spare space if succeeds, -1 if overflow
-   */
-  int insertRecord(String key, int point);
+  int insertRecord(String key, T rec) throws RecordDuplicatedException;
 
   /**
    * @param key name of the record, not the alias
@@ -53,7 +47,7 @@ public interface ISegment {
    * @return index of keyAddressList, -1 for not found, exception for space run out
    * @throws SegmentOverflowException if segment runs out of memory
    */
-  int updateRecord(String key, ByteBuffer buffer)
+  int updateRecord(String key, T buffer)
       throws SegmentOverflowException, RecordDuplicatedException;
 
   int removeRecord(String key);
@@ -64,21 +58,13 @@ public interface ISegment {
    * @param key name or alias of the target node
    * @return node instance
    */
-  IMNode getRecordAsIMNode(String key) throws MetadataException;
-
-  /**
-   * Get page index which may contain passing key.
-   *
-   * @param key search key.
-   * @return page index.
-   */
-  int getPageIndexContains(String key);
+  R getRecordByKey(String key) throws MetadataException;
 
   boolean hasRecordKey(String key);
 
   boolean hasRecordAlias(String alias);
 
-  Queue<IMNode> getAllRecords() throws MetadataException;
+  Queue<R> getAllRecords() throws MetadataException;
 
   /**
    * Records are always sync with buffer, but header and key-address list are not. This method sync
@@ -102,13 +88,23 @@ public interface ISegment {
 
   /**
    * This method will write info into a buffer equal or larger to existed one. There is no need to
-   * call sync before this method, since it will flush header and key-offset list directly.
+   * call sync before this method, since it will flush header and key-offset list intrinsically.
    *
    * @param newBuffer target buffer
    */
-  void extendsTo(ByteBuffer newBuffer);
+  void extendsTo(ByteBuffer newBuffer) throws MetadataException;
+
+  /**
+   * Split the segment into dstBuffer considering the passing in key, whether internal or leaf.
+   *
+   * @param entry content of the insert key.
+   * @return always the search key of the split segment
+   */
+  String splitByKey(String key, T entry, ByteBuffer dstBuffer) throws MetadataException;
 
   String toString();
 
   String inspect();
+
+  boolean isInternalSegment();
 }

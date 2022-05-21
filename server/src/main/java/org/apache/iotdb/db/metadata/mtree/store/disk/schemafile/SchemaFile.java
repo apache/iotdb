@@ -92,6 +92,8 @@ public class SchemaFile implements ISchemaFile {
           : IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile();
   public static int SEG_INDEX_DIGIT = 16; // for type short
   public static long SEG_INDEX_MASK = 0xffffL; // to translate address
+  public static boolean INCLINED_SPLIT = true; // segment split into 2 part with different entries
+  public static boolean BULK_SPLIT = true; // split may implement a fast bulk way
 
   // folder to store .pmt files
   public static String SCHEMA_FOLDER = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
