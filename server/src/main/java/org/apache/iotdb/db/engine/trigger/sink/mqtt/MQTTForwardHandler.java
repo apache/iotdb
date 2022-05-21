@@ -54,12 +54,11 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
             config.getUsername(),
             factory,
             config.getPoolSize());
-    connectionPool.preparePool();
   }
 
   @Override
   public void close() throws Exception {
-    connectionPool.clearAndClose(config.getHost(), config.getPort(), config.getUsername());
+    connectionPool.clearAndClose();
   }
 
   @Override

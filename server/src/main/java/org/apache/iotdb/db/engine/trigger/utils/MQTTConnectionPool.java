@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.trigger.utils;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
@@ -32,19 +34,20 @@ import java.util.Map;
 public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
 
   // Each host:port,username corresponds to a singleton instance
-  private static final Map<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP = new HashMap<>();
-  private static final Map<String, Integer> MQTT_CONNECTION_REFERENCE_COUNT = new HashMap<>();
+  private static final HashMap<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP = new HashMap<>();
+  private AtomicInteger referenceCount = new AtomicInteger(0);
 
   public static MQTTConnectionPool getInstance(
-      String host, int port, String username, MQTTConnectionFactory factory, int size) {
+      String host, int port, String username, MQTTConnectionFactory factory, int size)
+      throws Exception {
     String key = host + ":" + port + "," + username;
-    MQTT_CONNECTION_REFERENCE_COUNT.merge(key, 1, Integer::sum);
-    MQTTConnectionPool pool = MQTT_CONNECTION_POOL_MAP.get(key);
-    if (pool == null || pool.isClosed()) {
-      pool = new MQTTConnectionPool(factory, size);
-      MQTT_CONNECTION_POOL_MAP.put(key, pool);
+    MQTTConnectionPool connectionPool = MQTT_CONNECTION_POOL_MAP.computeIfAbsent(key,
+        k -> new MQTTConnectionPool(factory, size));
+    if (connectionPool.referenceCount.get() == 0) {
+      connectionPool.preparePool();
     }
-    return pool;
+    connectionPool.referenceCount.getAndIncrement();
+    return MQTT_CONNECTION_POOL_MAP.get(key);
   }
 
   private MQTTConnectionPool(MQTTConnectionFactory factory, int size) {
@@ -62,13 +65,10 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
     returnObject(connection);
   }
 
-  public void clearAndClose(String host, int port, String username) throws SinkException {
-    String key = host + ":" + port + "," + username;
+  public void clearAndClose() {
+    referenceCount.decrementAndGet();
     clear();
-    if (!MQTT_CONNECTION_REFERENCE_COUNT.containsKey(key)) {
-      throw new SinkException("The MQTT connection pool doesn't exist");
-    }
-    if (0 == MQTT_CONNECTION_REFERENCE_COUNT.merge(key, -1, Integer::sum)) {
+    if (referenceCount.get() == 0) {
       close();
     }
   }
