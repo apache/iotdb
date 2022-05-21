@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 
 import org.slf4j.Logger;
@@ -85,9 +86,10 @@ public class MultiLeaderServerImpl {
 
   public TSStatus write(IConsensusRequest request) {
     synchronized (stateMachine) {
-      IndexedConsensusRequest indexedRequest = buildIndexedConsensusRequestForLocalRequest(request);
-      TSStatus result = stateMachine.write(indexedRequest);
-      logDispatcher.offer(indexedRequest);
+      IndexedConsensusRequest indexedConsensusRequest =
+          buildIndexedConsensusRequestForLocalRequest(request);
+      TSStatus result = stateMachine.write(indexedConsensusRequest);
+      logDispatcher.offer(indexedConsensusRequest);
       return result;
     }
   }
@@ -140,14 +142,16 @@ public class MultiLeaderServerImpl {
     return new IndexedConsensusRequest(
         currentNodeController.incrementAndGet(),
         logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex),
+        TLogType.FragmentInstance,
         request);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      ByteBufferConsensusRequest request) {
+      ByteBufferConsensusRequest request, TLogType type) {
     return new IndexedConsensusRequest(
         ConsensusReqReader.DEFAULT_SEARCH_INDEX,
         logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex),
+        type,
         request);
   }
 
@@ -161,5 +165,9 @@ public class MultiLeaderServerImpl {
 
   public List<Peer> getConfiguration() {
     return configuration;
+  }
+
+  public IndexController getCurrentNodeController() {
+    return currentNodeController;
   }
 }

@@ -19,31 +19,28 @@
 
 package org.apache.iotdb.consensus.common.request;
 
+import org.apache.iotdb.consensus.multileader.thrift.TLogType;
+
 import java.nio.ByteBuffer;
 
 /** only used for multi-leader consensus */
 public class IndexedConsensusRequest implements IConsensusRequest {
 
-  /** this insert node doesn't need to participate in multi-leader consensus */
-  public static final long NO_CONSENSUS_INDEX = -1;
-  /** no multi-leader consensus, all insert nodes can be safely deleted */
-  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
-
   private final long searchIndex;
   private final long safelyDeletedSearchIndex;
+  private final TLogType type;
   private final IConsensusRequest request;
 
   public IndexedConsensusRequest(
-      long searchIndex, long safelyDeletedSearchIndex, IConsensusRequest request) {
+      long searchIndex, long safelyDeletedSearchIndex, TLogType type, IConsensusRequest request) {
     this.searchIndex = searchIndex;
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    this.type = type;
     this.request = request;
   }
 
   @Override
   public void serializeRequest(ByteBuffer buffer) {
-    buffer.putLong(searchIndex);
-    buffer.putLong(safelyDeletedSearchIndex);
     request.serializeRequest(buffer);
   }
 
@@ -57,5 +54,9 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public long getSafelyDeletedSearchIndex() {
     return safelyDeletedSearchIndex;
+  }
+
+  public TLogType getType() {
+    return type;
   }
 }

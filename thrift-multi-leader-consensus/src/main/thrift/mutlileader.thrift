@@ -20,9 +20,19 @@
 include "common.thrift"
 namespace java org.apache.iotdb.consensus.multileader.thrift
 
+enum TLogType {
+   FragmentInstance,
+   InsertNode
+}
+
+struct TLogBatch {
+  1: required TLogType type
+  2: required binary data
+}
+
 struct TSyncLogReq {
   1: required common.TConsensusGroupId consensusGroupId
-  2: required list<binary> batches
+  2: required list<TLogBatch> batches
 }
 
 struct TSyncLogRes {

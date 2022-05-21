@@ -23,17 +23,29 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.IndexController;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.Utils;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
+import org.apache.iotdb.consensus.multileader.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
+import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
+import org.apache.iotdb.consensus.multileader.thrift.TLogType;
+import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalLong;
@@ -46,6 +58,8 @@ import java.util.stream.Collectors;
 public class LogDispatcher {
 
   private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
+
+  private final int DEFAULT_BUFFER_SIZE = 1024 * 10;
 
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
@@ -96,18 +110,26 @@ public class LogDispatcher {
         });
   }
 
-  class LogDispatcherThread implements Runnable {
+  public class LogDispatcherThread implements Runnable {
 
     private final Peer peer;
     private final IndexController controller;
+    private final SyncStatus syncStatus = new SyncStatus(this);
     private final BlockingQueue<IndexedConsensusRequest> pendingRequest =
         new ArrayBlockingQueue<>(MultiLeaderConsensusConfig.MAX_PENDING_REQUEST_NUM_PER_NODE);
+    private final List<IndexedConsensusRequest> bufferedRequest = new LinkedList<>();
+    private final ConsensusReqReader reader =
+        (ConsensusReqReader) impl.getStateMachine().read(null);
 
     public LogDispatcherThread(Peer peer) {
       this.peer = peer;
       this.controller =
           new IndexController(
               impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()), true);
+    }
+
+    public IndexController getController() {
+      return controller;
     }
 
     public long getCurrentSyncIndex() {
@@ -125,14 +147,97 @@ public class LogDispatcher {
     @Override
     public void run() {
       try {
+        PendingBatch batch;
         while (!Thread.interrupted()) {
-          IndexedConsensusRequest poll = pendingRequest.take();
+          while ((batch = getBatch()).isEmpty()) {
+            bufferedRequest.add(pendingRequest.take());
+          }
+          syncStatus.addNextBatch(batch);
+          sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
       } catch (Exception e) {
         logger.error("Unexpected error in log dispatcher", e);
       }
+    }
+
+    public PendingBatch getBatch() {
+      List<TLogBatch> logBatches = new ArrayList<>();
+      long startIndex = -1;
+      long endIndex = -1;
+      if (bufferedRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+        pendingRequest.drainTo(
+            bufferedRequest,
+            MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH - bufferedRequest.size());
+      }
+      if (bufferedRequest.isEmpty()) {
+        long currentIndex = getMaxPendingSyncIndex();
+        long peerIndex = controller.getCurrentIndex();
+        while (peerIndex < currentIndex
+            && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+          // TODO iterator
+          IConsensusRequest data = reader.getReq(peerIndex);
+          if (data != null) {
+            if (startIndex == -1) {
+              startIndex = peerIndex;
+            }
+            ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+            data.serializeRequest(buffer);
+            logBatches.add(new TLogBatch(TLogType.InsertNode, buffer));
+          }
+          controller.updateAndGet(peerIndex++);
+        }
+        endIndex = peerIndex;
+      } else {
+        Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
+        IndexedConsensusRequest prev = iterator.next();
+        startIndex = prev.getSearchIndex();
+        endIndex = prev.getSearchIndex();
+        while (iterator.hasNext()
+            && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+          ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+          IndexedConsensusRequest current = iterator.next();
+          if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
+            for (long peerIndex = prev.getSearchIndex();
+                peerIndex < current.getSearchIndex()
+                    && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH;
+                peerIndex++) {
+              IConsensusRequest data = reader.getReq(peerIndex);
+              if (data != null) {
+                data.serializeRequest(buffer);
+                endIndex = peerIndex;
+                logBatches.add(new TLogBatch(TLogType.InsertNode, buffer));
+              }
+            }
+          } else {
+            current.serializeRequest(buffer);
+            endIndex = current.getSearchIndex();
+            logBatches.add(new TLogBatch(TLogType.FragmentInstance, buffer));
+          }
+          iterator.remove();
+        }
+      }
+      return new PendingBatch(startIndex, endIndex, logBatches);
+    }
+
+    public void sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {
+      try {
+        AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
+        TSyncLogReq req =
+            new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+        client.syncLog(req, handler);
+      } catch (IOException | TException e) {
+        logger.error("Can not sync logs to peer {} because", peer, e);
+      }
+    }
+
+    public long getMaxPendingSyncIndex() {
+      return syncStatus
+          .getMaxPendingIndex()
+          .orElseGet(() -> impl.getCurrentNodeController().getCurrentIndex());
+    }
+
+    public SyncStatus getSyncStatus() {
+      return syncStatus;
     }
   }
 }

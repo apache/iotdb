@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
@@ -38,7 +37,7 @@ import java.io.IOException;
 
 public class AsyncMultiLeaderServiceClient extends MultiLeaderConsensusIService.AsyncClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsyncConfigNodeIServiceClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(AsyncMultiLeaderServiceClient.class);
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;

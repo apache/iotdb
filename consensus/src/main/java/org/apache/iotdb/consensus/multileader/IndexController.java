@@ -57,7 +57,7 @@ public class IndexController {
     return currentIndex;
   }
 
-  public synchronized long updateAndGet(int index) {
+  public synchronized long updateAndGet(long index) {
     currentIndex = Math.max(currentIndex, index);
     checkPersist();
     return currentIndex;

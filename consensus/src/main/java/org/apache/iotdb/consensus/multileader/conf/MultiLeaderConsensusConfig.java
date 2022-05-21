@@ -29,4 +29,6 @@ public class MultiLeaderConsensusConfig {
   public static final int SELECTOR_NUM_OF_CLIENT_MANAGER = 1;
   public static final int CONNECTION_TIMEOUT_IN_MS = (int) TimeUnit.SECONDS.toMillis(20);
   public static final int MAX_PENDING_REQUEST_NUM_PER_NODE = 1000;
+  public static final int MAX_REQUEST_PER_BATCH = 100;
+  public static final int MAX_PENDING_BATCH = 50;
 }

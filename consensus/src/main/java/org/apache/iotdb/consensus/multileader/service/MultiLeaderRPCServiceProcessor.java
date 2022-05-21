@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
+import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -33,7 +34,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -63,12 +63,12 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     }
     List<TSStatus> status = new ArrayList<>();
     synchronized (impl.getStateMachine()) {
-      for (ByteBuffer batch : req.getBatches()) {
+      for (TLogBatch batch : req.getBatches()) {
         status.add(
             impl.getStateMachine()
                 .write(
                     impl.buildIndexedConsensusRequestForRemoteRequest(
-                        new ByteBufferConsensusRequest(batch))));
+                        new ByteBufferConsensusRequest(batch.data), batch.type)));
       }
     }
     return new TSyncLogRes(status);

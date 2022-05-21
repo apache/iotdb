@@ -22,8 +22,10 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -32,6 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -100,10 +103,15 @@ public class DataRegionStateMachine extends BaseStateMachine {
     PlanNode planNode;
     try {
       if (request instanceof IndexedConsensusRequest) {
-        planNode =
-            getFragmentInstance(((IndexedConsensusRequest) request).getRequest())
-                .getFragment()
-                .getRoot();
+        IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
+        if (indexedConsensusRequest.getType() == TLogType.InsertNode) {
+          planNode =
+              PlanNodeType.deserialize(
+                  ((ByteBufferConsensusRequest) indexedConsensusRequest.getRequest()).getContent());
+        } else {
+          planNode =
+              getFragmentInstance(indexedConsensusRequest.getRequest()).getFragment().getRoot();
+        }
         if (planNode instanceof InsertNode) {
           ((InsertNode) planNode)
               .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
