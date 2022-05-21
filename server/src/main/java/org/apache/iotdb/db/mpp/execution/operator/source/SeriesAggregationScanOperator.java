@@ -155,7 +155,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       // 1. Clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
         aggregator.reset();
-        aggregator.setTimeRange(curTimeRange);
+        aggregator.updateTimeRange(curTimeRange);
       }
 
       // 2. Calculate aggregation result based on current time window

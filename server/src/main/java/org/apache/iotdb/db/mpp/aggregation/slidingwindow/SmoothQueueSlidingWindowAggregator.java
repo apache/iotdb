@@ -20,40 +20,32 @@
 package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
-import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-import java.util.Deque;
-import java.util.LinkedList;
 import java.util.List;
 
-public abstract class SlidingWindowAggregator extends Aggregator {
-
-  // cached partial aggregation result of pre-aggregate windows
-  protected Deque<Column[]> deque;
-
-  public SlidingWindowAggregator(
+public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator {
+  public SmoothQueueSlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
-    super(accumulator, step, inputLocationList);
-    this.deque = new LinkedList<>();
+    super(accumulator, inputLocationList, step);
   }
 
   @Override
-  public void processTsBlocks(TsBlock[] tsBlock) {}
-
-  @Override
-  public void updateTimeRange(TimeRange curTimeRange) {
-    this.curTimeRange = curTimeRange;
-    evictingExpiredValue();
+  protected void evictingExpiredValue() {
+    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst()[0].getLong(0))) {
+      Column[] partialResult = deque.removeFirst();
+      Column[] oppositePartialResult = partialResult;
+      this.accumulator.addIntermediate(oppositePartialResult);
+    }
   }
 
-  /** evicting expired element in queue and reset expired aggregateResult */
-  protected abstract void evictingExpiredValue();
-
-  /** update queue and aggregateResult */
-  public abstract void processPartialResult(Column[] partialResult);
+  @Override
+  public void processPartialResult(Column[] partialResult) {
+    if (!partialResult[0].isNull(0)) {
+      deque.addLast(partialResult);
+      this.accumulator.addIntermediate(partialResult);
+    }
+  }
 }

@@ -98,7 +98,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
     curTimeRange = timeRangeIterator.nextTimeRange();
     for (Aggregator aggregator : aggregators) {
       aggregator.reset();
-      aggregator.setTimeRange(curTimeRange);
+      aggregator.updateTimeRange(curTimeRange);
     }
 
     // 2. Calculate aggregation result based on current time window

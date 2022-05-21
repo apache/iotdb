@@ -29,8 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -79,38 +77,21 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   public TsBlock next() {
     // update input tsBlock
     curTimeRange = timeRangeIterator.nextTimeRange();
+    for (SlidingWindowAggregator aggregator : aggregators) {
+      aggregator.updateTimeRange(curTimeRange);
+    }
+
+    // consume current input tsBlocks
+    // update input tsBlock
     for (int i = 0; i < inputOperatorsCount; i++) {
       inputTsBlocks[i] = children.get(i).next();
     }
-    // consume current input tsBlocks
     for (SlidingWindowAggregator aggregator : aggregators) {
-      aggregator.setTimeRange(curTimeRange);
-      aggregator.processTsBlocks(inputTsBlocks);
+      // aggregator.processTsBlocks(inputTsBlocks);
     }
     // output result from aggregator
-    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
-  }
-
-  public static TsBlock updateResultTsBlockFromAggregators(
-      TsBlockBuilder tsBlockBuilder,
-      List<SlidingWindowAggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator) {
-    tsBlockBuilder.reset();
-    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    for (SlidingWindowAggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
+    return AggregationOperator.updateResultTsBlockFromAggregators(
+        tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   @Override

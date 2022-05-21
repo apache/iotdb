@@ -20,40 +20,41 @@
 package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
-import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-import java.util.Deque;
-import java.util.LinkedList;
 import java.util.List;
 
-public abstract class SlidingWindowAggregator extends Aggregator {
+/**
+ * When calculating MAX_TIME and LAST_VALUE (the MIN_TIME and FIRST_VALUE in descending order), the
+ * aggregation result always appears in the most recent pre-aggregation result. So, we do not need
+ * to cache the previous pre-aggregated results in the queue.
+ */
+public class EmptyQueueSlidingWindowAggregator extends SlidingWindowAggregator {
 
-  // cached partial aggregation result of pre-aggregate windows
-  protected Deque<Column[]> deque;
+  private Column[] cachedPartialResult;
 
-  public SlidingWindowAggregator(
+  public EmptyQueueSlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
-    super(accumulator, step, inputLocationList);
-    this.deque = new LinkedList<>();
+    super(accumulator, inputLocationList, step);
   }
 
   @Override
-  public void processTsBlocks(TsBlock[] tsBlock) {}
-
-  @Override
-  public void updateTimeRange(TimeRange curTimeRange) {
-    this.curTimeRange = curTimeRange;
-    evictingExpiredValue();
+  protected void evictingExpiredValue() {
+    if (cachedPartialResult != null
+        && !cachedPartialResult[0].isNull(0)
+        && !curTimeRange.contains(this.cachedPartialResult[0].getLong(0))) {
+      this.accumulator.reset();
+      cachedPartialResult = null;
+    }
   }
 
-  /** evicting expired element in queue and reset expired aggregateResult */
-  protected abstract void evictingExpiredValue();
-
-  /** update queue and aggregateResult */
-  public abstract void processPartialResult(Column[] partialResult);
+  @Override
+  public void processPartialResult(Column[] partialResult) {
+    if (!partialResult[0].isNull(0)) {
+      this.accumulator.setFinal(partialResult[1]);
+      cachedPartialResult = partialResult;
+    }
+  }
 }

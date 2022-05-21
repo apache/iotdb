@@ -20,40 +20,52 @@
 package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
-import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-import java.util.Deque;
-import java.util.LinkedList;
+import java.util.Comparator;
 import java.util.List;
 
-public abstract class SlidingWindowAggregator extends Aggregator {
+public class MonotonicQueueSlidingWindowAggregator extends SlidingWindowAggregator {
 
-  // cached partial aggregation result of pre-aggregate windows
-  protected Deque<Column[]> deque;
+  private final Comparator<Column> comparator;
 
-  public SlidingWindowAggregator(
-      Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
-    super(accumulator, step, inputLocationList);
-    this.deque = new LinkedList<>();
+  public MonotonicQueueSlidingWindowAggregator(
+      Accumulator accumulator,
+      List<InputLocation[]> inputLocationList,
+      AggregationStep step,
+      Comparator<Column> comparator) {
+    super(accumulator, inputLocationList, step);
+    this.comparator = comparator;
   }
 
   @Override
-  public void processTsBlocks(TsBlock[] tsBlock) {}
-
-  @Override
-  public void updateTimeRange(TimeRange curTimeRange) {
-    this.curTimeRange = curTimeRange;
-    evictingExpiredValue();
+  protected void evictingExpiredValue() {
+    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst()[0].getLong(0))) {
+      deque.removeFirst();
+    }
+    if (!deque.isEmpty()) {
+      this.accumulator.setFinal(deque.getFirst()[1]);
+    } else {
+      this.accumulator.reset();
+    }
   }
 
-  /** evicting expired element in queue and reset expired aggregateResult */
-  protected abstract void evictingExpiredValue();
+  @Override
+  public void processPartialResult(Column[] partialResult) {
+    if (partialResult[1].isNull(0)) {
+      return;
+    }
 
-  /** update queue and aggregateResult */
-  public abstract void processPartialResult(Column[] partialResult);
+    while (!deque.isEmpty() && comparator.compare(partialResult[1], deque.getLast()[1]) > 0) {
+      deque.removeLast();
+    }
+    deque.addLast(partialResult);
+    if (!deque.isEmpty()) {
+      this.accumulator.setFinal(partialResult[1]);
+    } else {
+      this.accumulator.reset();
+    }
+  }
 }

@@ -128,7 +128,7 @@ public class AggregationOperator implements ProcessOperator {
 
   public static TsBlock updateResultTsBlockFromAggregators(
       TsBlockBuilder tsBlockBuilder,
-      List<Aggregator> aggregators,
+      List<? extends Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator) {
     tsBlockBuilder.reset();
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
