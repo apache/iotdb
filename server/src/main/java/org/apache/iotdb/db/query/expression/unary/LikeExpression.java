@@ -110,7 +110,7 @@ public class LikeExpression extends UnaryExpression {
           if ("\\".equals(nextChar)) {
             i++;
           }
-        }else{
+        } else {
           stringBuilder.append(ch);
         }
       } else {

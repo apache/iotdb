@@ -2696,7 +2696,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(
@@ -2708,7 +2708,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -3025,6 +3025,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
     return src;
+  }
+
+  private String parseStringLiteralInLikeOrRegular(String src) {
+    return null;
   }
 
   private String parseIdentifier(String src) {
