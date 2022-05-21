@@ -25,7 +25,6 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,7 +45,7 @@ public class MetricConfig {
   private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
   private List<PredefinedMetric> predefinedMetrics =
-      Collections.singletonList(PredefinedMetric.JVM);
+      Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
 
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";

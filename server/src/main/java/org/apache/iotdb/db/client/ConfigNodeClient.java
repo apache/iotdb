@@ -44,6 +44,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
@@ -429,6 +431,23 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getOrCreateSchemaPartition(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSchemaNodeManagementResp resp = client.getSchemaNodeManagementPartition(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }

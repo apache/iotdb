@@ -91,4 +91,8 @@ public class DatasetHeader {
   public Map<String, Integer> getColumnNameIndexMap() {
     return columnToTsBlockIndexMap;
   }
+
+  public int getOutputValueColumnCount() {
+    return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
+  }
 }
