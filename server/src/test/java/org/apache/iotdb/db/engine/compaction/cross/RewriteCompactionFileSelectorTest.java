@@ -39,6 +39,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,6 +54,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class RewriteCompactionFileSelectorTest extends MergeTest {
+  private static final Logger logger =
+      LoggerFactory.getLogger(RewriteCompactionFileSelectorTest.class);
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
@@ -921,6 +925,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
               try {
                 mergeFileSelector.select();
               } catch (Exception e) {
+                logger.error("Exception occurs", e);
                 fail.set(true);
               }
             });
@@ -931,7 +936,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 FileUtils.delete(seqResources.get(0).getTsFile());
                 FileUtils.delete(unseqResources.get(0).getTsFile());
               } catch (IOException e) {
-                fail.set(true);
               }
             });
     thread1.start();
