@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
@@ -1577,6 +1578,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return parseLikeExpression(context, inWithoutNull);
       }
       throw new UnsupportedOperationException();
+    }
+
+    if (context.firstExpression != null
+        && context.secondExpression != null
+        && context.thirdExpression != null) {
+      Expression firstExpression = parseExpression(context.firstExpression, inWithoutNull);
+      Expression secondExpression = parseExpression(context.secondExpression, inWithoutNull);
+      Expression thirdExpression = parseExpression(context.thirdExpression, inWithoutNull);
+
+      if (context.OPERATOR_BETWEEN() != null) {
+        return new BetweenExpression(
+            firstExpression, secondExpression, thirdExpression, context.OPERATOR_NOT() != null);
+      }
     }
 
     if (context.unaryBeforeInExpression != null) {

@@ -1,22 +1,22 @@
-package org.apache.iotdb.db.query.expression.ternary;
+package org.apache.iotdb.db.mpp.plan.expression.ternary;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
+import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
+import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
+import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
+import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary.TernaryTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
-import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ternary.TernaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -179,7 +179,7 @@ public abstract class TernaryExpression extends Expression {
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
       UDTFContext udtfContext,
-      RawQueryInputLayer rawTimeSeriesInputLayer,
+      QueryDataSetInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
@@ -237,7 +237,7 @@ public abstract class TernaryExpression extends Expression {
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
       UDTFContext udtfContext,
-      RawQueryInputLayer rawTimeSeriesInputLayer,
+      QueryDataSetInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       TypeProvider typeProvider,
       LayerMemoryAssigner memoryAssigner)

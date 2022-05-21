@@ -44,6 +44,8 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
@@ -2622,6 +2624,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new UnsupportedOperationException();
     }
 
+    if (context.firstExpression != null
+        && context.secondExpression != null
+        && context.thirdExpression != null) {
+      Expression firstExpression = parseExpression(context.firstExpression, inWithoutNull);
+      Expression secondExpression = parseExpression(context.secondExpression, inWithoutNull);
+      Expression thirdExpression = parseExpression(context.thirdExpression, inWithoutNull);
+
+      if (context.OPERATOR_BETWEEN() != null) {
+        return new BetweenExpression(
+            firstExpression, secondExpression, thirdExpression, context.OPERATOR_NOT() != null);
+      }
+    }
+
     if (context.unaryBeforeInExpression != null) {
       return parseInExpression(context, inWithoutNull);
     }
@@ -2646,8 +2661,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     throw new UnsupportedOperationException();
   }
 
-  private Expression parseExpression(
-      IoTDBSqlParser.ExpressionContext context, boolean inWithoutNull) {
+  private Expression parseExpression(ExpressionContext context, boolean inWithoutNull) {
     return parseExpression(context, inWithoutNull, false);
   }
 
@@ -2831,6 +2845,25 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
               FilterType.REGEXP,
               parsePathFromExpression(((RegularExpression) predicate).getExpression()),
               ((RegularExpression) predicate).getPatternString());
+    } else if (predicate instanceof BetweenExpression) {
+      filter = new FilterOperator(FilterType.KW_AND);
+      PartialPath partialPath =
+          parsePathFromExpression(((TernaryExpression) predicate).getFirstExpression());
+      filter.addChildOperator(
+          new BasicFunctionOperator(
+              FilterType.GREATERTHANOREQUALTO,
+              partialPath,
+              parseValueFromExpression(((TernaryExpression) predicate).getSecondExpression())));
+      filter.addChildOperator(
+          new BasicFunctionOperator(
+              FilterType.LESSTHANOREQUALTO,
+              partialPath,
+              parseValueFromExpression(((TernaryExpression) predicate).getThirdExpression())));
+      if (((BetweenExpression) predicate).isNotBetween()) {
+        FilterOperator temp = new FilterOperator(FilterType.KW_NOT);
+        temp.addChildOperator(filter);
+        filter = temp;
+      }
     } else if (predicate instanceof InExpression) {
       filter =
           new InOperator(

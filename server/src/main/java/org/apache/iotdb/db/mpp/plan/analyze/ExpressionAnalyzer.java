@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
@@ -219,6 +220,13 @@ public class ExpressionAnalyzer {
           ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, patternTree);
       constructPatternTreeFromExpression(
           ((BinaryExpression) predicate).getRightExpression(), prefixPaths, patternTree);
+    } else if (predicate instanceof TernaryExpression) {
+      constructPatternTreeFromExpression(
+          ((TernaryExpression) predicate).getFirstExpression(), prefixPaths, patternTree);
+      constructPatternTreeFromExpression(
+          ((TernaryExpression) predicate).getSecondExpression(), prefixPaths, patternTree);
+      constructPatternTreeFromExpression(
+          ((TernaryExpression) predicate).getThirdExpression(), prefixPaths, patternTree);
     } else if (predicate instanceof UnaryExpression) {
       constructPatternTreeFromExpression(
           ((UnaryExpression) predicate).getExpression(), prefixPaths, patternTree);

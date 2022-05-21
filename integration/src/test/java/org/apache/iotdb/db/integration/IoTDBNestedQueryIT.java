@@ -587,6 +587,40 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  public void testBetweenExpression() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      int start = 1, end = 5;
+      String query = "SELECT * FROM root.vehicle.d1 WHERE s1 BETWEEN " + start + " AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i, rs.getInt(2));
+        }
+      }
+
+      query =
+          "SELECT * FROM root.vehicle.d1 WHERE s1 NOT BETWEEN " // test not between
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i, rs.getInt(2));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testRegularLikeInExpressions() {
     try (Connection connection =
             DriverManager.getConnection(

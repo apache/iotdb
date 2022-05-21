@@ -46,6 +46,8 @@ public enum ExpressionType {
 
   IN((short) 15, (short) 400),
 
+  BETWEEN((short) 15, (short) 450),
+
   LOGIC_AND((short) 16, (short) 300),
 
   LOGIC_OR((short) 17, (short) 200),
