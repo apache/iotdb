@@ -39,33 +39,33 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final List<Operator> children;
-  private final int inputOperatorsCount;
+  private final Operator child;
 
-  private final TsBlock[] inputTsBlocks;
+  private TsBlock cachedTsBlock;
 
   private final List<SlidingWindowAggregator> aggregators;
+
   private final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window [curStartTime, curEndTime)
+  // current interval of aggregation window
   private TimeRange curTimeRange;
+
+  private final boolean ascending;
 
   private final TsBlockBuilder tsBlockBuilder;
 
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
       List<SlidingWindowAggregator> aggregators,
-      List<Operator> children,
+      Operator child,
       List<TSDataType> outputDataTypes,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
     this.operatorContext = operatorContext;
     this.aggregators = aggregators;
-    this.children = children;
-
-    this.inputOperatorsCount = children.size();
-    this.inputTsBlocks = new TsBlock[inputOperatorsCount];
+    this.child = child;
     this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.ascending = ascending;
   }
 
   @Override
@@ -75,39 +75,53 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    // update input tsBlock
     curTimeRange = timeRangeIterator.nextTimeRange();
     for (SlidingWindowAggregator aggregator : aggregators) {
       aggregator.updateTimeRange(curTimeRange);
     }
 
-    // consume current input tsBlocks
-    // update input tsBlock
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      inputTsBlocks[i] = children.get(i).next();
+    if (cachedTsBlock != null) {
+      calcFromTsBlock(cachedTsBlock);
     }
-    for (SlidingWindowAggregator aggregator : aggregators) {
-      // aggregator.processTsBlocks(inputTsBlocks);
+
+    if (child.hasNext()) {
+      calcFromTsBlock(child.next());
     }
+
     // output result from aggregator
     return AggregationOperator.updateResultTsBlockFromAggregators(
         tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
-  @Override
-  public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      ListenableFuture<Void> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone()) {
-        return blocked;
+  private void calcFromTsBlock(TsBlock inputTsBlock) {
+    TsBlock.TsBlockSingleColumnIterator inputTsBlockIterator =
+        inputTsBlock.getTsBlockSingleColumnIterator();
+    while (inputTsBlockIterator.hasNext() && !isEndCal(inputTsBlockIterator)) {
+      for (SlidingWindowAggregator aggregator : aggregators) {
+        aggregator.processTsBlock(inputTsBlock.subTsBlock(inputTsBlockIterator.getRowIndex()));
       }
     }
-    return NOT_BLOCKED;
+    if (inputTsBlockIterator.hasNext()) {
+      cachedTsBlock = inputTsBlock;
+    } else {
+      cachedTsBlock = null;
+    }
+  }
+
+  private boolean isEndCal(TsBlock.TsBlockSingleColumnIterator iterator) {
+    return ascending
+        ? iterator.getEndTime() > curTimeRange.getMax()
+        : iterator.getStartTime() < curTimeRange.getMin();
   }
 
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    return child.isBlocked();
   }
 
   @Override
@@ -117,14 +131,14 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
+    child.close();
   }
 
   public static ITimeRangeIterator initTimeRangeIterator(
       GroupByTimeParameter groupByTimeParameter, boolean ascending) {
-    checkArgument(groupByTimeParameter != null, "");
+    checkArgument(
+        groupByTimeParameter != null,
+        "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
     return TimeRangeIteratorFactory.getTimeRangeIterator(
         groupByTimeParameter.getStartTime(),
         groupByTimeParameter.getEndTime(),

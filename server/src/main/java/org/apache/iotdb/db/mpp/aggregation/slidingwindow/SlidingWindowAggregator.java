@@ -43,7 +43,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   }
 
   @Override
-  public void processTsBlocks(TsBlock[] tsBlock) {}
+  public void processTsBlock(TsBlock tsBlock) {}
 
   @Override
   public void updateTimeRange(TimeRange curTimeRange) {
