@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -349,7 +350,10 @@ public class WALRecoverManagerTest {
     String[] measurements = new String[] {"s1", "s2"};
     InsertRowPlan insertRowPlan = new InsertRowPlan(path, time, measurements, dataTypes, columns);
     insertRowPlan.setMeasurementMNodes(
-        IoTDB.schemaProcessor.getMeasurementMNodes(path, measurements));
+        new IMeasurementMNode[] {
+          IoTDB.schemaProcessor.getMeasurementMNode(path.concatNode("s1")),
+          IoTDB.schemaProcessor.getMeasurementMNode(path.concatNode("s2"))
+        });
     return insertRowPlan;
   }
 

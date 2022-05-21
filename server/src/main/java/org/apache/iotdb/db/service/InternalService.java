@@ -42,11 +42,6 @@ public class InternalService extends ThriftService implements InternalServiceMBe
   }
 
   @Override
-  public ThriftService getImplementation() {
-    return InternalServiceHolder.INSTANCE;
-  }
-
-  @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     impl = new InternalServiceImpl();

@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -107,6 +107,21 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return newChildBuffer.put(key, value);
   }
 
+  @Nullable
+  @Override
+  public synchronized IMNode putIfAbsent(String key, IMNode value) {
+
+    IMNode node = get(key);
+    if (node == null) {
+      if (newChildBuffer == null) {
+        newChildBuffer = new ConcurrentHashMap<>();
+      }
+      node = newChildBuffer.put(key, value);
+    }
+
+    return node;
+  }
+
   @Override
   public synchronized IMNode remove(Object key) {
     IMNode result = remove(childCache, key);
@@ -124,7 +139,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public synchronized void putAll(@NotNull Map<? extends String, ? extends IMNode> m) {
+  public synchronized void putAll(@Nonnull Map<? extends String, ? extends IMNode> m) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -138,7 +153,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     updatedChildBuffer = null;
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Set<String> keySet() {
     Set<String> result = new TreeSet<>();
@@ -152,7 +167,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return map == null ? Collections.emptySet() : map.keySet();
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Collection<IMNode> values() {
     Collection<IMNode> result = new ArrayList<>();
@@ -166,7 +181,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return map == null ? Collections.emptyList() : map.values();
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Set<Entry<String, IMNode>> entrySet() {
     Set<Entry<String, IMNode>> result = new HashSet<>();

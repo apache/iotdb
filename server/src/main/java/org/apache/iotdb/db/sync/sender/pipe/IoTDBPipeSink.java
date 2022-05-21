@@ -23,6 +23,8 @@ import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.Objects;
+
 public class IoTDBPipeSink implements PipeSink {
   private final PipeSink.Type type;
 
@@ -41,9 +43,7 @@ public class IoTDBPipeSink implements PipeSink {
   public void setAttribute(String attr, String value) throws PipeSinkException {
     attr = attr.toLowerCase();
     if (attr.equals("ip")) {
-      if (!value.startsWith("'") || !value.endsWith("'"))
-        throw new PipeSinkException(attr, value, TSDataType.TEXT.name());
-      ip = value.substring(1, value.length() - 1);
+      ip = value;
     } else if (attr.equals("port")) {
       try {
         port = Integer.parseInt(value);
@@ -93,5 +93,21 @@ public class IoTDBPipeSink implements PipeSink {
         + ", port="
         + port
         + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    IoTDBPipeSink pipeSink = (IoTDBPipeSink) o;
+    return port == pipeSink.port
+        && type == pipeSink.type
+        && Objects.equals(name, pipeSink.name)
+        && Objects.equals(ip, pipeSink.ip);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, name, ip, port);
   }
 }

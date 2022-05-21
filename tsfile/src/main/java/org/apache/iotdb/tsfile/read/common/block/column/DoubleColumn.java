@@ -122,6 +122,31 @@ public class DoubleColumn implements Column {
     return new DoubleColumn(positionOffset + arrayOffset, length, valueIsNull, values);
   }
 
+  @Override
+  public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new DoubleColumn(
+        arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+  }
+
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      double valueTmp = values[i];
+      values[i] = values[j];
+      values[j] = valueTmp;
+    }
+    if (valueIsNull != null) {
+      for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+        boolean isNullTmp = valueIsNull[i];
+        valueIsNull[i] = valueIsNull[j];
+        valueIsNull[j] = isNullTmp;
+      }
+    }
+  }
+
   private void checkReadablePosition(int position) {
     if (position < 0 || position >= getPositionCount()) {
       throw new IllegalArgumentException("position is not valid");

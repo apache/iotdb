@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.cli;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,7 +47,8 @@ public class TemporaryClientDemo {
     defaultClient = clients.get(22277);
 
     for (int i = 0; i < 5; i++) {
-      TSetStorageGroupReq setReq = new TSetStorageGroupReq("root.sg" + i);
+      TSetStorageGroupReq setReq =
+          new TSetStorageGroupReq(new TStorageGroupSchema().setName("root.sg" + i));
       while (true) {
         TSStatus status = defaultClient.setStorageGroup(setReq);
         System.out.println(status.toString());

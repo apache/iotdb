@@ -29,8 +29,8 @@ public class UtilsTest {
   @Test
   public void testEncryption() {
     ConsensusGroupId raw = new PartitionRegionId(100);
-    RaftGroupId id = Utils.toRatisGroupId(raw);
-    ConsensusGroupId cgid = Utils.toConsensusGroupId(id);
+    RaftGroupId id = Utils.fromConsensusGroupIdToRaftGroupId(raw);
+    ConsensusGroupId cgid = Utils.fromRaftGroupIdToConsensusGroupId(id);
     Assert.assertEquals(raw.getId(), cgid.getId());
     Assert.assertEquals(raw.getType(), cgid.getType());
   }

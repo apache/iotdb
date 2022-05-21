@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.query.udf.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -46,9 +46,8 @@ public class UDFClassLoaderManager implements IService {
   /**
    * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
    * user executes CREATE FUNCTION or after the user executes DROP FUNCTION. Therefore, we need to
-   * continuously maintain the activeClassLoader so that the classes it loads are always up to date.
+   * continuously maintain the activeClassLoader so that the classes it loads are always up-to-date.
    */
-  @SuppressWarnings("squid:S3077")
   private volatile UDFClassLoader activeClassLoader;
 
   UDFClassLoaderManager() {

@@ -50,29 +50,26 @@ public class TsBlock {
    * Visible to give trusted classes like {@link TsBlockBuilder} access to a constructor that
    * doesn't defensively copy the valueColumns
    */
-  static TsBlock wrapBlocksWithoutCopy(
+  public static TsBlock wrapBlocksWithoutCopy(
       int positionCount, TimeColumn timeColumn, Column[] valueColumns) {
     return new TsBlock(false, positionCount, timeColumn, valueColumns);
   }
-
-  // TODO rethink about if we really need this field
-  // Describe the column info
-  private TsBlockMetadata metadata;
 
   private final TimeColumn timeColumn;
 
   private final Column[] valueColumns;
 
+  /** How many rows in current TsBlock */
   private final int positionCount;
 
   private volatile long retainedSizeInBytes = -1;
 
-  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
-    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
-  }
-
   public TsBlock(int positionCount) {
     this(false, positionCount, null, EMPTY_COLUMNS);
+  }
+
+  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
+    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
   }
 
   public TsBlock(int positionCount, TimeColumn timeColumn, Column... valueColumns) {
@@ -94,16 +91,6 @@ public class TsBlock {
     } else {
       this.valueColumns = columnsCopyRequired ? valueColumns.clone() : valueColumns;
     }
-  }
-
-  public boolean hasNext() {
-    return false;
-  }
-
-  public void next() {}
-
-  public TsBlockMetadata getMetadata() {
-    return metadata;
   }
 
   public int getPositionCount() {
@@ -152,7 +139,7 @@ public class TsBlock {
   }
 
   public TsBlock appendValueColumn(Column column) {
-    requireNonNull(column, "column is null");
+    requireNonNull(column, "Column is null");
     if (positionCount != column.getPositionCount()) {
       throw new IllegalArgumentException("Block does not have same position count");
     }
@@ -160,6 +147,39 @@ public class TsBlock {
     Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
     newBlocks[valueColumns.length] = column;
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
+  }
+
+  /**
+   * Attention. This method uses System.arraycopy() to extend the valueColumn array, so its
+   * performance is not ensured if you have many insert operations.
+   */
+  public TsBlock insertValueColumn(int index, Column column) {
+    requireNonNull(column, "Column is null");
+    if (positionCount != column.getPositionCount()) {
+      throw new IllegalArgumentException("Block does not have same position count");
+    }
+
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
+    System.arraycopy(newBlocks, index, newBlocks, index + 1, valueColumns.length - index);
+    newBlocks[index] = column;
+    return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
+  }
+
+  /**
+   * This method will create a temporary view of origin tsBlock, which will reuse the arrays of
+   * columns but with different offset. It can be used where you want to skip some points when
+   * getting iterator.
+   */
+  public TsBlock subTsBlock(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("FromIndex of subTsBlock cannot over positionCount.");
+    }
+    TimeColumn subTimeColumn = (TimeColumn) timeColumn.subColumn(fromIndex);
+    Column[] subValueColumns = new Column[valueColumns.length];
+    for (int i = 0; i < subValueColumns.length; i++) {
+      subValueColumns[i] = valueColumns[i].subColumn(fromIndex);
+    }
+    return new TsBlock(subTimeColumn, subValueColumns);
   }
 
   public long getTimeByIndex(int index) {
@@ -178,6 +198,21 @@ public class TsBlock {
     return valueColumns[columnIndex];
   }
 
+  public Column[] getTimeAndValueColumn(int columnIndex) {
+    Column[] columns = new Column[2];
+    columns[0] = getTimeColumn();
+    columns[1] = getColumn(columnIndex);
+    return columns;
+  }
+
+  public Column[] getColumns(int[] columnIndexes) {
+    Column[] columns = new Column[columnIndexes.length];
+    for (int i = 0; i < columnIndexes.length; i++) {
+      columns[i] = valueColumns[columnIndexes[i]];
+    }
+    return columns;
+  }
+
   public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator() {
     return new TsBlockSingleColumnIterator(0);
   }
@@ -186,19 +221,26 @@ public class TsBlock {
     return new TsBlockSingleColumnIterator(0, columnIndex);
   }
 
+  public void reverse() {
+    timeColumn.reverse();
+    for (Column valueColumn : valueColumns) {
+      valueColumn.reverse();
+    }
+  }
+
   public TsBlockRowIterator getTsBlockRowIterator() {
     return new TsBlockRowIterator(0);
   }
 
   /** Only used for the batch data of vector time series. */
-  public IBatchDataIterator getTsBlockIterator(int subIndex) {
-    return new AlignedTsBlockIterator(0, subIndex);
+  public TsBlockAlignedRowIterator getTsBlockAlignedRowIterator() {
+    return new TsBlockAlignedRowIterator(0);
   }
 
   public class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
 
-    protected int rowIndex;
-    protected int columnIndex;
+    private int rowIndex;
+    private final int columnIndex;
 
     public TsBlockSingleColumnIterator(int rowIndex) {
       this.rowIndex = rowIndex;
@@ -315,52 +357,108 @@ public class TsBlock {
     }
   }
 
-  private class AlignedTsBlockIterator extends TsBlockSingleColumnIterator {
+  private class TsBlockAlignedRowIterator implements IPointReader, IBatchDataIterator {
 
-    private final int subIndex;
+    private int rowIndex;
 
-    private AlignedTsBlockIterator(int index, int subIndex) {
-      super(index);
-      this.subIndex = subIndex;
+    public TsBlockAlignedRowIterator(int rowIndex) {
+      this.rowIndex = rowIndex;
     }
 
     @Override
     public boolean hasNext() {
-      while (super.hasNext() && currentValue() == null) {
-        super.next();
-      }
-      return super.hasNext();
+      return rowIndex < positionCount;
     }
 
     @Override
     public boolean hasNext(long minBound, long maxBound) {
-      while (super.hasNext() && currentValue() == null) {
+      while (hasNext()) {
         if (currentTime() < minBound || currentTime() >= maxBound) {
           break;
         }
-        super.next();
+        next();
       }
-      return super.hasNext();
+      return hasNext();
     }
 
     @Override
-    public Object currentValue() {
-      TsPrimitiveType v = valueColumns[subIndex].getTsPrimitiveType(rowIndex);
-      return v == null ? null : v.getValue();
+    public void next() {
+      rowIndex++;
+    }
+
+    @Override
+    public long currentTime() {
+      return timeColumn.getLong(rowIndex);
+    }
+
+    @Override
+    public TsPrimitiveType[] currentValue() {
+      TsPrimitiveType[] tsPrimitiveTypes = new TsPrimitiveType[valueColumns.length];
+      for (int i = 0; i < valueColumns.length; i++) {
+        if (!valueColumns[i].isNull(rowIndex)) {
+          tsPrimitiveTypes[i] = valueColumns[i].getTsPrimitiveType(rowIndex);
+        }
+      }
+      return tsPrimitiveTypes;
+    }
+
+    @Override
+    public void reset() {
+      rowIndex = 0;
     }
 
     @Override
     public int totalLength() {
-      // aligned timeseries' BatchData length() may return the length of time column
-      // we need traverse to VectorBatchDataIterator calculate the actual value column's length
-      int cnt = 0;
-      int indexSave = rowIndex;
-      while (hasNext()) {
-        cnt++;
+      return positionCount;
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      while (hasNext() && isCurrentValueAllNull()) {
         next();
       }
-      rowIndex = indexSave;
-      return cnt;
+      return hasNext();
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      TimeValuePair res = currentTimeValuePair();
+      next();
+      return res;
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return new TimeValuePair(
+          timeColumn.getLong(rowIndex), new TsPrimitiveType.TsVector(currentValue()));
+    }
+
+    @Override
+    public void close() {}
+
+    public long getEndTime() {
+      return TsBlock.this.getEndTime();
+    }
+
+    public long getStartTime() {
+      return TsBlock.this.getStartTime();
+    }
+
+    public int getRowIndex() {
+      return rowIndex;
+    }
+
+    public void setRowIndex(int rowIndex) {
+      this.rowIndex = rowIndex;
+    }
+
+    private boolean isCurrentValueAllNull() {
+      for (int i = 0; i < valueColumns.length; i++) {
+        if (!valueColumns[i].isNull(rowIndex)) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 

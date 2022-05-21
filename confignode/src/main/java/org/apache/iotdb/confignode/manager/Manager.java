@@ -19,9 +19,27 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+
+import java.util.List;
 
 /**
  * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
@@ -41,7 +59,7 @@ public interface Manager {
    *
    * @return DataNodeManager instance
    */
-  DataNodeManager getDataNodeManager();
+  NodeManager getNodeManager();
 
   /**
    * Get ConsensusManager
@@ -51,11 +69,11 @@ public interface Manager {
   ConsensusManager getConsensusManager();
 
   /**
-   * Get RegionManager
+   * Get ClusterSchemaManager
    *
-   * @return RegionManager instance
+   * @return ClusterSchemaManager instance
    */
-  RegionManager getRegionManager();
+  ClusterSchemaManager getClusterSchemaManager();
 
   /**
    * Get PartitionManager
@@ -65,35 +83,62 @@ public interface Manager {
   PartitionManager getPartitionManager();
 
   /**
+   * Get LoadManager
+   *
+   * @return LoadManager instance
+   */
+  LoadManager getLoadManager();
+
+  /**
    * Register DataNode
    *
-   * @param physicalPlan RegisterDataNodePlan
    * @return DataNodeConfigurationDataSet
    */
-  DataSet registerDataNode(PhysicalPlan physicalPlan);
+  DataSet registerDataNode(RegisterDataNodeReq registerDataNodeReq);
 
   /**
    * Get DataNode info
    *
-   * @param physicalPlan QueryDataNodeInfoPlan
    * @return DataNodesInfoDataSet
    */
-  DataSet getDataNodeInfo(PhysicalPlan physicalPlan);
+  DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq);
+
+  TSStatus setTTL(SetTTLReq configRequest);
+
+  TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq configRequest);
+
+  TSStatus setDataReplicationFactor(SetDataReplicationFactorReq configRequest);
+
+  TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq configRequest);
+
+  /**
+   * Count StorageGroups
+   *
+   * @return The number of matched StorageGroups
+   */
+  DataSet countMatchedStorageGroups(CountStorageGroupReq countStorageGroupReq);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getStorageGroupSchema();
+  DataSet getMatchedStorageGroupSchemas(GetStorageGroupReq getOrCountStorageGroupReq);
 
   /**
    * Set StorageGroup
    *
-   * @param physicalPlan SetStorageGroupPlan
    * @return status
    */
-  TSStatus setStorageGroup(PhysicalPlan physicalPlan);
+  TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
+
+  /**
+   * Delete StorageGroups
+   *
+   * @param deletedPaths List<StringPattern>
+   * @return status
+   */
+  TSStatus deleteStorageGroups(List<String> deletedPaths);
 
   /**
    * Get SchemaPartition
@@ -110,34 +155,66 @@ public interface Manager {
   DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
+   * create SchemaNodeManagementPartition for child paths node management
+   *
+   * @return SchemaNodeManagementPartitionDataSet
+   */
+  DataSet getChildPathsPartition(PartialPath partialPath);
+
+  /**
+   * create SchemaNodeManagementPartition for child nodes node management
+   *
+   * @return SchemaNodeManagementPartitionDataSet
+   */
+  DataSet getChildNodesPartition(PartialPath partialPath);
+
+  /**
    * Get DataPartition
    *
-   * @param physicalPlan DataPartitionPlan
    * @return DataPartitionDataSet
    */
-  DataSet getDataPartition(PhysicalPlan physicalPlan);
+  DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq);
 
   /**
    * Get or create DataPartition
    *
-   * @param physicalPlan DataPartitionPlan
    * @return DataPartitionDataSet
    */
-  DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan);
+  DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
 
   /**
    * Operate Permission
    *
-   * @param physicalPlan AuthorPlan
+   * @param configRequest AuthorPlan
    * @return status
    */
-  TSStatus operatePermission(PhysicalPlan physicalPlan);
+  TSStatus operatePermission(ConfigRequest configRequest);
 
   /**
    * Query Permission
    *
-   * @param physicalPlan AuthorPlan
+   * @param configRequest AuthorPlan
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(PhysicalPlan physicalPlan);
+  DataSet queryPermission(ConfigRequest configRequest);
+
+  /** login */
+  TSStatus login(String username, String password);
+
+  /** Check User Privileges */
+  TSStatus checkUserPrivileges(String username, List<String> paths, int permission);
+
+  /**
+   * Register ConfigNode when it is first startup
+   *
+   * @return TConfigNodeRegisterResp
+   */
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
+
+  /**
+   * Apply ConfigNode when it is first startup
+   *
+   * @return status
+   */
+  TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
 }

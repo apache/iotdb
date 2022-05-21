@@ -66,12 +66,6 @@ public class TimeColumnBuilder implements ColumnBuilder {
     return this;
   }
 
-  @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
   /** Write an Object to the current entry, which should be the Long type; */
   @Override
   public ColumnBuilder writeObject(Object value) {
@@ -83,7 +77,17 @@ public class TimeColumnBuilder implements ColumnBuilder {
   }
 
   @Override
+  public ColumnBuilder write(Column column, int index) {
+    return writeLong(column.getLong(index));
+  }
+
+  @Override
   public ColumnBuilder appendNull() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  @Override
+  public ColumnBuilder appendNull(int nullCount) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 

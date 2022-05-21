@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.List;
 import java.util.Map;
@@ -154,13 +157,6 @@ public interface MetricManager {
 
   /** whether is enabled monitor in specific level */
   boolean isEnable(MetricLevel metricLevel);
-
-  /**
-   * enable pre-defined metric set.
-   *
-   * @param metric which metric set we want to collect
-   */
-  void enablePredefinedMetric(PredefinedMetric metric);
 
   /**
    * init something.

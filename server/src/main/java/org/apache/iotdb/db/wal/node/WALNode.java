@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.db.wal.node;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -50,8 +51,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -370,6 +373,49 @@ public class WALNode implements IWALNode {
         dataRegion.writeUnlock();
       }
     }
+  }
+  // endregion
+
+  // region Search interfaces for consensus group
+  @Override
+  public IConsensusRequest getReq(long index) {
+    return null;
+  }
+
+  @Override
+  public List<IConsensusRequest> getReqs(long startIndex, int num) {
+    return null;
+  }
+
+  @Override
+  public ReqIterator getReqIterator(long startIndex) {
+    return new PlanNodeIterator();
+  }
+
+  private class PlanNodeIterator implements ReqIterator {
+    @Override
+    public boolean hasNext() {
+      return false;
+    }
+
+    @Override
+    public IConsensusRequest next() {
+      return null;
+    }
+
+    @Override
+    public IConsensusRequest waitForNext() throws InterruptedException {
+      return null;
+    }
+
+    @Override
+    public IConsensusRequest waitForNext(long timeout)
+        throws InterruptedException, TimeoutException {
+      return null;
+    }
+
+    @Override
+    public void skipTo(long targetIndex) {}
   }
   // endregion
 

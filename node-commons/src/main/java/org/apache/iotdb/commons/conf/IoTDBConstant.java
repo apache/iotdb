@@ -25,6 +25,7 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
   public static final String VERSION =
@@ -150,6 +151,9 @@ public class IoTDBConstant {
   public static final String SDT_COMP_DEV = "compdev";
   public static final String SDT_COMP_MIN_TIME = "compmintime";
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
+
+  // default base dir, stores all IoTDB runtime files
+  public static final String DEFAULT_BASE_DIR = "data";
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
