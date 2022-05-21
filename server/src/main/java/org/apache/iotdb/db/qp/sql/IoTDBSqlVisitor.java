@@ -1573,7 +1573,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parsePrimitiveTypeClause(
       IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
-    TSDataType dataType = parseType(ctx.dataType.getText());
+    // todo: remove keyword datatype
+    TSDataType dataType = parseType(parseAttributeValue(ctx.dataType));
     if (dataType == TSDataType.VECTOR) {
       throw new SQLParserException(String.format("type %s cannot use fill function", dataType));
     }
@@ -1622,23 +1623,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private TSDataType parseType(String datatype) {
-    String type = datatype.toLowerCase();
-    switch (type) {
-      case "int32":
-        return TSDataType.INT32;
-      case "int64":
-        return TSDataType.INT64;
-      case "float":
-        return TSDataType.FLOAT;
-      case "double":
-        return TSDataType.DOUBLE;
-      case "boolean":
-        return TSDataType.BOOLEAN;
-      case "text":
-        return TSDataType.TEXT;
-      default:
-        throw new SQLParserException("not a valid fill type : " + type);
+    TSDataType tsDataType;
+    try{
+      tsDataType = TSDataType.valueOf(datatype.toUpperCase());
+    }catch (Exception e){
+      throw new SQLParserException("not a valid fill type : " + datatype);
     }
+    return tsDataType;
   }
 
   // Insert Statement

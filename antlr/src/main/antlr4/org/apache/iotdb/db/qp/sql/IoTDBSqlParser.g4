@@ -412,10 +412,10 @@ withoutNullClause
     ;
 
 oldTypeClause
-    : (dataType=DATATYPE_VALUE | ALL) LS_BRACKET linearClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET specificValueClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
+    : (dataType=attributeValue | ALL) LS_BRACKET linearClause RS_BRACKET
+    | (dataType=attributeValue | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType=attributeValue | ALL) LS_BRACKET specificValueClause RS_BRACKET
+    | (dataType=attributeValue | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
