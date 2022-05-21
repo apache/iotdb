@@ -31,6 +31,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
@@ -51,7 +55,6 @@ import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -64,7 +67,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -152,8 +154,6 @@ import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
@@ -1090,7 +1090,6 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  @SuppressWarnings("squid:S3776")
   private void appendUDFs(ListDataSet listDataSet, ShowFunctionsPlan showPlan)
       throws QueryProcessException {
     for (UDFRegistrationInformation info :
@@ -1245,7 +1244,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
     final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
     final Binary className = Binary.valueOf("");
-    for (String functionName : SQLConstant.getNativeFunctionNames()) {
+    for (String functionName : BuiltinAggregationFunction.getNativeFunctionNames()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(functionName.toUpperCase()), TSDataType.TEXT);
       rowRecord.addField(functionType, TSDataType.TEXT);
@@ -1520,7 +1519,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  // Suppress high Cognitive Complexity warning
   private void createSchemaAutomatically(
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, IMeasurementSchema> knownSchemas,
@@ -2012,7 +2011,7 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
+  // high Cognitive Complexity
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan)
       throws BatchProcessException {
     int dataTypeIdx = 0;
@@ -2385,7 +2384,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  @SuppressWarnings("unused") // for the distributed version
+  // for the distributed version
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     IoTDBDescriptor.getInstance().loadHotModifiedProps();
   }
