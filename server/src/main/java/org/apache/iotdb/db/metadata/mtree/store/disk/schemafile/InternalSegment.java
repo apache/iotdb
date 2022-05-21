@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -279,9 +278,10 @@ public class InternalSegment implements ISegment<Integer, Integer> {
       int splitPos;
       // ensure that trending direction always gets more space
       if (monotonic) {
-        splitPos = key.compareTo(lastKey) > 0
-            ? Math.max(pos, (this.pointNum + 1) / 2)
-            : Math.min(pos, (this.pointNum + 1) / 2);
+        splitPos =
+            key.compareTo(lastKey) > 0
+                ? Math.max(pos, (this.pointNum + 1) / 2)
+                : Math.min(pos, (this.pointNum + 1) / 2);
       } else {
         splitPos = (this.pointNum + 1) / 2;
       }
@@ -398,7 +398,7 @@ public class InternalSegment implements ISegment<Integer, Integer> {
   @Override
   public Queue<Integer> getAllRecords() {
     Queue<Integer> res = new ArrayDeque<>(this.pointNum);
-    for (int i = 0; i < this.pointNum ; i++) {
+    for (int i = 0; i < this.pointNum; i++) {
       res.add(pageIndex(getPointerByIndex(i)));
     }
     return res;

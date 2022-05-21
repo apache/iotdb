@@ -21,14 +21,13 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.nio.ByteBuffer;
 import java.util.Queue;
 
 /**
- * This interface interacts with bytebuffer as a segment.
- * Generic T denotes the type of its entries, while R denotes the type of the return.
+ * This interface interacts with bytebuffer as a segment. Generic T denotes the type of its entries,
+ * while R denotes the type of the return.
  */
 public interface ISegment<T, R> {
   int SEG_HEADER_SIZE = 25; // in bytes
@@ -47,8 +46,7 @@ public interface ISegment<T, R> {
    * @return index of keyAddressList, -1 for not found, exception for space run out
    * @throws SegmentOverflowException if segment runs out of memory
    */
-  int updateRecord(String key, T buffer)
-      throws SegmentOverflowException, RecordDuplicatedException;
+  int updateRecord(String key, T buffer) throws SegmentOverflowException, RecordDuplicatedException;
 
   int removeRecord(String key);
 

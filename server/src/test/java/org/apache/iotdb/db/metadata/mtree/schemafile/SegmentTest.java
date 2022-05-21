@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
-import io.netty.buffer.ByteBuf;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
@@ -27,7 +26,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.InternalSegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -140,7 +138,6 @@ public class SegmentTest {
     System.out.println(b[0]);
   }
 
-
   @Test
   public void evenSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
@@ -208,7 +205,7 @@ public class SegmentTest {
     IMNode mNode = new InternalMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
-    for (int i = test.length-1; i >= 0; i--) {
+    for (int i = test.length - 1; i >= 0; i--) {
       seg.insertRecord(test[i], buf);
     }
     // at second-smallest
@@ -224,7 +221,7 @@ public class SegmentTest {
 
     // at higher half
     test = new String[] {"a5", "a6", "a7", "a8"};
-    for (int i = test.length-1; i >= 0; i--) {
+    for (int i = test.length - 1; i >= 0; i--) {
       seg.insertRecord(test[i], buf);
     }
     seg.insertRecord("a84", buf);
@@ -259,7 +256,8 @@ public class SegmentTest {
   private IMNode getMeasurementNode(IMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
     IMeasurementMNode mNode =
-        MeasurementMNode.getMeasurementMNode(par != null ? par.getAsEntityMNode() : null, name, schema, alias);
+        MeasurementMNode.getMeasurementMNode(
+            par != null ? par.getAsEntityMNode() : null, name, schema, alias);
     return mNode;
   }
 }

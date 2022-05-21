@@ -171,7 +171,7 @@ public class InternalSegmentTest {
   }
 
   @Test
-  public void increasingOnLowIndex() throws MetadataException{
+  public void increasingOnLowIndex() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
     ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);

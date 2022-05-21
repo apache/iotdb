@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import io.netty.buffer.ByteBuf;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
@@ -63,7 +62,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
   private List<Pair<String, String>> aliasKeyList;
 
   // assess monotonic
-  String penuKey=null, lastKey=null;
+  String penuKey = null, lastKey = null;
 
   /**
    * Init Segment with a buffer, which contains all information about this segment
@@ -180,7 +179,8 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
   // region Interface Implementation
 
   @Override
-  public synchronized int insertRecord(String key, ByteBuffer buf) throws RecordDuplicatedException {
+  public synchronized int insertRecord(String key, ByteBuffer buf)
+      throws RecordDuplicatedException {
     buf.clear();
 
     int recordStartAddr = freeAddr - buf.capacity();
@@ -215,13 +215,17 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
   }
 
   @Override
-  public synchronized String splitByKey(String key, ByteBuffer recBuf, ByteBuffer dstBuffer) throws MetadataException {
+  public synchronized String splitByKey(String key, ByteBuffer recBuf, ByteBuffer dstBuffer)
+      throws MetadataException {
     if (this.buffer.capacity() != dstBuffer.capacity()) {
       throw new MetadataException("Segments only splits with same capacity.");
     }
 
-    boolean monotonic = penuKey != null && lastKey != null && SchemaFile.INCLINED_SPLIT
-        && (key.compareTo(lastKey)) * (lastKey.compareTo(penuKey)) > 0;
+    boolean monotonic =
+        penuKey != null
+            && lastKey != null
+            && SchemaFile.INCLINED_SPLIT
+            && (key.compareTo(lastKey)) * (lastKey.compareTo(penuKey)) > 0;
 
     int n = keyAddressList.size();
 
@@ -232,9 +236,9 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
       throw new MetadataException("The key occurs split cannot be the smallest within segment.");
     }
 
-    int sp;  // virtual index to split
+    int sp; // virtual index to split
     if (monotonic) {
-      sp = key.compareTo(lastKey) > 0 ? Math.max(pos+1, n/2) : Math.min(pos+1, n/2);
+      sp = key.compareTo(lastKey) > 0 ? Math.max(pos + 1, n / 2) : Math.min(pos + 1, n / 2);
     } else {
       sp = n / 2;
     }
@@ -246,7 +250,10 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     // }
 
     // prepare header for dstBuffer
-    short length = this.length, freeAddr = (short) dstBuffer.capacity(), recordNum = 0, pairLength = 0;
+    short length = this.length,
+        freeAddr = (short) dstBuffer.capacity(),
+        recordNum = 0,
+        pairLength = 0;
     boolean delFlag = false;
     long prevSegAddress = -1, nextSegAddress = this.nextSegAddress;
 
@@ -276,7 +283,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
         recSize = RecordUtils.getRecordLength(this.buffer);
         this.buffer.limit(this.buffer.position() + recSize);
 
-        this.recordNum --;
+        this.recordNum--;
       }
 
       if (ix == sp) {
@@ -292,7 +299,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
       ReadWriteIOUtils.write(mKey, dstBuffer);
       ReadWriteIOUtils.write(freeAddr, dstBuffer);
 
-      recordNum ++;
+      recordNum++;
       pairLength += keySize + 2;
     }
 
@@ -729,8 +736,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
         throw new RecordDuplicatedException(key);
       }
 
-      if (list.get(pivot).left.compareTo(key) < 0
-          && list.get(pivot + 1).left.compareTo(key) > 0) {
+      if (list.get(pivot).left.compareTo(key) < 0 && list.get(pivot + 1).left.compareTo(key) > 0) {
         return pivot + 1;
       }
 
@@ -817,7 +823,9 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
                   "(%s, %s, %s),",
                   pair.left,
                   RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned",
-                  RecordUtils.getRecordSegAddr(bufferR) == -1 ? -1 : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
+                  RecordUtils.getRecordSegAddr(bufferR) == -1
+                      ? -1
+                      : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
         } else if (RecordUtils.getRecordType(bufferR) == 4) {
           byte[] schemaBytes = RecordUtils.getSchemaBytes(bufferR);
           builder.append(
