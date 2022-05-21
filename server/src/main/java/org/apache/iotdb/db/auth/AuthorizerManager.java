@@ -378,10 +378,11 @@ public class AuthorizerManager implements IAuthorizer {
     authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);
-      boolean status = true;
+      boolean status = false;
       if (user != null) {
         for (String path : allPath) {
           if (!user.checkPrivilege(path, permission)) {
+            status = false;
             for (String roleName : user.getRoleList()) {
               Role role = roleCache.getIfPresent(roleName);
               // It is detected that the role of the user does not exist in the cache, indicating
@@ -389,25 +390,26 @@ public class AuthorizerManager implements IAuthorizer {
               // The user cache needs to be initialized
               if (role == null) {
                 invalidateCache(username, "");
-                status = false;
                 break;
               }
-              if (role.checkPrivilege(path, permission)) {
+              if (!role.checkPrivilege(path, permission)) {
+                status = false;
+              } else {
                 status = true;
                 break;
-              } else {
-                status = false;
               }
             }
             // Prove that neither the user nor his role has permission
             if (!status) {
               break;
             }
+          } else {
+            status = true;
           }
         }
-      }
-      if (status) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        if (status) {
+          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        }
       }
       tPermissionInfoResp = ClusterAuthorizer.checkPath(username, allPath, permission);
       if (tPermissionInfoResp.getStatus().getCode()
@@ -447,11 +449,11 @@ public class AuthorizerManager implements IAuthorizer {
 
   public SettableFuture<ConfigTaskResult> queryPermission(
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
-    authReadWriteLock.writeLock().lock();
+    authReadWriteLock.readLock().lock();
     try {
       return ClusterAuthorizer.queryPermission(authorizerReq, configNodeClient);
     } finally {
-      authReadWriteLock.writeLock().unlock();
+      authReadWriteLock.readLock().unlock();
     }
   }
 
