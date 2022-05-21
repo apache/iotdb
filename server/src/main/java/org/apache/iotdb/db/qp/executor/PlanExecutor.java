@@ -126,7 +126,6 @@ import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowNodesInTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsSetTemplatePlan;
@@ -742,7 +741,7 @@ public class PlanExecutor implements IPlanExecutor {
       case QUERY_PROCESSLIST:
         return processShowQueryProcesslist();
       case FUNCTIONS:
-        return processShowFunctions((ShowFunctionsPlan) showPlan);
+        return processShowFunctions();
       case TRIGGERS:
         return processShowTriggers();
       case CONTINUOUS_QUERY:
@@ -1070,8 +1069,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan)
-      throws QueryProcessException {
+  private QueryDataSet processShowFunctions() throws QueryProcessException {
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(
@@ -1080,8 +1078,8 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_FUNCTION_CLASS, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
-    appendUDFs(listDataSet, showPlan);
-    appendNativeFunctions(listDataSet, showPlan);
+    appendUDFs(listDataSet);
+    appendNativeFunctions(listDataSet);
 
     listDataSet.sort(
         (r1, r2) ->
@@ -1090,8 +1088,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private void appendUDFs(ListDataSet listDataSet, ShowFunctionsPlan showPlan)
-      throws QueryProcessException {
+  private void appendUDFs(ListDataSet listDataSet) throws QueryProcessException {
     for (UDFRegistrationInformation info :
         UDFRegistrationService.getInstance().getRegistrationInformation()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
@@ -1241,7 +1238,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
+  private void appendNativeFunctions(ListDataSet listDataSet) {
     final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
     final Binary className = Binary.valueOf("");
     for (String functionName : BuiltinAggregationFunction.getNativeFunctionNames()) {
