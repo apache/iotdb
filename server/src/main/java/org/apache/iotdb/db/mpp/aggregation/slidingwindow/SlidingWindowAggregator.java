@@ -31,6 +31,8 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public abstract class SlidingWindowAggregator extends Aggregator {
 
   // cached partial aggregation result of pre-aggregate windows
@@ -43,7 +45,21 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   }
 
   @Override
-  public void processTsBlock(TsBlock tsBlock) {}
+  public void processTsBlock(TsBlock tsBlock) {
+    checkArgument(
+        step.isInputPartial(),
+        "Step in SlidingWindowAggregationOperator can only process partial result");
+    Column[] timeValueColumn = new Column[inputLocationList.size() + 1];
+    timeValueColumn[0] = tsBlock.getTimeColumn();
+    for (int i = 0; i < inputLocationList.size(); i++) {
+      InputLocation[] inputLocations = inputLocationList.get(i);
+      checkArgument(
+          inputLocations[0].getTsBlockIndex() == 0,
+          "SlidingWindowAggregationOperator can only process one tsBlock input.");
+      timeValueColumn[i + 1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+    }
+    processPartialResult(timeValueColumn);
+  }
 
   @Override
   public void updateTimeRange(TimeRange curTimeRange) {

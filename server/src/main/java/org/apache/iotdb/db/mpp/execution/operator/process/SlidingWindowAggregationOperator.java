@@ -100,6 +100,7 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       for (SlidingWindowAggregator aggregator : aggregators) {
         aggregator.processTsBlock(inputTsBlock.subTsBlock(inputTsBlockIterator.getRowIndex()));
       }
+      inputTsBlockIterator.next();
     }
     if (inputTsBlockIterator.hasNext()) {
       cachedTsBlock = inputTsBlock;
