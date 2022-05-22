@@ -19,41 +19,32 @@
 <template >
   <div style="background:linear-gradient(top,#A2A2A2,#fff);">
     
-    <div style="width:100%;margin: 0 auto;position: relative;height:480px;text-align:center;">
-      <h2 class="h2">Apache IoTDB</h2>
-      <p
-        style="font-size: 20px;line-height:23px;margin: 10px 0 20px 0;font-family: 'Arimo', sans-serif;
-    text-transform: uppercase;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    color: #777;
-    text-align: center;"
-      >Database for Internet of Things</p>
-      <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
-        Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance
-        for data management and analysis, deployable on the edge and the cloud. Due to its light-weight architecture,
-        high performance and rich feature set together with its deep integration with Apache
-        Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive
-        data storage, high-speed data ingestion and complex data analysis in the IoT
-        industrial fields.
-      </p>
-      <el-row style="margin-top:40px;text-align: center;">
-        <el-button
-          type="warning"
-          round
-          style="width:220px;
-    font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
-          @click="addRoutes1"
-        >Download</el-button>
-        <el-button
-          type="info"
-          round
-          style="width:220px;
-    font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
-          @click="addRoutes2"
-        >QuickStart</el-button>
-      </el-row>
-    </div>
+    <h2 class="h2">Apache IoTDB</h2>
+    <p class="project-name">Database for Internet of Things</p>
+    <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
+      Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance
+      for data management and analysis, deployable on the edge and the cloud. Due to its light-weight architecture,
+      high performance and rich feature set together with its deep integration with Apache
+      Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive
+      data storage, high-speed data ingestion and complex data analysis in the IoT
+      industrial fields.
+    </p>
+    <el-row style="margin-top:40px;text-align: center;">
+      <el-button
+        type="warning"
+        round
+        style="width:220px;
+  font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
+        @click="addRoutes1"
+      >Download</el-button>
+      <el-button
+        type="info"
+        round
+        style="width:220px;
+  font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
+        @click="addRoutes2"
+      >QuickStart</el-button>
+    </el-row>
 
 
 
@@ -198,6 +189,17 @@ export default {
 </script>
 
 <style scoped>
+
+  .project-name {
+    font-size: 20px;
+    line-height:23px;margin: 10px 0 20px 0;
+    font-family: 'Arimo', sans-serif;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #777;
+    text-align: center;
+  }
 
   .el-row {
     margin-bottom: 20px;
