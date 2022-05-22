@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -62,6 +63,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
@@ -89,6 +91,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -926,6 +930,46 @@ public class Analyzer {
           partitionFetcher.getSchemaPartition(
               new PathPatternTree(alterTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDeleteTimeseries(
+        DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+      Analysis analysis = new Analysis();
+      analysis.setStatement(deleteTimeSeriesStatement);
+
+      // fetch partition information
+
+      PathPatternTree patternTree = new PathPatternTree(deleteTimeSeriesStatement.getPaths());
+
+      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (String storageGroup : schemaPartitionInfo.getSchemaPartitionMap().keySet()) {
+        try {
+          for (String devicePath :
+              patternTree
+                  .findOverlappedPattern(
+                      new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD))
+                  .findAllDevicePaths()) {
+            DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+            queryParam.setDevicePath(devicePath);
+            sgNameToQueryParamsMap
+                .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                .add(queryParam);
+          }
+        } catch (IllegalPathException e) {
+          // definitely won't happen
+          throw new RuntimeException(e);
+        }
+      }
+
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      analysis.setDataPartitionInfo(dataPartition);
+
       return analysis;
     }
 

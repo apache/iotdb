@@ -83,6 +83,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+
 public class LogicalPlanBuilder {
 
   private PlanNode root;
@@ -542,8 +544,10 @@ public class LogicalPlanBuilder {
             new SchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
                 storageGroupPath,
-                patternTree.extractInvolvedPartByPrefix(storageGroupPath)));
+                patternTree.findOverlappedPattern(
+                    storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))));
       } catch (IllegalPathException e) {
+        // definitely won't happen
         throw new RuntimeException(e);
       }
     }
