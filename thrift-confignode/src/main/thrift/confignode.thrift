@@ -118,6 +118,25 @@ struct TSchemaPartitionResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
+// Node Management
+
+enum NodeManagementType {
+CHILD_PATHS,
+CHILD_NODES
+}
+
+struct TSchemaNodeManagementReq {
+  1: required binary pathPatternTree
+  2: required NodeManagementType type
+}
+
+struct TSchemaNodeManagementResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+  3: optional set<string> matchedNode
+}
+
 // Data
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
@@ -209,6 +228,10 @@ service ConfigIService {
   TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
 
   TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
+
+  /* Node Management */
+
+  TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
 
   /* Data */
 

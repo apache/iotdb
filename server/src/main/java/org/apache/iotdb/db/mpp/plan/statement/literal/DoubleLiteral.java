@@ -36,10 +36,6 @@ public class DoubleLiteral extends Literal {
     this.value = value;
   }
 
-  public double getValue() {
-    return value;
-  }
-
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.DOUBLE.ordinal(), byteBuffer);
@@ -66,5 +62,15 @@ public class DoubleLiteral extends Literal {
   @Override
   public int hashCode() {
     return Objects.hash(value);
+  }
+
+  @Override
+  public double getDouble() {
+    return value;
+  }
+
+  @Override
+  public float getFloat() {
+    return (float) value;
   }
 }

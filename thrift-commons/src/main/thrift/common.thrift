@@ -82,6 +82,8 @@ struct TDataNodeLocation {
 
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
+  2: optional i16 cpu
+  3: optional i16 memory
 }
 
 struct TDataNodeInfo {

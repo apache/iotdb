@@ -93,7 +93,8 @@ public class LogDispatcher {
         logger.error("Unable to shutdown LogDispatcher service after {} seconds", timeout);
       }
     } catch (InterruptedException e) {
-      logger.error("Unexpected shutdown when closing LogDispatcher service ");
+      Thread.currentThread().interrupt();
+      logger.error("Unexpected Interruption when closing LogDispatcher service ");
     }
   }
 
