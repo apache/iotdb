@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.ratis.Utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class MultiLeaderServerImpl {
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.currentNodeController =
-        new IndexController(storageDir, Utils.fromTEndPointToString(thisNode.getEndpoint()), false);
+        new IndexController(storageDir, Utils.IPAddress(thisNode.getEndpoint()), true);
     this.configuration = configuration;
     if (configuration.size() != 0) {
       persistConfiguration();

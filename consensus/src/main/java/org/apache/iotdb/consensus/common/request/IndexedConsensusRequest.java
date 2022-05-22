@@ -26,9 +26,12 @@ import java.nio.ByteBuffer;
 /** only used for multi-leader consensus */
 public class IndexedConsensusRequest implements IConsensusRequest {
 
+  // we do not need to serialize these two fields as they are useless in other nodes;
   private final long searchIndex;
   private final long safelyDeletedSearchIndex;
+  // we do not need to serialize this field as it will be serialized by TLogBatch;
   private final TLogType type;
+
   private final IConsensusRequest request;
 
   public IndexedConsensusRequest(

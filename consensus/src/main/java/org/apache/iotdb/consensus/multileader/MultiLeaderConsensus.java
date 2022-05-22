@@ -45,7 +45,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,7 +98,7 @@ public class MultiLeaderConsensus implements IConsensus {
               new MultiLeaderServerImpl(
                   path.toString(),
                   new Peer(consensusGroupId, thisNode),
-                  Collections.emptyList(),
+                  new ArrayList<>(),
                   registry.apply(consensusGroupId)));
         }
       }

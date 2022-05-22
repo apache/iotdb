@@ -26,7 +26,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
-import org.apache.iotdb.consensus.multileader.Utils;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
@@ -35,6 +34,7 @@ import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.ratis.Utils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -130,8 +130,7 @@ public class LogDispatcher {
     public LogDispatcherThread(Peer peer) {
       this.peer = peer;
       this.controller =
-          new IndexController(
-              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()), true);
+          new IndexController(impl.getStorageDir(), Utils.IPAddress(peer.getEndpoint()), false);
     }
 
     public IndexController getController() {
@@ -171,57 +170,35 @@ public class LogDispatcher {
 
     public PendingBatch getBatch() {
       List<TLogBatch> logBatches = new ArrayList<>();
-      long startIndex = -1;
-      long endIndex = -1;
+      long startIndex = getNextSendingIndex();
+      long maxIndex = impl.getCurrentNodeController().getCurrentIndex();
+      long endIndex;
       if (bufferedRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
         pendingRequest.drainTo(
             bufferedRequest,
             MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH - bufferedRequest.size());
       }
       if (bufferedRequest.isEmpty()) {
-        long currentIndex = getMaxPendingSyncIndex();
-        long peerIndex = controller.getCurrentIndex();
-        while (peerIndex < currentIndex
-            && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
-          // TODO iterator
-          IConsensusRequest data = reader.getReq(peerIndex);
-          if (data != null) {
-            if (startIndex == -1) {
-              startIndex = peerIndex;
-            }
-            ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-            data.serializeRequest(buffer);
-            logBatches.add(new TLogBatch(TLogType.InsertNode, buffer));
-          }
-          controller.updateAndGet(peerIndex++);
-        }
-        endIndex = peerIndex;
+        // only execute this after a restart
+        endIndex = constructBatchFromWAL(startIndex, maxIndex, logBatches);
       } else {
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
-        startIndex = prev.getSearchIndex();
+        constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
+        constructBatchIndexedFromConsensusRequest(prev, logBatches);
         endIndex = prev.getSearchIndex();
+        iterator.remove();
         while (iterator.hasNext()
             && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
-          ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
           IndexedConsensusRequest current = iterator.next();
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
-            for (long peerIndex = prev.getSearchIndex();
-                peerIndex < current.getSearchIndex()
-                    && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH;
-                peerIndex++) {
-              IConsensusRequest data = reader.getReq(peerIndex);
-              if (data != null) {
-                data.serializeRequest(buffer);
-                endIndex = peerIndex;
-                logBatches.add(new TLogBatch(TLogType.InsertNode, buffer));
-              }
-            }
+            constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
+            constructBatchIndexedFromConsensusRequest(current, logBatches);
           } else {
-            current.serializeRequest(buffer);
-            endIndex = current.getSearchIndex();
-            logBatches.add(new TLogBatch(TLogType.FragmentInstance, buffer));
+            constructBatchIndexedFromConsensusRequest(current, logBatches);
           }
+          endIndex = current.getSearchIndex();
+          prev = current;
           iterator.remove();
         }
       }
@@ -239,14 +216,36 @@ public class LogDispatcher {
       }
     }
 
-    public long getMaxPendingSyncIndex() {
-      return syncStatus
-          .getMaxPendingIndex()
-          .orElseGet(() -> impl.getCurrentNodeController().getCurrentIndex());
-    }
-
     public SyncStatus getSyncStatus() {
       return syncStatus;
+    }
+
+    private long getNextSendingIndex() {
+      return syncStatus.getMaxPendingIndex().orElseGet(controller::getCurrentIndex) + 1;
+    }
+
+    private long constructBatchFromWAL(
+        long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
+      while (currentIndex < maxIndex
+          && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+        // TODO iterator
+        IConsensusRequest data = reader.getReq(currentIndex++);
+        if (data != null) {
+          ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+          data.serializeRequest(buffer);
+          buffer.flip();
+          logBatches.add(new TLogBatch(TLogType.InsertNode, buffer));
+        }
+      }
+      return currentIndex - 1;
+    }
+
+    private void constructBatchIndexedFromConsensusRequest(
+        IndexedConsensusRequest request, List<TLogBatch> logBatches) {
+      ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+      request.serializeRequest(buffer);
+      buffer.flip();
+      logBatches.add(new TLogBatch(TLogType.FragmentInstance, buffer));
     }
   }
 }

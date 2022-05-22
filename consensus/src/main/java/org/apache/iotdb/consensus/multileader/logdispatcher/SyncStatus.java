@@ -56,9 +56,8 @@ public class SyncStatus {
   }
 
   public Optional<Long> getMaxPendingIndex() {
-    if (pendingBatches.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of(pendingBatches.get(pendingBatches.size() - 1).getEndIndex());
+    return pendingBatches.isEmpty()
+        ? Optional.empty()
+        : Optional.of(pendingBatches.get(pendingBatches.size() - 1).getEndIndex());
   }
 }
