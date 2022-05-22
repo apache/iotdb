@@ -1955,7 +1955,6 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) throws TException {
     // check whether measurement is legal according to syntax convention
-
     isLegalMeasurements(req.getMeasurements());
 
     int size = req.getMeasurementsSize();
