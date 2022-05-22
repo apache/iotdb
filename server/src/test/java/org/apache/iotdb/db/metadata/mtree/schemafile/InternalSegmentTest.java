@@ -32,6 +32,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public class InternalSegmentTest {
   @Before
@@ -84,7 +85,7 @@ public class InternalSegmentTest {
     }
 
     ByteBuffer buf2 = ByteBuffer.allocate(150);
-    String sk = ((InternalSegment) seg).splitByKey("a8", 666, buf2);
+    String sk = seg.splitByKey("a8", 666, buf2);
 
     Assert.assertEquals("a5", sk);
     ISegment<Integer, Integer> seg2 = InternalSegment.loadInternalSegment(buf2);
@@ -114,7 +115,8 @@ public class InternalSegmentTest {
     String sk = ((InternalSegment) seg).splitByKey("a99", 666, buf2);
 
     Assert.assertEquals("a9", sk);
-    Assert.assertEquals(7, InternalSegment.loadInternalSegment(buf2).getRecordByKey("a91"));
+    Assert.assertEquals(
+        Optional.of(7), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a91"));
 
     Assert.assertEquals(124, seg.insertRecord("a1", 0));
 
@@ -134,7 +136,8 @@ public class InternalSegmentTest {
     sk = ((InternalSegment) seg).splitByKey("a24", 24, buf2);
 
     Assert.assertEquals("a23", sk);
-    Assert.assertEquals(24, InternalSegment.loadInternalSegment(buf2).getRecordByKey("a24"));
+    Assert.assertEquals(
+        Optional.of(24), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a24"));
 
     Assert.assertEquals(179, seg.insertRecord("a1", 0));
     Assert.assertEquals(166, InternalSegment.loadInternalSegment(buf2).insertRecord("a24", 0));
@@ -167,7 +170,8 @@ public class InternalSegmentTest {
     sk = ((InternalSegment) seg).splitByKey("a11", 110, buf2);
     Assert.assertEquals("a11", sk);
     Assert.assertEquals(253, seg.insertRecord("a0", 1));
-    Assert.assertEquals(110, InternalSegment.loadInternalSegment(buf2).getRecordByKey("a11"));
+    Assert.assertEquals(
+        Optional.of(110), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a11"));
   }
 
   @Test

@@ -64,6 +64,7 @@ public class InternalSegment implements ISegment<Integer, Integer> {
    * <p>25 byte: header
    *
    * <ul>
+   *   <li>1 short: identical flag, always -1, to be different from {@link Segment}
    *   <li>1 short: freeAddr, start offset of keys
    *   <li>1 short: pointNum, amount of compound pointers in this segment
    *   <li>1 short: spareSpace, accurate spare space size of this segment
@@ -92,6 +93,7 @@ public class InternalSegment implements ISegment<Integer, Integer> {
       this.buffer.position(SEG_HEADER_SIZE);
       ReadWriteIOUtils.write(compoundPointer(p0, Short.MIN_VALUE), this.buffer);
     } else {
+      ReadWriteIOUtils.readShort(this.buffer); // read flag bytes
       this.freeAddr = ReadWriteIOUtils.readShort(this.buffer);
       this.pointNum = ReadWriteIOUtils.readShort(this.buffer);
       this.spareSpace = ReadWriteIOUtils.readShort(this.buffer);
@@ -101,16 +103,19 @@ public class InternalSegment implements ISegment<Integer, Integer> {
     }
   }
 
-  public static ISegment initInternalSegment(ByteBuffer buffer, int p0) {
+  public static ISegment<Integer, Integer> initInternalSegment(ByteBuffer buffer, int p0) {
     return new InternalSegment(buffer, true, p0);
   }
 
-  public static ISegment loadInternalSegment(ByteBuffer buffer) {
-    return new InternalSegment(buffer, false, -1);
+  public static ISegment<Integer, Integer> loadInternalSegment(ByteBuffer buffer) {
+    return ReadWriteIOUtils.readShort(buffer) != (short) -1
+        ? null
+        : new InternalSegment(buffer, false, -1);
   }
 
-  private void flushBufferHeader() {
+  private synchronized void flushBufferHeader() {
     this.buffer.clear();
+    ReadWriteIOUtils.write((short) -1, this.buffer);
     ReadWriteIOUtils.write(freeAddr, this.buffer);
     ReadWriteIOUtils.write(pointNum, this.buffer);
     ReadWriteIOUtils.write(spareSpace, this.buffer);
@@ -348,6 +353,7 @@ public class InternalSegment implements ISegment<Integer, Integer> {
     }
 
     dstBuffer.clear();
+    ReadWriteIOUtils.write((short) -1, dstBuffer);
     ReadWriteIOUtils.write(freeAddr, dstBuffer);
     ReadWriteIOUtils.write(pointNum, dstBuffer);
     ReadWriteIOUtils.write(spareSpace, dstBuffer);
@@ -595,17 +601,23 @@ public class InternalSegment implements ISegment<Integer, Integer> {
       // TODO: check whether reasonable to throw an unchecked
       throw new IndexOutOfBoundsException();
     }
-    this.buffer.limit(this.buffer.capacity());
-    this.buffer.position(ISegment.SEG_HEADER_SIZE + index * COMPOUND_POINT_LENGTH);
-    return ReadWriteIOUtils.readLong(this.buffer);
+    synchronized (this.buffer) {
+      this.buffer.limit(this.buffer.capacity());
+      this.buffer.position(ISegment.SEG_HEADER_SIZE + index * COMPOUND_POINT_LENGTH);
+      return ReadWriteIOUtils.readLong(this.buffer);
+    }
   }
 
   private String getKeyByOffset(short offset) {
-    this.buffer.limit(this.buffer.capacity());
-    this.buffer.position(offset);
-    return ReadWriteIOUtils.readString(this.buffer);
+    synchronized (this.buffer) {
+      this.buffer.limit(this.buffer.capacity());
+      this.buffer.position(offset);
+      return ReadWriteIOUtils.readString(this.buffer);
+    }
   }
 
+  // TODO: performance leveraging. without constructing collection for keys,
+  //  get a key with logical index occurs 2 synchronized buffer access
   private String getKeyByIndex(int index) {
     if (index <= 0 || index >= pointNum) {
       throw new IndexOutOfBoundsException();

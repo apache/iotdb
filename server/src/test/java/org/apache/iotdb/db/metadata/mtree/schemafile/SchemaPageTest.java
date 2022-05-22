@@ -35,11 +35,14 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import static org.junit.Assert.fail;
 
 public class SchemaPageTest {
 
@@ -79,7 +82,38 @@ public class SchemaPageTest {
     page.syncPageBuffer();
     page.getPageBuffer(newBuf);
     ISchemaPage newPage = SchemaPage.loadPage(newBuf, 0);
+    Assert.assertEquals(newPage.inspect(), page.inspect());
     System.out.println(newPage.inspect());
+  }
+
+  @Test
+  public void essentialPageTest() throws MetadataException, IOException {
+    ByteBuffer buf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
+    ISchemaPage page = SchemaPage.initPage(buf, 0);
+    page.allocNewSegment((short) 500);
+    Assert.assertFalse(page.containsInternalSegment());
+    try {
+      page.allocInternalSegment(0);
+      fail();
+    } catch (SchemaPageOverflowException e) {
+      Assert.assertEquals(
+          "Page [0] in schema file runs out of space or contains too many segments.",
+          e.getMessage());
+    }
+
+    page.deleteSegment((short) 0);
+    page.allocInternalSegment(11);
+    Assert.assertTrue(page.containsInternalSegment());
+
+    page.insertIndexEntry("aaa", 256);
+    page.setNextSegAddress((short) 0, 999L);
+    page.syncPageBuffer();
+
+    ISchemaPage nPage = SchemaPage.loadPage(buf, 0);
+
+    Assert.assertTrue(nPage.containsInternalSegment());
+    Assert.assertEquals(999L, nPage.getNextSegAddress((short) 0));
+    Assert.assertEquals(256, nPage.getIndexPointer("aab"));
   }
 
   private IMNode virtualFlatMTree(int childSize) {
@@ -96,25 +130,8 @@ public class SchemaPageTest {
     return internalNode;
   }
 
-  @Test
-  public void bufferTest() {
-    ByteBuffer buffer1 = ByteBuffer.allocate(100);
-    ByteBuffer buffer2 = buffer1.slice();
-    buffer1.put("12346".getBytes());
-    buffer1.clear();
-
-    buffer2.position(10);
-    buffer2.put("091234".getBytes());
-    buffer2.clear();
-    printBuffer(buffer1);
-    printBuffer(buffer2);
-
-    byte[] a = new byte[10];
-    byte[] b = a;
-
-    a[0] = (byte) 7;
-    System.out.println(a[0]);
-    System.out.println(b[0]);
+  public void print(Object o) {
+    System.out.println(o);
   }
 
   private void printBuffer(ByteBuffer buf) {

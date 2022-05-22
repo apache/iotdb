@@ -122,4 +122,15 @@ public interface ISchemaPage {
   long getPrevSegAddress(short segId) throws SegmentNotFoundException;
 
   String inspect() throws SegmentNotFoundException;
+
+  // TODO: methods below should belong to ISegment interface after abstraction refactor
+  //  along with methods that insert/remove/get records, seg/get segment address
+
+  int insertIndexEntry(String key, int ptr) throws MetadataException;
+
+  int getIndexPointer(String key) throws MetadataException;
+
+  short allocInternalSegment(int ptr) throws SchemaPageOverflowException;
+
+  boolean containsInternalSegment() throws SegmentNotFoundException;
 }

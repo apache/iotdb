@@ -130,14 +130,14 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     this(ByteBuffer.allocate(size));
   }
 
-  public static ISegment initAsSegment(ByteBuffer buffer) {
+  public static ISegment<ByteBuffer, IMNode> initAsSegment(ByteBuffer buffer) {
     if (buffer == null) {
       return null;
     }
     return new Segment(buffer, true);
   }
 
-  public static ISegment loadAsSegment(ByteBuffer buffer) {
+  public static ISegment<ByteBuffer, IMNode> loadAsSegment(ByteBuffer buffer) {
     if (buffer == null) {
       return null;
     }
