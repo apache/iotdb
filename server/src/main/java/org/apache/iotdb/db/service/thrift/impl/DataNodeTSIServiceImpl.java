@@ -55,6 +55,7 @@ import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
@@ -141,7 +142,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    TSStatus loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+    TSStatus loginStatus;
+    try {
+      loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+    } catch (ConfigNodeConnectionException e) {
+      TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      return new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
+    }
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
     long sessionId = -1;
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
