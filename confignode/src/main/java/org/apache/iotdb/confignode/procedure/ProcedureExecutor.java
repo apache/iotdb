@@ -65,15 +65,14 @@ public class ProcedureExecutor<Env> {
 
   private CopyOnWriteArrayList<WorkerThread> workerThreads;
 
-  private org.apache.iotdb.confignode.procedure.TimeoutExecutorThread<Env> timeoutExecutor;
+  private TimeoutExecutorThread<Env> timeoutExecutor;
 
-  private org.apache.iotdb.confignode.procedure.TimeoutExecutorThread<Env> workerMonitorExecutor;
+  private TimeoutExecutorThread<Env> workerMonitorExecutor;
 
   private int corePoolSize;
   private int maxPoolSize;
-  private volatile long keepAliveTime;
 
-  private final org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler scheduler;
+  private final ProcedureScheduler scheduler;
 
   private final AtomicLong lastProcId = new AtomicLong(-1);
   private final AtomicLong workId = new AtomicLong(0);
@@ -83,9 +82,7 @@ public class ProcedureExecutor<Env> {
   private final IProcedureStore store;
 
   public ProcedureExecutor(
-      final Env environment,
-      final IProcedureStore store,
-      final org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler scheduler) {
+      final Env environment, final IProcedureStore store, final ProcedureScheduler scheduler) {
     this.environment = environment;
     this.scheduler = scheduler;
     this.store = store;
@@ -101,8 +98,7 @@ public class ProcedureExecutor<Env> {
     this.maxPoolSize = 10 * numThreads;
     this.threadGroup = new ThreadGroup("ProcedureWorkerGroup");
     this.timeoutExecutor =
-        new org.apache.iotdb.confignode.procedure.TimeoutExecutorThread<>(
-            this, threadGroup, "ProcedureTimeoutExecutor");
+        new TimeoutExecutorThread<>(this, threadGroup, "ProcedureTimeoutExecutor");
     this.workerMonitorExecutor =
         new TimeoutExecutorThread<>(this, threadGroup, "ProcedureWorkerThreadMonitor");
     workId.set(0);
@@ -115,15 +111,6 @@ public class ProcedureExecutor<Env> {
 
     scheduler.start();
     recover();
-  }
-
-  public void setKeepAliveTime(final long keepAliveTime, final TimeUnit timeUnit) {
-    this.keepAliveTime = timeUnit.toMillis(keepAliveTime);
-    this.scheduler.signalAll();
-  }
-
-  public long getKeepAliveTime(final TimeUnit timeUnit) {
-    return timeUnit.convert(keepAliveTime, TimeUnit.MILLISECONDS);
   }
 
   private void recover() {
@@ -383,7 +370,7 @@ public class ProcedureExecutor<Env> {
         }
         break;
       }
-      org.apache.iotdb.confignode.procedure.state.ProcedureLockState lockState = acquireLock(proc);
+      ProcedureLockState lockState = acquireLock(proc);
       switch (lockState) {
         case LOCK_ACQUIRED:
           executeProcedure(rootProcStack, proc);
@@ -442,9 +429,7 @@ public class ProcedureExecutor<Env> {
         yieldProcedure(proc);
       } catch (Throwable e) {
         LOG.error("CODE-BUG:{}", proc, e);
-        proc.setFailure(
-            new org.apache.iotdb.confignode.procedure.exception.ProcedureException(
-                e.getMessage(), e));
+        proc.setFailure(new ProcedureException(e.getMessage(), e));
       }
 
       if (!proc.isFailed()) {
@@ -555,9 +540,7 @@ public class ProcedureExecutor<Env> {
       Procedure<Env> subproc = subprocs[i];
       if (subproc == null) {
         String errMsg = "subproc[" + i + "] is null, aborting procedure";
-        proc.setFailure(
-            new org.apache.iotdb.confignode.procedure.exception.ProcedureException(
-                (errMsg), new IllegalArgumentException(errMsg)));
+        proc.setFailure(new ProcedureException((errMsg), new IllegalArgumentException(errMsg)));
         return null;
       }
       subproc.setParentProcId(proc.getProcId());
@@ -613,24 +596,21 @@ public class ProcedureExecutor<Env> {
         cleanupAfterRollback(procedure);
         continue;
       }
-      org.apache.iotdb.confignode.procedure.state.ProcedureLockState lockState =
-          acquireLock(procedure);
-      if (lockState
-          != org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_ACQUIRED) {
+      ProcedureLockState lockState = acquireLock(procedure);
+      if (lockState != ProcedureLockState.LOCK_ACQUIRED) {
         return lockState;
       }
       lockState = executeRollback(procedure);
       releaseLock(procedure, false);
 
-      boolean abortRollback =
-          lockState != org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_ACQUIRED;
+      boolean abortRollback = lockState != ProcedureLockState.LOCK_ACQUIRED;
       abortRollback |= !isRunning() || !store.isRunning();
       if (abortRollback) {
         return lockState;
       }
 
       if (!procedure.isFinished() && procedure.isYieldAfterExecution(this.environment)) {
-        return org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_YIELD_WAIT;
+        return ProcedureLockState.LOCK_YIELD_WAIT;
       }
 
       if (procedure != rootProcedure) {
@@ -640,13 +620,12 @@ public class ProcedureExecutor<Env> {
 
     LOG.info("Rolled back {}, time duration is {}", rootProcedure, rootProcedure.elapsedTime());
     rootProcedureCleanup(rootProcedure);
-    return org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_ACQUIRED;
+    return ProcedureLockState.LOCK_ACQUIRED;
   }
 
-  private org.apache.iotdb.confignode.procedure.state.ProcedureLockState acquireLock(
-      Procedure<Env> proc) {
+  private ProcedureLockState acquireLock(Procedure<Env> proc) {
     if (proc.hasLock()) {
-      return org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_ACQUIRED;
+      return ProcedureLockState.LOCK_ACQUIRED;
     }
     return proc.doAcquireLock(this.environment, store);
   }
@@ -658,8 +637,7 @@ public class ProcedureExecutor<Env> {
    * @param procedure procedure
    * @return procedure lock state
    */
-  private org.apache.iotdb.confignode.procedure.state.ProcedureLockState executeRollback(
-      Procedure<Env> procedure) {
+  private ProcedureLockState executeRollback(Procedure<Env> procedure) {
     ReentrantLock idLock =
         idLockMap.computeIfAbsent(procedure.getProcId(), procId -> new ReentrantLock());
     try {
@@ -675,7 +653,7 @@ public class ProcedureExecutor<Env> {
       idLock.unlock();
     }
     cleanupAfterRollback(procedure);
-    return org.apache.iotdb.confignode.procedure.state.ProcedureLockState.LOCK_ACQUIRED;
+    return ProcedureLockState.LOCK_ACQUIRED;
   }
 
   private void cleanupAfterRollback(Procedure<Env> procedure) {
@@ -740,6 +718,7 @@ public class ProcedureExecutor<Env> {
   private class WorkerThread extends StoppableThread {
     private final AtomicLong startTime = new AtomicLong(Long.MAX_VALUE);
     private volatile Procedure<Env> activeProcedure;
+    protected long keepAliveTime = -1;
 
     public WorkerThread(ThreadGroup threadGroup) {
       this(threadGroup, "ProcExecWorker-");
@@ -806,8 +785,10 @@ public class ProcedureExecutor<Env> {
   // A worker thread which can be added when core workers are stuck. Will timeout after
   // keepAliveTime if there is no procedure to run.
   private final class KeepAliveWorkerThread extends WorkerThread {
+
     public KeepAliveWorkerThread(ThreadGroup group) {
       super(group, "KAProcExecWorker-");
+      this.keepAliveTime = TimeUnit.SECONDS.toMillis(10);
     }
 
     @Override
@@ -823,10 +804,6 @@ public class ProcedureExecutor<Env> {
 
     private static final float DEFAULT_WORKER_ADD_STUCK_PERCENTAGE = 0.5f; // 50% stuck
 
-    private float addWorkerStuckPercentage = DEFAULT_WORKER_ADD_STUCK_PERCENTAGE;
-    private int timeoutInterval = DEFAULT_WORKER_MONITOR_INTERVAL;
-    private int stuckThreshold = DEFAULT_WORKER_STUCK_THRESHOLD;
-
     public WorkerMonitor() {
       super(DEFAULT_WORKER_MONITOR_INTERVAL);
       updateTimestamp();
@@ -836,7 +813,8 @@ public class ProcedureExecutor<Env> {
       // check if any of the worker is stuck
       int stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
-        if (worker.activeProcedure == null || worker.getCurrentRunTime() < stuckThreshold) {
+        if (worker.activeProcedure == null
+            || worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
           continue;
         }
 
@@ -857,7 +835,7 @@ public class ProcedureExecutor<Env> {
       final float stuckPerc = ((float) stuckCount) / workerThreads.size();
       // let's add new worker thread more aggressively, as they will timeout finally if there is no
       // work to do.
-      if (stuckPerc >= addWorkerStuckPercentage && workerThreads.size() < maxPoolSize) {
+      if (stuckPerc >= DEFAULT_WORKER_ADD_STUCK_PERCENTAGE && workerThreads.size() < maxPoolSize) {
         final KeepAliveWorkerThread worker = new KeepAliveWorkerThread(threadGroup);
         workerThreads.add(worker);
         worker.start();

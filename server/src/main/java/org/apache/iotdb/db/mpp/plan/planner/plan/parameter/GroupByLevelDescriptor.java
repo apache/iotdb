@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 
 import java.nio.ByteBuffer;
 import java.util.List;
