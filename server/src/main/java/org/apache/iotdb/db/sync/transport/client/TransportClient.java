@@ -485,6 +485,9 @@ public class TransportClient implements ITransportClient {
 
   @Override
   public SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException {
+    if (syncRequest.getType().equals(RequestType.HEARTBEAT)) {
+      return requestHeartbeat(syncRequest);
+    }
     int retryCount = 0;
     while (true) {
       retryCount++;
@@ -524,7 +527,13 @@ public class TransportClient implements ITransportClient {
     }
   }
 
-  public SyncResponse doheartbeat(SyncRequest syncRequest) throws SyncConnectionException {
+  /**
+   * deal with HEARTBEAT type request, use a special client to send request.
+   *
+   * @param syncRequest must be HEARTBEAT type request
+   * @throws SyncConnectionException cannot connect to receiver
+   */
+  private SyncResponse requestHeartbeat(SyncRequest syncRequest) throws SyncConnectionException {
     if (heartbeatClient.getClient() == null) {
       synchronized (heartbeatClient) {
         if (heartbeatClient.getClient() == null) {

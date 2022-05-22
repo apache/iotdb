@@ -68,6 +68,8 @@ public class ClientWrapper {
   }
 
   /**
+   * create connection and handshake before sending messages
+   *
    * @return true if success; false if failed to check IoTDB version.
    * @throws SyncConnectionException cannot create connection to receiver
    */

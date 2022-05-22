@@ -119,9 +119,8 @@ public class TransportHandler {
     try {
       SenderService.getInstance()
           .receiveMsg(
-              ((TransportClient) transportClient)
-                  .doheartbeat(
-                      new SyncRequest(RequestType.HEARTBEAT, pipeName, localIp, createTime)));
+              transportClient.heartbeat(
+                  new SyncRequest(RequestType.HEARTBEAT, pipeName, localIp, createTime)));
       synchronized (((TransportClient) transportClient).getWaitLock()) {
         msgManager.cleanTempMessage();
         ((TransportClient) transportClient).getWaitLock().notifyAll();
