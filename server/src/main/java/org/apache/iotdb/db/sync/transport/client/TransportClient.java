@@ -84,7 +84,7 @@ public class TransportClient implements ITransportClient {
 
   private final Pipe pipe;
 
-  /* use to wait until successfully connect to receiver */
+  /* hold this lock to wait until successfully reconnect to receiver */
   private final Object waitLock;
 
   public TransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
