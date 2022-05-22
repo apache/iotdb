@@ -32,7 +32,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Optional;
 
 public class InternalSegmentTest {
   @Before
@@ -63,6 +62,7 @@ public class InternalSegmentTest {
       seg.insertRecord(test[i], i);
     }
     seg.syncBuffer();
+    buffer.clear();
     ISegment<Integer, Integer> seg2 = InternalSegment.loadInternalSegment(buffer);
     Assert.assertEquals(seg.inspect(), seg2.inspect());
 
@@ -88,6 +88,7 @@ public class InternalSegmentTest {
     String sk = seg.splitByKey("a8", 666, buf2);
 
     Assert.assertEquals("a5", sk);
+    buf2.clear();
     ISegment<Integer, Integer> seg2 = InternalSegment.loadInternalSegment(buf2);
     Assert.assertEquals(4, seg2.getRecordByKey("a5").intValue());
     Assert.assertEquals(5, seg2.getRecordByKey("a6").intValue());
@@ -112,11 +113,12 @@ public class InternalSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split when insert the biggest key
-    String sk = ((InternalSegment) seg).splitByKey("a99", 666, buf2);
+    String sk = seg.splitByKey("a99", 666, buf2);
 
     Assert.assertEquals("a9", sk);
+    buf2.clear();
     Assert.assertEquals(
-        Optional.of(7), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a91"));
+        Integer.valueOf(7), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a91"));
 
     Assert.assertEquals(124, seg.insertRecord("a1", 0));
 
@@ -126,20 +128,22 @@ public class InternalSegmentTest {
     seg.insertRecord("a23", 22);
 
     // split when insert the second-biggest key
-    sk = ((InternalSegment) seg).splitByKey("a64", 6464, buf2);
+    sk = seg.splitByKey("a64", 6464, buf2);
     Assert.assertEquals("a63", sk);
 
     seg.insertRecord("a11", 11);
     seg.insertRecord("a12", 12);
 
     buf2.clear();
-    sk = ((InternalSegment) seg).splitByKey("a24", 24, buf2);
+    sk = seg.splitByKey("a24", 24, buf2);
 
     Assert.assertEquals("a23", sk);
+    buf2.clear();
     Assert.assertEquals(
-        Optional.of(24), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a24"));
+        Integer.valueOf(24), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a24"));
 
     Assert.assertEquals(179, seg.insertRecord("a1", 0));
+    buf2.clear();
     Assert.assertEquals(166, InternalSegment.loadInternalSegment(buf2).insertRecord("a24", 0));
   }
 
@@ -161,6 +165,7 @@ public class InternalSegmentTest {
     Assert.assertEquals("a1", sk);
 
     Assert.assertEquals(253, seg.insertRecord("a0", 9));
+    buf2.clear();
     Assert.assertEquals(169, InternalSegment.loadInternalSegment(buf2).insertRecord("a2", 0));
 
     seg.insertRecord("a13", 12);
@@ -170,8 +175,9 @@ public class InternalSegmentTest {
     sk = ((InternalSegment) seg).splitByKey("a11", 110, buf2);
     Assert.assertEquals("a11", sk);
     Assert.assertEquals(253, seg.insertRecord("a0", 1));
+    buf2.clear();
     Assert.assertEquals(
-        Optional.of(110), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a11"));
+        Integer.valueOf(110), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a11"));
   }
 
   @Test
