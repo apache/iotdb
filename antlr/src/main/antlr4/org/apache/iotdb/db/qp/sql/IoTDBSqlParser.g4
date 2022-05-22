@@ -879,16 +879,12 @@ fromClause
 // Attribute Clause
 
 attributeClauses
-    : aliasNodeName? WITH DATATYPE operator_eq dataType=DATATYPE_VALUE
-    (COMMA ENCODING operator_eq encoding=ENCODING_VALUE)?
-    (COMMA (COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
+    : aliasNodeName? WITH attributeKey operator_eq datatype=attributeValue
     (COMMA attributePair)*
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | aliasNodeName? WITH? (DATATYPE operator_eq)? dataType=DATATYPE_VALUE
-    (ENCODING operator_eq encoding=ENCODING_VALUE)?
-    ((COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
+    | aliasNodeName? WITH? (attributeKey operator_eq)? dataType=attributeValue
     attributePair*
     tagClause?
     attributeClause?
@@ -907,7 +903,7 @@ attributeClause
     ;
 
 attributePair
-    : key=attributeKey (OPERATOR_SEQ | OPERATOR_DEQ) value=attributeValue
+    : key=attributeKey operator_eq value=attributeValue
     ;
 
 attributeKey
