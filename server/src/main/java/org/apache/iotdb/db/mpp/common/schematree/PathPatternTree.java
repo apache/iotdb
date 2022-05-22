@@ -38,8 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-
 public class PathPatternTree {
 
   private PathPatternNode root;
@@ -252,18 +250,18 @@ public class PathPatternTree {
     return new PartialPath(nodeList.toArray(new String[0]));
   }
 
-  public PathPatternTree extractInvolvedPartByPrefix(PartialPath prefixPath) {
+  public PathPatternTree findOverlappedPattern(PartialPath pattern) {
     if (pathList.isEmpty()) {
       pathList = splitToPathList();
     }
-    PartialPath pattern = prefixPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
-    List<PartialPath> involvedPath = new ArrayList<>();
+
+    List<PartialPath> results = new ArrayList<>();
     for (PartialPath path : pathList) {
       if (pattern.overlapWith(path)) {
-        involvedPath.add(path);
+        results.add(path);
       }
     }
-    return new PathPatternTree(involvedPath);
+    return new PathPatternTree(results);
   }
 
   @TestOnly
