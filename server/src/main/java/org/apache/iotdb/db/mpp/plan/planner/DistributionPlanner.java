@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
@@ -59,8 +59,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -510,32 +508,25 @@ public class DistributionPlanner {
       }
       GroupByLevelNode handle = (GroupByLevelNode) node;
 
-      // Construct all outputColumns from children
-      List<String> childrenOutputColumns = new ArrayList<>();
+      // Construct all outputColumns from children. Using Set here to avoid duplication
+      Set<String> childrenOutputColumns = new HashSet<>();
       handle
           .getChildren()
           .forEach(child -> childrenOutputColumns.addAll(child.getOutputColumnNames()));
 
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
-      List<String> outputColumnList = new ArrayList<>();
       List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
-      for (int i = 0; i < handle.getOutputColumnNames().size(); i++) {
-        String column = handle.getOutputColumnNames().get(i);
-        Set<Expression> originalExpressions =
-            analysis.getGroupByLevelExpressions().getOrDefault(column, new HashSet<>());
+      for (GroupByLevelDescriptor originalDescriptor : handle.getGroupByLevelDescriptors()) {
         List<Expression> descriptorExpression = new ArrayList<>();
         for (String childColumn : childrenOutputColumns) {
-          if (childColumn.equals(column)) {
-            try {
-              descriptorExpression.add(new TimeSeriesOperand(new PartialPath(childColumn)));
-            } catch (IllegalPathException e) {
-              throw new RuntimeException("error when plan distribution aggregation query", e);
-            }
+          // If this condition matched, the childColumn should come from GroupByLevelNode
+          if (isAggColumnMatchExpression(childColumn, originalDescriptor.getOutputExpression())) {
+            descriptorExpression.add(originalDescriptor.getOutputExpression());
             continue;
           }
-          for (Expression exp : originalExpressions) {
-            if (exp.getExpressionString().equals(childColumn)) {
+          for (Expression exp : originalDescriptor.getInputExpressions()) {
+            if (isAggColumnMatchExpression(childColumn, exp)) {
               descriptorExpression.add(exp);
             }
           }
@@ -543,14 +534,21 @@ public class DistributionPlanner {
         if (descriptorExpression.size() == 0) {
           continue;
         }
-        GroupByLevelDescriptor descriptor = handle.getGroupByLevelDescriptors().get(i).deepClone();
+        GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.PARTIAL);
         descriptor.setInputExpressions(descriptorExpression);
 
-        outputColumnList.add(column);
         descriptorList.add(descriptor);
       }
       handle.setGroupByLevelDescriptors(descriptorList);
+    }
+
+    // TODO: (xingtanzjr) need to confirm the logic when processing UDF
+    private boolean isAggColumnMatchExpression(String columnName, Expression expression) {
+      if (columnName == null) {
+        return false;
+      }
+      return columnName.contains(expression.getExpressionString());
     }
 
     private List<SeriesAggregationSourceNode> splitAggregationSourceByPartition(
