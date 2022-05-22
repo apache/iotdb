@@ -123,8 +123,7 @@ public abstract class TernaryTransformer extends Transformer {
       }
     }
 
-    if (firstTime != 0) // Value of firstTime, secondTime and thirdTime are same here, the value equals zero represents three LayerPointerReaders are all ConstantPointReader.
-      cachedTime = firstTime;
+    if (firstTime != 0) cachedTime = firstTime;
     return true;
   }
 

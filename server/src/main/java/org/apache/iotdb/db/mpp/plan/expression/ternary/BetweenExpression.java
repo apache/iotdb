@@ -19,7 +19,6 @@
  *
  */
 
-
 package org.apache.iotdb.db.mpp.plan.expression.ternary;
 
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
