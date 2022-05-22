@@ -37,6 +37,7 @@ import java.nio.file.Paths;
 public class IndexController {
 
   private final Logger logger = LoggerFactory.getLogger(IndexController.class);
+
   public static final int FLUSH_INTERVAL = 500;
 
   private volatile long lastFlushedIndex;
@@ -131,8 +132,6 @@ public class IndexController {
       }
     } else {
       versionFile = new File(directory, prefix + "0");
-      lastFlushedIndex = 0;
-      currentIndex = 0;
       try {
         if (!versionFile.createNewFile()) {
           logger.warn("Cannot create new version file {}", versionFile);

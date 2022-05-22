@@ -62,8 +62,8 @@ public class LogDispatcher {
 
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
-  private final ExecutorService executorService;
-  private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
+  private ExecutorService executorService;
+  private IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
 
   public LogDispatcher(MultiLeaderServerImpl impl) {
     this.impl = impl;
@@ -72,28 +72,34 @@ public class LogDispatcher {
             .filter(x -> !Objects.equals(x, impl.getThisNode()))
             .map(LogDispatcherThread::new)
             .collect(Collectors.toList());
-    this.executorService =
-        IoTDBThreadPoolFactory.newFixedThreadPool(threads.size(), "LogDispatcher");
-    this.clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncMultiLeaderServiceClient>()
-            .createClientManager(new AsyncMultiLeaderServiceClientPoolFactory());
+    if (!threads.isEmpty()) {
+      this.executorService =
+          IoTDBThreadPoolFactory.newFixedThreadPool(threads.size(), "LogDispatcher");
+      this.clientManager =
+          new IClientManager.Factory<TEndPoint, AsyncMultiLeaderServiceClient>()
+              .createClientManager(new AsyncMultiLeaderServiceClientPoolFactory());
+    }
   }
 
   public void start() {
-    threads.forEach(executorService::submit);
+    if (!threads.isEmpty()) {
+      threads.forEach(executorService::submit);
+    }
   }
 
   public void stop() {
-    executorService.shutdownNow();
-    clientManager.close();
-    int timeout = 10;
-    try {
-      if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {
-        logger.error("Unable to shutdown LogDispatcher service after {} seconds", timeout);
+    if (!threads.isEmpty()) {
+      executorService.shutdownNow();
+      clientManager.close();
+      int timeout = 10;
+      try {
+        if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {
+          logger.error("Unable to shutdown LogDispatcher service after {} seconds", timeout);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected Interruption when closing LogDispatcher service ");
       }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected Interruption when closing LogDispatcher service ");
     }
   }
 
@@ -155,8 +161,11 @@ public class LogDispatcher {
           syncStatus.addNextBatch(batch);
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected interruption in logDispatcher for peer {}", peer, e);
       } catch (Exception e) {
-        logger.error("Unexpected error in log dispatcher", e);
+        logger.error("Unexpected error in logDispatcher for peer {}", peer, e);
       }
     }
 

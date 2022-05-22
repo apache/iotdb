@@ -21,6 +21,8 @@ package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.IStateMachine.Registry;
@@ -59,6 +61,7 @@ public class MultiLeaderConsensus implements IConsensus {
   private final Map<ConsensusGroupId, MultiLeaderServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
   private final MultiLeaderRPCService service;
+  private final RegisterManager registerManager = new RegisterManager();
 
   public MultiLeaderConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
     this.thisNode = thisNode;
@@ -71,6 +74,11 @@ public class MultiLeaderConsensus implements IConsensus {
   public void start() throws IOException {
     initAndRecover();
     service.initSyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
+    try {
+      registerManager.register(service);
+    } catch (StartupException e) {
+      throw new IOException(e);
+    }
   }
 
   private void initAndRecover() throws IOException {
@@ -98,7 +106,10 @@ public class MultiLeaderConsensus implements IConsensus {
   }
 
   @Override
-  public void stop() throws IOException {}
+  public void stop() throws IOException {
+    registerManager.deregisterAll();
+    stateMachineMap.values().parallelStream().forEach(MultiLeaderServerImpl::stop);
+  }
 
   @Override
   public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {

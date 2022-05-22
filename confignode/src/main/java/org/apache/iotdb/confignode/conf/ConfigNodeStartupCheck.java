@@ -114,6 +114,19 @@ public class ConfigNodeStartupCheck {
           String.valueOf(conf.getSchemaReplicationFactor()),
           String.valueOf(1));
     }
+
+    // When the schema region consensus protocol is set to MultiLeaderConsensus,
+    // we should report an error
+    if (conf.getSchemaRegionConsensusProtocolClass()
+        .equals("org.apache.iotdb.consensus.multileader.MultiLeaderConsensus")) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          String.valueOf(conf.getSchemaRegionConsensusProtocolClass()),
+          String.format(
+              "%s or %s",
+              "org.apache.iotdb.consensus.standalone.StandAloneConsensus",
+              "org.apache.iotdb.consensus.ratis.RatisConsensus"));
+    }
   }
 
   /**

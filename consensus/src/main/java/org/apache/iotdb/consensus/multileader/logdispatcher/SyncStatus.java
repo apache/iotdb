@@ -49,7 +49,7 @@ public class SyncStatus {
       if (pendingBatches.size() > 0 && pendingBatches.get(0).equals(batch)) {
         pendingBatches.remove(0);
         thread.getController().updateAndGet(batch.getEndIndex());
-        notify();
+        notifyAll();
       }
       pendingBatches.remove(batch);
     }

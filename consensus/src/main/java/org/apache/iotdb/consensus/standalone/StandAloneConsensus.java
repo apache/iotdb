@@ -96,7 +96,9 @@ class StandAloneConsensus implements IConsensus {
   }
 
   @Override
-  public void stop() throws IOException {}
+  public void stop() throws IOException {
+    stateMachineMap.values().parallelStream().forEach(StandAloneServerImpl::stop);
+  }
 
   @Override
   public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
