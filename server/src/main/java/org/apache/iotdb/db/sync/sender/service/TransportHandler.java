@@ -87,8 +87,7 @@ public class TransportHandler {
         localIP = inetAddress.getHostAddress();
       }
     } catch (UnknownHostException | SocketException e) {
-      logger.error(
-          String.format("Get local host error when create transport handler, because %s.", e));
+      logger.error(String.format("Get local host error when create transport handler."), e);
       localIP = SyncConstant.UNKNOWN_IP;
     }
     return localIP;
