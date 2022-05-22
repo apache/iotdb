@@ -178,10 +178,7 @@ public class IoTDBCreateTimeseriesIT {
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               "root.sg.d.a\".\"b"));
       fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(
-          "401: Error occurred while parsing SQL to physical plan: line 1:29 mismatched input '\".\"' expecting {DATATYPE, WITH, DATATYPE_VALUE, '('}",
-          e.getMessage());
+    } catch (SQLException ignored) {
     }
 
     try {
@@ -190,10 +187,7 @@ public class IoTDBCreateTimeseriesIT {
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               "root.sg.d.a“（Φ）”b"));
       fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(
-          "401: Error occurred while parsing SQL to physical plan: line 1:29 token recognition error at: '“'",
-          e.getMessage());
+    } catch (SQLException ignored) {
     }
 
     try {
@@ -202,10 +196,7 @@ public class IoTDBCreateTimeseriesIT {
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               "root.sg.d.a>b"));
       fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(
-          "401: Error occurred while parsing SQL to physical plan: line 1:29 mismatched input '>' expecting {DATATYPE, WITH, DATATYPE_VALUE, '('}",
-          e.getMessage());
+    } catch (SQLException ignored) {
     }
 
     String[] timeSeriesArray = {
@@ -268,11 +259,31 @@ public class IoTDBCreateTimeseriesIT {
     }
 
     try {
+      statement.execute(String.format("create timeseries %s with encoding=plain", "root.sg.a"));
+      fail();
+    } catch (SQLException ignored) {
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create timeseries %s with encoding=plain, compressor=snappy", "root.sg.a"));
+      fail();
+    } catch (SQLException ignored) {
+    }
+
+    try {
+      statement.execute(
+          String.format("create timeseries %s with datatype=float, encoding=plan", "root.sg.a"));
+      fail();
+    } catch (SQLException ignored) {
+    }
+
+    try {
       statement.execute(
           String.format("create timeseries %s with datatype=INT64, encoding=test", "root.sg.a"));
       fail();
-    } catch (SQLException e) {
-      Assert.assertEquals("303: Check metadata error: Unsupported encoding", e.getMessage());
+    } catch (SQLException ignored) {
     }
 
     try {

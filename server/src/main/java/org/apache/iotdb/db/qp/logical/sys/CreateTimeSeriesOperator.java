@@ -181,5 +181,8 @@ public class CreateTimeSeriesOperator extends Operator {
         throw new SemanticException(String.format("Unsupported compression: %s", compressorString));
       }
     }
+    if (props.size() == 0) {
+      props = null;
+    }
   }
 }
