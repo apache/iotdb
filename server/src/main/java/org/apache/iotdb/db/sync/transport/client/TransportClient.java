@@ -30,7 +30,6 @@ import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.sync.transport.conf.TransportConstant;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
-import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.ResponseType;
@@ -56,8 +55,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -75,96 +72,63 @@ public class TransportClient implements ITransportClient {
 
   private static final int TRANSFER_BUFFER_SIZE_IN_BYTES = 1 * 1024 * 1024;
 
-  private TTransport transport = null;
+  private final ClientWrapper serviceClient;
+  private final ClientWrapper heartbeatClient;
 
-  private TransportService.Client serviceClient = null;
+  /* remote IP address*/
+  private final String ipAddress;
+  /* remote port */
+  private final int port;
+  /* local IP address*/
+  private final String localIP;
 
-  private String ipAddress;
+  private final Pipe pipe;
 
-  private int port;
+  /* use to wait until successfully connect to receiver */
+  private final Object waitLock;
 
-  private IdentityInfo identityInfo = null;
-
-  private Pipe pipe;
-
-  public TransportClient(Pipe pipe, String ipAddress, int port) {
+  public TransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
-
     this.pipe = pipe;
     this.ipAddress = ipAddress;
     this.port = port;
+    this.waitLock = new Object();
+    this.localIP = localIP;
+    serviceClient = new ClientWrapper(pipe, ipAddress, port, localIP);
+    heartbeatClient = new ClientWrapper(pipe, ipAddress, port, localIP);
   }
 
-  public boolean handshake() {
-    int handshakeCounter = 0;
-    try {
-      while (!handshakeWithVersion()) {
-        handshakeCounter++;
-        if (handshakeCounter > config.getMaxNumberOfSyncFileRetry()) {
-          logger.error(
-              String.format(
-                  "Handshake failed %s times! Check network.",
-                  config.getMaxNumberOfSyncFileRetry()));
-          return false;
-        }
-        logger.info(
+  public Object getWaitLock() {
+    return waitLock;
+  }
+
+  /**
+   * Create thrift connection to receiver. (1) register pipe message, including pipeName, localIp
+   * and createTime (2) check IoTDB version to make sure compatibility
+   *
+   * @return true if success; false if failed MaxNumberOfSyncFileRetry times.
+   * @throws SyncConnectionException cannot create connection to receiver
+   */
+  public synchronized boolean handshake() throws SyncConnectionException {
+    for (int handshakeCounter = 0;
+        handshakeCounter < config.getMaxNumberOfSyncFileRetry();
+        handshakeCounter++) {
+      try {
+        return serviceClient.handshakeWithVersion();
+      } catch (SyncConnectionException e) {
+        logger.warn(
             String.format(
                 "Handshake error, retry %d/%d.",
                 handshakeCounter, config.getMaxNumberOfSyncFileRetry()));
       }
-    } catch (SyncConnectionException e) {
-      logger.error(String.format("Handshake failed and can not retry, because %s.", e), e);
+    }
+    if (!serviceClient.handshakeWithVersion()) {
+      logger.info(
+          String.format("Handshake failed %s times!", config.getMaxNumberOfSyncFileRetry()));
       return false;
+    } else {
+      return true;
     }
-    return true;
-  }
-
-  private boolean handshakeWithVersion() throws SyncConnectionException {
-    if (transport != null && transport.isOpen()) {
-      transport.close();
-    }
-
-    try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              new TSocket(
-                  TConfigurationConst.defaultTConfiguration,
-                  ipAddress,
-                  port,
-                  SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
-                  SyncConstant.CONNECT_TIMEOUT_MILLISECONDS));
-      TProtocol protocol;
-      if (config.isRpcThriftCompressionEnable()) {
-        protocol = new TCompactProtocol(transport);
-      } else {
-        protocol = new TBinaryProtocol(transport);
-      }
-      serviceClient = new TransportService.Client(protocol);
-
-      // Underlay socket open.
-      if (!transport.isOpen()) {
-        transport.open();
-      }
-
-      identityInfo =
-          new IdentityInfo(
-              InetAddress.getLocalHost().getHostAddress(),
-              pipe.getName(),
-              pipe.getCreateTime(),
-              config.getIoTDBMajorVersion());
-      TransportStatus status = serviceClient.handshake(identityInfo);
-      if (status.code != SUCCESS_CODE) {
-        throw new SyncConnectionException(
-            "The receiver rejected the synchronization task because " + status.msg);
-      }
-    } catch (TException e) {
-      logger.warn("Cannot connect to the receiver. ", e);
-      return false;
-    } catch (UnknownHostException e) {
-      logger.warn("Cannot confirm identity with the receiver. ", e);
-      throw new SyncConnectionException(String.format("Get local host error, because %s.", e), e);
-    }
-    return true;
   }
 
   public boolean senderTransport(PipeData pipeData) throws SyncConnectionException {
@@ -199,7 +163,15 @@ public class TransportClient implements ITransportClient {
         break;
       } catch (SyncConnectionException e) {
         // handshake and retry
-        if (!handshake()) {
+        try {
+          if (!handshake()) {
+            logger.error(
+                String.format(
+                    "Handshake to receiver %s:%d error when transfer pipe data %s.",
+                    ipAddress, port, pipeData));
+            return false;
+          }
+        } catch (SyncConnectionException syncConnectionException) {
           logger.error(
               String.format(
                   "Reconnect to receiver %s:%d error when transfer pipe data %s.",
@@ -249,7 +221,14 @@ public class TransportClient implements ITransportClient {
         }
         break;
       } catch (SyncConnectionException e) {
-        if (!handshake()) {
+        // handshake and retry
+        try {
+          if (!handshake()) {
+            throw new SyncConnectionException(
+                String.format(
+                    "Handshake with receiver error when transferring file %s.", file.getName()));
+          }
+        } catch (SyncConnectionException syncConnectionException) {
           throw new SyncConnectionException(
               String.format(
                   "Connect to receiver error when transferring file %s.", file.getName()));
@@ -305,8 +284,9 @@ public class TransportClient implements ITransportClient {
             }
             try {
               status =
-                  serviceClient.transportData(
-                      metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+                  serviceClient
+                      .getClient()
+                      .transportData(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
             } catch (TException e) {
               // retry
               logger.error("TException happened! ", e);
@@ -384,7 +364,10 @@ public class TransportClient implements ITransportClient {
                 file.getAbsoluteFile(), config.getMaxNumberOfSyncFileRetry()));
       }
       try {
-        status = serviceClient.checkFileDigest(metaInfo, ByteBuffer.wrap(messageDigest.digest()));
+        status =
+            serviceClient
+                .getClient()
+                .checkFileDigest(metaInfo, ByteBuffer.wrap(messageDigest.digest()));
       } catch (TException e) {
         // retry
         logger.error("TException happens! ", e);
@@ -424,8 +407,9 @@ public class TransportClient implements ITransportClient {
         MetaInfo metaInfo =
             new MetaInfo(Type.findByValue(pipeData.getType().ordinal()), "fileName", 0);
         TransportStatus status =
-            serviceClient.transportData(
-                metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+            serviceClient
+                .getClient()
+                .transportData(metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
 
         if (status.code == SUCCESS_CODE) {
           break;
@@ -452,45 +436,48 @@ public class TransportClient implements ITransportClient {
   @Override
   public void run() {
     try {
-      if (!handshake()) {
-        throw new SyncConnectionException(
-            String.format("Handshake with receiver %s:%d error.", ipAddress, port));
-      }
-      SenderService.getInstance()
-          .receiveMsg(
-              heartbeat(
-                  new SyncRequest(
-                      RequestType.START,
-                      pipe.getName(),
-                      InetAddress.getLocalHost().getHostAddress(),
-                      pipe.getCreateTime())));
       while (!Thread.currentThread().isInterrupted()) {
-        PipeData pipeData = pipe.take();
-        if (!senderTransport(pipeData)) {
-          logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
-          // can do something.
+        try {
+          if (!handshake()) {
+            SenderService.getInstance()
+                .receiveMsg(
+                    new SyncResponse(
+                        ResponseType.ERROR,
+                        String.format("Can not handshake with %s:%d.", ipAddress, port)));
+          }
           SenderService.getInstance()
               .receiveMsg(
-                  new SyncResponse(
-                      ResponseType.WARN,
-                      String.format(
-                          "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber())));
-          continue;
+                  heartbeat(
+                      new SyncRequest(
+                          RequestType.START, pipe.getName(), localIP, pipe.getCreateTime())));
+          while (!Thread.currentThread().isInterrupted()) {
+            PipeData pipeData = pipe.take();
+            if (!senderTransport(pipeData)) {
+              logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
+              // can do something.
+              SenderService.getInstance()
+                  .receiveMsg(
+                      new SyncResponse(
+                          ResponseType.WARN,
+                          String.format(
+                              "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber())));
+              continue;
+            }
+            pipe.commit();
+          }
+        } catch (SyncConnectionException e) {
+          logger.error(
+              String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
+          // wait and retry
+          synchronized (waitLock) {
+            SenderService.getInstance()
+                .setTempMessage(String.format("Connect to receiver %s:%d error.", ipAddress, port));
+            waitLock.wait();
+          }
         }
-        pipe.commit();
       }
     } catch (InterruptedException e) {
       logger.info("Interrupted by pipe, exit transport.");
-    } catch (SyncConnectionException | UnknownHostException e) {
-      logger.error(
-          String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
-      SenderService.getInstance()
-          .receiveMsg(
-              new SyncResponse(
-                  ResponseType.ERROR,
-                  String.format(
-                      "Can not connect to %s:%d, please check receiver and Internet.",
-                      ipAddress, port)));
     } finally {
       close();
     }
@@ -537,9 +524,41 @@ public class TransportClient implements ITransportClient {
     }
   }
 
-  public void close() {
-    if (transport != null) {
-      transport.close();
+  public SyncResponse doheartbeat(SyncRequest syncRequest) throws SyncConnectionException {
+    if (heartbeatClient.getClient() == null) {
+      synchronized (heartbeatClient) {
+        if (heartbeatClient.getClient() == null) {
+          if (!heartbeatClient.handshakeWithVersion()) {
+            throw new SyncConnectionException("Handshake with receiver error when heartbeat.");
+          }
+        }
+      }
     }
+    int retryCount = 0;
+    while (true) {
+      retryCount++;
+      if (retryCount > config.getMaxNumberOfSyncFileRetry()) {
+        throw new SyncConnectionException(
+            String.format(
+                "%s request connects to receiver %s:%d error.",
+                syncRequest.type.name(), ipAddress, port));
+      }
+      try {
+        return heartbeatClient.getClient().heartbeat(syncRequest);
+      } catch (TException e) {
+        if (!heartbeatClient.handshakeWithVersion()) {
+          throw new SyncConnectionException("Handshake with receiver error when heartbeat.");
+        }
+        logger.info(
+            String.format(
+                "Heartbeat connect to receiver %s:%d error, retry %d/%d.",
+                ipAddress, port, retryCount, config.getMaxNumberOfSyncFileRetry()));
+      }
+    }
+  }
+
+  public void close() {
+    serviceClient.close();
+    heartbeatClient.close();
   }
 }

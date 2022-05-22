@@ -49,6 +49,7 @@ public class TransportHandler {
   private String pipeName;
   private long createTime;
   private final String localIp;
+  private MsgManager msgManager;
   protected ITransportClient transportClient;
 
   protected ExecutorService transportExecutorService;
@@ -57,10 +58,10 @@ public class TransportHandler {
   protected ScheduledExecutorService heartbeatExecutorService;
   private Future heartbeatFuture;
 
-  public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
+  public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink, MsgManager msgManager) {
     this.pipeName = pipe.getName();
     this.createTime = pipe.getCreateTime();
-    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort());
+    this.msgManager = msgManager;
 
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -78,6 +79,7 @@ public class TransportHandler {
       localIp1 = SyncConstant.UNKNOWN_IP;
     }
     this.localIp = localIp1;
+    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIp);
   }
 
   public void start() {
@@ -117,8 +119,13 @@ public class TransportHandler {
     try {
       SenderService.getInstance()
           .receiveMsg(
-              transportClient.heartbeat(
-                  new SyncRequest(RequestType.HEARTBEAT, pipeName, localIp, createTime)));
+              ((TransportClient) transportClient)
+                  .doheartbeat(
+                      new SyncRequest(RequestType.HEARTBEAT, pipeName, localIp, createTime)));
+      synchronized (((TransportClient) transportClient).getWaitLock()) {
+        msgManager.cleanTempMessage();
+        ((TransportClient) transportClient).getWaitLock().notifyAll();
+      }
     } catch (SyncConnectionException e) {
       logger.warn(
           String.format(
@@ -127,9 +134,10 @@ public class TransportHandler {
     }
   }
 
-  public static TransportHandler getNewTransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
+  public static TransportHandler getNewTransportHandler(
+      Pipe pipe, IoTDBPipeSink pipeSink, MsgManager msgManager) {
     if (DEBUG_TRANSPORT_HANDLER == null) {
-      return new TransportHandler(pipe, pipeSink);
+      return new TransportHandler(pipe, pipeSink, msgManager);
     }
     DEBUG_TRANSPORT_HANDLER.resetTransportClient(pipe); // test only
     return DEBUG_TRANSPORT_HANDLER;

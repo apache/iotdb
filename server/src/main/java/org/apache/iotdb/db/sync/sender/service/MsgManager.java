@@ -39,11 +39,22 @@ public class MsgManager {
 
   private Pipe runningPipe;
   private Queue<String> Messages;
+  private String tempMessage; // temporary and volatile message
 
   public MsgManager() {}
 
   public MsgManager(SenderLogger senderLogger) {
     this.senderLogger = senderLogger;
+  }
+
+  public void setTempMessage(String tempMessage) {
+    this.tempMessage =
+        String.format("[%s] ", ResponseType.WARN) + SyncPathUtil.createMsg(tempMessage);
+    ;
+  }
+
+  public void cleanTempMessage() {
+    this.tempMessage = "";
   }
 
   public void addPipe(Pipe pipe) {
@@ -82,11 +93,11 @@ public class MsgManager {
   public synchronized String getPipeMsg(Pipe pipe) {
     if (runningPipe == null) {
       return "";
-    } else if (!pipe.equals(runningPipe) || Messages.size() == 0) {
+    } else if (!pipe.equals(runningPipe)) {
       return "";
     }
 
-    StringBuilder builder = new StringBuilder();
+    StringBuilder builder = new StringBuilder(tempMessage == null ? "" : tempMessage);
     int size = Messages.size();
     for (int i = 0; i < size; i++) {
       String msg = Messages.poll();

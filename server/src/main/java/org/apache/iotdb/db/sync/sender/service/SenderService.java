@@ -165,7 +165,8 @@ public class SenderService implements IService {
     runningPipe = parseCreatePipePlan(plan, runningPipeSink, currentTime);
     try {
       transportHandler =
-          TransportHandler.getNewTransportHandler(runningPipe, (IoTDBPipeSink) runningPipeSink);
+          TransportHandler.getNewTransportHandler(
+              runningPipe, (IoTDBPipeSink) runningPipeSink, msgManager);
       sendMsg(RequestType.CREATE);
     } catch (ClassCastException e) {
       logger.error(
@@ -216,6 +217,7 @@ public class SenderService implements IService {
   public synchronized void startPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
+      sendMsg(RequestType.START);
       runningPipe.start();
       transportHandler.start();
     }
@@ -264,6 +266,10 @@ public class SenderService implements IService {
               "Pipe %s is %s, please retry after drop it.",
               runningPipe.getName(), runningPipe.getStatus()));
     }
+  }
+
+  public void setTempMessage(String msg) {
+    msgManager.setTempMessage(msg);
   }
 
   /** transport */
@@ -383,7 +389,7 @@ public class SenderService implements IService {
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       this.transportHandler =
           TransportHandler.getNewTransportHandler(
-              runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
+              runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink(), msgManager);
       if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
         transportHandler.start();
       }
