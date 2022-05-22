@@ -44,7 +44,8 @@ import java.util.stream.Collectors;
  */
 public class AggregationNode extends MultiChildNode {
 
-  // The list of aggregate functions, each AggregateDescriptor will be output as one column of
+  // The list of aggregate functions, each AggregateDescriptor will be output as one or two column
+  // of
   // result TsBlock
   protected List<AggregationDescriptor> aggregationDescriptorList;
 

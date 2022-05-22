@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -393,21 +394,22 @@ public class DistributionPlannerTest {
     QueryId queryId = new QueryId("test_group_by_level_two_children");
     String d1s1Path = "root.sg.d1.s1";
     String d2s1Path = "root.sg.d22.s1";
-    List<String> outputColumns = Collections.singletonList("root.sg.*.s1");
+    String groupedPath = "root.sg.*.s1";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
-            Arrays.asList(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
+            Arrays.asList(
+                genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Collections.singletonList(
-                new AggregationDescriptor(
+                new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
-                        new TimeSeriesOperand(new PartialPath(d2s1Path))))),
-            outputColumns);
+                        new TimeSeriesOperand(new PartialPath(d2s1Path))),
+                    new TimeSeriesOperand(new PartialPath(groupedPath)))));
     Analysis analysis = constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -425,23 +427,24 @@ public class DistributionPlannerTest {
   @Test
   public void testAggregationWithMultiGroupByLevelNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_two_children");
-    String d1s1Path = "root.sg.d333.s1";
-    String d2s1Path = "root.sg.d4444.s1";
-    List<String> outputColumns = Collections.singletonList("root.sg.*.s1");
+    String d3s1Path = "root.sg.d333.s1";
+    String d4s1Path = "root.sg.d4444.s1";
+    String groupedPath = "root.sg.*.s1";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
-            Arrays.asList(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
-                genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
+            Arrays.asList(
+                genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT),
+                genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT)),
             Collections.singletonList(
-                new AggregationDescriptor(
+                new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(new PartialPath(d1s1Path)),
-                        new TimeSeriesOperand(new PartialPath(d2s1Path))))),
-            outputColumns);
+                        new TimeSeriesOperand(new PartialPath(d3s1Path)),
+                        new TimeSeriesOperand(new PartialPath(d4s1Path))),
+                    new TimeSeriesOperand(new PartialPath(groupedPath)))));
     Analysis analysis = constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -450,13 +453,14 @@ public class DistributionPlannerTest {
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(3, plan.getInstances().size());
     Map<String, AggregationStep> expectedStep = new HashMap<>();
-    expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
-    expectedStep.put(d2s1Path, AggregationStep.FINAL);
+    expectedStep.put(d3s1Path, AggregationStep.PARTIAL);
+    expectedStep.put(d4s1Path, AggregationStep.FINAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
     fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
   }
 
-  private SeriesAggregationSourceNode genAggregationSourceNode(QueryId queryId, String path, AggregationType type) throws IllegalPathException {
+  private SeriesAggregationSourceNode genAggregationSourceNode(
+      QueryId queryId, String path, AggregationType type) throws IllegalPathException {
     List<AggregationDescriptor> descriptors = new ArrayList<>();
     descriptors.add(
         new AggregationDescriptor(
@@ -465,9 +469,7 @@ public class DistributionPlannerTest {
             Collections.singletonList(new TimeSeriesOperand(new PartialPath(path)))));
 
     return new SeriesAggregationScanNode(
-        queryId.genPlanNodeId(),
-        new MeasurementPath(path, TSDataType.INT32),
-        descriptors);
+        queryId.genPlanNodeId(), new MeasurementPath(path, TSDataType.INT32), descriptors);
   }
 
   @Test
@@ -527,16 +529,16 @@ public class DistributionPlannerTest {
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new String[]{
-                "s1",
+            new String[] {
+              "s1",
             },
-            new TSDataType[]{TSDataType.INT32},
+            new TSDataType[] {TSDataType.INT32},
             1L,
-            new Object[]{10},
+            new Object[] {10},
             false);
     insertRowNode.setMeasurementSchemas(
-        new MeasurementSchema[]{
-            new MeasurementSchema("s1", TSDataType.INT32),
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
         });
 
     Analysis analysis = constructAnalysis();
@@ -558,14 +560,14 @@ public class DistributionPlannerTest {
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new String[]{"s1"},
-            new TSDataType[]{TSDataType.INT32},
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT32},
             1L,
-            new Object[]{10},
+            new Object[] {10},
             false);
     insertRowNode1.setMeasurementSchemas(
-        new MeasurementSchema[]{
-            new MeasurementSchema("s1", TSDataType.INT32),
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
         });
 
     InsertRowNode insertRowNode2 =
@@ -573,14 +575,14 @@ public class DistributionPlannerTest {
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new String[]{"s1"},
-            new TSDataType[]{TSDataType.INT32},
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT32},
             100000L,
-            new Object[]{10},
+            new Object[] {10},
             false);
     insertRowNode2.setMeasurementSchemas(
-        new MeasurementSchema[]{
-            new MeasurementSchema("s1", TSDataType.INT32),
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
         });
 
     InsertRowsNode node = new InsertRowsNode(queryId.genPlanNodeId());
@@ -734,7 +736,7 @@ public class DistributionPlannerTest {
 
     aggregationExpression.put("root.sg.*.s1", s1Expression);
     aggregationExpression.put("root.sg.*.s2", s2Expression);
-    analysis.setAggregationExpressions(aggregationExpression);
+    // analysis.setAggregationExpressions(aggregationExpression);
 
     // construct schema partition
     SchemaPartition schemaPartition =

@@ -57,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
@@ -518,11 +519,11 @@ public class DistributionPlanner {
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
       List<String> outputColumnList = new ArrayList<>();
-      List<AggregationDescriptor> descriptorList = new ArrayList<>();
+      List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
       for (int i = 0; i < handle.getOutputColumnNames().size(); i++) {
         String column = handle.getOutputColumnNames().get(i);
         Set<Expression> originalExpressions =
-            analysis.getAggregationExpressions().getOrDefault(column, new HashSet<>());
+            analysis.getGroupByLevelExpressions().getOrDefault(column, new HashSet<>());
         List<Expression> descriptorExpression = new ArrayList<>();
         for (String childColumn : childrenOutputColumns) {
           if (childColumn.equals(column)) {
@@ -542,15 +543,14 @@ public class DistributionPlanner {
         if (descriptorExpression.size() == 0) {
           continue;
         }
-        AggregationDescriptor descriptor = handle.getAggregationDescriptorList().get(i).deepClone();
+        GroupByLevelDescriptor descriptor = handle.getGroupByLevelDescriptors().get(i).deepClone();
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.PARTIAL);
         descriptor.setInputExpressions(descriptorExpression);
 
         outputColumnList.add(column);
         descriptorList.add(descriptor);
       }
-      handle.setOutputColumnNames(outputColumnList);
-      handle.setAggregationDescriptorList(descriptorList);
+      handle.setGroupByLevelDescriptors(descriptorList);
     }
 
     private List<SeriesAggregationSourceNode> splitAggregationSourceByPartition(
