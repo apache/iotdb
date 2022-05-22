@@ -19,35 +19,33 @@
 
 package org.apache.iotdb.db.engine.trigger.utils;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.QoS;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
 
   // Each host:port,username corresponds to a singleton instance
-  private static final HashMap<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP = new HashMap<>();
-  private AtomicInteger referenceCount = new AtomicInteger(0);
+  private static final Map<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP =
+      new ConcurrentHashMap<>();
+  private final AtomicInteger referenceCount = new AtomicInteger(0);
 
   public static MQTTConnectionPool getInstance(
       String host, int port, String username, MQTTConnectionFactory factory, int size)
       throws Exception {
     String key = host + ":" + port + "," + username;
-    MQTTConnectionPool connectionPool = MQTT_CONNECTION_POOL_MAP.computeIfAbsent(key,
-        k -> new MQTTConnectionPool(factory, size));
-    if (connectionPool.referenceCount.get() == 0) {
+    MQTTConnectionPool connectionPool =
+        MQTT_CONNECTION_POOL_MAP.computeIfAbsent(key, k -> new MQTTConnectionPool(factory, size));
+    if (connectionPool.referenceCount.getAndIncrement() == 0) {
       connectionPool.preparePool();
     }
-    connectionPool.referenceCount.getAndIncrement();
-    return MQTT_CONNECTION_POOL_MAP.get(key);
+    return connectionPool;
   }
 
   private MQTTConnectionPool(MQTTConnectionFactory factory, int size) {
@@ -66,9 +64,8 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
   }
 
   public void clearAndClose() {
-    referenceCount.decrementAndGet();
     clear();
-    if (referenceCount.get() == 0) {
+    if (referenceCount.decrementAndGet() == 0) {
       close();
     }
   }

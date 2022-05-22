@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.sun.net.httpserver.HttpServer;
 import io.moquette.BrokerConstants;
 import io.moquette.broker.Server;
@@ -54,15 +56,21 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.Assert.assertNull;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 public class IoTDBTriggerForwardIT {
   private volatile long count = 0;
   private volatile Exception exception = null;
+
   private HttpServer httpServer;
   private Server mqttServer;
+
+  private final Gson gson = new Gson();
+  private final AtomicLong resultCount = new AtomicLong(0);
 
   private final Thread dataGenerator =
       new Thread() {
@@ -118,11 +126,14 @@ public class IoTDBTriggerForwardIT {
       stopDataGenerator();
       // ensure no exception occurs when inserting data
       if (exception != null) {
-        return;
+        fail(exception.getMessage());
       }
-      // Wait 30s, let the queue send all msg
-      Thread.sleep(30 * 1000);
-    } catch (SQLException | InterruptedException | IOException e) {
+
+      await().atMost(1, TimeUnit.MINUTES).until(() -> 2 * count == resultCount.get());
+      if (exception != null) {
+        fail(exception.getMessage());
+      }
+    } catch (Exception e) {
       fail(e.getMessage());
     } finally {
       if (httpServer != null) {
@@ -154,11 +165,13 @@ public class IoTDBTriggerForwardIT {
       stopDataGenerator();
       // ensure no exception occurs when inserting data
       if (exception != null) {
-        return;
+        fail(exception.getMessage());
       }
-      // Wait 30s, let the queue send all msg
-      Thread.sleep(30 * 1000);
-      assertNull(exception);
+
+      await().atMost(1, TimeUnit.MINUTES).until(() -> 2 * count == resultCount.get());
+      if (exception != null) {
+        fail(exception.getMessage());
+      }
     } catch (SQLException | InterruptedException | IOException e) {
       fail(e.getMessage());
     } finally {
@@ -246,8 +259,11 @@ public class IoTDBTriggerForwardIT {
           }
 
           if (!checkPayload(entity)) {
-            throw new IOException("Request payload error");
+            exception = new IOException("HTTP forward payload error");
           }
+          JsonArray receiveData = gson.fromJson(entity, JsonArray.class);
+          resultCount.addAndGet(receiveData.size());
+
           exchange.sendResponseHeaders(HttpStatus.SC_OK, -1);
         });
     httpServer.start();
@@ -274,15 +290,16 @@ public class IoTDBTriggerForwardIT {
 
     @Override
     public void onPublish(InterceptPublishMessage msg) {
-      checkPayload(msg.getPayload().toString(StandardCharsets.UTF_8));
+      String payload = msg.getPayload().toString(StandardCharsets.UTF_8);
+      if (!checkPayload(payload)) {
+        exception = new IOException("MQTT forward payload error");
+      }
+      JsonArray receiveData = gson.fromJson(payload, JsonArray.class);
+      resultCount.addAndGet(receiveData.size());
     }
   }
 
   private boolean checkPayload(String payload) {
-    boolean pass = payload.matches(ForwardEvent.PAYLOADS_FORMATTER_REGEX);
-    if (!pass) {
-      exception = new IOException("Payload formatter error");
-    }
-    return pass;
+    return payload.matches(ForwardEvent.PAYLOADS_FORMATTER_REGEX);
   }
 }
