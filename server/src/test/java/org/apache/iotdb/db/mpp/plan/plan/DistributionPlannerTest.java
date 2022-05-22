@@ -461,11 +461,15 @@ public class DistributionPlannerTest {
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPath, Arrays.asList(groupedPath, d3s1Path, d4s1Path));
-    verifyGroupByLevelDescriptor(expectedDescriptorValue, (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+    verifyGroupByLevelDescriptor(
+        expectedDescriptorValue,
+        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPath, Arrays.asList(d3s1Path, d4s1Path));
-    verifyGroupByLevelDescriptor(expectedDescriptorValue2, (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+    verifyGroupByLevelDescriptor(
+        expectedDescriptorValue2,
+        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
   }
 
   @Test
@@ -486,14 +490,12 @@ public class DistributionPlannerTest {
                 new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath(d1s1Path))),
+                    Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath(d1s2Path))),
+                    Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))));
     Analysis analysis = constructAnalysis();
     MPPQueryContext context =
@@ -511,12 +513,16 @@ public class DistributionPlannerTest {
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
-    verifyGroupByLevelDescriptor(expectedDescriptorValue, (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+    verifyGroupByLevelDescriptor(
+        expectedDescriptorValue,
+        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue2.put(groupedPathS2, Collections.singletonList(d1s2Path));
-    verifyGroupByLevelDescriptor(expectedDescriptorValue2, (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
+    verifyGroupByLevelDescriptor(
+        expectedDescriptorValue2,
+        (GroupByLevelNode) fragmentInstances.get(1).getFragment().getRoot().getChildren().get(0));
   }
 
   @Test
@@ -546,8 +552,7 @@ public class DistributionPlannerTest {
                 new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath(d1s2Path))),
+                    Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))));
     Analysis analysis = constructAnalysis();
     MPPQueryContext context =
@@ -566,15 +571,20 @@ public class DistributionPlannerTest {
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
     expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path, d2s1Path));
     expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
-    verifyGroupByLevelDescriptor(expectedDescriptorValue, (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
+    verifyGroupByLevelDescriptor(
+        expectedDescriptorValue,
+        (GroupByLevelNode) fragmentInstances.get(0).getFragment().getRoot().getChildren().get(0));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue2.put(groupedPathS2, Collections.singletonList(d1s2Path));
-    verifyGroupByLevelDescriptor(expectedDescriptorValue2, (GroupByLevelNode) fragmentInstances.get(2).getFragment().getRoot().getChildren().get(0));
+    verifyGroupByLevelDescriptor(
+        expectedDescriptorValue2,
+        (GroupByLevelNode) fragmentInstances.get(2).getFragment().getRoot().getChildren().get(0));
   }
 
-  private void verifyGroupByLevelDescriptor(Map<String, List<String>> expected, GroupByLevelNode node) {
+  private void verifyGroupByLevelDescriptor(
+      Map<String, List<String>> expected, GroupByLevelNode node) {
     List<GroupByLevelDescriptor> descriptors = node.getGroupByLevelDescriptors();
     assertEquals(expected.size(), descriptors.size());
     for (GroupByLevelDescriptor descriptor : descriptors) {
