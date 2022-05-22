@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import java.util.List;
 
@@ -34,18 +33,17 @@ public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator 
 
   @Override
   protected void evictingExpiredValue() {
-    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst()[0].getLong(0))) {
-      Column[] partialResult = deque.removeFirst();
-      Column[] oppositePartialResult = partialResult;
-      this.accumulator.addIntermediate(oppositePartialResult);
+    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst().getTime())) {
+      PartialAggregationResult partialResult = deque.removeFirst();
+      this.accumulator.addIntermediate(partialResult.opposite());
     }
   }
 
   @Override
-  public void processPartialResult(Column[] partialResult) {
-    if (!partialResult[0].isNull(0)) {
+  public void processPartialResult(PartialAggregationResult partialResult) {
+    if (!partialResult.isNull()) {
       deque.addLast(partialResult);
-      this.accumulator.addIntermediate(partialResult);
+      this.accumulator.addIntermediate(partialResult.getPartialResult());
     }
   }
 }

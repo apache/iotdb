@@ -23,20 +23,27 @@ import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public abstract class SlidingWindowAggregator extends Aggregator {
 
   // cached partial aggregation result of pre-aggregate windows
-  protected Deque<Column[]> deque;
+  protected Deque<PartialAggregationResult> deque;
 
   public SlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
@@ -49,16 +56,16 @@ public abstract class SlidingWindowAggregator extends Aggregator {
     checkArgument(
         step.isInputPartial(),
         "Step in SlidingWindowAggregationOperator can only process partial result");
-    Column[] timeValueColumn = new Column[inputLocationList.size() + 1];
-    timeValueColumn[0] = tsBlock.getTimeColumn();
+    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    Column[] valueColumn = new Column[inputLocationList.size()];
     for (int i = 0; i < inputLocationList.size(); i++) {
       InputLocation[] inputLocations = inputLocationList.get(i);
       checkArgument(
           inputLocations[0].getTsBlockIndex() == 0,
           "SlidingWindowAggregationOperator can only process one tsBlock input.");
-      timeValueColumn[i + 1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+      valueColumn[i] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
     }
-    processPartialResult(timeValueColumn);
+    processPartialResult(new PartialAggregationResult(timeColumn, valueColumn));
   }
 
   @Override
@@ -71,5 +78,66 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   protected abstract void evictingExpiredValue();
 
   /** update queue and aggregateResult */
-  public abstract void processPartialResult(Column[] partialResult);
+  public abstract void processPartialResult(PartialAggregationResult partialResult);
+
+  protected static class PartialAggregationResult {
+
+    private final TimeColumn timeColumn;
+    private final Column[] valueColumns;
+
+    public PartialAggregationResult(TimeColumn timeColumn, Column[] valueColumns) {
+      this.timeColumn = timeColumn;
+      this.valueColumns = valueColumns;
+    }
+
+    public boolean isNull() {
+      return valueColumns[0].isNull(0);
+    }
+
+    public long getTime() {
+      return timeColumn.getLong(0);
+    }
+
+    public Column[] getPartialResult() {
+      return valueColumns;
+    }
+
+    public List<TSDataType> getDataTypes() {
+      return Arrays.stream(valueColumns)
+          .sequential()
+          .map(Column::getDataType)
+          .collect(Collectors.toList());
+    }
+
+    public Column[] opposite() {
+      List<TSDataType> dataTypes = getDataTypes();
+      TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypes);
+      ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+      Column[] results = new Column[valueColumns.length];
+      for (int i = 0; i < valueColumns.length; i++) {
+        switch (dataTypes.get(i)) {
+          case INT32:
+            columnBuilders[i].writeInt(valueColumns[i].getInt(0) * -1);
+            break;
+          case INT64:
+            columnBuilders[i].writeLong(valueColumns[i].getLong(0) * -1);
+            break;
+          case FLOAT:
+            columnBuilders[i].writeFloat(valueColumns[i].getFloat(0) * -1);
+            break;
+          case DOUBLE:
+            columnBuilders[i].writeDouble(valueColumns[i].getDouble(0) * -1);
+            break;
+          case TEXT:
+          case BOOLEAN:
+            throw new UnSupportedDataTypeException(
+                String.format("Unsupported data type in opposite : %s", dataTypes.get(i)));
+          default:
+            throw new IllegalArgumentException("Unknown data type: " + dataTypes.get(i));
+        }
+        results[i] = columnBuilders[i].build();
+      }
+      return results;
+    }
+  }
 }

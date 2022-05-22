@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import java.util.List;
 
@@ -40,25 +39,23 @@ public class NormalQueueSlidingWindowAggregator extends SlidingWindowAggregator 
 
   @Override
   protected void evictingExpiredValue() {
-    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst()[0].getLong(0))) {
+    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst().getTime())) {
       deque.removeFirst();
     }
+    this.accumulator.reset();
     if (!deque.isEmpty()) {
-      this.accumulator.setFinal(deque.getFirst()[1]);
-    } else {
-      this.accumulator.reset();
+      this.accumulator.addIntermediate(deque.getFirst().getPartialResult());
     }
   }
 
   @Override
-  public void processPartialResult(Column[] partialResult) {
-    if (partialResult[1].isNull(0)) {
+  public void processPartialResult(PartialAggregationResult partialResult) {
+    if (!partialResult.isNull()) {
       deque.addLast(partialResult);
     }
+    this.accumulator.reset();
     if (!deque.isEmpty()) {
-      this.accumulator.setFinal(deque.getFirst()[1]);
-    } else {
-      this.accumulator.reset();
+      this.accumulator.addIntermediate(deque.getFirst().getPartialResult());
     }
   }
 }

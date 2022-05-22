@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import java.util.List;
 
@@ -33,7 +32,7 @@ import java.util.List;
  */
 public class EmptyQueueSlidingWindowAggregator extends SlidingWindowAggregator {
 
-  private Column[] cachedPartialResult;
+  private long lastTime;
 
   public EmptyQueueSlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
@@ -42,19 +41,18 @@ public class EmptyQueueSlidingWindowAggregator extends SlidingWindowAggregator {
 
   @Override
   protected void evictingExpiredValue() {
-    if (cachedPartialResult != null
-        && !cachedPartialResult[0].isNull(0)
-        && !curTimeRange.contains(this.cachedPartialResult[0].getLong(0))) {
+    if (lastTime != -1 && !curTimeRange.contains(lastTime)) {
       this.accumulator.reset();
-      cachedPartialResult = null;
+      lastTime = -1;
     }
   }
 
   @Override
-  public void processPartialResult(Column[] partialResult) {
-    if (!partialResult[0].isNull(0)) {
-      this.accumulator.setFinal(partialResult[1]);
-      cachedPartialResult = partialResult;
+  public void processPartialResult(PartialAggregationResult partialResult) {
+    if (!partialResult.isNull()) {
+      this.accumulator.reset();
+      this.accumulator.addIntermediate(partialResult.getPartialResult());
+      lastTime = partialResult.getTime();
     }
   }
 }

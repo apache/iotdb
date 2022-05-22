@@ -42,30 +42,31 @@ public class MonotonicQueueSlidingWindowAggregator extends SlidingWindowAggregat
 
   @Override
   protected void evictingExpiredValue() {
-    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst()[0].getLong(0))) {
+    while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst().getTime())) {
       deque.removeFirst();
     }
+    this.accumulator.reset();
     if (!deque.isEmpty()) {
-      this.accumulator.setFinal(deque.getFirst()[1]);
-    } else {
-      this.accumulator.reset();
+      this.accumulator.addIntermediate(deque.getFirst().getPartialResult());
     }
   }
 
   @Override
-  public void processPartialResult(Column[] partialResult) {
-    if (partialResult[1].isNull(0)) {
+  public void processPartialResult(PartialAggregationResult partialResult) {
+    if (partialResult.isNull()) {
       return;
     }
 
-    while (!deque.isEmpty() && comparator.compare(partialResult[1], deque.getLast()[1]) > 0) {
+    while (!deque.isEmpty()
+        && comparator.compare(
+                partialResult.getPartialResult()[0], deque.getLast().getPartialResult()[0])
+            > 0) {
       deque.removeLast();
     }
     deque.addLast(partialResult);
+    this.accumulator.reset();
     if (!deque.isEmpty()) {
-      this.accumulator.setFinal(partialResult[1]);
-    } else {
-      this.accumulator.reset();
+      this.accumulator.addIntermediate(partialResult.getPartialResult());
     }
   }
 }

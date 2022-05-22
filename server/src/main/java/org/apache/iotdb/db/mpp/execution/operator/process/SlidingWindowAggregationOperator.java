@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
@@ -32,6 +33,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -57,12 +60,15 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       OperatorContext operatorContext,
       List<SlidingWindowAggregator> aggregators,
       Operator child,
-      List<TSDataType> outputDataTypes,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
     this.operatorContext = operatorContext;
     this.aggregators = aggregators;
     this.child = child;
+    List<TSDataType> outputDataTypes = new ArrayList<>();
+    for (Aggregator aggregator : aggregators) {
+      outputDataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
     this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
     this.ascending = ascending;
