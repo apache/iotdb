@@ -269,10 +269,18 @@ public class IoTDBConfig {
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
   private String dataRegionConsensusDir =
-      DEFAULT_BASE_DIR + File.separator + "consensus" + File.separator + "data_region";
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + "consensus"
+          + File.separator
+          + "data_region";
 
   private String schemaRegionConsensusDir =
-      DEFAULT_BASE_DIR + File.separator + "consensus" + File.separator + "schema_region";
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + "consensus"
+          + File.separator
+          + "schema_region";
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;

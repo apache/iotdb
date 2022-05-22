@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.multileader;
+package org.apache.iotdb.consensus.multileader.logdispatcher;
+
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -35,7 +37,7 @@ import java.nio.file.Paths;
 public class IndexController {
 
   private final Logger logger = LoggerFactory.getLogger(IndexController.class);
-  private static final int FLUSH_INTERVAL = 500;
+  public static final int FLUSH_INTERVAL = 500;
 
   private volatile long lastFlushedIndex;
   private volatile long currentIndex;
@@ -67,6 +69,11 @@ public class IndexController {
     return currentIndex;
   }
 
+  @TestOnly
+  public long getLastFlushedIndex() {
+    return lastFlushedIndex;
+  }
+
   private void checkPersist() {
     if (currentIndex - lastFlushedIndex >= FLUSH_INTERVAL) {
       persist();
@@ -74,8 +81,9 @@ public class IndexController {
   }
 
   private void persist() {
+    long flushIndex = currentIndex - currentIndex % FLUSH_INTERVAL;
     File oldFile = new File(storageDir, prefix + lastFlushedIndex);
-    File newFile = new File(storageDir, prefix + currentIndex);
+    File newFile = new File(storageDir, prefix + flushIndex);
     try {
       if (oldFile.exists()) {
         FileUtils.moveFile(oldFile, newFile);
@@ -84,7 +92,7 @@ public class IndexController {
           "Version file updated, previous: {}, current: {}",
           oldFile.getAbsolutePath(),
           newFile.getAbsolutePath());
-      lastFlushedIndex = currentIndex;
+      lastFlushedIndex = flushIndex;
     } catch (IOException e) {
       logger.error("Error occurred when flushing next version.", e);
     }
@@ -114,9 +122,17 @@ public class IndexController {
           }
         }
       }
+      if (incrementIntervalAfterRestart) {
+        // prevent overlapping in case of failure
+        currentIndex = lastFlushedIndex + FLUSH_INTERVAL;
+        persist();
+      } else {
+        currentIndex = lastFlushedIndex;
+      }
     } else {
       versionFile = new File(directory, prefix + "0");
       lastFlushedIndex = 0;
+      currentIndex = 0;
       try {
         if (!versionFile.createNewFile()) {
           logger.warn("Cannot create new version file {}", versionFile);
@@ -124,13 +140,6 @@ public class IndexController {
       } catch (IOException e) {
         logger.error("Error occurred when creating new file {}.", versionFile.getName(), e);
       }
-    }
-    if (incrementIntervalAfterRestart) {
-      // prevent overlapping in case of failure
-      currentIndex = lastFlushedIndex + FLUSH_INTERVAL;
-      persist();
-    } else {
-      currentIndex = lastFlushedIndex;
     }
   }
 }
