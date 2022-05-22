@@ -134,7 +134,7 @@ public class TransportServiceTest {
             pipe,
             "127.0.0.1",
             IoTDBDescriptor.getInstance().getConfig().getPipeServerPort(),
-            "127.0.0.1");
+            remoteIp1);
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
       client.senderTransport(pipeData);
