@@ -879,7 +879,7 @@ fromClause
 // Attribute Clause
 
 attributeClauses
-    : aliasNodeName? WITH attributeKey operator_eq datatype=attributeValue
+    : aliasNodeName? WITH attributeKey operator_eq dataType=attributeValue
     (COMMA attributePair)*
     tagClause?
     attributeClause?

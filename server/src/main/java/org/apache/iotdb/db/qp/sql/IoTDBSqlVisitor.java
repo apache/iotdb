@@ -347,12 +347,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING)) {
-      String encodingString = props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
       try {
         encoding = TSEncoding.valueOf(encodingString);
         createAlignedTimeSeriesOperator.addEncoding(encoding);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
       }
@@ -361,21 +362,23 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR)) {
-      String compressorString = props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
       try {
         compressor = CompressionType.valueOf(compressorString);
         createAlignedTimeSeriesOperator.addCompressor(compressor);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("unsupported compressor: %s", compressorString));
       }
-    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION)) {
-      String compressionString = props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION);
+    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
       try {
         compressor = CompressionType.valueOf(compressionString);
         createAlignedTimeSeriesOperator.addCompressor(compressor);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(
             String.format("unsupported compression: %s", compressionString));
@@ -488,12 +491,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING)) {
-      String encodingString = props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
       try {
         encoding = TSEncoding.valueOf(encodingString);
         encodings.add(encoding);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
       }
@@ -502,21 +506,23 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR)) {
-      String compressorString = props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
       try {
         compressor = CompressionType.valueOf(compressorString);
         compressors.add(compressor);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("unsupported compressor: %s", compressorString));
       }
-    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION)) {
-      String compressionString = props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION);
+    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
       try {
         compressor = CompressionType.valueOf(compressionString);
         compressors.add(compressor);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(
             String.format("unsupported compression: %s", compressionString));
