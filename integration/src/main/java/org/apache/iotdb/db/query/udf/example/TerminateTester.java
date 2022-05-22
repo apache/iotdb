@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.api.collector.PointCollector;
+import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
