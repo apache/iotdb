@@ -1215,7 +1215,6 @@ public class Analyzer {
               == 0) {
         analysis.setFinishQueryAfterAnalyze(true);
       }
-      // TODO check
       analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
       analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
       analysis.setRespDatasetHeader(HeaderConstant.countNodesHeader);
