@@ -27,37 +27,34 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import javax.annotation.Nullable;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class GroupByTimeNode extends ProcessNode {
+public class SlidingWindowAggregationNode extends ProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
   private final List<AggregationDescriptor> aggregationDescriptorList;
 
   // The parameter of `group by time`.
-  // Its value will be null if there is no `group by time` clause.
-  @Nullable private final GroupByTimeParameter groupByTimeParameter;
+  private final GroupByTimeParameter groupByTimeParameter;
 
   private List<PlanNode> children;
 
-  public GroupByTimeNode(
+  public SlidingWindowAggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
-      @Nullable GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter) {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.children = new ArrayList<>();
   }
 
-  public GroupByTimeNode(
+  public SlidingWindowAggregationNode(
       PlanNodeId id,
       List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList,
@@ -70,7 +67,6 @@ public class GroupByTimeNode extends ProcessNode {
     return aggregationDescriptorList;
   }
 
-  @Nullable
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
   }
@@ -92,7 +88,7 @@ public class GroupByTimeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new GroupByTimeNode(
+    return new SlidingWindowAggregationNode(
         getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter());
   }
 
@@ -111,7 +107,7 @@ public class GroupByTimeNode extends ProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.GROUP_BY_TIME.serialize(byteBuffer);
+    PlanNodeType.SLIDING_WINDOW_AGGREGATION.serialize(byteBuffer);
     ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
     for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
       aggregationDescriptor.serialize(byteBuffer);
@@ -124,7 +120,7 @@ public class GroupByTimeNode extends ProcessNode {
     }
   }
 
-  public static GroupByTimeNode deserialize(ByteBuffer byteBuffer) {
+  public static SlidingWindowAggregationNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
     while (descriptorSize > 0) {
@@ -137,7 +133,8 @@ public class GroupByTimeNode extends ProcessNode {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new GroupByTimeNode(planNodeId, aggregationDescriptorList, groupByTimeParameter);
+    return new SlidingWindowAggregationNode(
+        planNodeId, aggregationDescriptorList, groupByTimeParameter);
   }
 
   @Override
@@ -151,7 +148,7 @@ public class GroupByTimeNode extends ProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    GroupByTimeNode that = (GroupByTimeNode) o;
+    SlidingWindowAggregationNode that = (SlidingWindowAggregationNode) o;
     return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
         && Objects.equals(children, that.children);
