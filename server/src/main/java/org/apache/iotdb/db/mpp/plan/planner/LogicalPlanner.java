@@ -215,7 +215,7 @@ public class LogicalPlanner {
                       ? AggregationStep.INTERMEDIATE
                       : AggregationStep.FINAL;
               planBuilder =
-                  planBuilder.planGroupByTime(
+                  planBuilder.planSlidingWindowAggregation(
                       aggregationExpressions, analysis.getGroupByTimeParameter(), curStep);
             }
 

@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.collect.ImmutableList;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +44,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   // The parameter of `group by time`.
   private final GroupByTimeParameter groupByTimeParameter;
 
-  private List<PlanNode> children;
+  private PlanNode child;
 
   public SlidingWindowAggregationNode(
       PlanNodeId id,
@@ -51,16 +53,15 @@ public class SlidingWindowAggregationNode extends ProcessNode {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
-    this.children = new ArrayList<>();
   }
 
   public SlidingWindowAggregationNode(
       PlanNodeId id,
-      List<PlanNode> children,
+      PlanNode child,
       List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter) {
     this(id, aggregationDescriptorList, groupByTimeParameter);
-    this.children = children;
+    this.child = child;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -73,17 +74,17 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return children;
+    return ImmutableList.of(child);
   }
 
   @Override
   public void addChild(PlanNode child) {
-    this.children.add(child);
+    this.child = child;
   }
 
   @Override
   public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
+    return ONE_CHILD;
   }
 
   @Override
@@ -151,12 +152,11 @@ public class SlidingWindowAggregationNode extends ProcessNode {
     SlidingWindowAggregationNode that = (SlidingWindowAggregationNode) o;
     return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
-        && Objects.equals(children, that.children);
+        && Objects.equals(child, that.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.hashCode(), aggregationDescriptorList, groupByTimeParameter, children);
+    return Objects.hash(super.hashCode(), aggregationDescriptorList, groupByTimeParameter, child);
   }
 }

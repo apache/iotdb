@@ -202,14 +202,18 @@ public class LogicalPlanBuilder {
       if (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()) {
         curStep =
             groupByLevelExpressions != null ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
+
+        this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
+
         this.root =
-            createGroupByTimeNode(
-                sourceNodeList, aggregationExpressions, groupByTimeParameter, curStep);
+            createSlidingWindowAggregationNode(
+                this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep);
 
         if (groupByLevelExpressions != null) {
           curStep = AggregationStep.FINAL;
           this.root =
-              createGroupByTLevelNode(this.root.getChildren(), groupByLevelExpressions, curStep);
+              createGroupByTLevelNode(
+                  Collections.singletonList(this.getRoot()), groupByLevelExpressions, curStep);
         }
       } else {
         if (groupByLevelExpressions != null) {
@@ -306,7 +310,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planGroupByTime(
+  public LogicalPlanBuilder planSlidingWindowAggregation(
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep) {
@@ -315,16 +319,13 @@ public class LogicalPlanBuilder {
     }
 
     this.root =
-        createGroupByTimeNode(
-            Collections.singletonList(this.getRoot()),
-            aggregationExpressions,
-            groupByTimeParameter,
-            curStep);
+        createSlidingWindowAggregationNode(
+            this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep);
     return this;
   }
 
-  private PlanNode createGroupByTimeNode(
-      List<PlanNode> children,
+  private PlanNode createSlidingWindowAggregationNode(
+      PlanNode child,
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep) {
@@ -332,7 +333,7 @@ public class LogicalPlanBuilder {
         constructAggregationDescriptorList(aggregationExpressions, curStep);
     return new SlidingWindowAggregationNode(
         context.getQueryId().genPlanNodeId(),
-        children,
+        child,
         aggregationDescriptorList,
         groupByTimeParameter);
   }
