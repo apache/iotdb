@@ -63,6 +63,7 @@ public class LastValueAccumulator implements Accumulator {
         break;
       case BOOLEAN:
         addBooleanInput(column, timeRange);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));
@@ -118,8 +119,10 @@ public class LastValueAccumulator implements Accumulator {
         break;
       case TEXT:
         updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+        break;
       case BOOLEAN:
         updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getEndTime());
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));

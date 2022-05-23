@@ -23,14 +23,12 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.udf.api.UDF;
+import org.apache.iotdb.commons.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.query.udf.api.UDF;
-import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
@@ -239,8 +237,8 @@ public class UDFRegistrationService implements IService {
     }
   }
 
-  public UDF reflect(FunctionExpression expression) throws QueryProcessException {
-    String functionName = expression.getFunctionName().toUpperCase();
+  public UDF reflect(String functionName) {
+    functionName = functionName.toUpperCase();
     UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information == null) {
       String errorMessage =
@@ -248,7 +246,7 @@ public class UDFRegistrationService implements IService {
               "Failed to reflect UDF instance, because UDF %s has not been registered.",
               functionName);
       logger.warn(errorMessage);
-      throw new QueryProcessException(errorMessage);
+      throw new RuntimeException(errorMessage);
     }
 
     if (!information.isBuiltin()) {
@@ -267,7 +265,7 @@ public class UDFRegistrationService implements IService {
               "Failed to reflect UDF %s(%s) instance, because %s",
               functionName, information.getClassName(), e);
       logger.warn(errorMessage);
-      throw new QueryProcessException(errorMessage);
+      throw new RuntimeException(errorMessage);
     }
   }
 

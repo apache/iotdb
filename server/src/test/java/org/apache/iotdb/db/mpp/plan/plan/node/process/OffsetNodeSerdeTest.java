@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.plan.node.process;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
@@ -34,7 +31,6 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 
@@ -51,8 +47,7 @@ public class OffsetNodeSerdeTest {
             null,
             100,
             100,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+            null);
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("TestOffsetNode"), seriesScanNode, 2);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);

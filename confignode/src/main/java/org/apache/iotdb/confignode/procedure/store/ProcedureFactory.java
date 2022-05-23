@@ -28,14 +28,13 @@ import java.nio.ByteBuffer;
 public class ProcedureFactory implements IProcedureFactory {
 
   @Override
-  public org.apache.iotdb.confignode.procedure.Procedure create(ByteBuffer buffer)
-      throws IOException {
+  public Procedure create(ByteBuffer buffer) throws IOException {
     int typeNum = buffer.getInt();
     if (typeNum >= ProcedureType.values().length) {
       throw new IOException("unrecognized log type " + typeNum);
     }
     ProcedureType type = ProcedureType.values()[typeNum];
-    org.apache.iotdb.confignode.procedure.Procedure procedure;
+    Procedure procedure;
     switch (type) {
       case DELETE_STORAGE_GROUP_PROCEDURE:
         procedure = new DeleteStorageGroupProcedure();
