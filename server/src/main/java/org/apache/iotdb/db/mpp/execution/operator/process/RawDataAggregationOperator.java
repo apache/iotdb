@@ -79,7 +79,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
   @Override
@@ -170,7 +170,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
     return tsBlock.subTsBlock(tsBlockIterator.getRowIndex());
   }
 
-  private boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
+  public static boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
     TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
     if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
       return false;

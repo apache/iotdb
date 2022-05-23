@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -38,6 +37,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator.updateResultTsBlockFromAggregators;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.satisfied;
+import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
 
 public class SlidingWindowAggregationOperator implements ProcessOperator {
 
@@ -49,8 +52,6 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   private final List<SlidingWindowAggregator> aggregators;
 
   private final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window
-  private TimeRange curTimeRange;
 
   private final boolean ascending;
 
@@ -62,6 +63,10 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       Operator child,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
+    checkArgument(
+        groupByTimeParameter != null,
+        "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
+
     this.operatorContext = operatorContext;
     this.aggregators = aggregators;
     this.child = child;
@@ -70,7 +75,7 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       outputDataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, false);
     this.ascending = ascending;
   }
 
@@ -81,44 +86,39 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    curTimeRange = timeRangeIterator.nextTimeRange();
+    // 1. Clear previous aggregation result
+    TimeRange curTimeRange = timeRangeIterator.nextTimeRange();
     for (SlidingWindowAggregator aggregator : aggregators) {
       aggregator.updateTimeRange(curTimeRange);
     }
 
-    if (cachedTsBlock != null) {
-      calcFromTsBlock(cachedTsBlock);
-    }
-
-    if (child.hasNext()) {
-      calcFromTsBlock(child.next());
-    }
-
-    // output result from aggregator
-    return AggregationOperator.updateResultTsBlockFromAggregators(
-        tsBlockBuilder, aggregators, timeRangeIterator);
-  }
-
-  private void calcFromTsBlock(TsBlock inputTsBlock) {
-    TsBlock.TsBlockSingleColumnIterator inputTsBlockIterator =
-        inputTsBlock.getTsBlockSingleColumnIterator();
-    while (inputTsBlockIterator.hasNext() && !isEndCal(inputTsBlockIterator)) {
-      for (SlidingWindowAggregator aggregator : aggregators) {
-        aggregator.processTsBlock(inputTsBlock.subTsBlock(inputTsBlockIterator.getRowIndex()));
+    // 2. Calculate aggregation result based on current time window
+    while (!calcFromTsBlock(curTimeRange)) {
+      if (child.hasNext()) {
+        cachedTsBlock = child.next();
+      } else {
+        break;
       }
-      inputTsBlockIterator.next();
     }
-    if (inputTsBlockIterator.hasNext()) {
-      cachedTsBlock = inputTsBlock;
-    } else {
-      cachedTsBlock = null;
-    }
+
+    // 3. Update result using aggregators
+    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
-  private boolean isEndCal(TsBlock.TsBlockSingleColumnIterator iterator) {
-    return ascending
-        ? iterator.getEndTime() > curTimeRange.getMax()
-        : iterator.getStartTime() < curTimeRange.getMin();
+  private boolean calcFromTsBlock(TimeRange timeRange) {
+    // check if the batchData does not contain points in current interval
+    if (cachedTsBlock != null && satisfied(cachedTsBlock, timeRange, ascending)) {
+      // skip points that cannot be calculated
+      cachedTsBlock = skipOutOfTimeRangePoints(cachedTsBlock, timeRange, ascending);
+      for (SlidingWindowAggregator aggregator : aggregators) {
+        aggregator.processTsBlock(cachedTsBlock);
+      }
+    }
+    // The result is calculated from the cache
+    return cachedTsBlock != null
+        && (ascending
+            ? cachedTsBlock.getEndTime() > timeRange.getMax()
+            : cachedTsBlock.getEndTime() < timeRange.getMin());
   }
 
   @Override
@@ -139,22 +139,5 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     child.close();
-  }
-
-  public static ITimeRangeIterator initTimeRangeIterator(
-      GroupByTimeParameter groupByTimeParameter, boolean ascending) {
-    checkArgument(
-        groupByTimeParameter != null,
-        "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
-    return TimeRangeIteratorFactory.getTimeRangeIterator(
-        groupByTimeParameter.getStartTime(),
-        groupByTimeParameter.getEndTime(),
-        groupByTimeParameter.getInterval(),
-        groupByTimeParameter.getSlidingStep(),
-        ascending,
-        groupByTimeParameter.isIntervalByMonth(),
-        groupByTimeParameter.isSlidingStepByMonth(),
-        groupByTimeParameter.isLeftCRightO(),
-        false);
   }
 }

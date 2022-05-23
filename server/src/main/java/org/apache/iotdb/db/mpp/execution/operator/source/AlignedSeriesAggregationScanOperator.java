@@ -94,7 +94,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
   @Override

@@ -101,7 +101,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
   /**
@@ -110,7 +110,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
    * timestamp, so it doesn't matter what the time range returns.
    */
   public static ITimeRangeIterator initTimeRangeIterator(
-      GroupByTimeParameter groupByTimeParameter, boolean ascending) {
+      GroupByTimeParameter groupByTimeParameter, boolean ascending, boolean isPreAggr) {
     if (groupByTimeParameter == null) {
       return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
     } else {
@@ -123,7 +123,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           groupByTimeParameter.isIntervalByMonth(),
           groupByTimeParameter.isSlidingStepByMonth(),
           groupByTimeParameter.isLeftCRightO(),
-          groupByTimeParameter.getInterval() > groupByTimeParameter.getSlidingStep());
+          isPreAggr);
     }
   }
 
