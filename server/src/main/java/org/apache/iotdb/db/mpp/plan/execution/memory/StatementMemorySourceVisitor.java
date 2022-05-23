@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -67,6 +68,22 @@ public class StatementMemorySourceVisitor
         node -> {
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
           tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(node));
+          tsBlockBuilder.declarePosition();
+        });
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitCountNodes(
+      CountNodesStatement countStatement, StatementMemorySourceContext context) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
+    Set<String> matchedChildNodes = new TreeSet<>(context.getAnalysis().getMatchedNodes());
+    matchedChildNodes.forEach(
+        node -> {
+          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+          tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
           tsBlockBuilder.declarePosition();
         });
     return new StatementMemorySource(

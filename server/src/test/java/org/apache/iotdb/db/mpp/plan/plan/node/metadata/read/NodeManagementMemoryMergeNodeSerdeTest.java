@@ -54,7 +54,8 @@ public class NodeManagementMemoryMergeNodeSerdeTest {
     SchemaQueryMergeNode schemaMergeNode = new SchemaQueryMergeNode(new PlanNodeId("schemaMerge"));
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     ChildPathsSchemaScanNode childPathsSchemaScanNode =
-        new ChildPathsSchemaScanNode(new PlanNodeId("childPathsScan"), new PartialPath("root.ln"));
+        new ChildPathsSchemaScanNode(
+            new PlanNodeId("childPathsScan"), new PartialPath("root.ln"), -1);
     FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
     fragmentSinkNode.addChild(childPathsSchemaScanNode);
     fragmentSinkNode.setDownStream(

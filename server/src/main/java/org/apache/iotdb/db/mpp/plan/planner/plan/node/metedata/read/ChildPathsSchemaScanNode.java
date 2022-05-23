@@ -33,19 +33,25 @@ import java.util.Objects;
 public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
   // the path could be a prefix path with wildcard
   private PartialPath prefixPath;
+  private int level = -1;
 
-  public ChildPathsSchemaScanNode(PlanNodeId id, PartialPath prefixPath) {
+  public ChildPathsSchemaScanNode(PlanNodeId id, PartialPath prefixPath, int level) {
     super(id);
     this.prefixPath = prefixPath;
+    this.level = level;
   }
 
   public PartialPath getPrefixPath() {
     return prefixPath;
   }
 
+  public int getLevel() {
+    return level;
+  }
+
   @Override
   public PlanNode clone() {
-    return new ChildPathsSchemaScanNode(getPlanNodeId(), prefixPath);
+    return new ChildPathsSchemaScanNode(getPlanNodeId(), prefixPath, level);
   }
 
   @Override
@@ -57,12 +63,14 @@ public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.CHILD_PATHS_SCAN.serialize(byteBuffer);
     prefixPath.serialize(byteBuffer);
+    byteBuffer.putInt(level);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new ChildPathsSchemaScanNode(planNodeId, path);
+    int level = buffer.getInt();
+    return new ChildPathsSchemaScanNode(planNodeId, path, level);
   }
 
   @Override

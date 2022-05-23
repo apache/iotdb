@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
@@ -424,6 +425,15 @@ public class LogicalPlanner {
     }
 
     @Override
+    public PlanNode visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      return planBuilder
+          .planChildPathsSchemaSource(countStatement.getPartialPath(), countStatement.getLevel())
+          .planCountMerge()
+          .getRoot();
+    }
+
+    @Override
     public PlanNode visitInsertRows(
         InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
       // convert insert statement to insert node
@@ -519,7 +529,7 @@ public class LogicalPlanner {
         ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath())
+          .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
           .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_PATHS)
           .getRoot();

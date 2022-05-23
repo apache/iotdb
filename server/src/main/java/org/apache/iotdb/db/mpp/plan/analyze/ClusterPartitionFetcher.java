@@ -151,14 +151,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree, NodeManagementType type) {
+  public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+      PathPatternTree patternTree, Integer level, NodeManagementType type) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
-              constructSchemaNodeManagementPartitionReq(patternTree, type));
+              constructSchemaNodeManagementPartitionReq(patternTree, level, type));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (TException | IOException e) {
@@ -360,14 +360,21 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      PathPatternTree patternTree, NodeManagementType type) {
+      PathPatternTree patternTree, Integer level, NodeManagementType type) {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);
       ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
       serializedPatternTree.put(baos.getBuf(), 0, baos.size());
       serializedPatternTree.flip();
-      return new TSchemaNodeManagementReq(serializedPatternTree, type);
+      TSchemaNodeManagementReq schemaNodeManagementReq =
+          new TSchemaNodeManagementReq(serializedPatternTree, type);
+      if (null == level) {
+        schemaNodeManagementReq.setLevel(-1);
+      } else {
+        schemaNodeManagementReq.setLevel(level);
+      }
+      return schemaNodeManagementReq;
     } catch (IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }

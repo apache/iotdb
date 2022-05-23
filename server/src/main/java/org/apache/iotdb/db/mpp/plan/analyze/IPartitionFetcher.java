@@ -34,8 +34,13 @@ public interface IPartitionFetcher {
 
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
-  SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree, NodeManagementType type);
+  default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
+      PathPatternTree patternTree, NodeManagementType type) {
+    return getSchemaNodeManagementPartitionWithLevel(patternTree, null, type);
+  }
+
+  SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+      PathPatternTree patternTree, Integer level, NodeManagementType type);
 
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
