@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
-import com.google.common.collect.Sets;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -42,6 +41,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import com.google.common.collect.Sets;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,7 +97,9 @@ public class UpdateLastCacheOperatorTest {
       assertEquals(3, result.getValueColumnCount());
 
       assertEquals(499, result.getTimeByIndex(0));
-      assertEquals(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", result.getColumn(0).getBinary(0).toString());
+      assertEquals(
+          SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0",
+          result.getColumn(0).getBinary(0).toString());
       assertEquals("10499", result.getColumn(1).getBinary(0).toString());
       assertEquals(TSDataType.INT32.name(), result.getColumn(2).getBinary(0).toString());
 
@@ -124,7 +127,9 @@ public class UpdateLastCacheOperatorTest {
       assertEquals(3, result.getValueColumnCount());
 
       assertEquals(499, result.getTimeByIndex(0));
-      assertEquals(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", result.getColumn(0).getBinary(0).toString());
+      assertEquals(
+          SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0",
+          result.getColumn(0).getBinary(0).toString());
       assertEquals("10499", result.getColumn(1).getBinary(0).toString());
       assertEquals(TSDataType.INT32.name(), result.getColumn(2).getBinary(0).toString());
 
@@ -152,7 +157,9 @@ public class UpdateLastCacheOperatorTest {
       assertEquals(3, result.getValueColumnCount());
 
       assertEquals(120, result.getTimeByIndex(0));
-      assertEquals(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", result.getColumn(0).getBinary(0).toString());
+      assertEquals(
+          SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0",
+          result.getColumn(0).getBinary(0).toString());
       assertEquals("20120", result.getColumn(1).getBinary(0).toString());
       assertEquals(TSDataType.INT32.name(), result.getColumn(2).getBinary(0).toString());
 
@@ -201,6 +208,12 @@ public class UpdateLastCacheOperatorTest {
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
 
-    return new UpdateLastCacheOperator(fragmentInstanceContext.getOperatorContexts().get(1), seriesAggregationScanOperator, measurementPath, measurementPath.getSeriesType(), null, false);
+    return new UpdateLastCacheOperator(
+        fragmentInstanceContext.getOperatorContexts().get(1),
+        seriesAggregationScanOperator,
+        measurementPath,
+        measurementPath.getSeriesType(),
+        null,
+        false);
   }
 }

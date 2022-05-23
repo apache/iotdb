@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+
 import org.junit.Test;
 
 import java.util.concurrent.ExecutorService;
@@ -56,7 +57,6 @@ public class LastCacheScanOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, SeriesScanOperator.class.getSimpleName());
 
-
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(6);
 
       LastQueryUtil.appendLastValue(builder, 1, "root.sg.d.s1", "true", "BOOLEAN");
@@ -68,7 +68,9 @@ public class LastCacheScanOperatorTest {
 
       TsBlock tsBlock = builder.build();
 
-      LastCacheScanOperator lastCacheScanOperator = new LastCacheScanOperator(fragmentInstanceContext.getOperatorContexts().get(0), planNodeId1, tsBlock);
+      LastCacheScanOperator lastCacheScanOperator =
+          new LastCacheScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0), planNodeId1, tsBlock);
 
       assertTrue(lastCacheScanOperator.isBlocked().isDone());
       assertTrue(lastCacheScanOperator.hasNext());
