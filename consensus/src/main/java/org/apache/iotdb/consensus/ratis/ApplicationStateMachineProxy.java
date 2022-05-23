@@ -155,7 +155,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotDir);
-    boolean addTermIndexMetafileSuccess = snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
+    boolean addTermIndexMetafileSuccess =
+        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
 
     if (!applicationTakeSnapshotSuccess || !addTermIndexMetafileSuccess) {
       // this takeSnapshot failed, clean up files and directories

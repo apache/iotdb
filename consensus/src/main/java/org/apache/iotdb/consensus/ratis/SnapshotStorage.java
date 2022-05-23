@@ -139,11 +139,13 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   /**
-   * Currently, we name the snapshotDir with Term_Index so that we can tell which directory contains the latest snapshot files.
-   * Unfortunately, when leader install snapshot to a slow follower, current Ratis implementation will flatten the directory and place all the snapshots directly under statemachine dir.
-   * Under this scenario, we cannot restore Term_Index from directory.
-   * We decided to add an empty metadata file containing only Term_Index into the snapshotDir.
-   * his metadata file will be installed along with application snapshot files, so that Term_Index information is kept during InstallSnapshot.
+   * Currently, we name the snapshotDir with Term_Index so that we can tell which directory contains
+   * the latest snapshot files. Unfortunately, when leader install snapshot to a slow follower,
+   * current Ratis implementation will flatten the directory and place all the snapshots directly
+   * under statemachine dir. Under this scenario, we cannot restore Term_Index from directory name.
+   * We decided to add an empty metadata file containing only Term_Index into the snapshotDir. his
+   * metadata file will be installed along with application snapshot files, so that Term_Index
+   * information is kept during InstallSnapshot.
    */
   public boolean addTermIndexMetaFile(File snapshotDir, String termIndexMetadata) {
     File snapshotMetaFile = new File(getMetafilePath(snapshotDir, termIndexMetadata));
@@ -165,11 +167,15 @@ public class SnapshotStorage implements StateMachineStorage {
     return META_FILE_PREFIX + "\\d+_\\d+$";
   }
 
-  // After leader InstallSnapshot to a slow follower, Ratis will put all snapshot files directly under statemachineDir.
-  // We need to handle this special scenario and rearrange these files to appropriate sub-directory
-  // this function will move all snapshot files directly under statemachine dir to /sm/term_index/ sub-dir
+  /**
+   * After leader InstallSnapshot to a slow follower, Ratis will put all snapshot files directly
+   * under statemachineDir. We need to handle this special scenario and rearrange these files to
+   * appropriate sub-directory this function will move all snapshot files directly under /sm to
+   * /sm/term_index/
+   */
   void rearrangeSMDirHierarchyIfNecessary() {
-    File[] potentialMetafile = stateMachineDir.listFiles((dir, name) -> name.matches(getMetafileMatcherRegex()));
+    File[] potentialMetafile =
+        stateMachineDir.listFiles((dir, name) -> name.matches(getMetafileMatcherRegex()));
     if (potentialMetafile == null || potentialMetafile.length == 0) {
       // the statemachine dir contains no direct metafile
       return;
@@ -182,14 +188,16 @@ public class SnapshotStorage implements StateMachineStorage {
     File[] snapshotFiles = stateMachineDir.listFiles();
 
     // move files to snapshotDir, if an error occurred, delete snapshotDir
-    try{
+    try {
       if (snapshotFiles == null) {
-        logger.error("An unexpected condition triggered. please check implementation " + this.getClass().getName());
+        logger.error(
+            "An unexpected condition triggered. please check implementation "
+                + this.getClass().getName());
         FileUtils.deleteFully(snapshotDir);
         return;
       }
 
-      for (File file: snapshotFiles) {
+      for (File file : snapshotFiles) {
         boolean success = file.renameTo(new File(snapshotDir + File.separator + file.getName()));
         if (!success) {
           FileUtils.deleteFully(snapshotDir);

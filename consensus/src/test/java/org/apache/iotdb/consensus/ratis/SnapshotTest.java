@@ -121,6 +121,11 @@ public class SnapshotTest {
   }
 
   private String getSnapshotMetaFilename(String termIndexMeta) {
-    return testDir.getAbsolutePath() + File.separator + termIndexMeta + File.separator + ".meta." + termIndexMeta;
+    return testDir.getAbsolutePath()
+        + File.separator
+        + termIndexMeta
+        + File.separator
+        + ".meta."
+        + termIndexMeta;
   }
 }
