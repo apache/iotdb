@@ -230,9 +230,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     TSDataType dataType = null;
-    TSEncoding encoding = null;
-    CompressionType compressor = null;
-
     if (ctx.dataType != null) {
       if (ctx.attributeKey() != null) {
         if (!parseAttributeKey(ctx.attributeKey())
@@ -258,7 +255,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
@@ -273,7 +270,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createAlignedTimeSeriesStatement.addEncoding(encoding);
     }
 
-    compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
       String compressorString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();

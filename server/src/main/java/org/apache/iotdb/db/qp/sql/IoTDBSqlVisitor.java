@@ -317,10 +317,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } else {
       createAlignedTimeSeriesOperator.addAliasList(null);
     }
-    TSDataType dataType = null;
-    TSEncoding encoding = null;
-    CompressionType compressor = null;
 
+    TSDataType dataType = null;
     if (ctx.dataType != null) {
       if (ctx.attributeKey() != null) {
         if (!parseAttributeKey(ctx.attributeKey())
@@ -346,7 +344,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
 
-    encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
@@ -361,7 +359,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       createAlignedTimeSeriesOperator.addEncoding(encoding);
     }
 
-    compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
       String compressorString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
@@ -461,10 +459,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.aliasNodeName() != null) {
       throw new SQLParserException("schema template: alias is not supported yet.");
     }
-    TSDataType dataType = null;
-    TSEncoding encoding = null;
-    CompressionType compressor = null;
 
+    TSDataType dataType = null;
     if (ctx.dataType != null) {
       if (ctx.attributeKey() != null) {
         if (!parseAttributeKey(ctx.attributeKey())
@@ -490,7 +486,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
 
-    encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
@@ -505,7 +501,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       encodings.add(encoding);
     }
 
-    compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
       String compressorString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
@@ -1715,13 +1711,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private TSDataType parseType(String datatype) {
-    TSDataType tsDataType;
     try {
-      tsDataType = TSDataType.valueOf(datatype.toUpperCase());
+      return TSDataType.valueOf(datatype.toUpperCase());
     } catch (Exception e) {
       throw new SQLParserException("not a valid fill type : " + datatype);
     }
-    return tsDataType;
   }
 
   // Insert Statement

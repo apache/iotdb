@@ -923,9 +923,6 @@ public class Analyzer {
               String.format("Unsupported compression: %s", compressorString));
         }
       }
-      if (props.size() == 0) {
-        props = null;
-      }
       createTimeSeriesStatement.setProps(props);
     }
 
