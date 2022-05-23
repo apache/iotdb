@@ -589,6 +589,7 @@ public class DistributionPlanner {
       // Step 2: change the step for each SeriesAggregationSourceNode according to its split count
       for (SeriesAggregationSourceNode source : sources) {
         //        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
+        // TODO: (xingtanzjr) need to optimize this step later. We make it as Partial now.
         boolean isFinal = false;
         source
             .getAggregationDescriptorList()

@@ -323,7 +323,7 @@ public class DistributionPlannerTest {
     assertEquals(3, plan.getInstances().size());
     Map<String, AggregationStep> expectedStep = new HashMap<>();
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
-    expectedStep.put(d2s1Path, AggregationStep.FINAL);
+    expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
     fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
   }
@@ -420,7 +420,7 @@ public class DistributionPlannerTest {
     assertEquals(3, plan.getInstances().size());
     Map<String, AggregationStep> expectedStep = new HashMap<>();
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
-    expectedStep.put(d2s1Path, AggregationStep.FINAL);
+    expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
     fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
   }
@@ -564,7 +564,7 @@ public class DistributionPlannerTest {
     Map<String, AggregationStep> expectedStep = new HashMap<>();
     expectedStep.put(d1s1Path, AggregationStep.PARTIAL);
     expectedStep.put(d1s2Path, AggregationStep.PARTIAL);
-    expectedStep.put(d2s1Path, AggregationStep.FINAL);
+    expectedStep.put(d2s1Path, AggregationStep.PARTIAL);
     List<FragmentInstance> fragmentInstances = plan.getInstances();
     fragmentInstances.forEach(f -> verifyAggregationStep(expectedStep, f.getFragment().getRoot()));
 
