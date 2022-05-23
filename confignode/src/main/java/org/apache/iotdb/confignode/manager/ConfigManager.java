@@ -360,10 +360,14 @@ public class ConfigManager implements Manager {
               partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionReq);
 
       // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info(
-          "GetOrCreateSchemaPartition interface receive devicePaths: {}, return SchemaPartition: {}",
-          devicePaths,
-          resp.getSchemaPartition().getSchemaPartitionMap());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "GetOrCreateSchemaPartition success. receive devicePaths: {}, return SchemaPartition: {}",
+            devicePaths,
+            resp.getSchemaPartition().getSchemaPartitionMap());
+      } else {
+        LOGGER.info("GetOrCreateSchemaPartition failed: {}", resp.getStatus());
+      }
 
       return resp;
     } else {
@@ -431,10 +435,14 @@ public class ConfigManager implements Manager {
               partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
       // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info(
-          "GetOrCreateDataPartition receive PartitionSlotsMap: {}, return DataPartition: {}",
-          getOrCreateDataPartitionReq.getPartitionSlotsMap(),
-          resp.getDataPartition().getDataPartitionMap());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return DataPartition: {}",
+            getOrCreateDataPartitionReq.getPartitionSlotsMap(),
+            resp.getDataPartition().getDataPartitionMap());
+      } else {
+        LOGGER.info("GetOrCreateDataPartition failed: {}", resp.getStatus());
+      }
 
       return resp;
     } else {
