@@ -275,9 +275,9 @@ public class SchemaTreeTest {
 
     MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
     MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
-    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema1);
+    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema1, null);
     d1.addChild("s1", s1);
-    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema2);
+    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema2, null);
     s2.setAlias("status");
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
@@ -313,7 +313,7 @@ public class SchemaTreeTest {
     SchemaNode s;
     for (int i = 0; i < 5; i++) {
       a = new SchemaEntityNode("a");
-      s = new SchemaMeasurementNode("s", schema);
+      s = new SchemaMeasurementNode("s", schema, null);
       a.addChild("s", s);
       parent.addChild("a", a);
       parent = a;
@@ -333,7 +333,7 @@ public class SchemaTreeTest {
 
     for (int i = 0; i < 2; i++) {
       c = new SchemaEntityNode("c");
-      c.addChild("s1", new SchemaMeasurementNode("s1", schema));
+      c.addChild("s1", new SchemaMeasurementNode("s1", schema, null));
       parent.addChild("c", c);
       parent = c;
     }

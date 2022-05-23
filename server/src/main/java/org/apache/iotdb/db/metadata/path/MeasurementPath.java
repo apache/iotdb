@@ -44,6 +44,8 @@ public class MeasurementPath extends PartialPath {
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   private String measurementAlias = "";
 
+  private String version = null;
+
   public MeasurementPath() {}
 
   public MeasurementPath(String measurementPath) throws IllegalPathException {
@@ -123,6 +125,14 @@ public class MeasurementPath extends PartialPath {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
+  public String getVersion() {
+    return version;
+  }
+
+  public void setVersion(String version) {
+    this.version = version;
+  }
+
   @Override
   public PartialPath copy() {
     MeasurementPath result = new MeasurementPath();
@@ -173,6 +183,8 @@ public class MeasurementPath extends PartialPath {
     }
     ReadWriteIOUtils.write(isUnderAlignedEntity, byteBuffer);
     ReadWriteIOUtils.write(measurementAlias, byteBuffer);
+
+    ReadWriteIOUtils.write(version, byteBuffer);
   }
 
   public static MeasurementPath deserialize(ByteBuffer byteBuffer) {
@@ -189,6 +201,9 @@ public class MeasurementPath extends PartialPath {
     }
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
+
+    measurementPath.version = ReadWriteIOUtils.readString(byteBuffer);
+
     measurementPath.nodes = partialPath.getNodes();
     measurementPath.device = partialPath.getDevice();
     measurementPath.fullPath = partialPath.getFullPath();
