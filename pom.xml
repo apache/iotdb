@@ -214,7 +214,7 @@
         <!-- JDK1.8 only support google java format 1.7-->
         <google.java.format.version>1.7</google.java.format.version>
         <!-- caffeine cache -->
-        <caffeine>3.1.0</caffeine>
+        <caffeine>2.9.1</caffeine>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
