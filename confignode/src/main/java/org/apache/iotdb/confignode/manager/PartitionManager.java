@@ -390,8 +390,10 @@ public class PartitionManager {
   private void clearDeletedStorageGroup() {
     if (getConsensusManager().isLeader()) {
       final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
-      LOGGER.info("<====DELETE REGIONS {} START", deletedRegionSet);
-      SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
+      if (!deletedRegionSet.isEmpty()) {
+        LOGGER.info("DELETE REGIONS {} START", deletedRegionSet);
+        SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
+      }
     }
   }
 

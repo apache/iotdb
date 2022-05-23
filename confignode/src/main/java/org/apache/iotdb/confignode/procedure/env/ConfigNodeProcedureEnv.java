@@ -53,6 +53,7 @@ public class ConfigNodeProcedureEnv {
 
   /**
    * Delete config node information, includes (mTree, partitionInfo, regionMap)
+   *
    * @param deleteSgSchema storage group name
    * @return tsStatus
    */
@@ -63,6 +64,7 @@ public class ConfigNodeProcedureEnv {
 
   /**
    * Pre delete a storage group
+   *
    * @param preDeleteType execute/rollback
    * @param deleteSgName storage group name
    */
@@ -71,7 +73,6 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   *
    * @param storageGroupName Storage group name
    * @return ALL SUCCESS OR NOT
    * @throws IOException IOE
@@ -91,7 +92,7 @@ public class ConfigNodeProcedureEnv {
           SyncDataNodeClientPool.getInstance()
               .invalidatePartitionCache(
                   dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
-      if (verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
+      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
             "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
             invalidatePartitionStatus,
