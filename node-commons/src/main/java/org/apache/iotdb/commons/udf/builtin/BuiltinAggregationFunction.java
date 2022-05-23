@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 public enum BuiltinAggregationFunction {
   MIN_TIME("min_time"),
-  MAX_TIME("max_value"),
+  MAX_TIME("max_time"),
   MAX_VALUE("max_value"),
   MIN_VALUE("min_value"),
   EXTREME("extreme"),
