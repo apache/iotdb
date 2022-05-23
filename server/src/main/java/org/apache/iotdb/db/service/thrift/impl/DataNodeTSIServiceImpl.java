@@ -146,7 +146,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     try {
       loginStatus = AuthorityChecker.checkUser(req.username, req.password);
     } catch (ConfigNodeConnectionException e) {
-      TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR, e.getMessage());
+      TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
       return new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     }
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
