@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.consensus.request.read;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,7 +50,7 @@ public class GetChildPathsPartitionReq extends ConfigRequest {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    partialPath = PartialPath.deserialize(buffer);
+    partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
   }
 
   @Override
