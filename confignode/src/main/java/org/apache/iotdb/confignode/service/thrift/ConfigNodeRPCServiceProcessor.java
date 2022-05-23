@@ -272,10 +272,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     SchemaNodeManagementResp schemaNodeManagementResp;
     if (req.getType() == NodeManagementType.CHILD_PATHS) {
       schemaNodeManagementResp =
-          (SchemaNodeManagementResp) configManager.getChildPathsPartition(partialPath);
+          (SchemaNodeManagementResp)
+              configManager.getChildPathsPartition(partialPath, req.getLevel());
     } else {
       schemaNodeManagementResp =
-          (SchemaNodeManagementResp) configManager.getChildNodesPartition(partialPath);
+          (SchemaNodeManagementResp)
+              configManager.getChildNodesPartition(partialPath, req.getLevel());
     }
     TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
     schemaNodeManagementResp.convertToRpcSchemaNodeManagementPartitionResp(resp);

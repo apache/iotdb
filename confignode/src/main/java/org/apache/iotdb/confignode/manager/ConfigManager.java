@@ -374,11 +374,14 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getChildPathsPartition(PartialPath partialPath) {
+  public DataSet getChildPathsPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetChildPathsPartitionReq getChildPathsPartitionReq = new GetChildPathsPartitionReq();
       getChildPathsPartitionReq.setPartialPath(partialPath);
+      if (null != level) {
+        getChildPathsPartitionReq.setLevel(level);
+      }
       return partitionManager.getChildPathsPartition(getChildPathsPartitionReq);
     } else {
       SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
@@ -388,11 +391,14 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getChildNodesPartition(PartialPath partialPath) {
+  public DataSet getChildNodesPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetChildNodesPartitionReq getChildNodesPartitionReq = new GetChildNodesPartitionReq();
       getChildNodesPartitionReq.setPartialPath(partialPath);
+      if (null != level) {
+        getChildNodesPartitionReq.setLevel(level);
+      }
       return partitionManager.getChildNodesPartition(getChildNodesPartitionReq);
     } else {
       SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();

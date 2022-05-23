@@ -67,6 +67,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class ConfigRequestExecutor {
 
@@ -124,7 +125,7 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListRoleUsers((AuthorReq) req);
       case GetChildPathsPartition:
       case GetChildNodesPartition:
-        return getSchemaNodeManagementPartiton(req);
+        return getSchemaNodeManagementPartition(req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -249,35 +250,48 @@ public class ConfigRequestExecutor {
             });
   }
 
-  private DataSet getSchemaNodeManagementPartiton(ConfigRequest req)
+  private DataSet getSchemaNodeManagementPartition(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException {
-    Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel;
+    int level = -1;
+    PartialPath partialPath;
+    Set<String> alreadyMatchedNode;
+    Set<PartialPath> needMatchedNode;
     List<String> matchedStorageGroups = new ArrayList<>();
+
     if (req.getType() == ConfigRequestType.GetChildPathsPartition) {
       GetChildPathsPartitionReq getChildPathsPartitionReq = (GetChildPathsPartitionReq) req;
-
-      // Pair.left means already find matched child paths from aboveMtree,
-      // Pair.right means need more info from DataNode's schemaRegion.
-      matchedChildInNextLevel =
-          clusterSchemaInfo.getChildNodePathInNextLevel(getChildPathsPartitionReq.getPartialPath());
+      partialPath = getChildPathsPartitionReq.getPartialPath();
+      level = getChildPathsPartitionReq.getLevel();
     } else if (req.getType() == ConfigRequestType.GetChildNodesPartition) {
       GetChildNodesPartitionReq getChildNodesPartitionReq = (GetChildNodesPartitionReq) req;
-
-      // Pair.left means already find matched child paths from aboveMtree,
-      // Pair.right means need more info from DataNode's schemaRegion.
-      matchedChildInNextLevel =
-          clusterSchemaInfo.getChildNodeNameInNextLevel(getChildNodesPartitionReq.getPartialPath());
+      partialPath = getChildNodesPartitionReq.getPartialPath();
+      level = getChildNodesPartitionReq.getLevel();
     } else {
       throw new UnknownPhysicalPlanTypeException(req.getType());
     }
-    matchedChildInNextLevel.right.forEach(
-        childPath -> matchedStorageGroups.add(childPath.getFullPath()));
+
+    if (-1 == level) {
+      Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel =
+          clusterSchemaInfo.getChildNodeNameInNextLevel(partialPath);
+      alreadyMatchedNode = matchedChildInNextLevel.left;
+      needMatchedNode = matchedChildInNextLevel.right;
+    } else {
+      Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
+          clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
+      alreadyMatchedNode =
+          matchedChildInNextLevel.left.stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toSet());
+      needMatchedNode = matchedChildInNextLevel.right;
+    }
+
+    needMatchedNode.forEach(childPath -> matchedStorageGroups.add(childPath.getFullPath()));
     SchemaNodeManagementResp schemaNodeManagementResp =
         (SchemaNodeManagementResp)
             partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);
     if (schemaNodeManagementResp.getStatus().getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      schemaNodeManagementResp.setMatchedNode(matchedChildInNextLevel.left);
+      schemaNodeManagementResp.setMatchedNode(alreadyMatchedNode);
     }
     return schemaNodeManagementResp;
   }

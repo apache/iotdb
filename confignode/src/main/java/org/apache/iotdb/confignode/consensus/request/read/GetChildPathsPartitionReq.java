@@ -30,6 +30,7 @@ import java.util.Objects;
 
 public class GetChildPathsPartitionReq extends ConfigRequest {
   private PartialPath partialPath;
+  private int level = -1;
 
   public GetChildPathsPartitionReq() {
     super(ConfigRequestType.GetChildPathsPartition);
@@ -43,26 +44,40 @@ public class GetChildPathsPartitionReq extends ConfigRequest {
     this.partialPath = partialPath;
   }
 
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
+  }
+
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     partialPath.serialize(buffer);
+    buffer.putInt(level);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    level = buffer.getInt();
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     GetChildPathsPartitionReq that = (GetChildPathsPartitionReq) o;
-    return partialPath.equals(that.partialPath);
+    return level == that.level && Objects.equals(partialPath, that.partialPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(partialPath);
+    return Objects.hash(partialPath, level);
   }
 }
