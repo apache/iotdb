@@ -101,6 +101,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -538,6 +539,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, UUID uuid)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "SchemaRegion schema file mode currently doesn't support timeseries with UUID");
+  }
+
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
@@ -698,6 +706,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
     }
+  }
+
+  @Override
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<UUID> uuidList)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "SchemaRegion schema file mode currently doesn't support timeseries with UUID");
   }
 
   /**

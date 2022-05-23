@@ -144,6 +144,10 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
     this.attributesList = attributesList;
   }
 
+  public List<UUID> getUuidList() {
+    return uuidList;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return new ArrayList<>();

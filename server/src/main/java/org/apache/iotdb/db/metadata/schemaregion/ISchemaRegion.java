@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * This interface defines all interfaces and behaviours that one SchemaRegion should support and
@@ -100,7 +101,12 @@ public interface ISchemaRegion {
   // region Interfaces for Timeseries operation
   void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
+  void createTimeseries(CreateTimeSeriesPlan plan, long offset, UUID uuid) throws MetadataException;
+
   void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
+
+  void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<UUID> uuidList)
+      throws MetadataException;
 
   /**
    * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern

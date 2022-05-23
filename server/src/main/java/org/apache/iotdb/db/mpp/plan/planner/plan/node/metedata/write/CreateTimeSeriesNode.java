@@ -148,6 +148,10 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     this.props = props;
   }
 
+  public UUID getUuid() {
+    return uuid;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return new ArrayList<>();

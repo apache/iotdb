@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
@@ -47,6 +48,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private IMeasurementSchema schema;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
+
+  private UUID uuid = null;
 
   /**
    * MeasurementMNode factory method. The type of returned MeasurementMNode is according to the
@@ -146,6 +149,16 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
     this.lastCacheContainer = lastCacheContainer;
+  }
+
+  @Override
+  public UUID getUUID() {
+    return uuid;
+  }
+
+  @Override
+  public void setUUID(UUID uuid) {
+    this.uuid = uuid;
   }
 
   @Override

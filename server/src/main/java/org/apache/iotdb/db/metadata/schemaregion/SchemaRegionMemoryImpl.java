@@ -101,6 +101,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -497,6 +498,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+    createTimeseries(plan, offset, null);
+  }
+
+  @Override
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, UUID uuid)
+      throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
@@ -515,6 +522,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getCompressor(),
               plan.getProps(),
               plan.getAlias());
+
+      leafMNode.setUUID(uuid);
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(path.getDevicePath());
@@ -607,6 +616,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    createAlignedTimeSeries(plan, null);
+  }
+
+  @Override
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<UUID> uuidList)
+      throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
@@ -632,6 +647,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getEncodings(),
               plan.getCompressors(),
               plan.getAliasList());
+
+      if (uuidList != null) {
+        for (int i = 0; i < measurements.size(); i++) {
+          measurementMNodeList.get(i).setUUID(uuidList.get(i));
+        }
+      }
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(prefixPath);

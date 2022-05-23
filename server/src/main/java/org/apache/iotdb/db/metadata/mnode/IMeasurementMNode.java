@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.UUID;
+
 /** This interface defines a MeasurementMNode's operation interfaces. */
 public interface IMeasurementMNode extends IMNode {
 
@@ -51,4 +53,8 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer();
 
   void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
+
+  UUID getUUID();
+
+  void setUUID(UUID uuid);
 }
