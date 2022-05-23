@@ -25,6 +25,8 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
+import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
@@ -47,6 +49,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
@@ -119,6 +122,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
@@ -753,6 +757,58 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
       return super.visitGroupByLevel(node, context);
+    }
+
+    @Override
+    public Operator visitSlidingWindowAggregation(
+        SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
+      checkArgument(
+          node.getAggregationDescriptorList().size() >= 1,
+          "Aggregation descriptorList cannot be empty");
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SlidingWindowAggregationOperator.class.getSimpleName());
+      Operator child = node.getChild().accept(this, context);
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      List<SlidingWindowAggregator> aggregators = new ArrayList<>();
+      Map<String, List<InputLocation>> layout = makeLayout(node);
+      for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+        List<String> inputColumnNames =
+            descriptor.getInputExpressions().stream()
+                .map(Expression::getExpressionString)
+                .collect(Collectors.toList());
+        // it may include double parts
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
+        inputColumnNames.forEach(
+            inputColumnName -> inputLocationParts.add(layout.get(inputColumnName)));
+
+        List<InputLocation[]> inputLocationList = new ArrayList<>();
+        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+          if (inputColumnNames.size() == 1) {
+            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+                });
+          }
+        }
+
+        aggregators.add(
+            SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
+                descriptor.getAggregationType(),
+                context
+                    .getTypeProvider()
+                    // get the type of first inputExpression
+                    .getType(descriptor.getInputExpressions().get(0).toString()),
+                ascending,
+                inputLocationList,
+                descriptor.getStep()));
+      }
+      return new SlidingWindowAggregationOperator(
+          operatorContext, aggregators, child, ascending, node.getGroupByTimeParameter());
     }
 
     @Override

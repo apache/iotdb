@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -43,6 +44,8 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   // The parameter of `group by time`.
   private final GroupByTimeParameter groupByTimeParameter;
+
+  protected OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
 
   private PlanNode child;
 
@@ -70,6 +73,14 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
+  }
+
+  public PlanNode getChild() {
+    return child;
   }
 
   @Override
@@ -103,7 +114,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitGroupByTime(this, context);
+    return visitor.visitSlidingWindowAggregation(this, context);
   }
 
   @Override
