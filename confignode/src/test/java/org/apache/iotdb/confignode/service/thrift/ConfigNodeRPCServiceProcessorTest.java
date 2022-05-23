@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -901,6 +902,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg1 = "root.sg1";
     // register DataNodes
     registerDataNodes();
+    ConfigNodeProcedureEnv.setSkipForTest(true);
     TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
     // set StorageGroup0 by default values
     status = processor.setStorageGroup(setReq0);
@@ -917,6 +919,34 @@ public class ConfigNodeRPCServiceProcessorTest {
         processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
     Assert.assertTrue(root.getStorageGroupSchemaMap().isEmpty());
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
+  }
+
+  @Test
+  public void deleteStorageGroupInvalidateCacheFailedTest() throws TException {
+    TSStatus status;
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
+    // register DataNodes
+    registerDataNodes();
+    ConfigNodeProcedureEnv.setSkipForTest(true);
+    ConfigNodeProcedureEnv.setInvalidCacheResult(false);
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
+    // set StorageGroup0 by default values
+    status = processor.setStorageGroup(setReq0);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    // set StorageGroup1 by specific values
+    TSetStorageGroupReq setReq1 = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
+    status = processor.setStorageGroup(setReq1);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
+    List<String> sgs = Arrays.asList(sg0, sg1);
+    deleteStorageGroupsReq.setPrefixPathList(sgs);
+    TSStatus deleteSgStatus = processor.deleteStorageGroups(deleteStorageGroupsReq);
+    TStorageGroupSchemaResp root =
+        processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
+    // rollback success
+    Assert.assertEquals(root.getStorageGroupSchemaMap().size(), 2);
+    Assert.assertEquals(TSStatusCode.MULTIPLE_ERROR.getStatusCode(), deleteSgStatus.getCode());
   }
 
   private void cleanUserAndRole() throws TException {

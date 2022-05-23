@@ -43,6 +43,18 @@ public class ConfigNodeProcedureEnv {
 
   private final ConfigManager configManager;
 
+  private static boolean skipForTest = false;
+
+  private static boolean invalidCacheResult = true;
+
+  public static void setSkipForTest(boolean skipForTest) {
+    ConfigNodeProcedureEnv.skipForTest = skipForTest;
+  }
+
+  public static void setInvalidCacheResult(boolean result) {
+    ConfigNodeProcedureEnv.invalidCacheResult = result;
+  }
+
   public ConfigNodeProcedureEnv(ConfigManager configManager) {
     this.configManager = configManager;
   }
@@ -79,6 +91,10 @@ public class ConfigNodeProcedureEnv {
    * @throws TException Thrift IOE
    */
   public boolean invalidateCache(String storageGroupName) throws IOException, TException {
+    // TODO: Remove it after IT is supported
+    if (skipForTest) {
+      return invalidCacheResult;
+    }
     List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
