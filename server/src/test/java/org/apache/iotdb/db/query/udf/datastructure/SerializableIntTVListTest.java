@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableIntTVList;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.tv.SerializableIntTVList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;

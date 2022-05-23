@@ -38,10 +38,10 @@ public class NoopProcedureStore implements IProcedureStore {
   }
 
   @Override
-  public void load(List<org.apache.iotdb.confignode.procedure.Procedure> procedureList) {}
+  public void load(List<Procedure> procedureList) {}
 
   @Override
-  public void update(org.apache.iotdb.confignode.procedure.Procedure procedure) {}
+  public void update(Procedure procedure) {}
 
   @Override
   public void update(Procedure[] subprocs) {}
