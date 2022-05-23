@@ -1202,8 +1202,10 @@ public class Analyzer {
       analysis.setStatement(countStatement);
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
-          partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(countStatement.getPartialPath()), NodeManagementType.CHILD_PATHS);
+          partitionFetcher.getSchemaNodeManagementPartitionWithLevel(
+              new PathPatternTree(countStatement.getPartialPath()),
+              countStatement.getLevel(),
+              NodeManagementType.CHILD_PATHS);
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1213,9 +1215,10 @@ public class Analyzer {
               == 0) {
         analysis.setFinishQueryAfterAnalyze(true);
       }
+      // TODO check
       analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
       analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
-      analysis.setRespDatasetHeader(HeaderConstant.showChildPathsHeader);
+      analysis.setRespDatasetHeader(HeaderConstant.countNodesHeader);
       return analysis;
     }
 
