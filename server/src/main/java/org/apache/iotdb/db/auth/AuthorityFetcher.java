@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class ClusterAuthorizer {
+public class AuthorityFetcher {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerConfigTask.class);
 

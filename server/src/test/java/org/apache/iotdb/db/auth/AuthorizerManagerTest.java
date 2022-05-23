@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -26,11 +27,14 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,37 +46,37 @@ public class AuthorizerManagerTest {
   AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
   @Test
-  public void permissionCacheTest() {
+  public void permissionCacheTest() throws ConfigNodeConnectionException, AuthException {
     User user = new User();
-    Role role = new Role();
+    Role role1 = new Role();
+    Role role2 = new Role();
     List<String> roleList = new ArrayList<>();
     Set<Integer> privilegesIds = new HashSet<>();
     PathPrivilege privilege = new PathPrivilege();
     List<PathPrivilege> privilegeList = new ArrayList<>();
-
     privilegesIds.add(PrivilegeType.CREATE_ROLE.ordinal());
     privilegesIds.add(PrivilegeType.REVOKE_USER_ROLE.ordinal());
-
     privilege.setPath("root.ln");
     privilege.setPrivileges(privilegesIds);
-
     privilegeList.add(privilege);
-
-    role.setName("role");
-    role.setPrivilegeList(privilegeList);
-
-    roleList.add("role");
+    role1.setName("role1");
+    role1.setPrivilegeList(privilegeList);
+    role2.setName("role2");
+    role2.setPrivilegeList(new ArrayList<>());
+    roleList.add("role1");
+    roleList.add("role2");
     user.setName("user");
     user.setPassword("password");
     user.setPrivilegeList(privilegeList);
     user.setRoleList(roleList);
-
     TPermissionInfoResp result = new TPermissionInfoResp();
     TUserResp tUserResp = new TUserResp();
-    TRoleResp tRoleResp = new TRoleResp();
     Map<String, TRoleResp> tRoleRespMap = new HashMap();
     List<String> userPrivilegeList = new ArrayList<>();
     List<String> rolePrivilegeList = new ArrayList<>();
+    List<Role> roleList1 = new ArrayList<>();
+    roleList1.add(role1);
+    roleList1.add(role2);
 
     // User permission information
     for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
@@ -83,40 +87,76 @@ public class AuthorizerManagerTest {
     tUserResp.setUsername(user.getName());
     tUserResp.setPassword(user.getPassword());
     tUserResp.setPrivilegeList(userPrivilegeList);
+    tUserResp.setRoleList(new ArrayList<>());
+    result.setUserInfo(tUserResp);
+    result.setRoleInfo(new HashMap<>());
+
+    // User authentication permission without role
+    authorizerManager.getUserCache().put(user.getName(), authorizerManager.cacheUser(result));
+    User user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
+    assert user1 != null;
+    Assert.assertEquals(user.getName(), user1.getName());
+    Assert.assertEquals(user.getPassword(), user1.getPassword());
+    Assert.assertEquals(user.getPrivilegeList(), user1.getPrivilegeList());
+
+    // User has permission
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorizerManager
+            .checkPermissionCache(
+                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
+            .getCode());
+    // User does not have permission
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(),
+        authorizerManager
+            .checkPermissionCache(
+                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
+            .getCode());
+
+    // Authenticate users with roles
+    authorizerManager.invalidateCache(user.getName(), "");
+    tUserResp.setPrivilegeList(new ArrayList<>());
     tUserResp.setRoleList(user.getRoleList());
 
     // Permission information for roles owned by users
-    for (String roleName : user.getRoleList()) {
-      tRoleResp.setRoleName(roleName);
+    for (Role role : roleList1) {
+      TRoleResp tRoleResp = new TRoleResp();
+      rolePrivilegeList = new ArrayList<>();
+      tRoleResp.setRoleName(role.getName());
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
         rolePrivilegeList.add(pathPrivilege.getPath());
         String privilegeIdList = pathPrivilege.getPrivileges().toString();
         rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
       }
       tRoleResp.setPrivilegeList(rolePrivilegeList);
-      tRoleRespMap.put(roleName, tRoleResp);
+      tRoleRespMap.put(role.getName(), tRoleResp);
     }
-    result.setUserInfo(tUserResp);
     result.setRoleInfo(tRoleRespMap);
-
     authorizerManager.getUserCache().put(user.getName(), authorizerManager.cacheUser(result));
+    Role role3 = authorizerManager.getRoleCache().getIfPresent(role1.getName());
+    Assert.assertEquals(role1.getName(), role3.getName());
+    Assert.assertEquals(role1.getPrivilegeList(), role3.getPrivilegeList());
 
-    User user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
-    Role role1 = authorizerManager.getRoleCache().getIfPresent(role.getName());
-    assert user1 != null;
-    Assert.assertEquals(user.getName(), user1.getName());
-    Assert.assertEquals(user.getPassword(), user1.getPassword());
-    Assert.assertEquals(user.getPrivilegeList(), user1.getPrivilegeList());
-    Assert.assertEquals(user.getRoleList(), user1.getRoleList());
-
-    assert role1 != null;
-    Assert.assertEquals(role.getName(), role1.getName());
-    Assert.assertEquals(role.getPrivilegeList(), role1.getPrivilegeList());
+    // role has permission
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorizerManager
+            .checkPermissionCache(
+                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
+            .getCode());
+    // role does not have permission
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(),
+        authorizerManager
+            .checkPermissionCache(
+                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
+            .getCode());
 
     authorizerManager.invalidateCache(user.getName(), "");
 
     user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
-    role1 = authorizerManager.getRoleCache().getIfPresent(role.getName());
+    role1 = authorizerManager.getRoleCache().getIfPresent(role1.getName());
 
     Assert.assertNull(user1);
     Assert.assertNull(role1);

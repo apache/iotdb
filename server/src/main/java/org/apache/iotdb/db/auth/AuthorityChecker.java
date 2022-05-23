@@ -128,7 +128,7 @@ public class AuthorityChecker {
       allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
     }
 
-    TSStatus status = authorizerManager.checkPath(username, allPath, permission);
+    TSStatus status = authorizerManager.checkPermissionCache(username, allPath, permission);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return true;
     } else {

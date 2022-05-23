@@ -80,6 +80,11 @@ public class AuthorInfo implements SnapshotProcessor {
         // Bring this user's permission information back to the datanode for caching
         result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
+      } else {
+        result.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
+        Map<String, TRoleResp> roleInfo = new HashMap<>();
+        roleInfo.put("", new TRoleResp("", new ArrayList<>()));
+        result.setRoleInfo(roleInfo);
       }
     } catch (AuthException e) {
       logger.error("meet error while logging in.", e);
@@ -119,6 +124,10 @@ public class AuthorInfo implements SnapshotProcessor {
       }
       return result;
     } else {
+      result.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
+      Map<String, TRoleResp> roleInfo = new HashMap<>();
+      roleInfo.put("", new TRoleResp("", new ArrayList<>()));
+      result.setRoleInfo(roleInfo);
       result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR));
       return result;
     }

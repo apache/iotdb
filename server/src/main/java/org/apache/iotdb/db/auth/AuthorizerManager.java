@@ -105,105 +105,105 @@ public class AuthorizerManager implements IAuthorizer {
 
   @Override
   public void createUser(String username, String password) throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.createUser(username, password);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.deleteUser(username);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.grantPrivilegeToUser(username, path, privilegeId);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void revokePrivilegeFromUser(String username, String path, int privilegeId)
       throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.revokePrivilegeFromUser(username, path, privilegeId);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void createRole(String roleName) throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.createRole(roleName);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void deleteRole(String roleName) throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.deleteRole(roleName);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void grantPrivilegeToRole(String roleName, String path, int privilegeId)
       throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.grantPrivilegeToRole(roleName, path, privilegeId);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void revokePrivilegeFromRole(String roleName, String path, int privilegeId)
       throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.revokePrivilegeFromRole(roleName, path, privilegeId);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void grantRoleToUser(String roleName, String username) throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.grantRoleToUser(roleName, username);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
   @Override
   public void revokeRoleFromUser(String roleName, String username) throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.revokeRoleFromUser(roleName, username);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
@@ -219,11 +219,11 @@ public class AuthorizerManager implements IAuthorizer {
 
   @Override
   public void updateUserPassword(String username, String newPassword) throws AuthException {
-    authReadWriteLock.readLock().lock();
+    authReadWriteLock.writeLock().lock();
     try {
       iAuthorizer.updateUserPassword(username, newPassword);
     } finally {
-      authReadWriteLock.readLock().unlock();
+      authReadWriteLock.writeLock().unlock();
     }
   }
 
@@ -373,16 +373,18 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  public TSStatus checkPath(String username, List<String> allPath, int permission)
+  public TSStatus checkPermissionCache(String username, List<String> allPath, int permission)
       throws AuthException, ConfigNodeConnectionException {
     authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);
-      boolean status = false;
       if (user != null) {
         for (String path : allPath) {
           if (!user.checkPrivilege(path, permission)) {
-            status = false;
+            if (user.getRoleList().isEmpty()) {
+              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+            }
+            boolean status = false;
             for (String roleName : user.getRoleList()) {
               Role role = roleCache.getIfPresent(roleName);
               // It is detected that the role of the user does not exist in the cache, indicating
@@ -390,38 +392,36 @@ public class AuthorizerManager implements IAuthorizer {
               // The user cache needs to be initialized
               if (role == null) {
                 invalidateCache(username, "");
-                break;
+                return checkPath(username, allPath, permission);
               }
-              if (!role.checkPrivilege(path, permission)) {
-                status = false;
-              } else {
-                status = true;
+              status = role.checkPrivilege(path, permission);
+              if (status) {
                 break;
               }
             }
-            // Prove that neither the user nor his role has permission
             if (!status) {
-              break;
+              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
             }
-          } else {
-            status = true;
           }
         }
-        if (status) {
-          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-        }
-      }
-      TPermissionInfoResp tPermissionInfoResp =
-          ClusterAuthorizer.checkPath(username, allPath, permission);
-      if (tPermissionInfoResp.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        userCache.put(username, cacheUser(tPermissionInfoResp));
-        return tPermissionInfoResp.getStatus();
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        return tPermissionInfoResp.getStatus();
+        return checkPath(username, allPath, permission);
       }
     } finally {
       authReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public TSStatus checkPath(String username, List<String> allPath, int permission)
+      throws ConfigNodeConnectionException {
+    TPermissionInfoResp tPermissionInfoResp =
+        AuthorityFetcher.checkPath(username, allPath, permission);
+    if (tPermissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      userCache.put(username, cacheUser(tPermissionInfoResp));
+      return tPermissionInfoResp.getStatus();
+    } else {
+      return tPermissionInfoResp.getStatus();
     }
   }
 
@@ -430,18 +430,22 @@ public class AuthorizerManager implements IAuthorizer {
     authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);
-      if (user != null
-          && password != null
-          && AuthUtils.validatePassword(password, user.getPassword())) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      }
-      TPermissionInfoResp tPermissionInfoResp = ClusterAuthorizer.checkUser(username, password);
-      if (tPermissionInfoResp.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        userCache.put(username, cacheUser(tPermissionInfoResp));
-        return tPermissionInfoResp.getStatus();
+      if (user != null) {
+        if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
+          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        } else {
+          return RpcUtils.getStatus(
+              TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
+        }
       } else {
-        return tPermissionInfoResp.getStatus();
+        TPermissionInfoResp tPermissionInfoResp = AuthorityFetcher.checkUser(username, password);
+        if (tPermissionInfoResp.getStatus().getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          userCache.put(username, cacheUser(tPermissionInfoResp));
+          return tPermissionInfoResp.getStatus();
+        } else {
+          return tPermissionInfoResp.getStatus();
+        }
       }
     } finally {
       authReadWriteLock.readLock().unlock();
@@ -452,7 +456,7 @@ public class AuthorizerManager implements IAuthorizer {
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     authReadWriteLock.readLock().lock();
     try {
-      return ClusterAuthorizer.queryPermission(authorizerReq, configNodeClient);
+      return AuthorityFetcher.queryPermission(authorizerReq, configNodeClient);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -462,7 +466,7 @@ public class AuthorizerManager implements IAuthorizer {
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     authReadWriteLock.writeLock().lock();
     try {
-      return ClusterAuthorizer.operatePermission(authorizerReq, configNodeClient);
+      return AuthorityFetcher.operatePermission(authorizerReq, configNodeClient);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
