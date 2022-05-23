@@ -409,12 +409,11 @@ public class UDFRegistrationService implements IService {
   public static synchronized UDFRegistrationService setupAndGetInstance(String ulogFileDir) {
     if (INSTANCE == null) {
       INSTANCE = new UDFRegistrationService(ulogFileDir);
-      return INSTANCE;
     }
-    throw new UnsupportedOperationException();
+    return INSTANCE;
   }
 
   public static UDFRegistrationService getInstance() {
-    return UDFRegistrationService.INSTANCE;
+    return INSTANCE;
   }
 }

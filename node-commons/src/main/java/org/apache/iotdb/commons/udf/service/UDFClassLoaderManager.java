@@ -115,12 +115,11 @@ public class UDFClassLoaderManager implements IService {
   public static synchronized UDFClassLoaderManager setupAndGetInstance(String libRoot) {
     if (INSTANCE == null) {
       INSTANCE = new UDFClassLoaderManager(libRoot);
-      return INSTANCE;
     }
-    throw new UnsupportedOperationException();
+    return INSTANCE;
   }
 
   public static UDFClassLoaderManager getInstance() {
-    return UDFClassLoaderManager.INSTANCE;
+    return INSTANCE;
   }
 }
