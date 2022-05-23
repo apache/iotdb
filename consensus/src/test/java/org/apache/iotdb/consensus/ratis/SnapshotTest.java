@@ -97,6 +97,7 @@ public class SnapshotTest {
     long index = proxy.takeSnapshot();
     Assert.assertEquals(index, 616);
     Assert.assertTrue(new File(snapshotFilename).exists());
+    Assert.assertTrue(new File(getSnapshotMetaFilename("421_616")).exists());
 
     // take a snapshot at 616-4217
     proxy.notifyTermIndexUpdated(616, 4217);
@@ -105,6 +106,7 @@ public class SnapshotTest {
     long indexLatest = proxy.takeSnapshot();
     Assert.assertEquals(indexLatest, 4217);
     Assert.assertTrue(new File(snapshotFilenameLatest).exists());
+    Assert.assertTrue(new File(getSnapshotMetaFilename("616_4217")).exists());
 
     // query the latest snapshot
     SnapshotInfo info = proxy.getLatestSnapshot();
@@ -116,5 +118,9 @@ public class SnapshotTest {
     proxy.getStateMachineStorage().cleanupOldSnapshots(null);
     Assert.assertFalse(new File(snapshotFilename).exists());
     Assert.assertTrue(new File(snapshotFilenameLatest).exists());
+  }
+
+  private String getSnapshotMetaFilename(String termIndexMeta) {
+    return testDir.getAbsolutePath() + File.separator + termIndexMeta + File.separator + ".meta." + termIndexMeta;
   }
 }
