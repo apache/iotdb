@@ -58,8 +58,6 @@ import static org.junit.Assert.assertTrue;
 
 public class StandAloneConsensusTest {
 
-  private static final String STANDALONE_CONSENSUS_CLASS_NAME =
-      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   private IConsensus consensusImpl;
   private final TestEntry entry1 = new TestEntry(0);
   private final ByteBufferConsensusRequest entry2 =
@@ -125,7 +123,7 @@ public class StandAloneConsensusTest {
   public void setUp() throws Exception {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                STANDALONE_CONSENSUS_CLASS_NAME,
+                ConsensusFactory.StandAloneConsensus,
                 new TEndPoint("0.0.0.0", 6667),
                 new File("./target/standalone"),
                 gid -> {
@@ -142,7 +140,7 @@ public class StandAloneConsensusTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            STANDALONE_CONSENSUS_CLASS_NAME)));
+                            ConsensusFactory.StandAloneConsensus)));
     consensusImpl.start();
   }
 

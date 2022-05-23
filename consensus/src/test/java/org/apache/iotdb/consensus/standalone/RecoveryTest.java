@@ -41,13 +41,11 @@ import java.util.Collections;
 public class RecoveryTest {
   private final ConsensusGroupId schemaRegionId = new SchemaRegionId(1);
   private IConsensus consensusImpl;
-  private static final String STANDALONE_CONSENSUS_CLASS_NAME =
-      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
 
   public void constructConsensus() throws IOException {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                STANDALONE_CONSENSUS_CLASS_NAME,
+                ConsensusFactory.StandAloneConsensus,
                 new TEndPoint("0.0.0.0", 9000),
                 new File("./target/recovery"),
                 gid -> new EmptyStateMachine())
@@ -56,7 +54,7 @@ public class RecoveryTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            STANDALONE_CONSENSUS_CLASS_NAME)));
+                            ConsensusFactory.StandAloneConsensus)));
     consensusImpl.start();
   }
 

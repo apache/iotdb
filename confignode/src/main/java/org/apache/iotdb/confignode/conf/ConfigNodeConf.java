@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
@@ -55,16 +56,13 @@ public class ConfigNodeConf {
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNodeGroup consensus protocol */
-  private final String configNodeConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private final String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its

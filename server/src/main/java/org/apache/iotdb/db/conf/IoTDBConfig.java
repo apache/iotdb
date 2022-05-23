@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
@@ -846,16 +847,14 @@ public class IoTDBConfig {
    * on startup and set this variable so that the correct class name can be obtained later when the
    * data region consensus layer singleton is initialized
    */
-  private String dataRegionConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
    * on startup and set this variable so that the correct class name can be obtained later when the
    * schema region consensus layer singleton is initialized
    */
-  private String schemaRegionConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /**
    * The series partition executor class. The Datanode should communicate with ConfigNode on startup

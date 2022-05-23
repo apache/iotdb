@@ -48,8 +48,6 @@ import java.util.concurrent.TimeUnit;
 
 public class RatisConsensusTest {
 
-  private static final String RATIS_CLASS_NAME = "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
   private ConsensusGroupId gid;
   private List<Peer> peers;
   private List<File> peersStorage;
@@ -64,14 +62,16 @@ public class RatisConsensusTest {
       int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
-                  RATIS_CLASS_NAME,
+                  ConsensusFactory.RatisConsensus,
                   peers.get(i).getEndpoint(),
                   peersStorage.get(i),
                   groupId -> stateMachines.get(finalI))
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              ConsensusFactory.RatisConsensus))));
       servers.get(i).start();
     }
   }

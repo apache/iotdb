@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -83,8 +84,7 @@ public class ConfigNodeStartupCheck {
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_configNode needs to point to itself
-    if (conf.getConfigNodeConsensusProtocolClass()
-            .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")
+    if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
             || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
@@ -95,8 +95,7 @@ public class ConfigNodeStartupCheck {
 
     // When the data region consensus protocol is set to StandAlone,
     // the data replication factor must be 1
-    if (conf.getDataRegionConsensusProtocolClass()
-            .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")
+    if (conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && conf.getDataReplicationFactor() != 1) {
       throw new ConfigurationException(
           "data_replication_factor",
@@ -106,8 +105,7 @@ public class ConfigNodeStartupCheck {
 
     // When the schema region consensus protocol is set to StandAlone,
     // the schema replication factor must be 1
-    if (conf.getSchemaRegionConsensusProtocolClass()
-            .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")
+    if (conf.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && conf.getSchemaReplicationFactor() != 1) {
       throw new ConfigurationException(
           "schema_replication_factor",
@@ -118,14 +116,12 @@ public class ConfigNodeStartupCheck {
     // When the schema region consensus protocol is set to MultiLeaderConsensus,
     // we should report an error
     if (conf.getSchemaRegionConsensusProtocolClass()
-        .equals("org.apache.iotdb.consensus.multileader.MultiLeaderConsensus")) {
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
           String.valueOf(conf.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s",
-              "org.apache.iotdb.consensus.standalone.StandAloneConsensus",
-              "org.apache.iotdb.consensus.ratis.RatisConsensus"));
+              "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
   }
 

@@ -118,7 +118,7 @@ public class IndexController {
         if (i != maxVersionIndex) {
           try {
             Files.delete(Paths.get(versionFiles[i].getName()));
-          } catch (Exception e) {
+          } catch (IOException e) {
             logger.error("Delete outdated version file {} failed.", versionFiles[i].getName(), e);
           }
         }

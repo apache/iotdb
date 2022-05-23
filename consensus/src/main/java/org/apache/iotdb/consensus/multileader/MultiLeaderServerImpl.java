@@ -64,10 +64,10 @@ public class MultiLeaderServerImpl {
     this.currentNodeController =
         new IndexController(storageDir, Utils.IPAddress(thisNode.getEndpoint()), true);
     this.configuration = configuration;
-    if (configuration.size() != 0) {
-      persistConfiguration();
-    } else {
+    if (configuration.isEmpty()) {
       recoverConfiguration();
+    } else {
+      persistConfiguration();
     }
     logDispatcher = new LogDispatcher(this);
   }

@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -167,9 +168,11 @@ class StandAloneConsensus implements IConsensus {
           exist.set(true);
           v.stop();
           String path = buildPeerDir(groupId);
-          File file = new File(path);
-          if (!file.delete()) {
-            logger.warn("Unable to delete consensus dir for group {} at {}", groupId, path);
+          try {
+            Files.delete(Paths.get(path));
+          } catch (IOException e) {
+            logger.warn(
+                "Unable to delete consensus dir for group {} at {} because {}", groupId, path, e);
           }
           return null;
         });

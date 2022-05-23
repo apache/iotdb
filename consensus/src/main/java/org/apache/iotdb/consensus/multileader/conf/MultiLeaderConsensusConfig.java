@@ -23,6 +23,9 @@ import java.util.concurrent.TimeUnit;
 
 // TODO make it configurable
 public class MultiLeaderConsensusConfig {
+
+  private MultiLeaderConsensusConfig() {}
+
   public static final int RPC_MAX_CONCURRENT_CLIENT_NUM = 65535;
   public static final int THRIFT_SERVER_AWAIT_TIME_FOR_STOP_SERVICE = 60;
   public static final boolean IS_RPC_THRIFT_COMPRESSION_ENABLED = false;
