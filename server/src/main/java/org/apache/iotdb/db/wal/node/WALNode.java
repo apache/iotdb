@@ -78,7 +78,6 @@ import java.util.regex.Pattern;
  * 1.
  */
 public class WALNode implements IWALNode {
-  public static final Pattern WAL_NODE_FOLDER_PATTERN = Pattern.compile("(?<nodeIdentifier>\\d+)");
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX =
       InsertNode.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
@@ -116,11 +115,6 @@ public class WALNode implements IWALNode {
     }
     this.buffer = new WALBuffer(identifier, logDirectory);
     this.checkpointManager = new CheckpointManager(identifier, logDirectory);
-  }
-
-  /** Return true when this folder wal node folder */
-  public static boolean walNodeFolderNameFilter(File dir, String name) {
-    return WAL_NODE_FOLDER_PATTERN.matcher(name).find();
   }
 
   @Override
@@ -218,15 +212,7 @@ public class WALNode implements IWALNode {
       firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
       if (firstValidVersionId == Integer.MIN_VALUE) {
         // roll wal log writer to delete current wal file
-        WALEntry rollWALFileSignal =
-            new SignalWALEntry(SignalWALEntry.SignalType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
-        WALFlushListener walFlushListener = log(rollWALFileSignal);
-        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
-          logger.error(
-              "Fail to trigger rolling wal node-{}'s wal file log writer.",
-              identifier,
-              walFlushListener.getCause());
-        }
+        rollWALFile();
         // update firstValidVersionId
         firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
         if (firstValidVersionId == Integer.MIN_VALUE) {
@@ -408,6 +394,10 @@ public class WALNode implements IWALNode {
   // endregion
 
   // region Search interfaces for consensus group
+  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
+    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+  }
+
   private static InsertNode mergeInsertNodes(List<InsertNode> insertNodes) {
     int size = insertNodes.size();
     if (size == 0) {
@@ -789,7 +779,8 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentWALFileVersion();
   }
 
-  void rollWALFile() {
+  @TestOnly
+  public void rollWALFile() {
     WALEntry rollWALFileSignal =
         new SignalWALEntry(SignalWALEntry.SignalType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
     WALFlushListener walFlushListener = log(rollWALFileSignal);

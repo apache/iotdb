@@ -82,6 +82,8 @@ import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.wal.recover.file.SealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -1437,7 +1439,7 @@ public class DataRegion {
     if (sequence) {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + File.separator + dataRegionId,
+              logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
               fsFactory.getFileWithParent(filePath),
               storageGroupInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -1446,7 +1448,7 @@ public class DataRegion {
     } else {
       tsFileProcessor =
           new TsFileProcessor(
-              logicalStorageGroupName + File.separator + dataRegionId,
+              logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
               fsFactory.getFileWithParent(filePath),
               storageGroupInfo,
               this::closeUnsealedTsFileProcessorCallBack,
@@ -3500,6 +3502,15 @@ public class DataRegion {
 
   public IDTable getIdTable() {
     return idTable;
+  }
+
+  public IWALNode getWALNode() {
+    if (!config.isClusterMode()) {
+      throw new UnsupportedOperationException();
+    }
+    // identifier should be same with getTsFileProcessor method
+    return WALManager.getInstance()
+        .applyForWALNode(logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId);
   }
 
   @TestOnly

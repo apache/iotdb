@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
@@ -36,6 +39,7 @@ import java.util.concurrent.CountDownLatch;
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(WALNodeRecoverTask.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final WALRecoverManager walRecoverManger = WALRecoverManager.getInstance();
 
   /** this directory store one wal node's .wal and .checkpoint files */
@@ -75,11 +79,20 @@ public class WALNodeRecoverTask implements Runnable {
         }
       }
     }
-    // delete this wal node folder
-    FileUtils.deleteDirectory(logDirectory);
-    logger.info(
-        "Successfully recover WAL node in the directory {}, so delete these wal files.",
-        logDirectory);
+
+    if (!config.isClusterMode()) {
+      // delete this wal node folder
+      FileUtils.deleteDirectory(logDirectory);
+      logger.info(
+          "Successfully recover WAL node in the directory {}, so delete these wal files.",
+          logDirectory);
+    } else {
+      WALManager.getInstance()
+          .registerWALNode(logDirectory.getName(), logDirectory.getAbsolutePath());
+      logger.info(
+          "Successfully recover WAL node in the directory {}, add this node to WALManger.",
+          logDirectory);
+    }
   }
 
   private void recoverInfoFromCheckpoints() {

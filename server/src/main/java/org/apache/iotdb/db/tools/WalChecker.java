@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
-import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
@@ -64,13 +63,7 @@ public class WalChecker {
       throw new SystemCheckException(walFolder);
     }
 
-    File[] walNodeFolders =
-        walFolderFile.listFiles(
-            (dir, name) -> {
-              File walNodeFolder = SystemFileFactory.INSTANCE.getFile(dir, name);
-              return walNodeFolder.isDirectory()
-                  && WALNode.WAL_NODE_FOLDER_PATTERN.matcher(name).find();
-            });
+    File[] walNodeFolders = walFolderFile.listFiles(File::isDirectory);
     if (walNodeFolders == null || walNodeFolders.length == 0) {
       logger.info("No sub-directories under the given directory, check ends");
       return Collections.emptyList();
