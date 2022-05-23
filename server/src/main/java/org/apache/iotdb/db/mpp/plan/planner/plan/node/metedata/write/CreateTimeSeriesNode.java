@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 
 public class CreateTimeSeriesNode extends WritePlanNode {
   private PartialPath path;
@@ -52,7 +53,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> props = null;
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
-  private long tagOffset = -1;
+
+  private UUID uuid;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -65,7 +67,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       Map<String, String> props,
       Map<String, String> tags,
       Map<String, String> attributes,
-      String alias) {
+      String alias,
+      UUID uuid) {
     super(id);
     this.path = path;
     this.dataType = dataType;
@@ -78,6 +81,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
+    this.uuid = uuid;
   }
 
   public PartialPath getPath() {
@@ -142,14 +146,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
 
   public void setProps(Map<String, String> props) {
     this.props = props;
-  }
-
-  public long getTagOffset() {
-    return tagOffset;
-  }
-
-  public void setTagOffset(long tagOffset) {
-    this.tagOffset = tagOffset;
   }
 
   @Override
@@ -229,9 +225,20 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       attributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
+    UUID uuid = UUID.fromString(ReadWriteIOUtils.readString(byteBuffer));
+
     id = ReadWriteIOUtils.readString(byteBuffer);
     return new CreateTimeSeriesNode(
-        new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
+        new PlanNodeId(id),
+        path,
+        dataType,
+        encoding,
+        compressor,
+        props,
+        tags,
+        attributes,
+        alias,
+        uuid);
   }
 
   @Override
@@ -244,7 +251,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     byteBuffer.put((byte) dataType.ordinal());
     byteBuffer.put((byte) encoding.ordinal());
     byteBuffer.put((byte) compressor.ordinal());
-    byteBuffer.putLong(tagOffset);
 
     // alias
     if (alias != null) {
@@ -283,6 +289,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributes, byteBuffer);
     }
+
+    ReadWriteIOUtils.write(uuid.toString(), byteBuffer);
   }
 
   @Override
@@ -301,8 +309,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       return false;
     }
     CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
-    return tagOffset == that.tagOffset
-        && path.equals(that.path)
+    return path.equals(that.path)
         && dataType == that.dataType
         && encoding == that.encoding
         && compressor == that.compressor

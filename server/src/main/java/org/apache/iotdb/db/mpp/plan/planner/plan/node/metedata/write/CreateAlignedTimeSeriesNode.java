@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private PartialPath devicePath;
@@ -51,7 +52,9 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private List<String> aliasList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
-  private List<Long> tagOffsets;
+
+  private List<UUID> uuidList;
+
   private TRegionReplicaSet regionReplicaSet;
 
   public CreateAlignedTimeSeriesNode(
@@ -63,7 +66,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       List<CompressionType> compressors,
       List<String> aliasList,
       List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList) {
+      List<Map<String, String>> attributesList,
+      List<UUID> uuidList) {
     super(id);
     this.devicePath = devicePath;
     this.measurements = measurements;
@@ -73,6 +77,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
     this.aliasList = aliasList;
     this.tagsList = tagsList;
     this.attributesList = attributesList;
+    this.uuidList = uuidList;
   }
 
   public PartialPath getDevicePath() {
@@ -137,14 +142,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
 
   public void setAttributesList(List<Map<String, String>> attributesList) {
     this.attributesList = attributesList;
-  }
-
-  public List<Long> getTagOffsets() {
-    return tagOffsets;
-  }
-
-  public void setTagOffsets(List<Long> tagOffsets) {
-    this.tagOffsets = tagOffsets;
   }
 
   @Override
@@ -246,6 +243,11 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       }
     }
 
+    List<UUID> uuidList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      uuidList.add(UUID.fromString(ReadWriteIOUtils.readString(byteBuffer)));
+    }
+
     id = ReadWriteIOUtils.readString(byteBuffer);
 
     return new CreateAlignedTimeSeriesNode(
@@ -257,7 +259,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         compressors,
         aliasList,
         tagsList,
-        attributesList);
+        attributesList,
+        uuidList);
   }
 
   @Override
@@ -275,7 +278,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
         && Objects.equals(compressors, that.compressors)
-        && Objects.equals(tagOffsets, that.tagOffsets)
         && Objects.equals(aliasList, that.aliasList)
         && Objects.equals(tagsList, that.tagsList)
         && Objects.equals(attributesList, that.attributesList);
@@ -344,6 +346,10 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         ReadWriteIOUtils.write(attributes, byteBuffer);
       }
     }
+
+    for (UUID uuid : uuidList) {
+      ReadWriteIOUtils.write(uuid.toString(), byteBuffer);
+    }
   }
 
   public int hashCode() {
@@ -354,7 +360,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         dataTypes,
         encodings,
         compressors,
-        tagOffsets,
         aliasList,
         tagsList,
         attributesList);

@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
@@ -274,13 +275,19 @@ public class LogicalPlanner {
           createTimeSeriesStatement.getProps(),
           createTimeSeriesStatement.getTags(),
           createTimeSeriesStatement.getAttributes(),
-          createTimeSeriesStatement.getAlias());
+          createTimeSeriesStatement.getAlias(),
+          UUID.randomUUID());
     }
 
     @Override
     public PlanNode visitCreateAlignedTimeseries(
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
+      int size = createAlignedTimeSeriesStatement.getMeasurements().size();
+      List<UUID> uuidList = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        uuidList.add(UUID.randomUUID());
+      }
       return new CreateAlignedTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
           createAlignedTimeSeriesStatement.getDevicePath(),
@@ -290,7 +297,8 @@ public class LogicalPlanner {
           createAlignedTimeSeriesStatement.getCompressors(),
           createAlignedTimeSeriesStatement.getAliasList(),
           createAlignedTimeSeriesStatement.getTagsList(),
-          createAlignedTimeSeriesStatement.getAttributesList());
+          createAlignedTimeSeriesStatement.getAttributesList(),
+          uuidList);
     }
 
     @Override

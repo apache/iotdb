@@ -67,6 +67,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class InternalServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
@@ -133,7 +134,8 @@ public class InternalServiceImplTest {
                 put("attr2", "a2");
               }
             },
-            "meter1");
+            "meter1",
+            UUID.randomUUID());
 
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
@@ -220,6 +222,12 @@ public class InternalServiceImplTest {
                       }
                     });
                 add(null);
+              }
+            },
+            new ArrayList<UUID>() {
+              {
+                add(UUID.randomUUID());
+                add(UUID.randomUUID());
               }
             });
 
