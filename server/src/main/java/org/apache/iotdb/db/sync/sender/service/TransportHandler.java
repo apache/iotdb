@@ -74,7 +74,6 @@ public class TransportHandler {
 
     this.localIP = getLocalIP(pipeSink);
     this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
-
   }
 
   private String getLocalIP(IoTDBPipeSink pipeSink) {
@@ -93,7 +92,7 @@ public class TransportHandler {
       logger.error(String.format("Get local host error when create transport handler."), e);
       localIP = SyncConstant.UNKNOWN_IP;
     }
-     return localIP;
+    return localIP;
   }
 
   public void start() {
