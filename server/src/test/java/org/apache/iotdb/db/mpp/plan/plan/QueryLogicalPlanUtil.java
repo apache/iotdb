@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -47,9 +46,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -60,7 +59,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -83,6 +81,10 @@ public class QueryLogicalPlanUtil {
       schemaMap.put("root.sg.d2.s1", new MeasurementPath("root.sg.d2.s1", TSDataType.INT32));
       schemaMap.put("root.sg.d2.s2", new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE));
       schemaMap.put("root.sg.d2.s4", new MeasurementPath("root.sg.d2.s4", TSDataType.TEXT));
+      schemaMap.put("root.sg.*.s1", new MeasurementPath("root.sg.*.s1", TSDataType.INT32));
+      schemaMap.put("root.sg.*.s2", new MeasurementPath("root.sg.*.s2", TSDataType.DOUBLE));
+      schemaMap.put("root.sg.*.*.s1", new MeasurementPath("root.sg.*.*.s1", TSDataType.INT32));
+      schemaMap.put("root.sg.*.*.s2", new MeasurementPath("root.sg.*.*.s2", TSDataType.DOUBLE));
 
       MeasurementPath aS1 = new MeasurementPath("root.sg.d2.a.s1", TSDataType.INT32);
       MeasurementPath aS2 = new MeasurementPath("root.sg.d2.a.s2", TSDataType.DOUBLE);
@@ -543,82 +545,45 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             sourceNodeList,
             Arrays.asList(
-                new AggregationDescriptor(
+                new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new FunctionExpression(
-                            SQLConstant.COUNT,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
-                        new FunctionExpression(
-                            SQLConstant.COUNT,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))))),
-                new AggregationDescriptor(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
+                new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new FunctionExpression(
-                            SQLConstant.COUNT,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))))),
-                new AggregationDescriptor(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))),
+                new GroupByLevelDescriptor(
                     AggregationType.MAX_VALUE,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new FunctionExpression(
-                            SQLConstant.MAX_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
-                        new FunctionExpression(
-                            SQLConstant.MAX_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))))),
-                new AggregationDescriptor(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
+                new GroupByLevelDescriptor(
                     AggregationType.MAX_VALUE,
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new FunctionExpression(
-                            SQLConstant.MAX_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))))),
-                new AggregationDescriptor(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2"))),
+                new GroupByLevelDescriptor(
                     AggregationType.LAST_VALUE,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new FunctionExpression(
-                            SQLConstant.LAST_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
-                        new FunctionExpression(
-                            SQLConstant.LAST_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))))),
-                new AggregationDescriptor(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
+                new GroupByLevelDescriptor(
                     AggregationType.LAST_VALUE,
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new FunctionExpression(
-                            SQLConstant.LAST_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))))),
-            Arrays.asList(
-                "count(root.sg.*.s1)",
-                "count(root.sg.*.*.s1)",
-                "max_value(root.sg.*.s2)",
-                "max_value(root.sg.*.*.s2)",
-                "last_value(root.sg.*.s1)",
-                "last_value(root.sg.*.*.s1)"));
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))));
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -827,50 +792,27 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             Collections.singletonList(aggregationNode),
             Arrays.asList(
-                new AggregationDescriptor(
+                new GroupByLevelDescriptor(
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new FunctionExpression(
-                            SQLConstant.COUNT,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
-                        new FunctionExpression(
-                            SQLConstant.COUNT,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))))),
-                new AggregationDescriptor(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
+                new GroupByLevelDescriptor(
                     AggregationType.MAX_VALUE,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new FunctionExpression(
-                            SQLConstant.MAX_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
-                        new FunctionExpression(
-                            SQLConstant.MAX_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))))),
-                new AggregationDescriptor(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
+                new GroupByLevelDescriptor(
                     AggregationType.LAST_VALUE,
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new FunctionExpression(
-                            SQLConstant.LAST_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
-                        new FunctionExpression(
-                            SQLConstant.LAST_VALUE,
-                            new LinkedHashMap<>(),
-                            Collections.singletonList(
-                                new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))))),
-            Arrays.asList(
-                "count(root.sg.*.s1)", "max_value(root.sg.*.s2)", "last_value(root.sg.*.s1)"));
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))));
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
