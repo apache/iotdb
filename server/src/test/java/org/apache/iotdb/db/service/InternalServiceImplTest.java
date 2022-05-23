@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -67,7 +68,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class InternalServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
@@ -135,7 +135,7 @@ public class InternalServiceImplTest {
               }
             },
             "meter1",
-            UUID.randomUUID().toString());
+            TimeseriesVersionUtil.generateVersion());
 
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
@@ -226,8 +226,8 @@ public class InternalServiceImplTest {
             },
             new ArrayList<String>() {
               {
-                add(UUID.randomUUID().toString());
-                add(UUID.randomUUID().toString());
+                add(TimeseriesVersionUtil.generateVersion());
+                add(TimeseriesVersionUtil.generateVersion());
               }
             });
 

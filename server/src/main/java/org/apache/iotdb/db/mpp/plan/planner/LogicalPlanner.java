@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
+import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -61,7 +62,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
@@ -276,7 +276,7 @@ public class LogicalPlanner {
           createTimeSeriesStatement.getTags(),
           createTimeSeriesStatement.getAttributes(),
           createTimeSeriesStatement.getAlias(),
-          UUID.randomUUID().toString());
+          TimeseriesVersionUtil.generateVersion());
     }
 
     @Override
@@ -286,7 +286,7 @@ public class LogicalPlanner {
       int size = createAlignedTimeSeriesStatement.getMeasurements().size();
       List<String> versionList = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
-        versionList.add(UUID.randomUUID().toString());
+        versionList.add(TimeseriesVersionUtil.generateVersion());
       }
       return new CreateAlignedTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
