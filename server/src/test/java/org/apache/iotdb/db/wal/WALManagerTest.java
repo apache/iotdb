@@ -25,8 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.node.IWALNode;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -81,7 +81,7 @@ public class WALManagerTest {
     for (String walDir : walDirs) {
       File walDirFile = new File(walDir);
       assertTrue(walDirFile.exists());
-      assertNotNull(walDirFile.list(WALWriter::walFilenameFilter));
+      assertNotNull(WALFileUtils.listAllWALFiles(walDirFile));
     }
   }
 

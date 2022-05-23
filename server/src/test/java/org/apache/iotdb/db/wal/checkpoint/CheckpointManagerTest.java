@@ -22,8 +22,8 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.io.CheckpointReader;
-import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.recover.CheckpointRecoverUtils;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -69,7 +69,7 @@ public class CheckpointManagerTest {
     List<Checkpoint> expectedCheckpoints = Collections.singletonList(initCheckpoint);
     CheckpointReader checkpointReader =
         new CheckpointReader(
-            new File(logDirectory + File.separator + CheckpointWriter.getLogFileName(0)));
+            new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(0)));
     List<Checkpoint> actualCheckpoints = checkpointReader.readAll();
     assertEquals(expectedCheckpoints, actualCheckpoints);
   }
@@ -146,9 +146,9 @@ public class CheckpointManagerTest {
     assertEquals(5, checkpointManager.getFirstValidWALVersionId());
     // check checkpoint files
     assertFalse(
-        new File(logDirectory + File.separator + CheckpointWriter.getLogFileName(0)).exists());
+        new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(0)).exists());
     assertTrue(
-        new File(logDirectory + File.separator + CheckpointWriter.getLogFileName(1)).exists());
+        new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(1)).exists());
     // recover info from checkpoint file
     Map<Integer, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));

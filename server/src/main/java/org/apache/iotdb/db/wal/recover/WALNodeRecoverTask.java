@@ -22,15 +22,13 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
-import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -116,12 +114,14 @@ public class WALNodeRecoverTask implements Runnable {
     // find all valid .wal files
     File[] walFiles =
         logDirectory.listFiles(
-            (dir, name) -> WALWriter.parseVersionId(name) >= firstValidVersionId);
+            (dir, name) ->
+                WALFileUtils.walFilenameFilter(dir, name)
+                    && WALFileUtils.parseVersionId(name) >= firstValidVersionId);
     if (walFiles == null) {
       return;
     }
-    Arrays.sort(
-        walFiles, Comparator.comparingInt(file -> WALWriter.parseVersionId(file.getName())));
+    // asc sort by version id
+    WALFileUtils.ascSortByVersionId(walFiles);
     // read .wal files and redo logs
     for (File walFile : walFiles) {
       try (WALReader walReader = new WALReader(walFile)) {

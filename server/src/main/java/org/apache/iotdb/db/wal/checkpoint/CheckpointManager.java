@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +78,7 @@ public class CheckpointManager implements AutoCloseable {
     currentLogWriter =
         new CheckpointWriter(
             SystemFileFactory.INSTANCE.getFile(
-                logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion)));
+                logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion)));
     makeGlobalInfoCP();
   }
 
@@ -169,7 +170,8 @@ public class CheckpointManager implements AutoCloseable {
           currentLogWriter.force();
           File oldFile =
               SystemFileFactory.INSTANCE.getFile(
-                  logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion - 1));
+                  logDirectory,
+                  CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion - 1));
           oldFile.delete();
         }
       } catch (IOException e) {
@@ -192,7 +194,7 @@ public class CheckpointManager implements AutoCloseable {
     currentCheckPointFileVersion++;
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion));
+            logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion));
     currentLogWriter = new CheckpointWriter(nextLogFile);
     return true;
   }

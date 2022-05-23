@@ -21,12 +21,10 @@ package org.apache.iotdb.db.wal.recover;
 import org.apache.iotdb.db.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.CheckpointReader;
-import org.apache.iotdb.db.wal.io.CheckpointWriter;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,14 +35,12 @@ public class CheckpointRecoverUtils {
   /** Recover memTable information from checkpoint folder */
   public static Map<Integer, MemTableInfo> recoverMemTableInfo(File logDirectory) {
     // find all .checkpoint file
-    File[] checkpointFiles = logDirectory.listFiles(CheckpointWriter::checkpointFilenameFilter);
+    File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
     if (checkpointFiles == null) {
       return Collections.emptyMap();
     }
-    Arrays.sort(
-        checkpointFiles,
-        Comparator.comparingInt(file -> CheckpointWriter.parseVersionId(((File) file).getName()))
-            .reversed());
+    // desc sort by version id
+    CheckpointFileUtils.descSortByVersionId(checkpointFiles);
     // find last valid .checkpoint file and load checkpoints from it
     List<Checkpoint> checkpoints = null;
     for (File checkpointFile : checkpointFiles) {
