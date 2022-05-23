@@ -17,11 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.udf.api.exception;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-
-public class UDFRegistrationException extends QueryProcessException {
+public class UDFRegistrationException extends UDFException {
 
   public UDFRegistrationException(String message, Throwable cause) {
     super(message);
