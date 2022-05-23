@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
-import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher.LogDispatcherThread;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
 public class SyncStatus {
 
-  private final LogDispatcherThread thread;
+  private final IndexController controller;
   private final List<PendingBatch> pendingBatches = new LinkedList<>();
 
-  public SyncStatus(LogDispatcherThread thread) {
-    this.thread = thread;
+  public SyncStatus(IndexController controller) {
+    this.controller = controller;
   }
 
   public void addNextBatch(PendingBatch batch) throws InterruptedException {
@@ -45,19 +45,38 @@ public class SyncStatus {
   }
 
   public void removeBatch(PendingBatch batch) {
+    // We only set a flag if this batch is not the first one.
+    // Notice, We need to confirm that the batch in the parameter is actually in pendingBatches,
+    // rather than a reference to a different object with equal data, so we do not inherit method
+    // equals for PendingBatch
+    batch.setSynced(true);
     synchronized (this) {
       if (pendingBatches.size() > 0 && pendingBatches.get(0).equals(batch)) {
-        pendingBatches.remove(0);
-        thread.getController().updateAndGet(batch.getEndIndex());
+        Iterator<PendingBatch> iterator = pendingBatches.iterator();
+        PendingBatch current = iterator.next();
+        while (current.isSynced()) {
+          controller.updateAndGet(current.getEndIndex());
+          iterator.remove();
+          if (iterator.hasNext()) {
+            current = iterator.next();
+          } else {
+            break;
+          }
+        }
         notifyAll();
       }
-      pendingBatches.remove(batch);
     }
   }
 
-  public Optional<Long> getMaxPendingIndex() {
-    return pendingBatches.isEmpty()
-        ? Optional.empty()
-        : Optional.of(pendingBatches.get(pendingBatches.size() - 1).getEndIndex());
+  public long getNextSendingIndex() {
+    return 1
+        + (pendingBatches.isEmpty()
+            ? controller.getCurrentIndex()
+            : pendingBatches.get(pendingBatches.size() - 1).getEndIndex());
+  }
+
+  @TestOnly
+  public List<PendingBatch> getPendingBatches() {
+    return pendingBatches;
   }
 }

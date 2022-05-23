@@ -28,11 +28,13 @@ public class PendingBatch {
   private final long startIndex;
   private final long endIndex;
   private final List<TLogBatch> batches;
+  private boolean synced;
 
   public PendingBatch(long startIndex, long endIndex, List<TLogBatch> batches) {
     this.startIndex = startIndex;
     this.endIndex = endIndex;
     this.batches = batches;
+    this.synced = false;
   }
 
   public long getStartIndex() {
@@ -45,6 +47,14 @@ public class PendingBatch {
 
   public List<TLogBatch> getBatches() {
     return batches;
+  }
+
+  public boolean isSynced() {
+    return synced;
+  }
+
+  public void setSynced(boolean synced) {
+    this.synced = synced;
   }
 
   public boolean isEmpty() {

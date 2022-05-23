@@ -58,7 +58,7 @@ public class LogDispatcher {
 
   private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
 
-  private static final int DEFAULT_BUFFER_SIZE = 1024 * 10;
+  private static final int DEFAULT_BUFFER_SIZE = 1024 * 15;
 
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
@@ -120,7 +120,7 @@ public class LogDispatcher {
 
     private final Peer peer;
     private final IndexController controller;
-    private final SyncStatus syncStatus = new SyncStatus(this);
+    private final SyncStatus syncStatus;
     private final BlockingQueue<IndexedConsensusRequest> pendingRequest =
         new ArrayBlockingQueue<>(MultiLeaderConsensusConfig.MAX_PENDING_REQUEST_NUM_PER_NODE);
     private final List<IndexedConsensusRequest> bufferedRequest = new LinkedList<>();
@@ -131,6 +131,7 @@ public class LogDispatcher {
       this.peer = peer;
       this.controller =
           new IndexController(impl.getStorageDir(), Utils.IPAddress(peer.getEndpoint()), false);
+      this.syncStatus = new SyncStatus(controller);
     }
 
     public IndexController getController() {
@@ -170,7 +171,7 @@ public class LogDispatcher {
 
     public PendingBatch getBatch() {
       List<TLogBatch> logBatches = new ArrayList<>();
-      long startIndex = getNextSendingIndex();
+      long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex = impl.getCurrentNodeController().getCurrentIndex();
       long endIndex;
       if (bufferedRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
@@ -193,10 +194,8 @@ public class LogDispatcher {
           IndexedConsensusRequest current = iterator.next();
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
             constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
-            constructBatchIndexedFromConsensusRequest(current, logBatches);
-          } else {
-            constructBatchIndexedFromConsensusRequest(current, logBatches);
           }
+          constructBatchIndexedFromConsensusRequest(current, logBatches);
           endIndex = current.getSearchIndex();
           prev = current;
           iterator.remove();
@@ -218,10 +217,6 @@ public class LogDispatcher {
 
     public SyncStatus getSyncStatus() {
       return syncStatus;
-    }
-
-    private long getNextSendingIndex() {
-      return syncStatus.getMaxPendingIndex().orElseGet(controller::getCurrentIndex) + 1;
     }
 
     private long constructBatchFromWAL(
