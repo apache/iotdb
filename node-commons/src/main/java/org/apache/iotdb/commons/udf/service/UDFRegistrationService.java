@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.service;
+package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.udf.api.UDF;
-import org.apache.iotdb.commons.udf.builtin.BuiltinFunction;
+import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
@@ -48,15 +47,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class UDFRegistrationService implements IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(UDFRegistrationService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UDFRegistrationService.class);
 
-  private static final String ULOG_FILE_DIR =
-      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-          + File.separator
-          + "udf"
-          + File.separator;
-  private static final String LOG_FILE_NAME = ULOG_FILE_DIR + "ulog.txt";
-  private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
+  private final String ulogFileDir;
+  private final String logFileName;
+  private final String temporaryLogFileName;
 
   private final ReentrantLock registrationLock;
   private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
@@ -64,7 +59,11 @@ public class UDFRegistrationService implements IService {
   private final ReentrantReadWriteLock logWriterLock;
   private UDFLogWriter logWriter;
 
-  private UDFRegistrationService() {
+  private UDFRegistrationService(String ulogFileDir) {
+    this.ulogFileDir = ulogFileDir;
+    logFileName = ulogFileDir + "ulog.txt";
+    temporaryLogFileName = logFileName + ".tmp";
+
     registrationLock = new ReentrantLock();
     registrationInformation = new ConcurrentHashMap<>();
     logWriterLock = new ReentrantReadWriteLock();
@@ -89,7 +88,7 @@ public class UDFRegistrationService implements IService {
 
   private static void validateFunctionName(String functionName, String className)
       throws UDFRegistrationException {
-    if (!SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
+    if (!BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase())) {
       return;
     }
 
@@ -98,7 +97,7 @@ public class UDFRegistrationService implements IService {
             "Failed to register UDF %s(%s), because the given function name conflicts with the built-in function name",
             functionName, className);
 
-    logger.warn(errorMessage);
+    LOGGER.warn(errorMessage);
     throw new UDFRegistrationException(errorMessage);
   }
 
@@ -129,7 +128,7 @@ public class UDFRegistrationService implements IService {
       }
     }
 
-    logger.warn(errorMessage);
+    LOGGER.warn(errorMessage);
     throw new UDFRegistrationException(errorMessage);
   }
 
@@ -155,7 +154,7 @@ public class UDFRegistrationService implements IService {
           String.format(
               "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
               functionName, className, e);
-      logger.warn(errorMessage);
+      LOGGER.warn(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     } finally {
       releaseRegistrationLock();
@@ -177,7 +176,7 @@ public class UDFRegistrationService implements IService {
           String.format(
               "Failed to append UDF log when registering UDF %s(%s), because %s",
               functionName, className, e);
-      logger.error(errorMessage);
+      LOGGER.error(errorMessage);
       throw new UDFRegistrationException(errorMessage, e);
     }
   }
@@ -196,14 +195,14 @@ public class UDFRegistrationService implements IService {
     UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information == null) {
       String errorMessage = String.format("UDF %s does not exist.", functionName);
-      logger.warn(errorMessage);
+      LOGGER.warn(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     }
 
     if (information.isBuiltin()) {
       String errorMessage =
           String.format("Built-in function %s can not be deregistered.", functionName);
-      logger.error(errorMessage);
+      LOGGER.error(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     }
 
@@ -214,7 +213,7 @@ public class UDFRegistrationService implements IService {
       String errorMessage =
           String.format(
               "Failed to append UDF log when deregistering UDF %s, because %s", functionName, e);
-      logger.error(errorMessage);
+      LOGGER.error(errorMessage);
       throw new UDFRegistrationException(errorMessage, e);
     }
   }
@@ -245,7 +244,7 @@ public class UDFRegistrationService implements IService {
           String.format(
               "Failed to reflect UDF instance, because UDF %s has not been registered.",
               functionName);
-      logger.warn(errorMessage);
+      LOGGER.warn(errorMessage);
       throw new RuntimeException(errorMessage);
     }
 
@@ -264,7 +263,7 @@ public class UDFRegistrationService implements IService {
           String.format(
               "Failed to reflect UDF %s(%s) instance, because %s",
               functionName, information.getClassName(), e);
-      logger.warn(errorMessage);
+      LOGGER.warn(errorMessage);
       throw new RuntimeException(errorMessage);
     }
   }
@@ -276,30 +275,31 @@ public class UDFRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      registerBuiltinFunctions();
+      registerBuiltinTimeSeriesGeneratingFunctions();
       makeDirIfNecessary();
       doRecovery();
-      logWriter = new UDFLogWriter(LOG_FILE_NAME);
+      logWriter = new UDFLogWriter(logFileName);
     } catch (Exception e) {
       throw new StartupException(e);
     }
   }
 
-  private void registerBuiltinFunctions() {
-    for (BuiltinFunction builtinFunction : BuiltinFunction.values()) {
-      String functionName = builtinFunction.getFunctionName();
+  private void registerBuiltinTimeSeriesGeneratingFunctions() {
+    for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
+        BuiltinTimeSeriesGeneratingFunction.values()) {
+      String functionName = builtinTimeSeriesGeneratingFunction.getFunctionName();
       registrationInformation.put(
           functionName,
           new UDFRegistrationInformation(
               functionName,
-              builtinFunction.getClassName(),
+              builtinTimeSeriesGeneratingFunction.getClassName(),
               true,
-              builtinFunction.getFunctionClass()));
+              builtinTimeSeriesGeneratingFunction.getFunctionClass()));
     }
   }
 
   private void makeDirIfNecessary() throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(ULOG_FILE_DIR);
+    File file = SystemFileFactory.INSTANCE.getFile(ulogFileDir);
     if (file.exists() && file.isDirectory()) {
       return;
     }
@@ -307,8 +307,8 @@ public class UDFRegistrationService implements IService {
   }
 
   private void doRecovery() throws IOException {
-    File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
-    File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+    File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(temporaryLogFileName);
+    File logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
 
     if (temporaryLogFile.exists()) {
       if (logFile.exists()) {
@@ -356,8 +356,8 @@ public class UDFRegistrationService implements IService {
       logWriter.close();
       logWriter.deleteLogFile();
 
-      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
-      File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(temporaryLogFileName);
+      File logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
       FSFactoryProducer.getFSFactory().moveFile(temporaryLogFile, logFile);
     } catch (IOException ignored) {
       // ignored
@@ -365,7 +365,7 @@ public class UDFRegistrationService implements IService {
   }
 
   private void writeTemporaryLogFile() throws IOException {
-    UDFLogWriter temporaryLogFile = new UDFLogWriter(TEMPORARY_LOG_FILE_NAME);
+    UDFLogWriter temporaryLogFile = new UDFLogWriter(temporaryLogFileName);
     for (UDFRegistrationInformation information : registrationInformation.values()) {
       if (information.isBuiltin()) {
         continue;
@@ -404,14 +404,16 @@ public class UDFRegistrationService implements IService {
     return ServiceType.UDF_REGISTRATION_SERVICE;
   }
 
-  public static UDFRegistrationService getInstance() {
-    return UDFRegistrationService.UDFRegistrationServiceHelper.INSTANCE;
+  private static UDFRegistrationService INSTANCE = null;
+
+  public static synchronized UDFRegistrationService setupAndGetInstance(String ulogFileDir) {
+    if (INSTANCE == null) {
+      INSTANCE = new UDFRegistrationService(ulogFileDir);
+    }
+    return INSTANCE;
   }
 
-  private static class UDFRegistrationServiceHelper {
-
-    private static final UDFRegistrationService INSTANCE = new UDFRegistrationService();
-
-    private UDFRegistrationServiceHelper() {}
+  public static UDFRegistrationService getInstance() {
+    return INSTANCE;
   }
 }

@@ -17,18 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-public class UDFRegistrationException extends QueryProcessException {
+import java.util.ArrayList;
+import java.util.List;
 
-  public UDFRegistrationException(String message, Throwable cause) {
-    super(message);
-    this.initCause(cause);
+public abstract class MultiChildNode extends ProcessNode {
+
+  protected List<PlanNode> children;
+
+  public MultiChildNode(PlanNodeId id, List<PlanNode> children) {
+    super(id);
+    this.children = children;
   }
 
-  public UDFRegistrationException(String message) {
-    super(message);
+  public MultiChildNode(PlanNodeId id) {
+    super(id);
+    this.children = new ArrayList<>();
+  }
+
+  public void setChildren(List<PlanNode> children) {
+    this.children = children;
   }
 }
