@@ -42,7 +42,6 @@ import org.rocksdb.RocksDBException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.UUID;
 
 public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
 
@@ -152,12 +151,12 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public UUID getUUID() {
+  public String getVersion() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void setUUID(UUID uuid) {
+  public void setVersion(String version) {
     throw new UnsupportedOperationException();
   }
 

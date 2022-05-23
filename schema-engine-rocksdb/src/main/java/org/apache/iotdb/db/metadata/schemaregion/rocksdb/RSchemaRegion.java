@@ -103,7 +103,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -266,10 +265,10 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, UUID uuid)
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
       throws MetadataException {
     throw new UnsupportedOperationException(
-        "RSchemaRegion currently doesn't support timeseries with UUID");
+        "RSchemaRegion currently doesn't support timeseries with version");
   }
 
   @TestOnly
@@ -536,10 +535,10 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<UUID> uuidList)
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
       throws MetadataException {
     throw new UnsupportedOperationException(
-        "RSchemaRegion currently doesn't support timeseries with UUID");
+        "RSchemaRegion currently doesn't support timeseries with version");
   }
 
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)

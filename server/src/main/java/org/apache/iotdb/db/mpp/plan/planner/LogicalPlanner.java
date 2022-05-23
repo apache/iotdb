@@ -276,7 +276,7 @@ public class LogicalPlanner {
           createTimeSeriesStatement.getTags(),
           createTimeSeriesStatement.getAttributes(),
           createTimeSeriesStatement.getAlias(),
-          UUID.randomUUID());
+          UUID.randomUUID().toString());
     }
 
     @Override
@@ -284,9 +284,9 @@ public class LogicalPlanner {
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
       int size = createAlignedTimeSeriesStatement.getMeasurements().size();
-      List<UUID> uuidList = new ArrayList<>(size);
+      List<String> versionList = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
-        uuidList.add(UUID.randomUUID());
+        versionList.add(UUID.randomUUID().toString());
       }
       return new CreateAlignedTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
@@ -298,7 +298,7 @@ public class LogicalPlanner {
           createAlignedTimeSeriesStatement.getAliasList(),
           createAlignedTimeSeriesStatement.getTagsList(),
           createAlignedTimeSeriesStatement.getAttributesList(),
-          uuidList);
+          versionList);
     }
 
     @Override

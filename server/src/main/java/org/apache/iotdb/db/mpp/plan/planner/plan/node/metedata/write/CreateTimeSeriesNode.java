@@ -42,7 +42,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.UUID;
 
 public class CreateTimeSeriesNode extends WritePlanNode {
   private PartialPath path;
@@ -54,7 +53,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
 
-  private UUID uuid;
+  private String version;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -68,7 +67,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       Map<String, String> tags,
       Map<String, String> attributes,
       String alias,
-      UUID uuid) {
+      String version) {
     super(id);
     this.path = path;
     this.dataType = dataType;
@@ -81,7 +80,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
-    this.uuid = uuid;
+    this.version = version;
   }
 
   public PartialPath getPath() {
@@ -148,8 +147,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     this.props = props;
   }
 
-  public UUID getUuid() {
-    return uuid;
+  public String getVersion() {
+    return version;
   }
 
   @Override
@@ -229,7 +228,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       attributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
-    UUID uuid = UUID.fromString(ReadWriteIOUtils.readString(byteBuffer));
+    String version = ReadWriteIOUtils.readString(byteBuffer);
 
     id = ReadWriteIOUtils.readString(byteBuffer);
     return new CreateTimeSeriesNode(
@@ -242,7 +241,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
         tags,
         attributes,
         alias,
-        uuid);
+        version);
   }
 
   @Override
@@ -294,7 +293,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       ReadWriteIOUtils.write(attributes, byteBuffer);
     }
 
-    ReadWriteIOUtils.write(uuid.toString(), byteBuffer);
+    ReadWriteIOUtils.write(version, byteBuffer);
   }
 
   @Override

@@ -38,7 +38,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Generated entity implements IMeasurementMNode interface to unify insert logic through id table
@@ -98,12 +97,12 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {}
 
   @Override
-  public UUID getUUID() {
+  public String getVersion() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
   @Override
-  public void setUUID(UUID uuid) {
+  public void setVersion(String version) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 

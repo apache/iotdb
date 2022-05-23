@@ -135,7 +135,7 @@ public class InternalServiceImplTest {
               }
             },
             "meter1",
-            UUID.randomUUID());
+            UUID.randomUUID().toString());
 
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
@@ -224,10 +224,10 @@ public class InternalServiceImplTest {
                 add(null);
               }
             },
-            new ArrayList<UUID>() {
+            new ArrayList<String>() {
               {
-                add(UUID.randomUUID());
-                add(UUID.randomUUID());
+                add(UUID.randomUUID().toString());
+                add(UUID.randomUUID().toString());
               }
             });
 

@@ -101,7 +101,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -502,7 +501,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, UUID uuid)
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
       throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
@@ -523,7 +522,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getProps(),
               plan.getAlias());
 
-      leafMNode.setUUID(uuid);
+      leafMNode.setVersion(version);
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(path.getDevicePath());
@@ -620,7 +619,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<UUID> uuidList)
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
       throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
@@ -648,9 +647,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getCompressors(),
               plan.getAliasList());
 
-      if (uuidList != null) {
+      if (versionList != null) {
         for (int i = 0; i < measurements.size(); i++) {
-          measurementMNodeList.get(i).setUUID(uuidList.get(i));
+          measurementMNodeList.get(i).setVersion(versionList.get(i));
         }
       }
 

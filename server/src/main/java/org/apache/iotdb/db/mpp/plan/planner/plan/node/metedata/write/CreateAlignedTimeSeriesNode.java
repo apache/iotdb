@@ -41,7 +41,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private PartialPath devicePath;
@@ -53,7 +52,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
 
-  private List<UUID> uuidList;
+  private List<String> versionList;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -67,7 +66,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       List<String> aliasList,
       List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList,
-      List<UUID> uuidList) {
+      List<String> versionList) {
     super(id);
     this.devicePath = devicePath;
     this.measurements = measurements;
@@ -77,7 +76,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
     this.aliasList = aliasList;
     this.tagsList = tagsList;
     this.attributesList = attributesList;
-    this.uuidList = uuidList;
+    this.versionList = versionList;
   }
 
   public PartialPath getDevicePath() {
@@ -144,8 +143,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
     this.attributesList = attributesList;
   }
 
-  public List<UUID> getUuidList() {
-    return uuidList;
+  public List<String> getVersionList() {
+    return versionList;
   }
 
   @Override
@@ -247,9 +246,9 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       }
     }
 
-    List<UUID> uuidList = new ArrayList<>(size);
+    List<String> versionList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      uuidList.add(UUID.fromString(ReadWriteIOUtils.readString(byteBuffer)));
+      versionList.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
     id = ReadWriteIOUtils.readString(byteBuffer);
@@ -264,7 +263,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         aliasList,
         tagsList,
         attributesList,
-        uuidList);
+        versionList);
   }
 
   @Override
@@ -351,8 +350,8 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       }
     }
 
-    for (UUID uuid : uuidList) {
-      ReadWriteIOUtils.write(uuid.toString(), byteBuffer);
+    for (String version : versionList) {
+      ReadWriteIOUtils.write(version, byteBuffer);
     }
   }
 
