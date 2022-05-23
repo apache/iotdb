@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.plan.node.source;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -67,8 +64,7 @@ public class SeriesAggregationScanNodeSerdeTest {
             OrderBy.TIMESTAMP_ASC,
             new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
             groupByTimeParameter,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+            null);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     seriesAggregationScanNode.serialize(byteBuffer);
