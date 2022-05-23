@@ -35,7 +35,9 @@ import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -48,7 +50,7 @@ public class TransportHandler {
 
   private String pipeName;
   private long createTime;
-  private final String localIp;
+  private final String localIP;
   private MsgManager msgManager;
   protected ITransportClient transportClient;
 
@@ -70,16 +72,28 @@ public class TransportHandler {
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipeName);
 
-    String localIp1;
+    this.localIP = getLocalIP(pipeSink);
+    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
+
+  }
+
+  private String getLocalIP(IoTDBPipeSink pipeSink) {
+    String localIP;
     try {
-      localIp1 = InetAddress.getLocalHost().getHostAddress();
-    } catch (UnknownHostException e) {
-      logger.error(
-          String.format("Get local host error when create transport handler, because %s.", e));
-      localIp1 = SyncConstant.UNKNOWN_IP;
+      InetAddress inetAddress = InetAddress.getLocalHost();
+      if (inetAddress.isLoopbackAddress()) {
+        try (final DatagramSocket socket = new DatagramSocket()) {
+          socket.connect(InetAddress.getByName(pipeSink.getIp()), pipeSink.getPort());
+          localIP = socket.getLocalAddress().getHostAddress();
+        }
+      } else {
+        localIP = inetAddress.getHostAddress();
+      }
+    } catch (UnknownHostException | SocketException e) {
+      logger.error(String.format("Get local host error when create transport handler."), e);
+      localIP = SyncConstant.UNKNOWN_IP;
     }
-    this.localIp = localIp1;
-    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIp);
+     return localIP;
   }
 
   public void start() {
@@ -112,7 +126,7 @@ public class TransportHandler {
   }
 
   public SyncResponse sendMsg(RequestType type) throws SyncConnectionException {
-    return transportClient.heartbeat(new SyncRequest(type, pipeName, localIp, createTime));
+    return transportClient.heartbeat(new SyncRequest(type, pipeName, localIP, createTime));
   }
 
   private void sendHeartbeat() {
@@ -120,7 +134,7 @@ public class TransportHandler {
       SenderService.getInstance()
           .receiveMsg(
               transportClient.heartbeat(
-                  new SyncRequest(RequestType.HEARTBEAT, pipeName, localIp, createTime)));
+                  new SyncRequest(RequestType.HEARTBEAT, pipeName, localIP, createTime)));
       synchronized (((TransportClient) transportClient).getWaitLock()) {
         msgManager.cleanTempMessage();
         ((TransportClient) transportClient).getWaitLock().notifyAll();

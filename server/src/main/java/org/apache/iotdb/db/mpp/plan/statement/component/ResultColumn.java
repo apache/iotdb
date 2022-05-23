@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
-import org.apache.iotdb.db.query.expression.Expression;
 
 import java.util.Objects;
 
@@ -66,13 +66,17 @@ public class ResultColumn extends StatementNode {
   private final Expression expression;
   private final String alias;
 
-  public ResultColumn(Expression expression, String alias) {
+  private final ColumnType columnType;
+
+  public ResultColumn(Expression expression, String alias, ColumnType columnType) {
     this.expression = expression;
     this.alias = alias;
+    this.columnType = columnType;
   }
 
-  public ResultColumn(Expression expression) {
+  public ResultColumn(Expression expression, ColumnType columnType) {
     this.expression = expression;
+    this.columnType = columnType;
     alias = null;
   }
 
@@ -86,6 +90,10 @@ public class ResultColumn extends StatementNode {
 
   public String getAlias() {
     return alias;
+  }
+
+  public ColumnType getColumnType() {
+    return columnType;
   }
 
   @Override
@@ -108,5 +116,11 @@ public class ResultColumn extends StatementNode {
   @Override
   public int hashCode() {
     return Objects.hash(expression, alias);
+  }
+
+  public enum ColumnType {
+    RAW,
+    AGGREGATION,
+    CONSTANT
   }
 }

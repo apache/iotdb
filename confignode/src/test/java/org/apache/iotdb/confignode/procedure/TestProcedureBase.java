@@ -32,7 +32,7 @@ public class TestProcedureBase {
 
   protected TestProcEnv env;
   protected IProcedureStore procStore;
-  protected org.apache.iotdb.confignode.procedure.ProcedureExecutor<TestProcEnv> procExecutor;
+  protected ProcedureExecutor<TestProcEnv> procExecutor;
 
   @Before
   public void setUp() {
@@ -52,8 +52,7 @@ public class TestProcedureBase {
   protected void initExecutor() {
     this.env = new TestProcEnv();
     this.procStore = new NoopProcedureStore();
-    this.procExecutor =
-        new org.apache.iotdb.confignode.procedure.ProcedureExecutor<>(env, procStore);
+    this.procExecutor = new ProcedureExecutor<>(env, procStore);
     this.env.setScheduler(this.procExecutor.getScheduler());
     this.procExecutor.init(4);
   }
@@ -74,7 +73,7 @@ public class TestProcedureBase {
     this.procStore = procStore;
   }
 
-  public org.apache.iotdb.confignode.procedure.ProcedureExecutor<TestProcEnv> getProcExecutor() {
+  public ProcedureExecutor<TestProcEnv> getProcExecutor() {
     return procExecutor;
   }
 

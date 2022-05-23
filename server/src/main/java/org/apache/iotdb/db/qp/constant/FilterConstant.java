@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.qp.constant;
 
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
-import org.apache.iotdb.db.query.expression.ExpressionType;
 
 import java.util.EnumMap;
 import java.util.HashMap;

@@ -152,6 +152,9 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MIN_TIME = "compmintime";
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
+  // default base dir, stores all IoTDB runtime files
+  public static final String DEFAULT_BASE_DIR = "data";
+
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
   public static final String SEQUENCE_FLODER_NAME = "sequence";

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -72,7 +73,7 @@ import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Operation;
+import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -1173,7 +1174,7 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus insertRecords(TSInsertRecordsReq req) {
+  public TSStatus insertRecords(TSInsertRecordsReq req) throws TException {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
@@ -1186,6 +1187,8 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getTimestamps().get(0));
     }
     boolean allCheckSuccess = true;
+    // check whether measurement is legal according to syntax convention
+    isLegalMeasurementLists(req.getMeasurementsList());
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       try {
@@ -1245,7 +1248,7 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
+  public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) throws TException {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
@@ -1257,6 +1260,8 @@ public class TSServiceImpl implements TSIEventHandler {
           req.prefixPath,
           req.getTimestamps().get(0));
     }
+    // check whether measurement is legal according to syntax convention
+    isLegalMeasurementLists(req.getMeasurementsList());
 
     List<TSStatus> statusList = new ArrayList<>();
     try {
@@ -1291,7 +1296,8 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
+  public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req)
+      throws TException {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
@@ -1303,7 +1309,8 @@ public class TSServiceImpl implements TSIEventHandler {
           req.prefixPath,
           req.getTimestamps().get(0));
     }
-
+    // check whether measurement is legal according to syntax convention
+    isLegalMeasurementLists(req.getMeasurementsList());
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.timestamps.size(); i++) {
@@ -1349,7 +1356,7 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
+  public TSStatus insertStringRecords(TSInsertStringRecordsReq req) throws TException {
     if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
@@ -1362,6 +1369,8 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getTimestamps().get(0));
     }
 
+    // check whether measurement is legal according to syntax convention
+    isLegalMeasurementLists(req.getMeasurementsList());
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
@@ -1474,6 +1483,10 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
+      // check whether measurement is legal according to syntax convention
+
+      isLegalMeasurements(req.getMeasurements());
+
       InsertRowPlan plan =
           new InsertRowPlan(
               new PartialPath(req.getPrefixPath()),
@@ -1503,6 +1516,9 @@ public class TSServiceImpl implements TSIEventHandler {
           SESSION_MANAGER.getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
+
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDevicePath(new PartialPath(req.getPrefixPath()));
@@ -1556,6 +1572,10 @@ public class TSServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
+      // check whether measurement is legal according to syntax convention
+
+      isLegalMeasurements(req.getMeasurements());
+
       InsertTabletPlan insertTabletPlan =
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
@@ -1603,7 +1623,9 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
-      throws IllegalPathException {
+      throws IllegalPathException, TException {
+    // check whether measurement is legal according to syntax convention
+    isLegalMeasurementLists(req.getMeasurementsList());
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(req.prefixPaths.get(i)), req.measurementsList.get(i));
     insertTabletPlan.setTimes(
@@ -1624,7 +1646,8 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   /** construct one InsertMultiTabletsPlan and process it */
-  public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws IllegalPathException {
+  public TSStatus insertTabletsInternally(TSInsertTabletsReq req)
+      throws IllegalPathException, TException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
     InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
@@ -1694,6 +1717,8 @@ public class TSServiceImpl implements TSIEventHandler {
             "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
       }
 
+      // measurementAlias is also a nodeName
+      isLegalMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       CreateTimeSeriesPlan plan =
           new CreateTimeSeriesPlan(
               new PartialPath(req.path),
@@ -1731,6 +1756,12 @@ public class TSServiceImpl implements TSIEventHandler {
                 req.encodings.get(0),
                 req.compressors.get(0)));
       }
+
+      // check whether measurement is legal according to syntax convention
+
+      isLegalMeasurements(req.getMeasurements());
+
+      isLegalMeasurements(req.getMeasurementAlias());
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
@@ -1788,6 +1819,10 @@ public class TSServiceImpl implements TSIEventHandler {
             req.getPaths().size(),
             req.getPaths().get(0));
       }
+
+      // measurementAlias is also a nodeName
+
+      isLegalMeasurements(req.measurementAliasList);
 
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
       List<PartialPath> paths = new ArrayList<>(req.paths.size());
@@ -1906,6 +1941,8 @@ public class TSServiceImpl implements TSIEventHandler {
       // Construct plan from serialized request
       ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
       plan = CreateTemplatePlan.deserializeFromReq(buffer);
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(plan.getMeasurements());
       TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(plan);
@@ -1916,7 +1953,10 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
+  public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) throws TException {
+    // check whether measurement is legal according to syntax convention
+    isLegalMeasurements(req.getMeasurements());
+
     int size = req.getMeasurementsSize();
     String[] measurements = new String[size];
     TSDataType[] dataTypes = new TSDataType[size];
@@ -2087,6 +2127,32 @@ public class TSServiceImpl implements TSIEventHandler {
       MetricsService.getInstance()
           .getMetricManager()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
+    }
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+    if (measurementLists == null) {
+      return;
+    }
+    for (List<String> measurementList : measurementLists) {
+      isLegalMeasurements(measurementList);
+    }
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurements(List<String> measurements) throws TException {
+    if (measurements == null) {
+      return;
+    }
+    for (String measurement : measurements) {
+      try {
+        if (measurement != null) {
+          PathUtils.isLegalPath(measurement);
+        }
+      } catch (IllegalPathException e) {
+        throw new TException(e.getMessage());
+      }
     }
   }
 }

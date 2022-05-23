@@ -24,13 +24,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
-import org.apache.iotdb.db.query.udf.core.layer.EvaluationDAGBuilder;
-import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.query.udf.core.layer.TsBlockInputDataSet;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.builder.EvaluationDAGBuilder;
+import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
+import org.apache.iotdb.db.mpp.transformation.dag.input.TsBlockInputDataSet;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
@@ -67,7 +67,7 @@ public class TransformOperator implements ProcessOperator {
 
   protected boolean isFirstIteration;
 
-  protected RawQueryInputLayer inputLayer;
+  protected QueryDataSetInputLayer inputLayer;
   protected UDTFContext udtfContext;
   protected LayerPointReader[] transformers;
   protected TimeSelector timeHeap;
@@ -96,7 +96,7 @@ public class TransformOperator implements ProcessOperator {
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
     inputLayer =
-        new RawQueryInputLayer(
+        new QueryDataSetInputLayer(
             operatorContext.getOperatorId(),
             udfReaderMemoryBudgetInMB,
             new TsBlockInputDataSet(inputOperator, inputDataTypes));

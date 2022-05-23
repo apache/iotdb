@@ -161,7 +161,7 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public int getOutputValueColumnCount() {
-    return datasetHeader.getColumnHeaders().size();
+    return datasetHeader.getOutputValueColumnCount();
   }
 
   @Override

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.function;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxCountFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxMeanFunction;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxFirstFuncti
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxLastFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxMaxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxMinFunction;
-import org.apache.iotdb.db.query.expression.Expression;
 
 import java.util.List;
 

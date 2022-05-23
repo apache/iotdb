@@ -32,8 +32,6 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -55,19 +53,17 @@ public class DataPartitionTest extends SerializeTest {
     dataPartition.setDataPartitionMap(assignedDataPartition);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataOutputStream);
+    TIOStreamTransport tioStreamTransport = new TIOStreamTransport(byteArrayOutputStream);
     TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-    dataPartition.serialize(dataOutputStream, protocol);
+    dataPartition.serialize(byteArrayOutputStream, protocol);
 
     DataPartition newDataPartition =
         new DataPartition(new HashMap<>(), seriesPartitionExecutorClass, 1);
     ByteArrayInputStream byteArrayInputStream =
         new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
-    DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
-    tioStreamTransport = new TIOStreamTransport(dataInputStream);
+    tioStreamTransport = new TIOStreamTransport(byteArrayInputStream);
     protocol = new TBinaryProtocol(tioStreamTransport);
-    newDataPartition.deserialize(dataInputStream, protocol);
+    newDataPartition.deserialize(byteArrayInputStream, protocol);
     Assert.assertEquals(assignedDataPartition, newDataPartition.getDataPartitionMap());
   }
 }
