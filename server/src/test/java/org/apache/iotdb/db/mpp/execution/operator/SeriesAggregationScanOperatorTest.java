@@ -479,7 +479,7 @@ public class SeriesAggregationScanOperatorTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     PlanNodeId planNodeId = new PlanNodeId("1");
     fragmentInstanceContext.addOperatorContext(
-        1, planNodeId, SeriesScanOperator.class.getSimpleName());
+        1, planNodeId, SeriesAggregationScanOperator.class.getSimpleName());
 
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(

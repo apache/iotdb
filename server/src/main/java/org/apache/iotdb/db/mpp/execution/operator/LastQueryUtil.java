@@ -57,6 +57,7 @@ public class LastQueryUtil {
     builder.getColumnBuilder(1).writeBinary(new Binary(lastValue));
     // dataType
     builder.getColumnBuilder(2).writeBinary(new Binary(dataType));
+    builder.declarePosition();
   }
 
   public static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
