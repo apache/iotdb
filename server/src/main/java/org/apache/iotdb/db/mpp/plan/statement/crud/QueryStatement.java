@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
@@ -35,8 +37,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 
 import java.util.List;
 
@@ -227,19 +227,21 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
   }
 
-  public boolean HasBuiltInAggregationFunction() {
-    return selectComponent.isHasBuiltInAggregationFunction();
-  }
-
-  public boolean hasTimeSeriesGeneratingFunction() {
-    return selectComponent.isHasTimeSeriesGeneratingFunction();
-  }
-
-  public boolean hasUserDefinedAggregationFunction() {
-    return selectComponent.isHasUserDefinedAggregationFunction();
-  }
-
   public void semanticCheck() {
+    if (isAggregationQuery()) {
+      if (disableAlign()) {
+        throw new SemanticException("AGGREGATION doesn't support disable align clause.");
+      }
+      if (isGroupByLevel() && isAlignByDevice()) {
+        throw new SemanticException("group by level does not support align by device now.");
+      }
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
+          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+        }
+      }
+    }
+
     if (isAlignByDevice()) {
       // the paths can only be measurement or one-level wildcard in ALIGN BY DEVICE
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
@@ -262,22 +264,6 @@ public class QueryStatement extends Statement {
         if (!(expression instanceof TimeSeriesOperand)) {
           throw new SemanticException("Last queries can only be applied on raw time series.");
         }
-      }
-    }
-
-    if (isAggregationQuery()) {
-      if (disableAlign()) {
-        throw new SemanticException("AGGREGATION doesn't support disable align clause.");
-      }
-      if (isGroupByLevel() && isAlignByDevice()) {
-        throw new SemanticException("group by level does not support align by device now.");
-      }
-      if (hasTimeSeriesGeneratingFunction()) {
-        throw new SemanticException(
-            "User-defined and built-in hybrid aggregation is not supported together.");
-      }
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        ExpressionAnalyzer.checkIsAllAggregation(resultColumn.getExpression());
       }
     }
   }

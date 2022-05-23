@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.plan.plan.node.process;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
@@ -33,7 +31,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
 
@@ -67,8 +64,7 @@ public class AggregationNodeSerdeTest {
             OrderBy.TIMESTAMP_ASC,
             new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
             groupByTimeParameter,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+            null);
     AggregationNode aggregationNode =
         new AggregationNode(
             new PlanNodeId("TestAggregateNode"),

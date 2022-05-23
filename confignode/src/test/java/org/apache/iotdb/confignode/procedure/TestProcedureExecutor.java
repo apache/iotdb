@@ -54,7 +54,6 @@ public class TestProcedureExecutor extends TestProcedureBase {
 
   @Test
   public void testWorkerThreadStuck() throws InterruptedException {
-    procExecutor.setKeepAliveTime(10, TimeUnit.SECONDS);
     Semaphore latch1 = new Semaphore(2);
     latch1.acquire(2);
     StuckProcedure busyProc1 = new StuckProcedure(latch1);
@@ -83,7 +82,6 @@ public class TestProcedureExecutor extends TestProcedureBase {
     latch2.release();
 
     LOG.info("set keep alive and wait threads being removed");
-    procExecutor.setKeepAliveTime(500L, TimeUnit.MILLISECONDS);
     int threads2 = waitThreadCount(2);
     LOG.info("threads got removed: " + (threads1 - threads2));
     Assert.assertEquals(2, threads2);

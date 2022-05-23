@@ -246,9 +246,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
       // set initial Index
       lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-      ;
       lastReadCurListIndex = batchData.getReadCurListIndex();
-      ;
 
       // stop calc and cached current batchData
       if (ascending && batchData.currentTime() >= curEndTime) {
