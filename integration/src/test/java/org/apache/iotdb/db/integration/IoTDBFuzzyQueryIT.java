@@ -41,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 import static org.junit.Assert.fail;
 
@@ -291,12 +290,5 @@ public class IoTDBFuzzyQueryIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  public void testPattern() {
-    String pattern = "'\\d'";
-    Pattern pattern1 = Pattern.compile(pattern);
-    System.out.println(pattern1.matcher("'1'").matches());
   }
 }
