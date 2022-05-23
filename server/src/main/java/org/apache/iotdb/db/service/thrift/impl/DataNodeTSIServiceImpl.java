@@ -53,11 +53,10 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Operation;
+import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
@@ -115,6 +114,7 @@ import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERS
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_TIME_MANAGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
@@ -145,13 +145,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    TSStatus loginStatus;
-    try {
-      loginStatus = AuthorityChecker.checkUser(req.username, req.password);
-    } catch (ConfigNodeConnectionException e) {
-      TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
-      return new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
-    }
+    TSStatus loginStatus = AuthorityChecker.checkUser(req.username, req.password);
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
     long sessionId = -1;
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -350,6 +344,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -409,6 +405,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -455,6 +453,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -660,6 +660,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -709,6 +711,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -758,6 +762,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e,
@@ -805,6 +811,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -845,6 +853,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -885,6 +895,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -931,6 +943,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1130,6 +1144,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1196,28 +1212,35 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   }
 
   // check whether measurement is legal according to syntax convention
-  protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+  protected void isLegalMeasurementLists(List<List<String>> measurementLists)
+      throws IllegalPathException {
     if (measurementLists == null) {
       return;
     }
+    StringBuilder path = new StringBuilder("root");
     for (List<String> measurementList : measurementLists) {
-      isLegalMeasurements(measurementList);
+      for (String measurement : measurementList) {
+        if (measurement != null) {
+          path.append(".");
+          path.append(measurement);
+        }
+      }
     }
+    PathUtils.isLegalPath(path.toString());
   }
 
   // check whether measurement is legal according to syntax convention
-  protected void isLegalMeasurements(List<String> measurements) throws TException {
+  protected void isLegalMeasurements(List<String> measurements) throws IllegalPathException {
     if (measurements == null) {
       return;
     }
+    StringBuilder path = new StringBuilder("root");
     for (String measurement : measurements) {
-      try {
-        if (measurement != null) {
-          PathUtils.isLegalPath(measurement);
-        }
-      } catch (IllegalPathException e) {
-        throw new TException(e.getMessage());
+      if (measurement != null) {
+        path.append(".");
+        path.append(measurement);
       }
     }
+    PathUtils.isLegalPath(path.toString());
   }
 }
