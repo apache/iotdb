@@ -55,17 +55,22 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    return children.get(currentIndex++).next();
+    if (children.get(currentIndex).hasNext()) {
+      return children.get(currentIndex).next();
+    } else {
+      currentIndex++;
+      return null;
+    }
   }
 
   @Override
   public boolean hasNext() {
-    return currentIndex < inputOperatorsCount && children.get(currentIndex).hasNext();
+    return currentIndex < inputOperatorsCount;
   }
 
   @Override
   public boolean isFinished() {
-    return currentIndex >= inputOperatorsCount;
+    return !hasNext();
   }
 
   @Override

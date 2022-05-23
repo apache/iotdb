@@ -20,13 +20,13 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
+import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import com.google.common.collect.ImmutableList;
@@ -69,8 +69,7 @@ public class UpdateLastCacheOperator implements ProcessOperator {
     this.dataType = dataType.name();
     this.lastCache = dataNodeSchemaCache;
     this.needUpdateCache = needUpdateCache;
-    this.tsBlockBuilder =
-        new TsBlockBuilder(1, ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+    this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
   }
 
   @Override
@@ -104,14 +103,9 @@ public class UpdateLastCacheOperator implements ProcessOperator {
     }
 
     tsBlockBuilder.reset();
-    // Time
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(lastTime);
-    // timeseries
-    tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(fullPath.getFullPath()));
-    // value
-    tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(lastValue.getStringValue()));
-    // dataType
-    tsBlockBuilder.getColumnBuilder(2).writeBinary(new Binary(dataType));
+
+    LastQueryUtil.appendLastValue(
+        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
 
     return tsBlockBuilder.build();
   }
