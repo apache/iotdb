@@ -244,10 +244,23 @@ public class DistributionPlanner {
       return timeJoinNode;
     }
 
-    public PlanNode visitSeriesAggregationScan(
-        SeriesAggregationScanNode node, DistributionPlanContext context) {
+    @Override
+    public PlanNode visitSeriesAggregationScan(SeriesAggregationScanNode node, DistributionPlanContext context) {
+      return processSeriesAggregationSource(node, context);
+    }
+
+    @Override
+    public PlanNode visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, DistributionPlanContext context) {
+      return processSeriesAggregationSource(node, context);
+    }
+
+    private PlanNode processSeriesAggregationSource(SeriesAggregationSourceNode node, DistributionPlanContext context) {
       List<TRegionReplicaSet> dataDistribution =
-          analysis.getPartitionInfo(node.getSeriesPath(), node.getTimeFilter());
+          analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
+      if (dataDistribution.size() == 1) {
+        node.setRegionReplicaSet(dataDistribution.get(0));
+        return node;
+      }
       List<AggregationDescriptor> leafAggDescriptorList = new ArrayList<>();
       node.getAggregationDescriptorList()
           .forEach(
@@ -572,7 +585,8 @@ public class DistributionPlanner {
 
       // Step 2: change the step for each SeriesAggregationSourceNode according to its split count
       for (SeriesAggregationSourceNode source : sources) {
-        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
+//        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
+        boolean isFinal = false;
         source
             .getAggregationDescriptorList()
             .forEach(d -> d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL));
@@ -697,6 +711,14 @@ public class DistributionPlanner {
 
     public PlanNode visitSeriesAggregationScan(
         SeriesAggregationScanNode node, NodeGroupContext context) {
+      context.putNodeDistribution(
+          node.getPlanNodeId(),
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
+      return node.clone();
+    }
+
+    public PlanNode visitAlignedSeriesAggregationScan(
+        AlignedSeriesAggregationScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));

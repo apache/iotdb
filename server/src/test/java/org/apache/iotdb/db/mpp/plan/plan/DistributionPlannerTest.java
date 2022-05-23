@@ -583,6 +583,22 @@ public class DistributionPlannerTest {
         (GroupByLevelNode) fragmentInstances.get(2).getFragment().getRoot().getChildren().get(0));
   }
 
+  @Test
+  public void testAggregation1Series1Region() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_aggregation_1_series_1_region");
+    String d2s1Path = "root.sg.d22.s1";
+
+    PlanNode root = genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT);
+    Analysis analysis = constructAnalysis();
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(1, plan.getInstances().size());
+    assertEquals(root, plan.getInstances().get(0).getFragment().getRoot().getChildren().get(0));
+  }
+
   private void verifyGroupByLevelDescriptor(
       Map<String, List<String>> expected, GroupByLevelNode node) {
     List<GroupByLevelDescriptor> descriptors = node.getGroupByLevelDescriptors();

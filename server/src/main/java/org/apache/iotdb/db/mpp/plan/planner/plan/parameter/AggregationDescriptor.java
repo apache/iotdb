@@ -224,4 +224,8 @@ public class AggregationDescriptor {
   public int hashCode() {
     return Objects.hash(aggregationType, step, inputExpressions);
   }
+
+  public String toString() {
+    return String.format("AggregationDescriptor(%s, %s)", aggregationType, step);
+  }
 }

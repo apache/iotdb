@@ -93,6 +93,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
@@ -138,6 +139,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.commons.lang3.Validate;
+import org.checkerframework.checker.units.qual.Time;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -279,8 +281,9 @@ public class LocalExecutionPlanner {
               AlignedSeriesAggregationScanOperator.class.getSimpleName());
       List<Aggregator> aggregators = new ArrayList<>();
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        // I am not sure that it's correct or not
-        String inputSeries = descriptor.getParametersString();
+        checkArgument(descriptor.getInputExpressions().size() == 1, "descriptor's input expression size is not 1");
+        checkArgument(descriptor.getInputExpressions().get(0) instanceof TimeSeriesOperand, "descriptor's input expression is not TimeSeriesOperand");
+        String inputSeries = ((TimeSeriesOperand)(descriptor.getInputExpressions().get(0))).getPath().getMeasurement();
         int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
         TSDataType seriesDataType =
             seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
