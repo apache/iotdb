@@ -94,22 +94,23 @@ public class MultiLeaderConsensus implements IConsensus {
           ConsensusGroupId consensusGroupId =
               ConsensusGroupId.Factory.create(
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-          stateMachineMap.put(
-              consensusGroupId,
+          MultiLeaderServerImpl consensus =
               new MultiLeaderServerImpl(
                   path.toString(),
                   new Peer(consensusGroupId, thisNode),
                   new ArrayList<>(),
-                  registry.apply(consensusGroupId)));
+                  registry.apply(consensusGroupId));
+          stateMachineMap.put(consensusGroupId, consensus);
+          consensus.start();
         }
       }
     }
   }
 
   @Override
-  public void stop() throws IOException {
-    registerManager.deregisterAll();
+  public void stop() {
     stateMachineMap.values().parallelStream().forEach(MultiLeaderServerImpl::stop);
+    registerManager.deregisterAll();
   }
 
   @Override

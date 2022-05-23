@@ -75,7 +75,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  protected DataSet read(FragmentInstance fragmentInstance) {
+  public DataSet read(IConsensusRequest request) {
+    FragmentInstance fragmentInstance;
+    try {
+      fragmentInstance = getFragmentInstance(request);
+    } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage());
+      return null;
+    }
     logger.info(
         "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
         schemaRegion.getSchemaRegionId(),

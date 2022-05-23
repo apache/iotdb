@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.ratis.Utils;
 
 import org.apache.thrift.TException;
@@ -125,7 +126,8 @@ public class LogDispatcher {
         new ArrayBlockingQueue<>(MultiLeaderConsensusConfig.MAX_PENDING_REQUEST_NUM_PER_NODE);
     private final List<IndexedConsensusRequest> bufferedRequest = new LinkedList<>();
     private final ConsensusReqReader reader =
-        (ConsensusReqReader) impl.getStateMachine().read(null);
+        (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
+    private boolean stopped = false;
 
     public LogDispatcherThread(Peer peer) {
       this.peer = peer;
@@ -152,6 +154,7 @@ public class LogDispatcher {
 
     @Override
     public void run() {
+      logger.info("{}: Dispatcher for {} stopped", impl.getThisNode(), peer);
       try {
         PendingBatch batch;
         while (!Thread.interrupted()) {
@@ -163,10 +166,11 @@ public class LogDispatcher {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption in logDispatcher for peer {}", peer, e);
       } catch (Exception e) {
         logger.error("Unexpected error in logDispatcher for peer {}", peer, e);
       }
+      logger.info("{}: Dispatcher for {} exits", impl.getThisNode(), peer);
+      stopped = true;
     }
 
     public PendingBatch getBatch() {
@@ -205,13 +209,15 @@ public class LogDispatcher {
     }
 
     public void sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {
-      try {
-        AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
-        TSyncLogReq req =
-            new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
-        client.syncLog(req, handler);
-      } catch (IOException | TException e) {
-        logger.error("Can not sync logs to peer {} because", peer, e);
+      if (!stopped) {
+        try {
+          AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
+          TSyncLogReq req =
+              new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+          client.syncLog(req, handler);
+        } catch (IOException | TException e) {
+          logger.error("Can not sync logs to peer {} because", peer, e);
+        }
       }
     }
 

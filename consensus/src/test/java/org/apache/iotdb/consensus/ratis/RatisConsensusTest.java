@@ -84,9 +84,9 @@ public class RatisConsensusTest {
     peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6001)));
     peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
     peersStorage = new ArrayList<>();
-    peersStorage.add(new File("./target/1/"));
-    peersStorage.add(new File("./target/2/"));
-    peersStorage.add(new File("./target/3/"));
+    peersStorage.add(new File("target" + java.io.File.separator + "1"));
+    peersStorage.add(new File("target" + java.io.File.separator + "2"));
+    peersStorage.add(new File("target" + java.io.File.separator + "3"));
     for (File dir : peersStorage) {
       dir.mkdirs();
     }
@@ -227,7 +227,7 @@ public class RatisConsensusTest {
     IConsensus leader = null;
     while (leader == null) {
       long current = System.currentTimeMillis();
-      if ((current - start) > 60 * 1000 * 1000) {
+      if ((current - start) > 60 * 1000) {
         break;
       }
       for (int i = 0; i < 3; i++) {

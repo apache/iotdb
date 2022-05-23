@@ -143,7 +143,7 @@ public class MultiLeaderServerImpl {
       IConsensusRequest request) {
     return new IndexedConsensusRequest(
         currentNodeController.incrementAndGet(),
-        logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex),
+        getCurrentSafelyDeletedSearchIndex(),
         TLogType.FragmentInstance,
         request);
   }
@@ -152,9 +152,13 @@ public class MultiLeaderServerImpl {
       ByteBufferConsensusRequest request, TLogType type) {
     return new IndexedConsensusRequest(
         ConsensusReqReader.DEFAULT_SEARCH_INDEX,
-        logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex),
+        getCurrentSafelyDeletedSearchIndex(),
         type,
         request);
+  }
+
+  public long getCurrentSafelyDeletedSearchIndex() {
+    return logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex);
   }
 
   public String getStorageDir() {

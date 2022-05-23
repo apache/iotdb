@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.consensus.IStateMachine;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -31,18 +30,6 @@ import org.slf4j.LoggerFactory;
 public abstract class BaseStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseStateMachine.class);
-
-  @Override
-  public DataSet read(IConsensusRequest request) {
-    try {
-      return read(getFragmentInstance(request));
-    } catch (IllegalArgumentException e) {
-      logger.error(e.getMessage());
-      return null;
-    }
-  }
-
-  protected abstract DataSet read(FragmentInstance fragmentInstance);
 
   protected FragmentInstance getFragmentInstance(IConsensusRequest request) {
     FragmentInstance instance;

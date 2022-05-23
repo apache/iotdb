@@ -87,10 +87,11 @@ class StandAloneConsensus implements IConsensus {
           ConsensusGroupId consensusGroupId =
               ConsensusGroupId.Factory.create(
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-          stateMachineMap.put(
-              consensusGroupId,
+          StandAloneServerImpl consensus =
               new StandAloneServerImpl(
-                  new Peer(consensusGroupId, thisNode), registry.apply(consensusGroupId)));
+                  new Peer(consensusGroupId, thisNode), registry.apply(consensusGroupId));
+          stateMachineMap.put(consensusGroupId, consensus);
+          consensus.start();
         }
       }
     }

@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
+import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -134,7 +135,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  protected DataSet read(FragmentInstance fragmentInstance) {
-    return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+  public DataSet read(IConsensusRequest request) {
+    if (request instanceof GetConsensusReqReaderPlan) {
+      return null;
+    } else {
+      FragmentInstance fragmentInstance;
+      try {
+        fragmentInstance = getFragmentInstance(request);
+      } catch (IllegalArgumentException e) {
+        logger.error(e.getMessage());
+        return null;
+      }
+      return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+    }
   }
 }
