@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,11 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rpc;
 
-public class ConfigNodeConnectionException extends Exception {
+package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
-  public ConfigNodeConnectionException(String message) {
-    super(message);
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public abstract class MultiChildNode extends ProcessNode {
+
+  protected List<PlanNode> children;
+
+  public MultiChildNode(PlanNodeId id, List<PlanNode> children) {
+    super(id);
+    this.children = children;
+  }
+
+  public MultiChildNode(PlanNodeId id) {
+    super(id);
+    this.children = new ArrayList<>();
+  }
+
+  public void setChildren(List<PlanNode> children) {
+    this.children = children;
   }
 }

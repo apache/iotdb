@@ -117,7 +117,8 @@ public class AuthorityChecker {
    * @return if permission-check is passed
    */
   public static boolean checkPermission(
-      String username, List<? extends PartialPath> paths, StatementType type, String targetUser) {
+      String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
+      throws ConfigNodeConnectionException {
     if (SUPER_USER.equals(username)) {
       return true;
     }
@@ -163,7 +164,8 @@ public class AuthorityChecker {
   }
 
   /** Check the user */
-  public static TSStatus checkUser(String username, String password) {
+  public static TSStatus checkUser(String username, String password)
+      throws ConfigNodeConnectionException {
     TLoginReq req = new TLoginReq(username, password);
     TSStatus status = null;
     try (ConfigNodeClient configNodeClient =
@@ -200,7 +202,7 @@ public class AuthorityChecker {
 
   /** Check whether specific user has the authorization to given plan. */
   public static boolean checkAuthorization(Statement statement, String username)
-      throws AuthException {
+      throws AuthException, ConfigNodeConnectionException {
     if (!statement.isAuthenticationRequired()) {
       return true;
     }
@@ -212,7 +214,8 @@ public class AuthorityChecker {
         username, statement.getPaths(), statement.getType(), targetUser);
   }
 
-  public static TSStatus checkPath(String username, List<String> allPath, int permission) {
+  public static TSStatus checkPath(String username, List<String> allPath, int permission)
+      throws ConfigNodeConnectionException {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
     TSStatus status = null;
     try (ConfigNodeClient configNodeClient =

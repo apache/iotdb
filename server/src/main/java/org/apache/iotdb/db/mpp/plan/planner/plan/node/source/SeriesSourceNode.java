@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,11 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rpc;
 
-public class ConfigNodeConnectionException extends Exception {
+package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
-  public ConfigNodeConnectionException(String message) {
-    super(message);
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+public abstract class SeriesSourceNode extends SourceNode {
+  public SeriesSourceNode(PlanNodeId id) {
+    super(id);
   }
+
+  public abstract PartialPath getPartitionPath();
+
+  public abstract Filter getPartitionTimeFilter();
 }
