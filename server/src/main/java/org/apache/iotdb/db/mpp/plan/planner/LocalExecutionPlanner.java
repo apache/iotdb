@@ -93,6 +93,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
@@ -133,7 +134,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -280,8 +280,16 @@ public class LocalExecutionPlanner {
               AlignedSeriesAggregationScanOperator.class.getSimpleName());
       List<Aggregator> aggregators = new ArrayList<>();
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        // I am not sure that it's correct or not
-        String inputSeries = descriptor.getParametersString();
+        checkArgument(
+            descriptor.getInputExpressions().size() == 1,
+            "descriptor's input expression size is not 1");
+        checkArgument(
+            descriptor.getInputExpressions().get(0) instanceof TimeSeriesOperand,
+            "descriptor's input expression is not TimeSeriesOperand");
+        String inputSeries =
+            ((TimeSeriesOperand) (descriptor.getInputExpressions().get(0)))
+                .getPath()
+                .getMeasurement();
         int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
         TSDataType seriesDataType =
             seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
@@ -485,7 +493,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SeriesAggregationScanNode.class.getSimpleName());
+              SeriesAggregationScanOperator.class.getSimpleName());
 
       List<Aggregator> aggregators = new ArrayList<>();
       node.getAggregationDescriptorList()
@@ -521,7 +529,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              DeviceViewNode.class.getSimpleName());
+              DeviceViewOperator.class.getSimpleName());
       List<Operator> children =
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
@@ -541,7 +549,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              DeviceViewNode.class.getSimpleName());
+              DeviceMergeOperator.class.getSimpleName());
       List<Operator> children =
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
@@ -700,7 +708,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              TransformNode.class.getSimpleName());
+              TransformOperator.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
       final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
       final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
@@ -724,7 +732,9 @@ public class LocalExecutionPlanner {
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
       final OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(), node.getPlanNodeId(), FilterNode.class.getSimpleName());
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              FilterOperator.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
       final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
       final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
@@ -785,11 +795,6 @@ public class LocalExecutionPlanner {
       checkArgument(
           node.getAggregationDescriptorList().size() >= 1,
           "Aggregation descriptorList cannot be empty");
-      OperatorContext operatorContext =
-          context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(),
-              node.getPlanNodeId(),
-              DeviceViewNode.class.getSimpleName());
       List<Operator> children =
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
@@ -798,10 +803,7 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        List<String> inputColumnNames =
-            descriptor.getInputExpressions().stream()
-                .map(Expression::getExpressionString)
-                .collect(Collectors.toList());
+        List<String> inputColumnNames = descriptor.getInputColumnNames();
         // it may include double parts
         List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
         inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
@@ -833,6 +835,11 @@ public class LocalExecutionPlanner {
       boolean inputRaw = node.getAggregationDescriptorList().get(0).getStep().isInputRaw();
       if (inputRaw) {
         checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
+        OperatorContext operatorContext =
+            context.instanceContext.addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                RawDataAggregationOperator.class.getSimpleName());
         return new RawDataAggregationOperator(
             operatorContext,
             aggregators,
@@ -840,6 +847,11 @@ public class LocalExecutionPlanner {
             ascending,
             node.getGroupByTimeParameter());
       } else {
+        OperatorContext operatorContext =
+            context.instanceContext.addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                AggregationOperator.class.getSimpleName());
         return new AggregationOperator(
             operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
       }

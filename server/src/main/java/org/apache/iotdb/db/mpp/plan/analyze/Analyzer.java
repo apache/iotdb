@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -61,6 +63,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
@@ -68,7 +71,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -89,6 +91,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -285,9 +289,15 @@ public class Analyzer {
 
           if (queryStatement.isGroupByLevel()) {
             // map from grouped expression to set of input expressions
+            Map<Expression, Expression> rawPathToGroupedPathMap = new HashMap<>();
             Map<Expression, Set<Expression>> groupByLevelExpressions =
-                analyzeGroupByLevel(queryStatement, outputExpressions, transformExpressions);
+                analyzeGroupByLevel(
+                    queryStatement,
+                    outputExpressions,
+                    transformExpressions,
+                    rawPathToGroupedPathMap);
             analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+            analysis.setRawPathToGroupedPathMap(rawPathToGroupedPathMap);
           }
 
           // true if nested expressions and UDFs exist in aggregation function
@@ -630,7 +640,8 @@ public class Analyzer {
     private Map<Expression, Set<Expression>> analyzeGroupByLevel(
         QueryStatement queryStatement,
         List<Pair<Expression, String>> outputExpressions,
-        Set<Expression> transformExpressions) {
+        Set<Expression> transformExpressions,
+        Map<Expression, Expression> rawPathToGroupedPathMap) {
       GroupByLevelController groupByLevelController =
           new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
       for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
@@ -638,6 +649,7 @@ public class Analyzer {
       }
       Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
           groupByLevelController.getGroupedPathMap();
+      rawPathToGroupedPathMap.putAll(groupByLevelController.getRawPathToGroupedPathMap());
       // check whether the datatype of paths which has the same output column name are consistent
       // if not, throw a SemanticException
       rawGroupByLevelExpressions.values().forEach(this::checkDataTypeConsistencyInGroupByLevel);
@@ -918,6 +930,46 @@ public class Analyzer {
           partitionFetcher.getSchemaPartition(
               new PathPatternTree(alterTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDeleteTimeseries(
+        DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+      Analysis analysis = new Analysis();
+      analysis.setStatement(deleteTimeSeriesStatement);
+
+      // fetch partition information
+
+      PathPatternTree patternTree = new PathPatternTree(deleteTimeSeriesStatement.getPaths());
+
+      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (String storageGroup : schemaPartitionInfo.getSchemaPartitionMap().keySet()) {
+        try {
+          for (String devicePath :
+              patternTree
+                  .findOverlappedPattern(
+                      new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD))
+                  .findAllDevicePaths()) {
+            DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+            queryParam.setDevicePath(devicePath);
+            sgNameToQueryParamsMap
+                .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                .add(queryParam);
+          }
+        } catch (IllegalPathException e) {
+          // definitely won't happen
+          throw new RuntimeException(e);
+        }
+      }
+
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      analysis.setDataPartitionInfo(dataPartition);
+
       return analysis;
     }
 

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.library.drepair.util;
 
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
-import org.apache.iotdb.db.query.udf.api.exception.UDFException;
+import org.apache.iotdb.commons.udf.api.access.RowIterator;
+import org.apache.iotdb.commons.udf.api.exception.UDFException;
 import org.apache.iotdb.library.util.Util;
 
 import org.apache.commons.lang3.tuple.Pair;

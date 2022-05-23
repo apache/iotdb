@@ -104,7 +104,7 @@ public class AuthorityChecker {
    */
   public static boolean checkPermission(
       String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
-      throws AuthException {
+      throws AuthException, ConfigNodeConnectionException {
     if (SUPER_USER.equals(username)) {
       return true;
     }
@@ -169,7 +169,7 @@ public class AuthorityChecker {
 
   /** Check whether specific user has the authorization to given plan. */
   public static boolean checkAuthorization(Statement statement, String username)
-      throws AuthException {
+      throws AuthException, ConfigNodeConnectionException {
     if (!statement.isAuthenticationRequired()) {
       return true;
     }

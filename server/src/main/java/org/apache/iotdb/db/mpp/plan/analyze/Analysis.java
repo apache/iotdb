@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
@@ -80,6 +80,9 @@ public class Analysis {
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
+
+  // map from raw path to grouped path in `GROUP BY LEVEL` clause
+  private Map<Expression, Expression> rawPathToGroupedPathMap;
 
   private boolean isRawDataSource;
 
@@ -224,6 +227,21 @@ public class Analysis {
 
   public void setGroupByLevelExpressions(Map<Expression, Set<Expression>> groupByLevelExpressions) {
     this.groupByLevelExpressions = groupByLevelExpressions;
+  }
+
+  public void setRawPathToGroupedPathMap(Map<Expression, Expression> rawPathToGroupedPathMap) {
+    this.rawPathToGroupedPathMap = rawPathToGroupedPathMap;
+  }
+
+  public Expression getGroupedExpressionByLevel(Expression expression) {
+    if (rawPathToGroupedPathMap.containsKey(expression)) {
+      return rawPathToGroupedPathMap.get(expression);
+    }
+    if (rawPathToGroupedPathMap.containsValue(expression)) {
+      return expression;
+    }
+    throw new IllegalArgumentException(
+        String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
   }
 
   public FilterNullParameter getFilterNullParameter() {
