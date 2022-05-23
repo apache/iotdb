@@ -77,12 +77,12 @@ public class AuthorInfo implements SnapshotProcessor {
     try {
       status = authorizer.login(username, password);
       if (status) {
-        // Save the user's permission information,Bring back the datanode for caching
+        // Bring this user's permission information back to the datanode for caching
         result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       }
     } catch (AuthException e) {
-      logger.info("meet error while logging in.", e);
+      logger.error("meet error while logging in.", e);
       status = false;
       loginMessage = e.getMessage();
     }
@@ -109,7 +109,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     if (status) {
       try {
-        // Save the user's permission information,Bring back the datanode for caching
+        // Bring this user's permission information back to the datanode for caching
         result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {

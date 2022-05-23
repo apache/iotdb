@@ -66,23 +66,18 @@ public class PermissionManager {
    * @return TSStatus
    */
   public TSStatus operatePermission(AuthorReq authorReq) {
-    TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    try {
-      // If the permissions change, clear the cache content affected by the operation
-      if (authorReq.getAuthorType() != ConfigRequestType.CreateUser
-          && authorReq.getAuthorType() != ConfigRequestType.CreateRole) {
-        tsStatus = invalidateCache(authorReq.getUserName(), authorReq.getRoleName());
+    TSStatus tsStatus;
+    // If the permissions change, clear the cache content affected by the operation
+    if (authorReq.getAuthorType() == ConfigRequestType.CreateUser
+        || authorReq.getAuthorType() == ConfigRequestType.CreateRole) {
+      tsStatus = getConsensusManager().write(authorReq).getStatus();
+    } else {
+      tsStatus = invalidateCache(authorReq.getUserName(), authorReq.getRoleName());
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        tsStatus = getConsensusManager().write(authorReq).getStatus();
       }
-    } catch (IOException | TException e) {
-      logger.error(
-          "Failed to initialize cache,the initialization operation is {}, the error is {}",
-          authorReq.getAuthorType(),
-          e);
     }
-    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return tsStatus;
-    }
-    return getConsensusManager().write(authorReq).getStatus();
+    return tsStatus;
   }
 
   /**
@@ -112,7 +107,7 @@ public class PermissionManager {
    * When the permission information of a user or role is changed will clear all datanode
    * permissions related to the user or role
    */
-  public TSStatus invalidateCache(String username, String roleName) throws IOException, TException {
+  public TSStatus invalidateCache(String username, String roleName) {
     List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
     TSStatus status;
@@ -120,17 +115,21 @@ public class PermissionManager {
     req.setRoleName(roleName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       TEndPoint internalEndPoint = dataNodeInfo.getLocation().getInternalEndPoint();
-      status =
-          INTERNAL_SERVICE_CLIENT_MANAGER
-              .borrowClient(internalEndPoint)
-              .invalidatePermissionCache(req);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        status.setMessage(
-            "datanode cache initialization failed, ip: "
-                + internalEndPoint.getIp()
-                + ", port: "
-                + internalEndPoint.getPort());
-        return status;
+      try {
+        status =
+            INTERNAL_SERVICE_CLIENT_MANAGER
+                .borrowClient(internalEndPoint)
+                .invalidatePermissionCache(req);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          status.setMessage(
+              "datanode cache initialization failed, ip: "
+                  + internalEndPoint.getIp()
+                  + ", port: "
+                  + internalEndPoint.getPort());
+          return status;
+        }
+      } catch (IOException | TException e) {
+        logger.error("Failed to initialize cache, the error is {}", e);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
