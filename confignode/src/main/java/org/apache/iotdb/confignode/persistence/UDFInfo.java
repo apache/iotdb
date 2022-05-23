@@ -21,17 +21,56 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 public class UDFInfo implements SnapshotProcessor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(UDFInfo.class);
+
+  private static final ConfigNodeConf CONFIG_NODE_CONF =
+      ConfigNodeDescriptor.getInstance().getConf();
+
+  private final UDFExecutableManager udfExecutableManager;
+  private final UDFRegistrationService udfRegistrationService;
+
+  public UDFInfo() throws IOException {
+    udfExecutableManager =
+        UDFExecutableManager.setupAndGetInstance(
+            CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
+    udfRegistrationService =
+        UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
+  }
+
   public TSStatus createFunction(CreateFunctionReq req) {
-    throw new UnsupportedOperationException();
+    final String functionName = req.getFunctionName();
+    final String className = req.getClassName();
+    final List<String> uris = req.getUris();
+
+    try {
+      udfRegistrationService.register(functionName, className, uris, udfExecutableManager, true);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format(
+              "Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
+              functionName, className, uris, e);
+      LOGGER.warn(errorMessage);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(errorMessage);
+    }
   }
 
   @Override

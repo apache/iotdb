@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +39,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -82,8 +86,25 @@ public class UDFRegistrationService implements IService {
     functionName = functionName.toUpperCase();
     validateFunctionName(functionName, className);
     checkIfRegistered(functionName, className);
-    doRegister(functionName, className);
-    tryAppendRegistrationLog(functionName, className, writeToTemporaryLogFile);
+    doRegister(functionName, className, Collections.emptyList());
+    tryAppendRegistrationLog(
+        functionName, className, Collections.emptyList(), writeToTemporaryLogFile);
+  }
+
+  public void register(
+      String functionName,
+      String className,
+      List<String> uris,
+      UDFExecutableManager udfExecutableManager,
+      boolean writeToTemporaryLogFile)
+      throws UDFRegistrationException {
+    Validate.isTrue(uris != null && !uris.isEmpty());
+    functionName = functionName.toUpperCase();
+    validateFunctionName(functionName, className);
+    checkIfRegistered(functionName, className);
+    downloadExecutableResources(functionName, className, uris, udfExecutableManager);
+    doRegister(functionName, className, uris);
+    tryAppendRegistrationLog(functionName, className, uris, writeToTemporaryLogFile);
   }
 
   private static void validateFunctionName(String functionName, String className)
@@ -132,7 +153,34 @@ public class UDFRegistrationService implements IService {
     throw new UDFRegistrationException(errorMessage);
   }
 
-  private void doRegister(String functionName, String className) throws UDFRegistrationException {
+  private void downloadExecutableResources(
+      String functionName,
+      String className,
+      List<String> uris,
+      UDFExecutableManager udfExecutableManager)
+      throws UDFRegistrationException {
+    try {
+      final UDFExecutableResource resource = udfExecutableManager.request(uris);
+      try {
+        udfExecutableManager.removeFromExtLibDir(functionName);
+        udfExecutableManager.moveToExtLibDir(resource, functionName);
+      } catch (Exception innerException) {
+        udfExecutableManager.removeFromExtLibDir(functionName);
+        udfExecutableManager.removeFromTemporaryLibRoot(resource);
+        throw innerException;
+      }
+    } catch (Exception outerException) {
+      String errorMessage =
+          String.format(
+              "Failed to register UDF %s(%s) because failed to fetch UDF executables(%s)",
+              functionName, className, uris);
+      LOGGER.warn(errorMessage);
+      throw new UDFRegistrationException(errorMessage, outerException);
+    }
+  }
+
+  private void doRegister(String functionName, String className, List<String> uris)
+      throws UDFRegistrationException {
     acquireRegistrationLock();
     try {
       UDFClassLoader currentActiveClassLoader =
@@ -143,7 +191,7 @@ public class UDFRegistrationService implements IService {
       functionClass.getDeclaredConstructor().newInstance();
       registrationInformation.put(
           functionName,
-          new UDFRegistrationInformation(functionName, className, false, functionClass));
+          new UDFRegistrationInformation(functionName, className, uris, false, functionClass));
     } catch (IOException
         | InstantiationException
         | InvocationTargetException
@@ -162,14 +210,14 @@ public class UDFRegistrationService implements IService {
   }
 
   private void tryAppendRegistrationLog(
-      String functionName, String className, boolean writeToTemporaryLogFile)
+      String functionName, String className, List<String> uris, boolean writeToTemporaryLogFile)
       throws UDFRegistrationException {
     if (!writeToTemporaryLogFile) {
       return;
     }
 
     try {
-      appendRegistrationLog(functionName, className);
+      appendRegistrationLog(functionName, className, uris);
     } catch (IOException e) {
       registrationInformation.remove(functionName);
       String errorMessage =
@@ -218,10 +266,11 @@ public class UDFRegistrationService implements IService {
     }
   }
 
-  private void appendRegistrationLog(String functionName, String className) throws IOException {
+  private void appendRegistrationLog(String functionName, String className, List<String> uris)
+      throws IOException {
     logWriterLock.writeLock().lock();
     try {
-      logWriter.register(functionName, className);
+      logWriter.register(functionName, className, uris);
     } finally {
       logWriterLock.writeLock().unlock();
     }
@@ -293,6 +342,7 @@ public class UDFRegistrationService implements IService {
           new UDFRegistrationInformation(
               functionName,
               builtinTimeSeriesGeneratingFunction.getClassName(),
+              Collections.emptyList(),
               true,
               builtinTimeSeriesGeneratingFunction.getFunctionClass()));
     }
@@ -331,10 +381,13 @@ public class UDFRegistrationService implements IService {
       while ((line = reader.readLine()) != null) {
         String[] data = line.split(",");
         byte type = Byte.parseByte(data[0]);
-        if (type == UDFLogWriter.REGISTER_TYPE) {
+        if (type == UDFLogWriter.REGISTER_WITHOUT_URIS_TYPE
+            || type == UDFLogWriter.REGISTER_WITH_URIS_TYPE) {
           recoveredUDFs.put(data[1], data[2]);
         } else if (type == UDFLogWriter.DEREGISTER_TYPE) {
           recoveredUDFs.remove(data[1]);
+        } else {
+          throw new UnsupportedEncodingException();
         }
       }
     }
@@ -370,7 +423,8 @@ public class UDFRegistrationService implements IService {
       if (information.isBuiltin()) {
         continue;
       }
-      temporaryLogFile.register(information.getFunctionName(), information.getClassName());
+      temporaryLogFile.register(
+          information.getFunctionName(), information.getClassName(), information.getUris());
     }
     temporaryLogFile.close();
   }
@@ -391,7 +445,9 @@ public class UDFRegistrationService implements IService {
     Class<?> functionClass = Class.forName(className, true, classLoader);
     functionName = functionName.toUpperCase();
     registrationInformation.put(
-        functionName, new UDFRegistrationInformation(functionName, className, true, functionClass));
+        functionName,
+        new UDFRegistrationInformation(
+            functionName, className, Collections.emptyList(), true, functionClass));
   }
 
   @TestOnly

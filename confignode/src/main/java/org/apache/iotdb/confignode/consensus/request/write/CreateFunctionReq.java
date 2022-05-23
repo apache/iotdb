@@ -21,19 +21,65 @@ package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CreateFunctionReq extends ConfigRequest {
+
+  private String functionName;
+  private String className;
+  private List<String> uris;
 
   public CreateFunctionReq() {
     super(ConfigRequestType.CreateFunction);
   }
 
-  @Override
-  protected void serializeImpl(ByteBuffer buffer) {}
+  public CreateFunctionReq(String functionName, String className, List<String> uris) {
+    super(ConfigRequestType.CreateFunction);
+    this.functionName = functionName;
+    this.className = className;
+    this.uris = uris;
+  }
+
+  public String getFunctionName() {
+    return functionName;
+  }
+
+  public String getClassName() {
+    return className;
+  }
+
+  public List<String> getUris() {
+    return uris;
+  }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
+  protected void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(getType().ordinal());
+
+    ReadWriteIOUtils.write(functionName, buffer);
+    ReadWriteIOUtils.write(className, buffer);
+
+    final int size = uris.size();
+    ReadWriteIOUtils.write(size, buffer);
+    for (String uri : uris) {
+      ReadWriteIOUtils.write(uri, buffer);
+    }
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    functionName = ReadWriteIOUtils.readString(buffer);
+    className = ReadWriteIOUtils.readString(buffer);
+
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    uris = new ArrayList<>(size);
+    for (int i = 0; i < size; ++i) {
+      uris.add(ReadWriteIOUtils.readString(buffer));
+    }
+  }
 }
