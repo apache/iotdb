@@ -539,10 +539,12 @@ public class LogicalPlanner {
     }
 
     @Override
-    public PlanNode visitDeleteTimeseries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
+    public PlanNode visitDeleteTimeseries(
+        DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       List<PartialPath> paths = deleteTimeSeriesStatement.getPaths();
-      List<String> storageGroups = new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
+      List<String> storageGroups =
+          new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
       return planBuilder
           .planInvalidateSchemaCache(paths, storageGroups)
           .planDeleteData(paths)

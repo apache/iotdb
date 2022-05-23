@@ -26,7 +26,6 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
@@ -76,7 +75,6 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.commons.lang.Validate;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -605,8 +603,11 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planInvalidateSchemaCache(List<PartialPath> paths, List<String> storageGroups) {
-    this.root = new InvalidateSchemaCacheNode(context.getQueryId().genPlanNodeId(), context.getQueryId(), paths, storageGroups);
+  public LogicalPlanBuilder planInvalidateSchemaCache(
+      List<PartialPath> paths, List<String> storageGroups) {
+    this.root =
+        new InvalidateSchemaCacheNode(
+            context.getQueryId().genPlanNodeId(), context.getQueryId(), paths, storageGroups);
     return this;
   }
 
@@ -618,7 +619,8 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeleteTimeseries(List<PartialPath> paths) {
-    DeleteTimeSeriesNode node = new DeleteTimeSeriesNode(context.getQueryId().genPlanNodeId(), paths);
+    DeleteTimeSeriesNode node =
+        new DeleteTimeSeriesNode(context.getQueryId().genPlanNodeId(), paths);
     node.addChild(this.root);
     this.root = node;
     return this;
