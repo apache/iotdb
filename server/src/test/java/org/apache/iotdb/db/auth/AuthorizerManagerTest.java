@@ -99,8 +99,7 @@ public class AuthorizerManagerTest {
     result.setUserInfo(tUserResp);
     result.setRoleInfo(tRoleRespMap);
 
-    authorizerManager.settPermissionInfoResp(result);
-    authorizerManager.getUserCache().get(user.getName());
+    authorizerManager.getUserCache().put(user.getName(), authorizerManager.cacheUser(result));
 
     User user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
     Role role1 = authorizerManager.getRoleCache().getIfPresent(role.getName());

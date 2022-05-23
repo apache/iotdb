@@ -35,8 +35,8 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -58,20 +58,19 @@ public class AuthorizerManager implements IAuthorizer {
 
   private IAuthorizer iAuthorizer;
   private ReentrantReadWriteLock authReadWriteLock;
-  private TPermissionInfoResp tPermissionInfoResp;
   private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
 
-  private LoadingCache<String, User> userCache =
+  private Cache<String, User> userCache =
       Caffeine.newBuilder()
           .maximumSize(conf.getConfig().getAuthorCacheSize())
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
-          .build(this::cacheUser);
+          .build();
 
-  private LoadingCache<String, Role> roleCache =
+  private Cache<String, Role> roleCache =
       Caffeine.newBuilder()
           .maximumSize(conf.getConfig().getAuthorCacheSize())
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
-          .build(this::cacheRole);
+          .build();
 
   public AuthorizerManager() {
     try {
@@ -411,10 +410,11 @@ public class AuthorizerManager implements IAuthorizer {
           return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
         }
       }
-      tPermissionInfoResp = ClusterAuthorizer.checkPath(username, allPath, permission);
+      TPermissionInfoResp tPermissionInfoResp =
+          ClusterAuthorizer.checkPath(username, allPath, permission);
       if (tPermissionInfoResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        userCache.get(username);
+        userCache.put(username, cacheUser(tPermissionInfoResp));
         return tPermissionInfoResp.getStatus();
       } else {
         return tPermissionInfoResp.getStatus();
@@ -434,10 +434,10 @@ public class AuthorizerManager implements IAuthorizer {
           && AuthUtils.validatePassword(password, user.getPassword())) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
-      tPermissionInfoResp = ClusterAuthorizer.checkUser(username, password);
+      TPermissionInfoResp tPermissionInfoResp = ClusterAuthorizer.checkUser(username, password);
       if (tPermissionInfoResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        userCache.get(username);
+        userCache.put(username, cacheUser(tPermissionInfoResp));
         return tPermissionInfoResp.getStatus();
       } else {
         return tPermissionInfoResp.getStatus();
@@ -468,7 +468,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   /** cache user */
-  private User cacheUser(String username) {
+  public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
     List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
@@ -481,12 +481,14 @@ public class AuthorizerManager implements IAuthorizer {
     }
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
-    roleCache.getAll(tPermissionInfoResp.getRoleInfo().keySet());
+    for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
+      roleCache.put(roleName, cacheRole(roleName, tPermissionInfoResp));
+    }
     return user;
   }
 
   /** cache role */
-  private Role cacheRole(String roleName) {
+  public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
     Role role = new Role();
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
@@ -544,15 +546,11 @@ public class AuthorizerManager implements IAuthorizer {
     return pathPrivilege;
   }
 
-  public void settPermissionInfoResp(TPermissionInfoResp tPermissionInfoResp) {
-    this.tPermissionInfoResp = tPermissionInfoResp;
-  }
-
-  public LoadingCache<String, User> getUserCache() {
+  public Cache<String, User> getUserCache() {
     return userCache;
   }
 
-  public LoadingCache<String, Role> getRoleCache() {
+  public Cache<String, Role> getRoleCache() {
     return roleCache;
   }
 }
