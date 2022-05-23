@@ -139,7 +139,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.commons.lang3.Validate;
-import org.checkerframework.checker.units.qual.Time;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -281,9 +280,16 @@ public class LocalExecutionPlanner {
               AlignedSeriesAggregationScanOperator.class.getSimpleName());
       List<Aggregator> aggregators = new ArrayList<>();
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        checkArgument(descriptor.getInputExpressions().size() == 1, "descriptor's input expression size is not 1");
-        checkArgument(descriptor.getInputExpressions().get(0) instanceof TimeSeriesOperand, "descriptor's input expression is not TimeSeriesOperand");
-        String inputSeries = ((TimeSeriesOperand)(descriptor.getInputExpressions().get(0))).getPath().getMeasurement();
+        checkArgument(
+            descriptor.getInputExpressions().size() == 1,
+            "descriptor's input expression size is not 1");
+        checkArgument(
+            descriptor.getInputExpressions().get(0) instanceof TimeSeriesOperand,
+            "descriptor's input expression is not TimeSeriesOperand");
+        String inputSeries =
+            ((TimeSeriesOperand) (descriptor.getInputExpressions().get(0)))
+                .getPath()
+                .getMeasurement();
         int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
         TSDataType seriesDataType =
             seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);

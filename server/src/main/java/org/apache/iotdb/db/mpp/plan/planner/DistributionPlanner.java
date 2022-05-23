@@ -245,16 +245,19 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSeriesAggregationScan(SeriesAggregationScanNode node, DistributionPlanContext context) {
+    public PlanNode visitSeriesAggregationScan(
+        SeriesAggregationScanNode node, DistributionPlanContext context) {
       return processSeriesAggregationSource(node, context);
     }
 
     @Override
-    public PlanNode visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, DistributionPlanContext context) {
+    public PlanNode visitAlignedSeriesAggregationScan(
+        AlignedSeriesAggregationScanNode node, DistributionPlanContext context) {
       return processSeriesAggregationSource(node, context);
     }
 
-    private PlanNode processSeriesAggregationSource(SeriesAggregationSourceNode node, DistributionPlanContext context) {
+    private PlanNode processSeriesAggregationSource(
+        SeriesAggregationSourceNode node, DistributionPlanContext context) {
       List<TRegionReplicaSet> dataDistribution =
           analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
       if (dataDistribution.size() == 1) {
@@ -585,7 +588,7 @@ public class DistributionPlanner {
 
       // Step 2: change the step for each SeriesAggregationSourceNode according to its split count
       for (SeriesAggregationSourceNode source : sources) {
-//        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
+        //        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
         boolean isFinal = false;
         source
             .getAggregationDescriptorList()

@@ -286,6 +286,9 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
   public String toString() {
     return String.format(
         "SeriesAggregationScanNode-%s:[SeriesPath: %s, Descriptor: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getSeriesPath(), this.getAggregationDescriptorList(), this.getRegionReplicaSet());
+        this.getPlanNodeId(),
+        this.getSeriesPath(),
+        this.getAggregationDescriptorList(),
+        this.getRegionReplicaSet());
   }
 }
