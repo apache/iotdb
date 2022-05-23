@@ -374,7 +374,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   public TSStatus checkPath(String username, List<String> allPath, int permission)
-          throws AuthException, ConfigNodeConnectionException {
+      throws AuthException, ConfigNodeConnectionException {
     authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);

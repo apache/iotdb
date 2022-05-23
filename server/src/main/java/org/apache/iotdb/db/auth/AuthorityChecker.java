@@ -105,7 +105,7 @@ public class AuthorityChecker {
    */
   public static boolean checkPermission(
       String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
-          throws AuthException, ConfigNodeConnectionException {
+      throws AuthException, ConfigNodeConnectionException {
     if (SUPER_USER.equals(username)) {
       return true;
     }
