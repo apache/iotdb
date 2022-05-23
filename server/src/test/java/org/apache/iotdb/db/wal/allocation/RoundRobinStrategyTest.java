@@ -70,24 +70,32 @@ public class RoundRobinStrategyTest {
   public void testAllocateWALNode() throws IllegalPathException {
     RoundRobinStrategy roundRobinStrategy = new RoundRobinStrategy(6);
     IWALNode[] walNodes = new IWALNode[6];
-    for (int i = 0; i < 12; i++) {
-      IWALNode walNode = roundRobinStrategy.applyForWALNode(String.valueOf(i));
-      if (i < 6) {
-        walNodes[i] = walNode;
-      } else {
-        assertEquals(walNodes[i % 6], walNode);
+    try {
+      for (int i = 0; i < 12; i++) {
+        IWALNode walNode = roundRobinStrategy.applyForWALNode(String.valueOf(i));
+        if (i < 6) {
+          walNodes[i] = walNode;
+        } else {
+          assertEquals(walNodes[i % 6], walNode);
+        }
+        walNode.log(i, getInsertRowPlan());
       }
-      walNode.log(i, getInsertRowPlan());
-    }
-    for (String walDir : walDirs) {
-      File walDirFile = new File(walDir);
-      assertTrue(walDirFile.exists());
-      File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
-      assertNotNull(nodeDirs);
-      assertEquals(2, nodeDirs.length);
-      for (File nodeDir : nodeDirs) {
-        assertTrue(nodeDir.exists());
-        assertNotEquals(0, WALFileUtils.listAllWALFiles(nodeDir).length);
+      for (String walDir : walDirs) {
+        File walDirFile = new File(walDir);
+        assertTrue(walDirFile.exists());
+        File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
+        assertNotNull(nodeDirs);
+        assertEquals(2, nodeDirs.length);
+        for (File nodeDir : nodeDirs) {
+          assertTrue(nodeDir.exists());
+          assertNotEquals(0, WALFileUtils.listAllWALFiles(nodeDir).length);
+        }
+      }
+    } finally {
+      for (IWALNode walNode : walNodes) {
+        if (walNode != null) {
+          walNode.close();
+        }
       }
     }
   }
