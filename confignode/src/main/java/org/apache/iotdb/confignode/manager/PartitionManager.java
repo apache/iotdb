@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
@@ -391,7 +392,11 @@ public class PartitionManager {
     if (getConsensusManager().isLeader()) {
       final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
       if (!deletedRegionSet.isEmpty()) {
-        LOGGER.info("DELETE REGIONS {} START", deletedRegionSet);
+        LOGGER.info(
+            "DELETE REGIONS {} START",
+            deletedRegionSet.stream()
+                .map(TRegionReplicaSet::getRegionId)
+                .collect(Collectors.toList()));
         SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
       }
     }

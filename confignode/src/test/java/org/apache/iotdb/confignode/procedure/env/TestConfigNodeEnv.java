@@ -19,5 +19,4 @@
 
 package org.apache.iotdb.confignode.procedure.env;
 
-public class TestConfigNodeEnv {
-}
+public class TestConfigNodeEnv {}

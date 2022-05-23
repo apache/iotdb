@@ -99,7 +99,7 @@ public class SyncDataNodeClientPool {
               .computeIfAbsent(dataNodeLocations.get(0), k -> new ArrayList<>())
               .add(tRegionReplicaSet.getRegionId());
         });
-    LOGGER.debug("Current regionLocationMap {} ", regionLocationMap);
+    LOGGER.info("Current regionLocationMap {} ", regionLocationMap);
     regionLocationMap.forEach(
         (dataNodeLocation, regionIds) -> {
           deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet);
@@ -109,7 +109,7 @@ public class SyncDataNodeClientPool {
   private void deleteRegions(
       TEndPoint endPoint,
       List<TConsensusGroupId> regionIds,
-      Set<TRegionReplicaSet> deletedRegionMap) {
+      Set<TRegionReplicaSet> deletedRegionSet) {
     SyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
@@ -117,8 +117,8 @@ public class SyncDataNodeClientPool {
         LOGGER.debug("Delete region {} ", regionId);
         final TSStatus status = client.deleteRegion(regionId);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          deletedRegionMap.remove(regionId);
           LOGGER.info("DELETE Region {} successfully", regionId);
+          deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));
         }
       }
     } catch (IOException e) {
