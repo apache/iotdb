@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -46,19 +48,24 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class CheckpointManagerTest {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private CheckpointManager checkpointManager;
+  private long prevFileSize;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
+    prevFileSize = config.getCheckpointFileSizeThresholdInByte();
+    config.setCheckpointFileSizeThresholdInByte(10 * 1024);
     checkpointManager = new CheckpointManager(identifier, logDirectory);
   }
 
   @After
   public void tearDown() throws Exception {
     checkpointManager.close();
+    config.setCheckpointFileSizeThresholdInByte(prevFileSize);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 
@@ -122,7 +129,7 @@ public class CheckpointManagerTest {
     int versionId = 0;
     Map<Integer, MemTableInfo> expectedMemTableId2Info = new HashMap<>();
     Map<Integer, Integer> versionId2memTableId = new HashMap<>();
-    while (size < CheckpointManager.LOG_SIZE_LIMIT) {
+    while (size < config.getCheckpointFileSizeThresholdInByte()) {
       ++versionId;
       String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
       MemTableInfo memTableInfo = new MemTableInfo(new PrimitiveMemTable(), tsFilePath, versionId);

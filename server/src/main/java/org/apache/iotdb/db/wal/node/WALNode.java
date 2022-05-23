@@ -567,11 +567,11 @@ public class WALNode implements IWALNode {
     /** search index of next element */
     private long nextSearchIndex;
     /** files to search */
-    private File[] filesToSearch;
+    private File[] filesToSearch = null;
     /** index of current searching file in the filesToSearch */
-    private int currentFileIndex;
+    private int currentFileIndex = -1;
     /** true means filesToSearch and currentFileIndex are outdated, call updateFilesToSearch */
-    private boolean needUpdatingFilesToSearch = false;
+    private boolean needUpdatingFilesToSearch = true;
     /**
      * files whose version id before this value have already been searched, avoid storing too many
      * files in filesToSearch
@@ -584,7 +584,6 @@ public class WALNode implements IWALNode {
 
     public PlanNodeIterator(long startIndex) {
       this.nextSearchIndex = startIndex;
-      this.needUpdatingFilesToSearch = true;
     }
 
     @Override
