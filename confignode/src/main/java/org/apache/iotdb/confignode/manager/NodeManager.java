@@ -136,15 +136,19 @@ public class NodeManager {
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
 
-    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    if (getConsensusManager().isLeader()) {
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    // Return PartitionRegionId
-    resp.setPartitionRegionId(
-        ConsensusGroupId.convertToTConsensusGroupId(getConsensusManager().getConsensusGroupId()));
+      // Return PartitionRegionId
+      resp.setPartitionRegionId(
+          ConsensusGroupId.convertToTConsensusGroupId(getConsensusManager().getConsensusGroupId()));
 
-    // Return online ConfigNodes
-    resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
-    resp.getConfigNodeList().add(req.getConfigNodeLocation());
+      // Return online ConfigNodes
+      resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
+      resp.getConfigNodeList().add(req.getConfigNodeLocation());
+    } else {
+      resp.setStatus(new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode()));
+    }
 
     return resp;
   }

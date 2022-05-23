@@ -553,7 +553,12 @@ public class ConfigManager implements Manager {
 
   @Override
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
-    return nodeManager.applyConfigNode(applyConfigNodeReq);
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.applyConfigNode(applyConfigNodeReq);
+    } else {
+      return status;
+    }
   }
 
   public ProcedureManager getProcedureManager() {

@@ -168,9 +168,6 @@ public class ConfigNodeStartupCheck {
   private boolean isSeedConfigNode() {
     boolean result = isContainsRpcConfigNode();
 
-    //    boolean result =
-    //        conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-    //            && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties
       List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();

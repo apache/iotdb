@@ -124,10 +124,6 @@ public class ConfigNodeDescriptor {
       if (!targetConfigNodeList.isEmpty()) {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(targetConfigNodeList));
       }
-      //      String targetConfigNode = properties.getProperty("target_confignode", null);
-      //      if (targetConfigNode != null) {
-      //        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
-      //      }
 
       conf.setSeriesPartitionSlotNum(
           Integer.parseInt(

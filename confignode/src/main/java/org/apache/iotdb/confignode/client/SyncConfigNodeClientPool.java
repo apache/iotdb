@@ -43,23 +43,39 @@ public class SyncConfigNodeClientPool {
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
+  private TEndPoint configNodeLeader;
+
   private SyncConfigNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    configNodeLeader = new TEndPoint();
   }
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */
   public TConfigNodeRegisterResp registerConfigNode(
       List<TEndPoint> endPointList, TConfigNodeRegisterReq req) {
     // TODO: Unified retry logic
-    for (int retry = 0; retry < retryNum; retry++) {
-      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPointList.get(0))) {
-        return client.registerConfigNode(req);
-      } catch (Exception e) {
-        LOGGER.warn("Register ConfigNode failed, retrying...", e);
-        doRetryWait();
+    for (TEndPoint endPoint : endPointList) {
+      for (int retry = 0; retry < retryNum; retry++) {
+        try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+          TConfigNodeRegisterResp resp = client.registerConfigNode(req);
+          if (resp.status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            if (resp.status.isSetRedirectNode()) {
+              configNodeLeader =
+                  new TEndPoint(
+                      resp.status.getRedirectNode().getIp(),
+                      resp.status.getRedirectNode().getPort());
+              return clientManager.borrowClient(configNodeLeader).registerConfigNode(req);
+            }
+          } else {
+            return resp;
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Register ConfigNode failed, retrying...", e);
+          doRetryWait();
+        }
       }
     }
     LOGGER.error("Register ConfigNode failed");
@@ -72,12 +88,25 @@ public class SyncConfigNodeClientPool {
   public TSStatus applyConfigNode(
       List<TEndPoint> endPointList, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
-    for (int retry = 0; retry < retryNum; retry++) {
-      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPointList.get(0))) {
-        return client.applyConfigNode(configNodeLocation);
-      } catch (Exception e) {
-        LOGGER.warn("Apply ConfigNode failed, retrying...", e);
-        doRetryWait();
+    for (TEndPoint endPoint : endPointList) {
+      for (int retry = 0; retry < retryNum; retry++) {
+        try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+          TSStatus status = client.applyConfigNode(configNodeLocation);
+          if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            if (status.isSetRedirectNode()) {
+              configNodeLeader =
+                  new TEndPoint(
+                      status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+              configNodeLocation.setConsensusEndPoint(configNodeLeader);
+              return client.applyConfigNode(configNodeLocation);
+            }
+          } else {
+            return status;
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Apply ConfigNode failed, retrying...", e);
+          doRetryWait();
+        }
       }
     }
     LOGGER.error("Apply ConfigNode failed");
