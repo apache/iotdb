@@ -40,7 +40,7 @@ import java.util.Objects;
 public class LastQueryScanNode extends SourceNode {
 
   public static final List<String> LAST_QUERY_COLUMN_HEADERS =
-      ImmutableList.of("SensorId", "Time", "Value", "DataType");
+      ImmutableList.of("Time", "timeseries", "value", "dataType");
 
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
