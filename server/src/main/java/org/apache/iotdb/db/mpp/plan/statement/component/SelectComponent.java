@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
-import org.apache.iotdb.db.query.expression.Expression;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
