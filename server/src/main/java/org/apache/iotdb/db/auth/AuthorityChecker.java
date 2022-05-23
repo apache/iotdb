@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -104,7 +105,7 @@ public class AuthorityChecker {
    */
   public static boolean checkPermission(
       String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
-      throws AuthException, ConfigNodeConnectionException {
+          throws AuthException, ConfigNodeConnectionException {
     if (SUPER_USER.equals(username)) {
       return true;
     }

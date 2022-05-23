@@ -62,7 +62,7 @@ public class ClusterAuthorizer {
           .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   public static TPermissionInfoResp checkPath(
-      String username, List<String> allPath, int permission) {
+      String username, List<String> allPath, int permission) throws ConfigNodeConnectionException {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
     TPermissionInfoResp status = null;
     try (ConfigNodeClient configNodeClient =
@@ -80,7 +80,7 @@ public class ClusterAuthorizer {
   }
 
   /** Check the user */
-  public static TPermissionInfoResp checkUser(String username, String password) {
+  public static TPermissionInfoResp checkUser(String username, String password) throws ConfigNodeConnectionException {
     TLoginReq req = new TLoginReq(username, password);
     TPermissionInfoResp status = null;
     try (ConfigNodeClient configNodeClient =

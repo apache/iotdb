@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -373,7 +374,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   public TSStatus checkPath(String username, List<String> allPath, int permission)
-      throws AuthException {
+          throws AuthException, ConfigNodeConnectionException {
     authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);
@@ -425,7 +426,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   /** Check the user */
-  public TSStatus checkUser(String username, String password) {
+  public TSStatus checkUser(String username, String password) throws ConfigNodeConnectionException {
     authReadWriteLock.readLock().lock();
     try {
       User user = userCache.getIfPresent(username);
