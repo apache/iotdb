@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.library.anomaly.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
+import org.apache.iotdb.commons.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
 
 import java.util.ArrayList;

@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.datastructure.SerializableList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -92,13 +93,9 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   }
 
   private void initESTVList(TSDataType dataType) {
-    try {
-      tvList =
-          ElasticSerializableTVList.newElasticSerializableTVList(
-              dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
+    tvList =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     assertEquals(0, tvList.size());
   }
 
@@ -160,7 +157,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
           }
           break;
       }
-    } catch (IOException | QueryProcessException e) {
+    } catch (IOException e) {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, tvList.size());
