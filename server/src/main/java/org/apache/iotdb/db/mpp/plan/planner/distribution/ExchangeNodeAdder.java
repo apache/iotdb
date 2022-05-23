@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -113,52 +114,41 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
-  public PlanNode visitSchemaQueryScan(SchemaQueryScanNode node, NodeGroupContext context) {
-    NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
-    nodeDistribution.region = node.getRegionReplicaSet();
-    context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);
-    return node;
-  }
-
-  @Override
   public PlanNode visitSchemaFetchMerge(SchemaFetchMergeNode node, NodeGroupContext context) {
     return internalVisitSchemaMerge(node, context);
   }
 
   @Override
+  public PlanNode visitSchemaQueryScan(SchemaQueryScanNode node, NodeGroupContext context) {
+    return processNoChildSourceNode(node, context);
+  }
+
+  @Override
   public PlanNode visitSchemaFetchScan(SchemaFetchScanNode node, NodeGroupContext context) {
-    NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
-    nodeDistribution.region = node.getRegionReplicaSet();
-    context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);
-    return node;
+    return processNoChildSourceNode(node, context);
   }
 
   @Override
   public PlanNode visitSeriesScan(SeriesScanNode node, NodeGroupContext context) {
-    context.putNodeDistribution(
-        node.getPlanNodeId(),
-        new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
-    return node.clone();
+    return processNoChildSourceNode(node, context);
   }
 
   @Override
   public PlanNode visitAlignedSeriesScan(AlignedSeriesScanNode node, NodeGroupContext context) {
-    context.putNodeDistribution(
-        node.getPlanNodeId(),
-        new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
-    return node.clone();
+    return processNoChildSourceNode(node, context);
   }
 
   public PlanNode visitSeriesAggregationScan(
       SeriesAggregationScanNode node, NodeGroupContext context) {
-    context.putNodeDistribution(
-        node.getPlanNodeId(),
-        new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
-    return node.clone();
+    return processNoChildSourceNode(node, context);
   }
 
   public PlanNode visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, NodeGroupContext context) {
+    return processNoChildSourceNode(node, context);
+  }
+
+  private PlanNode processNoChildSourceNode(SourceNode node, NodeGroupContext context) {
     context.putNodeDistribution(
         node.getPlanNodeId(),
         new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));

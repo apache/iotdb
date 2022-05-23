@@ -21,10 +21,10 @@ package org.apache.iotdb.db.mpp.plan.planner.plan;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -77,8 +77,8 @@ public class PlanFragment {
   }
 
   private TRegionReplicaSet getNodeRegion(PlanNode root) {
-    if (root instanceof SourceNode) {
-      return ((SourceNode) root).getRegionReplicaSet();
+    if (root instanceof IPartitionRelatedNode) {
+      return ((IPartitionRelatedNode) root).getRegionReplicaSet();
     }
     for (PlanNode child : root.getChildren()) {
       TRegionReplicaSet result = getNodeRegion(child);
