@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 /** All built-in UDFs need to register their function names and classes here. */
-public enum BuiltinFunction {
+public enum BuiltinTimeSeriesGeneratingFunction {
   CONST("CONST", UDTFConst.class),
   E("E", UDTFConstE.class),
   PI("PI", UDTFConstPi.class),
@@ -72,7 +72,7 @@ public enum BuiltinFunction {
   private final Class<?> functionClass;
   private final String className;
 
-  BuiltinFunction(String functionName, Class<?> functionClass) {
+  BuiltinTimeSeriesGeneratingFunction(String functionName, Class<?> functionClass) {
     this.functionName = functionName;
     this.functionClass = functionClass;
     this.className = functionClass.getName();
