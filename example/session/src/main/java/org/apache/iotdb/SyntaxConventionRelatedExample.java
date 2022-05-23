@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -30,14 +28,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * When using session API, measurement, device, storage group and path are represented by String.
- * The content of the String should the same as what you would write in a SQL statement. This class
- * is an example to help you understand better.
+ * The content of the String should be the same as what you would write in a SQL statement. This
+ * class is an example to help you understand better.
  */
 public class SyntaxConventionRelatedExample {
   private static Session session;
-  private static Session sessionEnableRedirect;
   private static final String LOCAL_HOST = "127.0.0.1";
   /**
    * if you want to create a time series named root.sg1.select, a possible SQL statement would be
@@ -48,18 +48,18 @@ public class SyntaxConventionRelatedExample {
   private static final String ROOT_SG1_KEYWORD_EXAMPLE = "root.sg1.select";
 
   /**
-   * if you want to create a time series named root.sg1.`111`, a possible SQL statement would be
-   * like: create timeseries root.sg1.`111` with datatype=FLOAT, encoding=RLE The path should be
-   * written as "root.sg1.`111`".
+   * if you want to create a time series named root.sg1.111, a possible SQL statement would be like:
+   * create timeseries root.sg1.`111` with datatype=FLOAT, encoding=RLE The path should be written
+   * as "root.sg1.`111`".
    */
   private static final String ROOT_SG1_DIGITS_EXAMPLE = "root.sg1.`111`";
 
   /**
-   * if you want to create a time series named root.sg1.`a"b`c```, a possible SQL statement would be
-   * like: create timeseries root.sg1.`a"b`c``` with datatype=FLOAT, encoding=RLE The path should be
+   * if you want to create a time series named root.sg1.`a"b'c``, a possible SQL statement would be
+   * like: create timeseries root.sg1.`a"b'c``` with datatype=FLOAT, encoding=RLE The path should be
    * written as "root.sg1.`a"b`c```".
    */
-  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.sg1.`a\"b`c```";
+  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.sg1.`a\"b'c```";
 
   /**
    * if you want to create a time series named root.sg1.a, a possible SQL statement would be like:
@@ -94,16 +94,29 @@ public class SyntaxConventionRelatedExample {
     // createTimeSeries
     createTimeSeries();
     SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
-    // the expected columnNames would be:
-    // [Time, root.sg1.select, root.sg1.`111`, root.sg1.`a"b`c```, root.sg1.a]
+    // the expected paths would be:
+    // [root.sg1.select, root.sg1.`111`, root.sg1.`a"b'c```, root.sg1.a]
     // You could see that time series in dataSet are exactly the same as
     // the initial String you used as path. Node names consist of digits or contain special
     // characters are quoted with ``, both in SQL statement and in header of result dataset.
-    // It's convenient that you can use the result of show timeseries as input parameter directly for other
+    // It's convenient that you can use the result of show timeseries as input parameter directly
+    // for other
     // session APIs such as insertRecord or executeRawDataQuery.
-    List<String> timeseries = new ArrayList<>();
-    while(dataSet.hasNext()){
-      timeseries.add(dataSet.next().toString());
+    List<String> paths = new ArrayList<>();
+    while (dataSet.hasNext()) {
+      paths.add(dataSet.next().getFields().get(0).toString());
+    }
+
+    long startTime = 1L;
+    long endTime = 100L;
+
+    try (SessionDataSet dataSet1 = session.executeRawDataQuery(paths, startTime, endTime)) {
+
+      System.out.println(dataSet1.getColumnNames());
+      dataSet1.setFetchSize(1024);
+      while (dataSet1.hasNext()) {
+        System.out.println(dataSet1.next());
+      }
     }
   }
 
