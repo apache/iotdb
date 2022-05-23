@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTimeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
@@ -52,8 +53,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -113,7 +116,10 @@ public enum PlanNodeType {
   NODE_MANAGEMENT_MEMORY_MERGE((short) 42),
   INVALIDATE_SCHEMA_CACHE((short) 43),
   DELETE_DATA((short) 44),
-  DELETE_TIMESERIES((short) 45);
+  DELETE_TIMESERIES((short) 45),
+  LAST_QUERY_SCAN((short) 46),
+  ALIGNED_LAST_QUERY_SCAN((short) 47),
+  LAST_QUERY_MERGE((short) 48);
 
   private final short nodeType;
 
@@ -229,6 +235,12 @@ public enum PlanNodeType {
         return DeleteDataNode.deserialize(buffer);
       case 45:
         return DeleteTimeSeriesNode.deserialize(buffer);
+      case 46:
+        return LastQueryScanNode.deserialize(buffer);
+      case 47:
+        return AlignedLastQueryScanNode.deserialize(buffer);
+      case 48:
+        return LastQueryMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
