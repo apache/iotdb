@@ -23,13 +23,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * This node is responsible for the final aggregation merge operation. It will process the data from
@@ -45,29 +46,23 @@ import java.util.Objects;
  * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
  * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
  */
-public class GroupByLevelNode extends AggregationNode {
+public class GroupByLevelNode extends MultiChildNode {
 
-  // column name of each output column
-  private final List<String> outputColumnNames;
+  // The list of aggregate descriptors
+  // each GroupByLevelDescriptor will be output as one or two column of result TsBlock
+  protected List<GroupByLevelDescriptor> groupByLevelDescriptors;
 
   public GroupByLevelNode(
       PlanNodeId id,
       List<PlanNode> children,
-      List<AggregationDescriptor> aggregationDescriptorList,
-      List<String> outputColumnNames) {
-    super(id, aggregationDescriptorList);
-    this.children = children;
-    this.outputColumnNames = outputColumnNames;
+      List<GroupByLevelDescriptor> groupByLevelDescriptors) {
+    super(id, children);
+    this.groupByLevelDescriptors = groupByLevelDescriptors;
   }
 
-  public GroupByLevelNode(
-      PlanNodeId id,
-      List<AggregationDescriptor> aggregationDescriptorList,
-      GroupByTimeParameter groupByTimeParameter,
-      List<String> outputColumnNames) {
-    super(id, aggregationDescriptorList, groupByTimeParameter);
-    this.outputColumnNames = outputColumnNames;
-    this.children = new ArrayList<>();
+  public GroupByLevelNode(PlanNodeId id, List<GroupByLevelDescriptor> groupByLevelDescriptors) {
+    super(id);
+    this.groupByLevelDescriptors = groupByLevelDescriptors;
   }
 
   @Override
@@ -87,16 +82,23 @@ public class GroupByLevelNode extends AggregationNode {
 
   @Override
   public PlanNode clone() {
-    return new GroupByLevelNode(
-        getPlanNodeId(),
-        getAggregationDescriptorList(),
-        getGroupByTimeParameter(),
-        getOutputColumnNames());
+    return new GroupByLevelNode(getPlanNodeId(), getGroupByLevelDescriptors());
+  }
+
+  public List<GroupByLevelDescriptor> getGroupByLevelDescriptors() {
+    return groupByLevelDescriptors;
+  }
+
+  public void setGroupByLevelDescriptors(List<GroupByLevelDescriptor> groupByLevelDescriptors) {
+    this.groupByLevelDescriptors = groupByLevelDescriptors;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputColumnNames;
+    return groupByLevelDescriptors.stream()
+        .map(AggregationDescriptor::getOutputColumnNames)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -107,43 +109,21 @@ public class GroupByLevelNode extends AggregationNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
-    ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
-    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
-      aggregationDescriptor.serialize(byteBuffer);
-    }
-    if (groupByTimeParameter == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      groupByTimeParameter.serialize(byteBuffer);
-    }
-    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
-    for (String outputColumnName : outputColumnNames) {
-      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
+    ReadWriteIOUtils.write(groupByLevelDescriptors.size(), byteBuffer);
+    for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
+      groupByLevelDescriptor.serialize(byteBuffer);
     }
   }
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    List<GroupByLevelDescriptor> groupByLevelDescriptors = new ArrayList<>();
     while (descriptorSize > 0) {
-      aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
+      groupByLevelDescriptors.add(GroupByLevelDescriptor.deserialize(byteBuffer));
       descriptorSize--;
     }
-    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    GroupByTimeParameter groupByTimeParameter = null;
-    if (isNull == 1) {
-      groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
-    }
-    int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
-    while (outputColumnSize > 0) {
-      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
-      outputColumnSize--;
-    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new GroupByLevelNode(
-        planNodeId, aggregationDescriptorList, groupByTimeParameter, outputColumnNames);
+    return new GroupByLevelNode(planNodeId, groupByLevelDescriptors);
   }
 
   @Override
@@ -158,11 +138,17 @@ public class GroupByLevelNode extends AggregationNode {
       return false;
     }
     GroupByLevelNode that = (GroupByLevelNode) o;
-    return outputColumnNames.equals(that.outputColumnNames);
+    return Objects.equals(groupByLevelDescriptors, that.groupByLevelDescriptors);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), outputColumnNames);
+    return Objects.hash(super.hashCode(), groupByLevelDescriptors);
+  }
+
+  public String toString() {
+    return String.format(
+        "GroupByLevelNode-%s: Output: %s, Input: %s",
+        getPlanNodeId(), getOutputColumnNames(), groupByLevelDescriptors.size());
   }
 }

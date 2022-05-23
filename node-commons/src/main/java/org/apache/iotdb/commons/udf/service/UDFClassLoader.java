@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.service;
+package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
@@ -46,7 +46,7 @@ public class UDFClassLoader extends URLClassLoader {
    */
   private volatile boolean deprecated;
 
-  UDFClassLoader(String libRoot) throws IOException {
+  public UDFClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
     this.libRoot = libRoot;
     activeQueriesCount = new AtomicLong(0);

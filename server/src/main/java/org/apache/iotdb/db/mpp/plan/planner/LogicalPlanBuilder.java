@@ -64,6 +64,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -341,24 +342,23 @@ public class LogicalPlanBuilder {
       List<PlanNode> children,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       AggregationStep curStep) {
-    List<String> outputColumnNames = new ArrayList<>();
-    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    List<GroupByLevelDescriptor> groupByLevelDescriptors = new ArrayList<>();
     for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
       AggregationType aggregationFunction =
           AggregationType.valueOf(
               ((FunctionExpression) groupedExpression).getFunctionName().toUpperCase());
-      outputColumnNames.add(groupedExpression.getExpressionString());
-      aggregationDescriptorList.add(
-          new AggregationDescriptor(
+      groupByLevelDescriptors.add(
+          new GroupByLevelDescriptor(
               aggregationFunction,
               curStep,
-              new ArrayList<>(groupByLevelExpressions.get(groupedExpression))));
+              groupByLevelExpressions.get(groupedExpression).stream()
+                  .map(Expression::getExpressions)
+                  .flatMap(List::stream)
+                  .collect(Collectors.toList()),
+              groupedExpression.getExpressions().get(0)));
     }
     return new GroupByLevelNode(
-        context.getQueryId().genPlanNodeId(),
-        children,
-        aggregationDescriptorList,
-        outputColumnNames);
+        context.getQueryId().genPlanNodeId(), children, groupByLevelDescriptors);
   }
 
   private PlanNode createAggregationScanNode(

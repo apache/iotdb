@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.commons.udf.api.exception;
 
-public class UDFException extends RuntimeException {
+public class UDFRegistrationException extends UDFException {
 
-  public UDFException(String message) {
+  public UDFRegistrationException(String message, Throwable cause) {
     super(message);
+    this.initCause(cause);
   }
 
-  public UDFException(String message, Throwable cause) {
-    super(message, cause);
+  public UDFRegistrationException(String message) {
+    super(message);
   }
 }
