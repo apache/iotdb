@@ -132,7 +132,6 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
@@ -592,13 +591,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
-
-      conf.setEnablePerformanceStat(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
 
       int maxConcurrentClientNum =
           Integer.parseInt(

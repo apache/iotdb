@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.plan.plan.node.process;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
@@ -33,13 +31,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -64,8 +60,7 @@ public class GroupByLevelNodeSerdeTest {
             OrderBy.TIMESTAMP_ASC,
             null,
             groupByTimeParameter,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+            null);
     SeriesAggregationScanNode seriesAggregationScanNode2 =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
@@ -79,8 +74,7 @@ public class GroupByLevelNodeSerdeTest {
             OrderBy.TIMESTAMP_ASC,
             null,
             groupByTimeParameter,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+            null);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(

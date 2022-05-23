@@ -28,7 +28,7 @@ public class MinTimeDescAccumulator extends MinTimeAccumulator {
   public void addInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
+      if (timeRange.contains(curTime)) {
         updateMinTime(curTime);
       }
     }

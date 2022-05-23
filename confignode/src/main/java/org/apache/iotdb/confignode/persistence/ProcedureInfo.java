@@ -23,10 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
-import org.apache.iotdb.confignode.procedure.ProcedureFactory;
-import org.apache.iotdb.procedure.Procedure;
-import org.apache.iotdb.procedure.conf.ProcedureNodeConstant;
-import org.apache.iotdb.procedure.store.ProcedureWAL;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
+import org.apache.iotdb.confignode.procedure.store.ProcedureWAL;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -48,18 +48,11 @@ public class ProcedureInfo {
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
 
-  public static ProcedureInfo getInstance() {
-    return ProcedureInfoHolder.INSTANCE;
-  }
-
   public void load(List<Procedure> procedureList) {
     try {
       Files.list(Paths.get(procedureWalDir))
           .filter(
-              path ->
-                  path.getFileName()
-                      .toString()
-                      .endsWith(ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX))
+              path -> path.getFileName().toString().endsWith(ProcedureStore.PROCEDURE_WAL_SUFFIX))
           .sorted(
               (p1, p2) ->
                   Long.compareUnsigned(
@@ -82,7 +75,7 @@ public class ProcedureInfo {
   public TSStatus updateProcedure(UpdateProcedureReq updateProcedureReq) {
     Procedure procedure = updateProcedureReq.getProcedure();
     long procId = procedure.getProcId();
-    Path path = Paths.get(procedureWalDir, procId + ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX);
+    Path path = Paths.get(procedureWalDir, procId + ProcedureStore.PROCEDURE_WAL_SUFFIX);
     ProcedureWAL procedureWAL =
         procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path, procedureFactory));
     try {
@@ -102,14 +95,5 @@ public class ProcedureInfo {
     }
     procWALMap.remove(procId);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  private static class ProcedureInfoHolder {
-
-    private static final ProcedureInfo INSTANCE = new ProcedureInfo();
-
-    private ProcedureInfoHolder() {
-      // Empty constructor
-    }
   }
 }

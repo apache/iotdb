@@ -20,6 +20,8 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -43,14 +45,17 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Operation;
+import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -99,6 +104,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -297,7 +303,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.SET_STORAGE_GROUP, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 
@@ -313,6 +319,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
       }
 
+      // measurementAlias is also a nodeName
+      isLegalMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -367,7 +375,12 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getMeasurements());
       }
 
-      // Step 1: transfer from CreateAlignedTimeSeriesStatement to Statement
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurementAlias());
+
+      isLegalMeasurements(req.getMeasurements());
+
+      // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
           (CreateAlignedTimeSeriesStatement) StatementGenerator.createStatement(req);
 
@@ -391,13 +404,54 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} create {} timeseries, the first is {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.getPaths().size(),
+            req.getPaths().get(0));
+      }
+
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurementAliasList());
+
+      // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
+      CreateMultiTimeSeriesStatement statement =
+          (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
@@ -406,8 +460,46 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroup) {
-    throw new UnsupportedOperationException();
+  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
+    try {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} delete {} storage groups, the first is {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            storageGroups.size(),
+            storageGroups.get(0));
+      }
+
+      // Step 1: transfer from DeleteStorageGroupsReq to Statement
+      DeleteStorageGroupStatement statement =
+          (DeleteStorageGroupStatement) StatementGenerator.createStatement(storageGroups);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.DELETE_STORAGE_GROUPS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
@@ -537,6 +629,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
@@ -560,7 +655,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -582,6 +677,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
@@ -606,7 +704,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -628,6 +726,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
@@ -652,7 +753,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e,
+          OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
+          TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -671,6 +774,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           SESSION_MANAGER.getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
+
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -694,7 +800,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -707,6 +813,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
+
+      isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -732,7 +840,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -746,6 +854,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
@@ -792,6 +902,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
       // permission check
@@ -813,7 +926,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -868,7 +981,62 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
-    throw new UnsupportedOperationException();
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+    long startTime = System.currentTimeMillis();
+    try {
+      Statement s =
+          StatementGenerator.createStatement(req, SESSION_MANAGER.getZoneId(req.getSessionId()));
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+      AUDIT_LOGGER.debug("Session {} execute Row Data Query: {}", req.sessionId, req);
+      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
+      QueryId id = new QueryId(String.valueOf(queryId));
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.execute(
+              s,
+              id,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException("error code: " + result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(id);
+
+      TSExecuteStatementResp resp;
+      if (queryExecution.isQuery()) {
+        resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+        resp.setStatus(result.status);
+        resp.setQueryDataSet(
+            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
+      } else {
+        resp = RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      return resp;
+    } catch (Exception e) {
+      // TODO call the coordinator to release query resource
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
+    } finally {
+      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
+      }
+    }
   }
 
   @Override
@@ -883,11 +1051,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) {
+    // todo: check measurement using isLegalMeasurements()
     throw new UnsupportedOperationException();
   }
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
+    // todo: check measurement using isLegalMeasurements()
     throw new UnsupportedOperationException();
   }
 
@@ -930,6 +1100,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
+
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
       // permission check
@@ -952,7 +1125,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -979,7 +1152,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
-    if (CONFIG.isEnablePerformanceStat()) {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
       MetricsService.getInstance()
           .getMetricManager()
           .histogram(
@@ -1013,5 +1186,31 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private QueryId genQueryId(long id) {
     return new QueryId(String.valueOf(id));
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+    if (measurementLists == null) {
+      return;
+    }
+    for (List<String> measurementList : measurementLists) {
+      isLegalMeasurements(measurementList);
+    }
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurements(List<String> measurements) throws TException {
+    if (measurements == null) {
+      return;
+    }
+    for (String measurement : measurements) {
+      try {
+        if (measurement != null) {
+          PathUtils.isLegalPath(measurement);
+        }
+      } catch (IllegalPathException e) {
+        throw new TException(e.getMessage());
+      }
+    }
   }
 }

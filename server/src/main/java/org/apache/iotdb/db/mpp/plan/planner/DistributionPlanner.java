@@ -39,11 +39,16 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -231,6 +236,65 @@ public class DistributionPlanner {
       return timeJoinNode;
     }
 
+    public PlanNode visitSeriesAggregationScan(
+        SeriesAggregationScanNode node, DistributionPlanContext context) {
+      List<TRegionReplicaSet> dataDistribution =
+          analysis.getPartitionInfo(node.getSeriesPath(), node.getTimeFilter());
+      List<AggregationDescriptor> leafAggDescriptorList = new ArrayList<>();
+      node.getAggregationDescriptorList()
+          .forEach(
+              descriptor -> {
+                leafAggDescriptorList.add(
+                    new AggregationDescriptor(
+                        descriptor.getAggregationType(),
+                        AggregationStep.PARTIAL,
+                        descriptor.getInputExpressions()));
+              });
+
+      List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
+      node.getAggregationDescriptorList()
+          .forEach(
+              descriptor -> {
+                rootAggDescriptorList.add(
+                    new AggregationDescriptor(
+                        descriptor.getAggregationType(),
+                        AggregationStep.FINAL,
+                        descriptor.getInputExpressions()));
+              });
+
+      AggregationNode aggregationNode =
+          new AggregationNode(
+              context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
+        SeriesAggregationScanNode split = (SeriesAggregationScanNode) node.clone();
+        split.setAggregationDescriptorList(leafAggDescriptorList);
+        split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+        split.setRegionReplicaSet(dataRegion);
+        aggregationNode.addChild(split);
+      }
+      return aggregationNode;
+    }
+
+    @Override
+    public PlanNode visitAlignedSeriesScan(
+        AlignedSeriesScanNode node, DistributionPlanContext context) {
+      List<TRegionReplicaSet> dataDistribution =
+          analysis.getPartitionInfo(node.getAlignedPath(), node.getTimeFilter());
+      if (dataDistribution.size() == 1) {
+        node.setRegionReplicaSet(dataDistribution.get(0));
+        return node;
+      }
+      TimeJoinNode timeJoinNode =
+          new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
+        AlignedSeriesScanNode split = (AlignedSeriesScanNode) node.clone();
+        split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+        split.setRegionReplicaSet(dataRegion);
+        timeJoinNode.addChild(split);
+      }
+      return timeJoinNode;
+    }
+
     @Override
     public PlanNode visitSchemaFetchMerge(
         SchemaFetchMergeNode node, DistributionPlanContext context) {
@@ -266,7 +330,7 @@ public class DistributionPlanner {
 
       // Step 1: Get all source nodes. For the node which is not source, add it as the child of
       // current TimeJoinNode
-      List<SeriesScanNode> sources = new ArrayList<>();
+      List<SourceNode> sources = new ArrayList<>();
       for (PlanNode child : node.getChildren()) {
         if (child instanceof SeriesScanNode) {
           // If the child is SeriesScanNode, we need to check whether this node should be seperated
@@ -278,6 +342,18 @@ public class DistributionPlanner {
           // SeriesScanNode.
           for (TRegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
+            split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+            split.setRegionReplicaSet(dataRegion);
+            sources.add(split);
+          }
+        } else if (child instanceof AlignedSeriesScanNode) {
+          AlignedSeriesScanNode handle = (AlignedSeriesScanNode) child;
+          List<TRegionReplicaSet> dataDistribution =
+              analysis.getPartitionInfo(handle.getAlignedPath(), handle.getTimeFilter());
+          // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
+          // SeriesScanNode.
+          for (TRegionReplicaSet dataRegion : dataDistribution) {
+            AlignedSeriesScanNode split = (AlignedSeriesScanNode) handle.clone();
             split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             split.setRegionReplicaSet(dataRegion);
             sources.add(split);
@@ -296,8 +372,8 @@ public class DistributionPlanner {
       }
 
       // Step 2: For the source nodes, group them by the DataRegion.
-      Map<TRegionReplicaSet, List<SeriesScanNode>> sourceGroup =
-          sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getRegionReplicaSet));
+      Map<TRegionReplicaSet, List<SourceNode>> sourceGroup =
+          sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
@@ -433,7 +509,15 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSeriesAggregate(SeriesAggregationScanNode node, NodeGroupContext context) {
+    public PlanNode visitAlignedSeriesScan(AlignedSeriesScanNode node, NodeGroupContext context) {
+      context.putNodeDistribution(
+          node.getPlanNodeId(),
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
+      return node.clone();
+    }
+
+    public PlanNode visitSeriesAggregationScan(
+        SeriesAggregationScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));

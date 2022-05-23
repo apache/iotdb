@@ -32,7 +32,7 @@ WS
 
 
 /**
- * 2. Keywords
+ * 2. Keywords, new keywords should be added into IdentifierParser.g4
  */
 
 // Common Keywords
@@ -975,7 +975,7 @@ NAN_LITERAL
 
 
 /**
- * 6. Identifier
+ * 6. ID
  */
 
 ID
@@ -1005,15 +1005,15 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
+    : '"' ( '\\'. | '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\''| '\\') )* '\''
+    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`'| '\\') )* '`'
+    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
     ;
 
 

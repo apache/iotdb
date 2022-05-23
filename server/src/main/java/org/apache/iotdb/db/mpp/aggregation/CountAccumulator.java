@@ -40,7 +40,7 @@ public class CountAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
@@ -53,6 +53,9 @@ public class CountAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of Count should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     countValue += partialResult[0].getLong(0);
   }
 
@@ -64,6 +67,9 @@ public class CountAccumulator implements Accumulator {
   // finalResult should be single column, like: | finalCountValue |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
     countValue = finalResult.getLong(0);
   }
 

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.api.UDTF;
 
 import java.lang.reflect.InvocationTargetException;
 

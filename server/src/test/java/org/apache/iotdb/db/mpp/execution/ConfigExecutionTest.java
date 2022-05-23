@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -51,7 +54,8 @@ public class ConfigExecutionTest {
 
   @Test
   public void normalConfigTaskTest() {
-    IConfigTask task = () -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    IConfigTask task =
+        (clientManager) -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     ConfigExecution execution =
         new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
     execution.start();
@@ -69,7 +73,7 @@ public class ConfigExecutionTest {
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader("TestValue", TSDataType.INT32)), false);
     IConfigTask task =
-        () ->
+        (clientManager) ->
             immediateFuture(
                 new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock, datasetHeader));
     ConfigExecution execution =
@@ -89,7 +93,7 @@ public class ConfigExecutionTest {
   @Test
   public void exceptionConfigTaskTest() {
     IConfigTask task =
-        () -> {
+        (clientManager) -> {
           throw new RuntimeException("task throw exception when executing");
         };
     ConfigExecution execution =
@@ -110,7 +114,9 @@ public class ConfigExecutionTest {
       }
 
       @Override
-      public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
+      public ListenableFuture<ConfigTaskResult> execute(
+          IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+          throws InterruptedException {
         return result;
       }
     }
@@ -133,7 +139,7 @@ public class ConfigExecutionTest {
   @Test
   public void exceptionAfterInvokeGetStatusTest() {
     IConfigTask task =
-        () -> {
+        (clientManager) -> {
           throw new RuntimeException("task throw exception when executing");
         };
     ConfigExecution execution =
