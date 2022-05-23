@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -224,7 +223,6 @@ public class SeriesAggregationScanNode extends SourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
-    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
@@ -245,8 +243,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    TRegionReplicaSet regionReplicaSet =
-        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesAggregationScanNode(
         planNodeId,
@@ -255,7 +251,7 @@ public class SeriesAggregationScanNode extends SourceNode {
         scanOrder,
         timeFilter,
         groupByTimeParameter,
-        regionReplicaSet);
+        null);
   }
 
   @Override
