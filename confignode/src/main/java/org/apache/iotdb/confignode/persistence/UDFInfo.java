@@ -61,7 +61,7 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus createFunction(CreateFunctionReq req) {
+  public synchronized TSStatus createFunction(CreateFunctionReq req) {
     final String functionName = req.getFunctionName();
     final String className = req.getClassName();
     final List<String> uris = req.getUris();
@@ -81,13 +81,13 @@ public class UDFInfo implements SnapshotProcessor {
   }
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+  public synchronized boolean processTakeSnapshot(File snapshotDir) throws IOException {
     return udfExecutableManager.processTakeSnapshot(snapshotDir)
         && udfRegistrationService.processTakeSnapshot(snapshotDir);
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws IOException {
+  public synchronized void processLoadSnapshot(File snapshotDir) throws IOException {
     udfExecutableManager.processLoadSnapshot(snapshotDir);
     udfRegistrationService.processLoadSnapshot(snapshotDir);
   }
