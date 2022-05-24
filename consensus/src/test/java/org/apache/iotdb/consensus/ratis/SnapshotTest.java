@@ -112,7 +112,6 @@ public class SnapshotTest {
     SnapshotInfo info = proxy.getLatestSnapshot();
     Assert.assertEquals(info.getTerm(), 616);
     Assert.assertEquals(info.getIndex(), 4217);
-    Assert.assertTrue(info.getFiles().get(0).getPath().endsWith(snapshotFilenameLatest));
 
     // clean up
     proxy.getStateMachineStorage().cleanupOldSnapshots(null);
