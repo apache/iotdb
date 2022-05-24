@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -81,13 +82,13 @@ public class GroupByLevelNodeSerdeTest {
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(seriesAggregationScanNode1, seriesAggregationScanNode2),
             Collections.singletonList(
-                new AggregationDescriptor(
+                new GroupByLevelDescriptor(
                     AggregationType.MAX_TIME,
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-                        new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
-            Collections.singletonList("root.sg.*.s1"));
+                        new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))),
+                    new TimeSeriesOperand(new PartialPath("root.sg.*.s1")))));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     groupByLevelNode.serialize(byteBuffer);

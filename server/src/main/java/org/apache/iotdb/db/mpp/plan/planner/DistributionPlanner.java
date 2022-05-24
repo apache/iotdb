@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
@@ -41,14 +43,20 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -236,10 +244,26 @@ public class DistributionPlanner {
       return timeJoinNode;
     }
 
+    @Override
     public PlanNode visitSeriesAggregationScan(
         SeriesAggregationScanNode node, DistributionPlanContext context) {
+      return processSeriesAggregationSource(node, context);
+    }
+
+    @Override
+    public PlanNode visitAlignedSeriesAggregationScan(
+        AlignedSeriesAggregationScanNode node, DistributionPlanContext context) {
+      return processSeriesAggregationSource(node, context);
+    }
+
+    private PlanNode processSeriesAggregationSource(
+        SeriesAggregationSourceNode node, DistributionPlanContext context) {
       List<TRegionReplicaSet> dataDistribution =
-          analysis.getPartitionInfo(node.getSeriesPath(), node.getTimeFilter());
+          analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
+      if (dataDistribution.size() == 1) {
+        node.setRegionReplicaSet(dataDistribution.get(0));
+        return node;
+      }
       List<AggregationDescriptor> leafAggDescriptorList = new ArrayList<>();
       node.getAggregationDescriptorList()
           .forEach(
@@ -326,54 +350,38 @@ public class DistributionPlanner {
 
     @Override
     public PlanNode visitTimeJoin(TimeJoinNode node, DistributionPlanContext context) {
-      TimeJoinNode root = (TimeJoinNode) node.clone();
+      // Although some logic is similar between Aggregation and RawDataQuery,
+      // we still use separate method to process the distribution planning now
+      // to make the planning procedure more clear
+      if (isAggregationQuery(node)) {
+        return planAggregationWithTimeJoin(node, context);
+      }
 
+      TimeJoinNode root = (TimeJoinNode) node.clone();
       // Step 1: Get all source nodes. For the node which is not source, add it as the child of
       // current TimeJoinNode
       List<SourceNode> sources = new ArrayList<>();
       for (PlanNode child : node.getChildren()) {
-        if (child instanceof SeriesScanNode) {
+        if (child instanceof SeriesSourceNode) {
           // If the child is SeriesScanNode, we need to check whether this node should be seperated
           // into several splits.
-          SeriesScanNode handle = (SeriesScanNode) child;
+          SeriesSourceNode handle = (SeriesSourceNode) child;
           List<TRegionReplicaSet> dataDistribution =
-              analysis.getPartitionInfo(handle.getSeriesPath(), handle.getTimeFilter());
+              analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
           // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
           // SeriesScanNode.
           for (TRegionReplicaSet dataRegion : dataDistribution) {
-            SeriesScanNode split = (SeriesScanNode) handle.clone();
+            SeriesSourceNode split = (SeriesSourceNode) handle.clone();
             split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             split.setRegionReplicaSet(dataRegion);
             sources.add(split);
           }
-        } else if (child instanceof AlignedSeriesScanNode) {
-          AlignedSeriesScanNode handle = (AlignedSeriesScanNode) child;
-          List<TRegionReplicaSet> dataDistribution =
-              analysis.getPartitionInfo(handle.getAlignedPath(), handle.getTimeFilter());
-          // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
-          // SeriesScanNode.
-          for (TRegionReplicaSet dataRegion : dataDistribution) {
-            AlignedSeriesScanNode split = (AlignedSeriesScanNode) handle.clone();
-            split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-            split.setRegionReplicaSet(dataRegion);
-            sources.add(split);
-          }
-        } else if (child instanceof SeriesAggregationScanNode) {
-          // TODO: (xingtanzjr) We should do the same thing for SeriesAggregateScanNode. Consider to
-          // make SeriesAggregateScanNode
-          // and SeriesScanNode to derived from the same parent Class because they have similar
-          // process logic in many scenarios
-        } else {
-          // In a general logical query plan, the children of TimeJoinNode should only be
-          // SeriesScanNode or SeriesAggregateScanNode
-          // So this branch should not be touched.
-          root.addChild(visit(child, context));
         }
       }
-
       // Step 2: For the source nodes, group them by the DataRegion.
       Map<TRegionReplicaSet, List<SourceNode>> sourceGroup =
           sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
@@ -391,14 +399,203 @@ public class DistributionPlanner {
                 // We clone a TimeJoinNode from root to make the params to be consistent.
                 // But we need to assign a new ID to it
                 TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
-                root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
                 seriesScanNodes.forEach(parentOfGroup::addChild);
                 root.addChild(parentOfGroup);
               }
             }
           });
 
+      // Process the other children which are not SeriesSourceNode
+      for (PlanNode child : node.getChildren()) {
+        if (!(child instanceof SeriesSourceNode)) {
+          // In a general logical query plan, the children of TimeJoinNode should only be
+          // SeriesScanNode or SeriesAggregateScanNode
+          // So this branch should not be touched.
+          root.addChild(visit(child, context));
+        }
+      }
+
       return root;
+    }
+
+    private boolean isAggregationQuery(TimeJoinNode node) {
+      for (PlanNode child : node.getChildren()) {
+        if (child instanceof SeriesAggregationScanNode
+            || child instanceof AlignedSeriesAggregationScanNode) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private PlanNode planAggregationWithTimeJoin(
+        TimeJoinNode root, DistributionPlanContext context) {
+
+      List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
+          sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+      // construct AggregationDescriptor for AggregationNode
+      List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
+      for (PlanNode child : root.getChildren()) {
+        SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
+        handle
+            .getAggregationDescriptorList()
+            .forEach(
+                descriptor -> {
+                  rootAggDescriptorList.add(
+                      new AggregationDescriptor(
+                          descriptor.getAggregationType(),
+                          AggregationStep.FINAL,
+                          descriptor.getInputExpressions()));
+                });
+      }
+      AggregationNode aggregationNode =
+          new AggregationNode(
+              context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
+
+      final boolean[] addParent = {false};
+      sourceGroup.forEach(
+          (dataRegion, sourceNodes) -> {
+            if (sourceNodes.size() == 1) {
+              aggregationNode.addChild(sourceNodes.get(0));
+            } else {
+              if (!addParent[0]) {
+                sourceNodes.forEach(aggregationNode::addChild);
+                addParent[0] = true;
+              } else {
+                // We clone a TimeJoinNode from root to make the params to be consistent.
+                // But we need to assign a new ID to it
+                TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
+                parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                sourceNodes.forEach(parentOfGroup::addChild);
+                aggregationNode.addChild(parentOfGroup);
+              }
+            }
+          });
+
+      return aggregationNode;
+    }
+
+    public PlanNode visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
+      // Firstly, we build the tree structure for GroupByLevelNode
+      List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+      Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
+          sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+      GroupByLevelNode newRoot = (GroupByLevelNode) root.clone();
+      final boolean[] addParent = {false};
+      sourceGroup.forEach(
+          (dataRegion, sourceNodes) -> {
+            if (sourceNodes.size() == 1) {
+              newRoot.addChild(sourceNodes.get(0));
+            } else {
+              if (!addParent[0]) {
+                sourceNodes.forEach(newRoot::addChild);
+                addParent[0] = true;
+              } else {
+                // We clone a TimeJoinNode from root to make the params to be consistent.
+                // But we need to assign a new ID to it
+                GroupByLevelNode parentOfGroup = (GroupByLevelNode) root.clone();
+                parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                sourceNodes.forEach(parentOfGroup::addChild);
+                newRoot.addChild(parentOfGroup);
+              }
+            }
+          });
+
+      // Then, we calculate the attributes for GroupByLevelNode in each level
+      calculateGroupByLevelNodeAttributes(newRoot, 0);
+      return newRoot;
+    }
+
+    private void calculateGroupByLevelNodeAttributes(PlanNode node, int level) {
+      if (node == null) {
+        return;
+      }
+      node.getChildren().forEach(child -> calculateGroupByLevelNodeAttributes(child, level + 1));
+      if (!(node instanceof GroupByLevelNode)) {
+        return;
+      }
+      GroupByLevelNode handle = (GroupByLevelNode) node;
+
+      // Construct all outputColumns from children. Using Set here to avoid duplication
+      Set<String> childrenOutputColumns = new HashSet<>();
+      handle
+          .getChildren()
+          .forEach(child -> childrenOutputColumns.addAll(child.getOutputColumnNames()));
+
+      // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
+      // AggregationDescriptor
+      List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
+      for (GroupByLevelDescriptor originalDescriptor : handle.getGroupByLevelDescriptors()) {
+        List<Expression> descriptorExpression = new ArrayList<>();
+        for (String childColumn : childrenOutputColumns) {
+          // If this condition matched, the childColumn should come from GroupByLevelNode
+          if (isAggColumnMatchExpression(childColumn, originalDescriptor.getOutputExpression())) {
+            descriptorExpression.add(originalDescriptor.getOutputExpression());
+            continue;
+          }
+          for (Expression exp : originalDescriptor.getInputExpressions()) {
+            if (isAggColumnMatchExpression(childColumn, exp)) {
+              descriptorExpression.add(exp);
+            }
+          }
+        }
+        if (descriptorExpression.size() == 0) {
+          continue;
+        }
+        GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
+        descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.PARTIAL);
+        descriptor.setInputExpressions(descriptorExpression);
+
+        descriptorList.add(descriptor);
+      }
+      handle.setGroupByLevelDescriptors(descriptorList);
+    }
+
+    // TODO: (xingtanzjr) need to confirm the logic when processing UDF
+    private boolean isAggColumnMatchExpression(String columnName, Expression expression) {
+      if (columnName == null) {
+        return false;
+      }
+      return columnName.contains(expression.getExpressionString());
+    }
+
+    private List<SeriesAggregationSourceNode> splitAggregationSourceByPartition(
+        MultiChildNode root, DistributionPlanContext context) {
+      // Step 1: split SeriesAggregationSourceNode according to data partition
+      List<SeriesAggregationSourceNode> sources = new ArrayList<>();
+      Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
+      for (PlanNode child : root.getChildren()) {
+        SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
+        List<TRegionReplicaSet> dataDistribution =
+            analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
+        for (TRegionReplicaSet dataRegion : dataDistribution) {
+          SeriesAggregationSourceNode split = (SeriesAggregationSourceNode) handle.clone();
+          split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+          split.setRegionReplicaSet(dataRegion);
+          // Let each split reference different object of AggregationDescriptorList
+          split.setAggregationDescriptorList(
+              handle.getAggregationDescriptorList().stream()
+                  .map(AggregationDescriptor::deepClone)
+                  .collect(Collectors.toList()));
+          sources.add(split);
+        }
+        regionCountPerSeries.put(handle.getPartitionPath(), dataDistribution.size());
+      }
+
+      // Step 2: change the step for each SeriesAggregationSourceNode according to its split count
+      for (SeriesAggregationSourceNode source : sources) {
+        //        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
+        // TODO: (xingtanzjr) need to optimize this step later. We make it as Partial now.
+        boolean isFinal = false;
+        source
+            .getAggregationDescriptorList()
+            .forEach(d -> d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL));
+      }
+      return sources;
     }
 
     public PlanNode visit(PlanNode node, DistributionPlanContext context) {
@@ -524,9 +721,30 @@ public class DistributionPlanner {
       return node.clone();
     }
 
+    public PlanNode visitAlignedSeriesAggregationScan(
+        AlignedSeriesAggregationScanNode node, NodeGroupContext context) {
+      context.putNodeDistribution(
+          node.getPlanNodeId(),
+          new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
+      return node.clone();
+    }
+
     @Override
     public PlanNode visitTimeJoin(TimeJoinNode node, NodeGroupContext context) {
-      TimeJoinNode newNode = (TimeJoinNode) node.clone();
+      return processMultiChildNode(node, context);
+    }
+
+    public PlanNode visitRowBasedSeriesAggregate(AggregationNode node, NodeGroupContext context) {
+      return processMultiChildNode(node, context);
+    }
+
+    @Override
+    public PlanNode visitGroupByLevel(GroupByLevelNode node, NodeGroupContext context) {
+      return processMultiChildNode(node, context);
+    }
+
+    private PlanNode processMultiChildNode(MultiChildNode node, NodeGroupContext context) {
+      MultiChildNode newNode = (MultiChildNode) node.clone();
       List<PlanNode> visitedChildren = new ArrayList<>();
       node.getChildren()
           .forEach(

@@ -290,9 +290,15 @@ public class Analyzer {
 
           if (queryStatement.isGroupByLevel()) {
             // map from grouped expression to set of input expressions
+            Map<Expression, Expression> rawPathToGroupedPathMap = new HashMap<>();
             Map<Expression, Set<Expression>> groupByLevelExpressions =
-                analyzeGroupByLevel(queryStatement, outputExpressions, transformExpressions);
+                analyzeGroupByLevel(
+                    queryStatement,
+                    outputExpressions,
+                    transformExpressions,
+                    rawPathToGroupedPathMap);
             analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+            analysis.setRawPathToGroupedPathMap(rawPathToGroupedPathMap);
           }
 
           // true if nested expressions and UDFs exist in aggregation function
@@ -635,7 +641,8 @@ public class Analyzer {
     private Map<Expression, Set<Expression>> analyzeGroupByLevel(
         QueryStatement queryStatement,
         List<Pair<Expression, String>> outputExpressions,
-        Set<Expression> transformExpressions) {
+        Set<Expression> transformExpressions,
+        Map<Expression, Expression> rawPathToGroupedPathMap) {
       GroupByLevelController groupByLevelController =
           new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
       for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
@@ -643,6 +650,7 @@ public class Analyzer {
       }
       Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
           groupByLevelController.getGroupedPathMap();
+      rawPathToGroupedPathMap.putAll(groupByLevelController.getRawPathToGroupedPathMap());
       // check whether the datatype of paths which has the same output column name are consistent
       // if not, throw a SemanticException
       rawGroupByLevelExpressions.values().forEach(this::checkDataTypeConsistencyInGroupByLevel);

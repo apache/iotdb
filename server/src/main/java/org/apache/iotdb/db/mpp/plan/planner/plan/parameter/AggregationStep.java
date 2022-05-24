@@ -65,6 +65,10 @@ public enum AggregationStep {
     return inputType == InputType.RAW;
   }
 
+  public boolean isInputPartial() {
+    return inputType == InputType.PARTIAL;
+  }
+
   public boolean isInputFinal() {
     return inputType == InputType.FINAL;
   }

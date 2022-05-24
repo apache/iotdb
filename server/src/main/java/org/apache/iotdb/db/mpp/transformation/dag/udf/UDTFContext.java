@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 
 import java.time.ZoneId;
 import java.util.HashMap;
