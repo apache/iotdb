@@ -785,27 +785,7 @@ public class LocalExecutionPlanner {
       List<SlidingWindowAggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        List<String> inputColumnNames =
-            descriptor.getInputExpressions().stream()
-                .map(Expression::getExpressionString)
-                .collect(Collectors.toList());
-        // it may include double parts
-        List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
-        inputColumnNames.forEach(
-            inputColumnName -> inputLocationParts.add(layout.get(inputColumnName)));
-
-        List<InputLocation[]> inputLocationList = new ArrayList<>();
-        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-          if (inputColumnNames.size() == 1) {
-            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
-          } else {
-            inputLocationList.add(
-                new InputLocation[] {
-                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
-                });
-          }
-        }
-
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
         aggregators.add(
             SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
                 descriptor.getAggregationType(),
@@ -859,23 +839,7 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        List<String> inputColumnNames = descriptor.getInputColumnNames();
-        // it may include double parts
-        List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
-        inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
-
-        List<InputLocation[]> inputLocationList = new ArrayList<>();
-        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-          if (inputColumnNames.size() == 1) {
-            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
-          } else {
-            inputLocationList.add(
-                new InputLocation[] {
-                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
-                });
-          }
-        }
-
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
@@ -911,6 +875,27 @@ public class LocalExecutionPlanner {
         return new AggregationOperator(
             operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
       }
+    }
+
+    private List<InputLocation[]> calcInputLocationList(
+        AggregationDescriptor descriptor, Map<String, List<InputLocation>> layout) {
+      List<String> inputColumnNames = descriptor.getInputColumnNames();
+      // it may include double parts
+      List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
+      inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
+
+      List<InputLocation[]> inputLocationList = new ArrayList<>();
+      for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+        if (inputColumnNames.size() == 1) {
+          inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+        } else {
+          inputLocationList.add(
+              new InputLocation[] {
+                inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+              });
+        }
+      }
+      return inputLocationList;
     }
 
     @Override
