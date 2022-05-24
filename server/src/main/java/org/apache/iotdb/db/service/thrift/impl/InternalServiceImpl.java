@@ -347,7 +347,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus createFunction(TCreateFunctionRequest request) throws TException {
+  public TSStatus createFunction(TCreateFunctionRequest request) {
     try {
       UDFRegistrationService.getInstance()
           .register(

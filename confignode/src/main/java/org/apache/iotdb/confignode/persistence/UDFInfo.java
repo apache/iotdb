@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.udf.api.exception.UDFException;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
@@ -46,12 +47,19 @@ public class UDFInfo implements SnapshotProcessor {
   private final UDFExecutableManager udfExecutableManager;
   private final UDFRegistrationService udfRegistrationService;
 
-  public UDFInfo() throws IOException {
-    udfExecutableManager =
-        UDFExecutableManager.setupAndGetInstance(
-            CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
-    udfRegistrationService =
-        UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
+  public UDFInfo() {
+    try {
+      udfExecutableManager =
+          UDFExecutableManager.setupAndGetInstance(
+              CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
+      udfExecutableManager.start();
+
+      udfRegistrationService =
+          UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
+      udfRegistrationService.start();
+    } catch (Exception e) {
+      throw new UDFException(e.getMessage());
+    }
   }
 
   public TSStatus createFunction(CreateFunctionReq req) {
@@ -80,4 +88,12 @@ public class UDFInfo implements SnapshotProcessor {
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {}
+
+  public UDFExecutableManager getUdfExecutableManager() {
+    return udfExecutableManager;
+  }
+
+  public UDFRegistrationService getUdfRegistrationService() {
+    return udfRegistrationService;
+  }
 }

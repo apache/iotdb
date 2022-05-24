@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
-import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableResource;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.CreateFunctionHandler;
@@ -37,7 +36,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -53,14 +51,10 @@ public class UDFManager {
 
   private final ConfigManager configManager;
   private final UDFInfo udfInfo;
-  private final UDFExecutableManager udfExecutableManager;
 
-  public UDFManager(ConfigManager configManager, UDFInfo udfInfo) throws IOException {
+  public UDFManager(ConfigManager configManager, UDFInfo udfInfo) {
     this.configManager = configManager;
     this.udfInfo = udfInfo;
-    udfExecutableManager =
-        UDFExecutableManager.setupAndGetInstance(
-            CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
   }
 
   // TODO: using procedure
@@ -105,13 +99,13 @@ public class UDFManager {
 
   private void fetchExecutablesAndCheckInstantiation(String className, List<String> uris)
       throws Exception {
-    final UDFExecutableResource resource = udfExecutableManager.request(uris);
+    final UDFExecutableResource resource = udfInfo.getUdfExecutableManager().request(uris);
     try (UDFClassLoader temporaryUdfClassLoader = new UDFClassLoader(resource.getResourceDir())) {
       Class.forName(className, true, temporaryUdfClassLoader)
           .getDeclaredConstructor()
           .newInstance();
     } finally {
-      udfExecutableManager.removeFromTemporaryLibRoot(resource);
+      udfInfo.getUdfExecutableManager().removeFromTemporaryLibRoot(resource);
     }
   }
 

@@ -322,15 +322,11 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void initUdfServices() throws StartupException {
-    try {
-      UDFExecutableManager.setupAndGetInstance(
-          IoTDBDescriptor.getInstance().getConfig().getTemporaryLibDir(),
-          IoTDBDescriptor.getInstance().getConfig().getUdfDir());
-    } catch (Exception e) {
-      throw new StartupException(e);
-    }
-
     registerManager.register(TemporaryQueryDataFileService.getInstance());
+    registerManager.register(
+        UDFExecutableManager.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getTemporaryLibDir(),
+            IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
     registerManager.register(
         UDFClassLoaderManager.setupAndGetInstance(
             IoTDBDescriptor.getInstance().getConfig().getUdfDir()));

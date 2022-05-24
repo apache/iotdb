@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.commons.udf.service;
 
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
@@ -32,7 +35,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class UDFExecutableManager {
+public class UDFExecutableManager implements IService {
 
   private final String temporaryLibRoot;
   private final String extLibRoot;
@@ -117,16 +120,38 @@ public class UDFExecutableManager {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
+  // IService
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  @Override
+  public void start() throws StartupException {
+    try {
+      makeDirIfNecessary(temporaryLibRoot);
+      makeDirIfNecessary(extLibRoot);
+    } catch (Exception e) {
+      throw new StartupException(e);
+    }
+  }
+
+  @Override
+  public void stop() {
+    // nothing to do
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.UDF_EXECUTABLE_MANAGER_SERVICE;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   private static UDFExecutableManager INSTANCE = null;
 
   public static synchronized UDFExecutableManager setupAndGetInstance(
-      String temporaryLibRoot, String extLibRoot) throws IOException {
+      String temporaryLibRoot, String extLibRoot) {
     if (INSTANCE == null) {
-      makeDirIfNecessary(temporaryLibRoot);
-      makeDirIfNecessary(extLibRoot);
       INSTANCE = new UDFExecutableManager(temporaryLibRoot, extLibRoot);
     }
     return INSTANCE;
