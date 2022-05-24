@@ -41,6 +41,21 @@ if [ -z "$PID" ]; then
   exit 1
 fi
 
+PIDS=$(ps ax | grep -i 'IoTDB' | grep java | grep -v grep | awk '{print $1}')
+sig=0
+for every_pid in ${PIDS}
+do
+  if [ "$every_pid" = "$PID" ]; then
+    sig=1
+    break
+  fi
+done
+
+if [ $sig -eq 0 ]; then
+  echo "No IoTDB server to stop"
+  exit 1
+fi
+
 echo -n "Begin to stop IoTDB ..."
 kill -s TERM $PID
 for ((i=1; i<=1000;i++))   #check status in 100 sec
