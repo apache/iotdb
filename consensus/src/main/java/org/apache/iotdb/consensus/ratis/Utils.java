@@ -44,8 +44,12 @@ public class Utils {
 
   private Utils() {}
 
-  public static String IPAddress(TEndPoint endpoint) {
+  public static String HostAddress(TEndPoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
+  }
+
+  public static String fromTEndPointToString(TEndPoint endpoint) {
+    return String.format("%s_%d", endpoint.getIp(), endpoint.getPort());
   }
 
   /** Encode the ConsensusGroupId into 6 bytes: 2 Bytes for Group Type and 4 Bytes for Group ID */
@@ -58,11 +62,11 @@ public class Utils {
   }
 
   public static RaftPeerId fromTEndPointToRaftPeerId(TEndPoint endpoint) {
-    return RaftPeerId.valueOf(String.format("%s-%d", endpoint.getIp(), endpoint.getPort()));
+    return RaftPeerId.valueOf(fromTEndPointToString(endpoint));
   }
 
   public static TEndPoint formRaftPeerIdToTEndPoint(RaftPeerId id) {
-    String[] items = id.toString().split("-");
+    String[] items = id.toString().split("_");
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 
@@ -75,7 +79,7 @@ public class Utils {
   public static RaftPeer fromTEndPointAndPriorityToRaftPeer(TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
         .setId(fromTEndPointToRaftPeerId(endpoint))
-        .setAddress(IPAddress(endpoint))
+        .setAddress(HostAddress(endpoint))
         .setPriority(priority)
         .build();
   }

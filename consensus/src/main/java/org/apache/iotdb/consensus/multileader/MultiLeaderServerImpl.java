@@ -62,7 +62,7 @@ public class MultiLeaderServerImpl {
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.controller =
-        new IndexController(storageDir, Utils.IPAddress(thisNode.getEndpoint()), true);
+        new IndexController(storageDir, Utils.fromTEndPointToString(thisNode.getEndpoint()), true);
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();

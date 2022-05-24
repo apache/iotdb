@@ -132,7 +132,8 @@ public class LogDispatcher {
     public LogDispatcherThread(Peer peer) {
       this.peer = peer;
       this.controller =
-          new IndexController(impl.getStorageDir(), Utils.IPAddress(peer.getEndpoint()), false);
+          new IndexController(
+              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()), false);
       this.syncStatus = new SyncStatus(controller);
     }
 
