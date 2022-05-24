@@ -23,11 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
@@ -45,16 +48,23 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PipeInfoResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.sync.SyncReceiverManager;
+import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
+import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.SyncReceiverInfo;
+import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -101,14 +111,34 @@ public class ConfigManager implements Manager {
   private final SyncReceiverManager syncReceiverManager;
 
   public ConfigManager() throws IOException {
-    this.nodeManager = new NodeManager(this);
-    this.partitionManager = new PartitionManager(this);
-    this.clusterSchemaManager = new ClusterSchemaManager(this);
-    this.permissionManager = new PermissionManager(this);
+    // Build the persistence module
+    NodeInfo nodeInfo = new NodeInfo();
+    ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
+    PartitionInfo partitionInfo = new PartitionInfo();
+    AuthorInfo authorInfo = new AuthorInfo();
+    ProcedureInfo procedureInfo = new ProcedureInfo();
+    SyncReceiverInfo syncReceiverInfo = new SyncReceiverInfo();
+
+    // Build state machine and executor
+    ConfigRequestExecutor executor =
+        new ConfigRequestExecutor(
+            nodeInfo,
+            clusterSchemaInfo,
+            partitionInfo,
+            authorInfo,
+            procedureInfo,
+            syncReceiverInfo);
+    PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
+
+    // Build the manager module
+    this.nodeManager = new NodeManager(this, nodeInfo);
+    this.clusterSchemaManager = new ClusterSchemaManager(this, clusterSchemaInfo);
+    this.partitionManager = new PartitionManager(this, partitionInfo);
+    this.permissionManager = new PermissionManager(this, authorInfo);
+    this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.loadManager = new LoadManager(this);
-    this.procedureManager = new ProcedureManager(this);
-    this.consensusManager = new ConsensusManager(this);
-    this.syncReceiverManager = new SyncReceiverManager(this);
+    this.syncReceiverManager = new SyncReceiverManager(this, syncReceiverInfo);
+    this.consensusManager = new ConsensusManager(stateMachine);
 
     // We are on testing.......
     if (ConfigNodeDescriptor.getInstance().getConf().isEnableHeartbeat()) {
@@ -135,7 +165,7 @@ public class ConfigManager implements Manager {
     } else {
       DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
-      dataSet.setConfigNodeList(NodeInfo.getInstance().getOnlineConfigNodes());
+      dataSet.setConfigNodeList(nodeManager.getOnlineConfigNodes());
       return dataSet;
     }
   }
@@ -146,7 +176,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return nodeManager.getDataNodeInfo(getDataNodeInfoReq);
     } else {
-      DataNodeLocationsResp dataSet = new DataNodeLocationsResp();
+      DataNodeInfosResp dataSet = new DataNodeInfosResp();
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -235,7 +265,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
-          ClusterSchemaInfo.getInstance().getDeleteStorageGroups(deletedPaths);
+          getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
       for (Map.Entry<String, TStorageGroupSchema> storageGroupSchemaEntry :
           deleteStorageSchemaMap.entrySet()) {
         String sgName = storageGroupSchemaEntry.getKey();
@@ -291,11 +321,7 @@ public class ConfigManager implements Manager {
         partitionSlotsMap = new HashMap<>();
       } else {
         for (String storageGroup : getAllSet) {
-          if (partitionSlotsMap.containsKey(storageGroup)) {
-            partitionSlotsMap.replace(storageGroup, new ArrayList<>());
-          } else {
-            partitionSlotsMap.put(storageGroup, new ArrayList<>());
-          }
+          partitionSlotsMap.put(storageGroup, new ArrayList<>());
         }
       }
 
@@ -356,6 +382,34 @@ public class ConfigManager implements Manager {
       return resp;
     } else {
       SchemaPartitionResp dataSet = new SchemaPartitionResp();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+  }
+
+  @Override
+  public DataSet getChildPathsPartition(PartialPath partialPath) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      GetChildPathsPartitionReq getChildPathsPartitionReq = new GetChildPathsPartitionReq();
+      getChildPathsPartitionReq.setPartialPath(partialPath);
+      return partitionManager.getChildPathsPartition(getChildPathsPartitionReq);
+    } else {
+      SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+  }
+
+  @Override
+  public DataSet getChildNodesPartition(PartialPath partialPath) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      GetChildNodesPartitionReq getChildNodesPartitionReq = new GetChildNodesPartitionReq();
+      getChildNodesPartitionReq.setPartialPath(partialPath);
+      return partitionManager.getChildNodesPartition(getChildNodesPartitionReq);
+    } else {
+      SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
       dataSet.setStatus(status);
       return dataSet;
     }

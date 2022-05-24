@@ -58,6 +58,8 @@ public enum ConfigRequestType {
   ListUserRoles,
   ListRoleUsers,
   ApplyConfigNode,
+  GetChildPathsPartition,
+  GetChildNodesPartition,
   OperatePipe,
   ShowPipe
 }

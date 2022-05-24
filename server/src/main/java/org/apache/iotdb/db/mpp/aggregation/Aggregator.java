@@ -55,24 +55,37 @@ public class Aggregator {
     this.inputLocationList = inputLocationList;
   }
 
-  // Used for SeriesAggregateScanOperator
+  // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
   public void processTsBlock(TsBlock tsBlock) {
     checkArgument(
-        step.isInputRaw(), "Step in SeriesAggregateScanOperator can only process raw input");
-    // TODO Aligned TimeSeries
-    accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
+        step.isInputRaw(),
+        "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
+    if (inputLocationList == null) {
+      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
+    } else {
+      for (InputLocation[] inputLocations : inputLocationList) {
+        checkArgument(
+            inputLocations[0].getTsBlockIndex() == 0,
+            "RawDataAggregateOperator can only process one tsBlock input.");
+        Column[] timeValueColumn = new Column[2];
+        timeValueColumn[0] = tsBlock.getTimeColumn();
+        timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+        accumulator.addInput(timeValueColumn, timeRange);
+      }
+    }
   }
 
-  // Used for aggregateOperator
+  // Used for AggregateOperator
   public void processTsBlocks(TsBlock[] tsBlock) {
-    for (InputLocation[] inputLocations : inputLocationList) {
-      if (step.isInputRaw()) {
-        TsBlock rawTsBlock = tsBlock[inputLocations[0].getTsBlockIndex()];
-        Column[] timeValueColumn = new Column[2];
-        timeValueColumn[0] = rawTsBlock.getTimeColumn();
-        timeValueColumn[1] = rawTsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        accumulator.addInput(timeValueColumn, timeRange);
-      } else {
+    checkArgument(!step.isInputRaw(), "Step in AggregateOperator cannot process raw input");
+    if (step.isInputFinal()) {
+      checkArgument(inputLocationList.size() == 1, "Final output can only be single column");
+      Column finalResult =
+          tsBlock[inputLocationList.get(0)[0].getTsBlockIndex()].getColumn(
+              inputLocationList.get(0)[0].getValueColumnIndex());
+      accumulator.setFinal(finalResult);
+    } else {
+      for (InputLocation[] inputLocations : inputLocationList) {
         Column[] columns = new Column[inputLocations.length];
         for (int i = 0; i < inputLocations.length; i++) {
           columns[i] =
@@ -96,6 +109,17 @@ public class Aggregator {
     accumulator.addStatistics(statistics);
   }
 
+  /** Used for AlignedSeriesAggregateScanOperator. */
+  public void processStatistics(Statistics[] statistics) {
+    for (InputLocation[] inputLocations : inputLocationList) {
+      checkArgument(
+          inputLocations[0].getTsBlockIndex() == 0,
+          "AlignedSeriesAggregateScanOperator can only process one tsBlock input.");
+      int valueIndex = inputLocations[0].getValueColumnIndex();
+      accumulator.addStatistics(statistics[valueIndex]);
+    }
+  }
+
   public TSDataType[] getOutputType() {
     if (step.isOutputPartial()) {
       return accumulator.getIntermediateType();
@@ -105,6 +129,7 @@ public class Aggregator {
   }
 
   public void reset() {
+    timeRange = new TimeRange(0, Long.MAX_VALUE);
     accumulator.reset();
   }
 

@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -52,6 +55,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 
 public abstract class PlanVisitor<R, C> {
 
@@ -65,7 +73,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSeriesAggregate(SeriesAggregationScanNode node, C context) {
+  public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -73,7 +81,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitAlignedSeriesAggregate(AlignedSeriesAggregationScanNode node, C context) {
+  public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -198,6 +206,38 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeleteRegion(DeleteRegionNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertRow(InsertRowNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertTablet(InsertTabletNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertRows(InsertRowsNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertMultiTablets(InsertMultiTabletsNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInsertRowsOfOneDevice(InsertRowsOfOneDeviceNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitChildPathsSchemaScan(ChildPathsSchemaScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitChildNodesSchemaScan(ChildNodesSchemaScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitNodeManagementMemoryMerge(NodeManagementMemoryMergeNode node, C context) {
     return visitPlan(node, context);
   }
 }

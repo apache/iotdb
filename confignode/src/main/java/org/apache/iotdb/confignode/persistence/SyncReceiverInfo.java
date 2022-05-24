@@ -57,7 +57,7 @@ public class SyncReceiverInfo {
   private Map<String, List<PipeMessage>> pipeMessageMap;
   private ReceiverLog log;
 
-  private SyncReceiverInfo() {
+  public SyncReceiverInfo() {
     log = new ReceiverLog();
     ReceiverLogAnalyzer analyzer = new ReceiverLogAnalyzer();
     try {
@@ -306,10 +306,6 @@ public class SyncReceiverInfo {
     this.pipeServerEnable = pipeServerEnable;
   }
 
-  public static SyncReceiverInfo getInstance() {
-    return SyncReceiverInfo.SyncReceiverInfoHolder.INSTANCE;
-  }
-
   public PipeInfoResp showPipe(ShowPipeReq req) {
     PipeInfoResp pipeInfoResp = new PipeInfoResp();
     if (StringUtils.isEmpty(req.getPipeName())) {
@@ -319,11 +315,5 @@ public class SyncReceiverInfo {
     }
     pipeInfoResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return pipeInfoResp;
-  }
-
-  private static class SyncReceiverInfoHolder {
-    private static final SyncReceiverInfo INSTANCE = new SyncReceiverInfo();
-
-    private SyncReceiverInfoHolder() {}
   }
 }

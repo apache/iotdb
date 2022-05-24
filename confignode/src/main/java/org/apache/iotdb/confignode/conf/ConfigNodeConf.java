@@ -133,10 +133,10 @@ public class ConfigNodeConf {
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   /** The heartbeat interval in milliseconds */
-  private long heartbeatInterval = 3000;
+  private long heartbeatInterval = 1000;
 
   /** This parameter only exists for a few days */
-  private boolean enableHeartbeat = false;
+  private boolean enableHeartbeat = true;
 
   ConfigNodeConf() {
     // empty constructor

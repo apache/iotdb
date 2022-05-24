@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -44,6 +44,8 @@ public class AggregationDescriptor {
    */
   private final List<Expression> inputExpressions;
 
+  private String parametersString;
+
   public AggregationDescriptor(
       AggregationType aggregationType, AggregationStep step, List<Expression> inputExpressions) {
     this.aggregationType = aggregationType;
@@ -52,7 +54,60 @@ public class AggregationDescriptor {
   }
 
   public List<String> getOutputColumnNames() {
-    return new ArrayList<>();
+    List<AggregationType> outputAggregationTypes = new ArrayList<>();
+    if (step.isOutputPartial()) {
+      switch (aggregationType) {
+        case AVG:
+          outputAggregationTypes.add(AggregationType.COUNT);
+          outputAggregationTypes.add(AggregationType.SUM);
+          break;
+        case FIRST_VALUE:
+          outputAggregationTypes.add(AggregationType.FIRST_VALUE);
+          outputAggregationTypes.add(AggregationType.MIN_TIME);
+          break;
+        case LAST_VALUE:
+          outputAggregationTypes.add(AggregationType.LAST_VALUE);
+          outputAggregationTypes.add(AggregationType.MAX_TIME);
+          break;
+        default:
+          outputAggregationTypes.add(aggregationType);
+      }
+    } else {
+      outputAggregationTypes.add(aggregationType);
+    }
+    List<String> outputColumnNames = new ArrayList<>();
+    for (AggregationType outputType : outputAggregationTypes) {
+      outputColumnNames.add(
+          outputType.toString().toLowerCase() + "(" + getParametersString() + ")");
+    }
+    return outputColumnNames;
+  }
+
+  /**
+   * Generates the parameter part of the function column name.
+   *
+   * <p>Example:
+   *
+   * <p>Full column name -> udf(root.sg.d.s1, sin(root.sg.d.s1))
+   *
+   * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
+   */
+  public String getParametersString() {
+    if (parametersString == null) {
+      StringBuilder builder = new StringBuilder();
+      if (!inputExpressions.isEmpty()) {
+        builder.append(inputExpressions.get(0).toString());
+        for (int i = 1; i < inputExpressions.size(); ++i) {
+          builder.append(", ").append(inputExpressions.get(i).toString());
+        }
+      }
+      parametersString = builder.toString();
+    }
+    return parametersString;
+  }
+
+  public List<Expression> getInputExpressions() {
+    return inputExpressions;
   }
 
   public AggregationType getAggregationType() {
@@ -65,10 +120,6 @@ public class AggregationDescriptor {
 
   public void setStep(AggregationStep step) {
     this.step = step;
-  }
-
-  public List<Expression> getInputExpressions() {
-    return inputExpressions;
   }
 
   public void serialize(ByteBuffer byteBuffer) {

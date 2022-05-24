@@ -45,6 +45,8 @@ public class HeaderConstant {
   public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
+  public static final String COLUMN_CHILDPATHS = "child paths";
+  public static final String COLUMN_CHILDNODES = "child nodes";
 
   public static final String COLUMN_PIPE_CREATE_TIME = "create time";
   public static final String COLUMN_PIPE_NAME = "name";
@@ -66,6 +68,8 @@ public class HeaderConstant {
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
   public static final DatasetHeader showTTLHeader;
+  public static final DatasetHeader showChildPathsHeader;
+  public static final DatasetHeader showChildNodesHeader;
   public static final DatasetHeader showPipeHeader;
 
   // dataset header for count statement
@@ -142,6 +146,12 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
             true);
+    showChildPathsHeader =
+        new DatasetHeader(
+            Arrays.asList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
+    showChildNodesHeader =
+        new DatasetHeader(
+            Arrays.asList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
     showPipeHeader =
         new DatasetHeader(
             Arrays.asList(

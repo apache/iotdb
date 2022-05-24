@@ -91,7 +91,6 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       LOGGER.warn(

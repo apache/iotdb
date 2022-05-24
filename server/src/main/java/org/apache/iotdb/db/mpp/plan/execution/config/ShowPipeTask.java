@@ -18,24 +18,28 @@
  */
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.statement.sync.ShowPipeStatement;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,24 +53,20 @@ public class ShowPipeTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
+  public ListenableFuture<ConfigTaskResult> execute(
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     List<TPipeInfo> pipeInfoList = new ArrayList<>();
     if (config.isClusterMode()) {
-      ConfigNodeClient client = null;
       TShowPipeReq showPipeReq = new TShowPipeReq();
       showPipeReq.setPipeName(showPipeStatement.getPipeName());
-      try {
-        client = new ConfigNodeClient();
+      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TShowPipeResp resp = client.showPipe(showPipeReq);
         pipeInfoList = resp.getPipeInfoList();
-      } catch (IoTDBConnectionException e) {
+      } catch (TException | IOException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
-      } finally {
-        if (client != null) {
-          client.close();
-        }
       }
     } else {
       // TODO

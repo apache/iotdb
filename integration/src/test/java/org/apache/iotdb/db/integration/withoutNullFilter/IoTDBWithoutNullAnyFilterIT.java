@@ -1254,7 +1254,7 @@ public class IoTDBWithoutNullAnyFilterIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.** without null any(`root`.test.sg1.s2, `root`.test.sg2.s3)");
+              "select s2, s3 from root.test.** without null any(root.test.sg1.s2, root.test.sg2.s3)");
       String[] columns =
           new String[] {
             "root.test.sg1.s2", "root.test.sg1.s3", "root.test.sg2.s2", "root.test.sg2.s3"
@@ -1282,7 +1282,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root`.test.sg1.s2)");
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.sg1.s2)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1306,7 +1306,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root`.test.sg1.s2, s3)");
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.sg1.s2, s3)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1330,7 +1330,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root`.test.*.s2)");
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.*.s2)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1427,7 +1427,7 @@ public class IoTDBWithoutNullAnyFilterIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(*) from root.test.** group by([1,10), 2ms) without null any(last_value(`root.test.sg1.s2`)) align by device");
+              "select last_value(*) from root.test.** group by([1,10), 2ms) without null any(last_value(root.test.sg1.s2)) align by device");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE));
     }

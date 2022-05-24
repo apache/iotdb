@@ -23,7 +23,7 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeLocation dataNodeLocation
+  1: required common.TDataNodeInfo dataNodeInfo
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
@@ -43,10 +43,10 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
 }
 
-struct TDataNodeLocationResp {
+struct TDataNodeInfoResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
-  2: optional map<i32, common.TDataNodeLocation> dataNodeLocationMap
+  2: optional map<i32, common.TDataNodeInfo> dataNodeInfoMap
 }
 
 // StorageGroup
@@ -115,6 +115,25 @@ struct TSchemaPartitionResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+}
+
+// Node Management
+
+enum NodeManagementType {
+CHILD_PATHS,
+CHILD_NODES
+}
+
+struct TSchemaNodeManagementReq {
+  1: required binary pathPatternTree
+  2: required NodeManagementType type
+}
+
+struct TSchemaNodeManagementResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+  3: optional set<string> matchedNode
 }
 
 // Data
@@ -208,7 +227,7 @@ service ConfigIService {
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  TDataNodeLocationResp getDataNodeLocations(i32 dataNodeId)
+  TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
   /* StorageGroup */
 
@@ -235,6 +254,10 @@ service ConfigIService {
   TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
 
   TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
+
+  /* Node Management */
+
+  TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
 
   /* Data */
 

@@ -33,10 +33,11 @@ import org.slf4j.LoggerFactory;
 public class SyncReceiverManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncReceiverManager.class);
   private final Manager configManager;
-  private SyncReceiverInfo syncReceiverInfo = SyncReceiverInfo.getInstance();
+  private final SyncReceiverInfo syncReceiverInfo;
 
-  public SyncReceiverManager(Manager manager) {
+  public SyncReceiverManager(Manager manager, SyncReceiverInfo syncReceiverInfo) {
     this.configManager = manager;
+    this.syncReceiverInfo = syncReceiverInfo;
   }
 
   /**

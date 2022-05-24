@@ -43,7 +43,7 @@ public class SetTemplatePlan extends PhysicalPlan {
   public SetTemplatePlan(String templateName, String prefixPath) throws IllegalPathException {
     super(OperatorType.SET_TEMPLATE);
 
-    String[] pathNodes = PathUtils.splitPathToDetachedPath(prefixPath);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(prefixPath);
     for (String s : pathNodes) {
       if (s.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
           || s.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
