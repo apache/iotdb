@@ -17,11 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.confignode.procedure.env;
 
-public enum DeleteStorageGroupState {
-  DELETE_STORAGE_GROUP_PREPARE,
-  DELETE_PRE,
-  INVALIDATE_CACHE,
-  DELETE_CONFIG
-}
+public class TestConfigNodeEnv {}
