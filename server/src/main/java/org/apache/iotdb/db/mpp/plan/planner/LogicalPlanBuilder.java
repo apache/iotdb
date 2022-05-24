@@ -208,7 +208,7 @@ public class LogicalPlanBuilder {
 
         this.root =
             createSlidingWindowAggregationNode(
-                this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep);
+                this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
 
         if (groupByLevelExpressions != null) {
           curStep = AggregationStep.FINAL;
@@ -289,7 +289,8 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      OrderBy scanOrder) {
     if (aggregationExpressions == null) {
       return this;
     }
@@ -307,21 +308,23 @@ public class LogicalPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             Collections.singletonList(this.getRoot()),
             aggregationDescriptorList,
-            groupByTimeParameter);
+            groupByTimeParameter,
+            scanOrder);
     return this;
   }
 
   public LogicalPlanBuilder planSlidingWindowAggregation(
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
-      AggregationStep curStep) {
+      AggregationStep curStep,
+      OrderBy scanOrder) {
     if (aggregationExpressions == null) {
       return this;
     }
 
     this.root =
         createSlidingWindowAggregationNode(
-            this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep);
+            this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
     return this;
   }
 
@@ -329,14 +332,16 @@ public class LogicalPlanBuilder {
       PlanNode child,
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
-      AggregationStep curStep) {
+      AggregationStep curStep,
+      OrderBy scanOrder) {
     List<AggregationDescriptor> aggregationDescriptorList =
         constructAggregationDescriptorList(aggregationExpressions, curStep);
     return new SlidingWindowAggregationNode(
         context.getQueryId().genPlanNodeId(),
         child,
         aggregationDescriptorList,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        scanOrder);
   }
 
   private PlanNode createGroupByTLevelNode(

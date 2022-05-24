@@ -52,18 +52,21 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   public SlidingWindowAggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
   }
 
   public SlidingWindowAggregationNode(
       PlanNodeId id,
       PlanNode child,
       List<AggregationDescriptor> aggregationDescriptorList,
-      GroupByTimeParameter groupByTimeParameter) {
-    this(id, aggregationDescriptorList, groupByTimeParameter);
+      GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
+    this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
     this.child = child;
   }
 
@@ -101,7 +104,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   @Override
   public PlanNode clone() {
     return new SlidingWindowAggregationNode(
-        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter());
+        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter(), getScanOrder());
   }
 
   @Override
@@ -130,6 +133,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
   public static SlidingWindowAggregationNode deserialize(ByteBuffer byteBuffer) {
@@ -144,9 +148,10 @@ public class SlidingWindowAggregationNode extends ProcessNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SlidingWindowAggregationNode(
-        planNodeId, aggregationDescriptorList, groupByTimeParameter);
+        planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);
   }
 
   @Override
