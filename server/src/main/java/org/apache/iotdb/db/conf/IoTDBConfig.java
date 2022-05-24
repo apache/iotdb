@@ -353,7 +353,7 @@ public class IoTDBConfig {
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 10000;
+  private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
