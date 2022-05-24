@@ -52,7 +52,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> props = null;
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
-  private long tagOffset = -1;
+
+  private String version;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -65,7 +66,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       Map<String, String> props,
       Map<String, String> tags,
       Map<String, String> attributes,
-      String alias) {
+      String alias,
+      String version) {
     super(id);
     this.path = path;
     this.dataType = dataType;
@@ -78,6 +80,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
+    this.version = version;
   }
 
   public PartialPath getPath() {
@@ -144,12 +147,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     this.props = props;
   }
 
-  public long getTagOffset() {
-    return tagOffset;
-  }
-
-  public void setTagOffset(long tagOffset) {
-    this.tagOffset = tagOffset;
+  public String getVersion() {
+    return version;
   }
 
   @Override
@@ -181,7 +180,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     TSDataType dataType;
     TSEncoding encoding;
     CompressionType compressor;
-    long tagOffset;
     String alias = null;
     Map<String, String> props = null;
     Map<String, String> tags = null;
@@ -198,7 +196,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
     compressor = CompressionType.values()[byteBuffer.get()];
-    tagOffset = byteBuffer.getLong();
 
     // alias
     if (byteBuffer.get() == 1) {
@@ -229,9 +226,20 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       attributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
+    String version = ReadWriteIOUtils.readString(byteBuffer);
+
     id = ReadWriteIOUtils.readString(byteBuffer);
     return new CreateTimeSeriesNode(
-        new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
+        new PlanNodeId(id),
+        path,
+        dataType,
+        encoding,
+        compressor,
+        props,
+        tags,
+        attributes,
+        alias,
+        version);
   }
 
   @Override
@@ -244,7 +252,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     byteBuffer.put((byte) dataType.ordinal());
     byteBuffer.put((byte) encoding.ordinal());
     byteBuffer.put((byte) compressor.ordinal());
-    byteBuffer.putLong(tagOffset);
 
     // alias
     if (alias != null) {
@@ -283,6 +290,8 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributes, byteBuffer);
     }
+
+    ReadWriteIOUtils.write(version, byteBuffer);
   }
 
   @Override
@@ -301,8 +310,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       return false;
     }
     CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
-    return tagOffset == that.tagOffset
-        && path.equals(that.path)
+    return path.equals(that.path)
         && dataType == that.dataType
         && encoding == that.encoding
         && compressor == that.compressor

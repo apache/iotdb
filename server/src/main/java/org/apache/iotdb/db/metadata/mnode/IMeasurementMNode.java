@@ -51,4 +51,8 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer();
 
   void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
+
+  String getVersion();
+
+  void setVersion(String version);
 }
