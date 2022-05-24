@@ -35,7 +35,11 @@ public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator 
   protected void evictingExpiredValue() {
     while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst().getTime())) {
       PartialAggregationResult partialResult = deque.removeFirst();
-      this.accumulator.addIntermediate(partialResult.opposite());
+      if (deque.isEmpty()) {
+        this.accumulator.reset();
+      } else {
+        this.accumulator.addIntermediate(partialResult.opposite());
+      }
     }
   }
 
