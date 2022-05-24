@@ -1236,7 +1236,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
                   && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
             throw new IllegalPathException(measurement);
           } else {
-            path.append(".");
+            path.append(TsFileConstant.PATH_SEPARATOR);
             path.append(measurement);
           }
         }
@@ -1262,7 +1262,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
                 && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
           throw new IllegalPathException(measurement);
         } else {
-          path.append(".");
+          path.append(TsFileConstant.PATH_SEPARATOR);
           path.append(measurement);
         }
       }
