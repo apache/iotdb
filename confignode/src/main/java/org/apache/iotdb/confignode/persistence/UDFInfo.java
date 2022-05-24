@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,12 +81,16 @@ public class UDFInfo implements SnapshotProcessor {
   }
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    return false;
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+    return udfExecutableManager.processTakeSnapshot(snapshotDir)
+        && udfRegistrationService.processTakeSnapshot(snapshotDir);
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {}
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
+    udfExecutableManager.processLoadSnapshot(snapshotDir);
+    udfRegistrationService.processLoadSnapshot(snapshotDir);
+  }
 
   public UDFExecutableManager getUdfExecutableManager() {
     return udfExecutableManager;

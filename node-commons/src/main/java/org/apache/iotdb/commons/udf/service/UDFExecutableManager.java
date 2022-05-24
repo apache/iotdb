@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
@@ -35,7 +36,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class UDFExecutableManager implements IService {
+public class UDFExecutableManager implements IService, SnapshotProcessor {
 
   private final String temporaryLibRoot;
   private final String extLibRoot;
@@ -168,4 +169,16 @@ public class UDFExecutableManager implements IService {
   public static UDFExecutableManager getInstance() {
     return INSTANCE;
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // SnapshotProcessor
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+    return false;
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws IOException {}
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.api.UDF;
 import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
@@ -49,7 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class UDFRegistrationService implements IService {
+public class UDFRegistrationService implements IService, SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDFRegistrationService.class);
 
@@ -472,4 +473,16 @@ public class UDFRegistrationService implements IService {
   public static UDFRegistrationService getInstance() {
     return INSTANCE;
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // SnapshotProcessor
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+    return false;
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws IOException {}
 }
