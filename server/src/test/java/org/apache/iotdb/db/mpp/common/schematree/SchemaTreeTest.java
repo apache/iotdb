@@ -528,6 +528,22 @@ public class SchemaTreeTest {
   }
 
   @Test
+  public void testPruneMeasurement() throws Exception {
+    SchemaNode root = generateSchemaTree();
+    SchemaTree schemaTree = new SchemaTree(root);
+
+    Pair<List<MeasurementPath>, Integer> result =
+        schemaTree.searchMeasurementPaths(new PartialPath("root.sg.d1.s2"));
+    Assert.assertEquals(1, result.left.size());
+    Assert.assertEquals("root.sg.d1.s2", result.left.get(0).getFullPath());
+
+    schemaTree.pruneSingleMeasurement(new PartialPath("root.sg.d1.s2"));
+
+    result = schemaTree.searchMeasurementPaths(new PartialPath("root.sg.d1.s2"));
+    Assert.assertTrue(result.left.isEmpty());
+  }
+
+  @Test
   public void testMergeSchemaTree() throws Exception {
     SchemaTree schemaTree = new SchemaTree();
     for (SchemaTree tree : generateSchemaTrees()) {

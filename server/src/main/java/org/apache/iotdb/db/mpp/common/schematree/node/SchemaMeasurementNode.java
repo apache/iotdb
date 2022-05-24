@@ -101,9 +101,9 @@ public class SchemaMeasurementNode extends SchemaNode {
     String name = ReadWriteIOUtils.readString(buffer);
     String alias = ReadWriteIOUtils.readString(buffer);
     MeasurementSchema schema = MeasurementSchema.deserializeFrom(buffer);
+    String version = ReadWriteIOUtils.readString(buffer);
 
-    SchemaMeasurementNode measurementNode =
-        new SchemaMeasurementNode(name, schema, ReadWriteIOUtils.readString(buffer));
+    SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(name, schema, version);
     measurementNode.setAlias(alias);
     return measurementNode;
   }
