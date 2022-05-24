@@ -589,7 +589,7 @@ public class SchemaFileTest {
   // region B+ Tree Segment SchemaFile Test
 
   @Test
-  public void basicTest() throws IOException, MetadataException{
+  public void basicTest() throws IOException, MetadataException {
     SchemaFile.INTERNAL_SPLIT_VALVE = 16000;
     int i = 10000;
     IMNode sgNode = new StorageGroupEntityMNode(null, "sgRoot", 11111111L);
@@ -621,7 +621,6 @@ public class SchemaFileTest {
   }
 
   // endregion
-
 
   // region Quick Print
 

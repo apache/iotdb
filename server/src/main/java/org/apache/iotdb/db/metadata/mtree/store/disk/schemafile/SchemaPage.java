@@ -461,31 +461,35 @@ public class SchemaPage implements ISchemaPage {
   }
 
   @Override
-  public String splitLeafSegment(String key, ByteBuffer recBuf, ISchemaPage dstPage) throws MetadataException {
+  public String splitLeafSegment(String key, ByteBuffer recBuf, ISchemaPage dstPage)
+      throws MetadataException {
     // only full page leaf segment can be split
     if (getInternalSeg() != null || getSegment((short) 0).size() != SchemaFile.SEG_MAX_SIZ) {
       throw new SegmentNotFoundException(pageIndex, (short) 0);
     }
     // TODO: no check on dstPage
-    ((SchemaPage)dstPage).segOffsetLst.add(SchemaFile.PAGE_HEADER_SIZE);
-    ((SchemaPage)dstPage).segNum = 1;
-    ((SchemaPage)dstPage).pageSpareOffset = (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
+    ((SchemaPage) dstPage).segOffsetLst.add(SchemaFile.PAGE_HEADER_SIZE);
+    ((SchemaPage) dstPage).segNum = 1;
+    ((SchemaPage) dstPage).pageSpareOffset =
+        (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
 
-    return getSegment((short) 0).splitByKey(key, recBuf, ((SchemaPage)dstPage).getSegmentSlice());
+    return getSegment((short) 0).splitByKey(key, recBuf, ((SchemaPage) dstPage).getSegmentSlice());
   }
 
   @Override
-  public String splitInternalSegment(String key, int ptr, ISchemaPage dstPage) throws MetadataException {
+  public String splitInternalSegment(String key, int ptr, ISchemaPage dstPage)
+      throws MetadataException {
     if (getInternalSeg() == null) {
       throw new SegmentNotFoundException(pageIndex);
     }
     // TODO: improve encapsulation
 
-    ((SchemaPage)dstPage).segOffsetLst.add(SchemaFile.PAGE_HEADER_SIZE);
-    ((SchemaPage)dstPage).segNum = 1;
-    ((SchemaPage)dstPage).pageSpareOffset = (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
+    ((SchemaPage) dstPage).segOffsetLst.add(SchemaFile.PAGE_HEADER_SIZE);
+    ((SchemaPage) dstPage).segNum = 1;
+    ((SchemaPage) dstPage).pageSpareOffset =
+        (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
 
-    return getInternalSeg().splitByKey(key, ptr, ((SchemaPage)dstPage).getSegmentSlice());
+    return getInternalSeg().splitByKey(key, ptr, ((SchemaPage) dstPage).getSegmentSlice());
   }
 
   // endregion

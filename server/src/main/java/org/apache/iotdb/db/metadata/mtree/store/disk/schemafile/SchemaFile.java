@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import org.apache.commons.io.IOIndexedException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -40,11 +39,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -124,7 +122,7 @@ public class SchemaFile implements ISchemaFile {
 
   private final Map<Integer, ISchemaPage> dirtyPages;
 
-  private int[] treeTrace;  // a trace of b+tree index since no upward pointer in segments
+  private int[] treeTrace; // a trace of b+tree index since no upward pointer in segments
 
   // attributes for file
   private File pmtFile;
@@ -133,7 +131,7 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
-    treeTrace = new int[16];  // suppose no more than 15 level b+ tree
+    treeTrace = new int[16]; // suppose no more than 15 level b+ tree
 
     this.storageGroupName = sgName;
     filePath =
@@ -281,11 +279,9 @@ public class SchemaFile implements ISchemaFile {
     String sk; // search key when split
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, IMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).
-            getNewChildBuffer().
-            entrySet().stream().
-            sorted(Map.Entry.<String, IMNode>comparingByKey()).
-            collect(Collectors.toList())) {
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
+            .sorted(Map.Entry.<String, IMNode>comparingByKey())
+            .collect(Collectors.toList())) {
       // check and pre-allocate
       child = entry.getValue();
       if (!child.isMeasurement()) {
@@ -349,19 +345,20 @@ public class SchemaFile implements ISchemaFile {
     }
 
     for (Map.Entry<String, IMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
-
-    }
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {}
 
     flushAllDirtyPages();
   }
 
   /**
-   * Insert an index entry into an internal page. Cascade insert or internal split conducted if necessary.
+   * Insert an index entry into an internal page. Cascade insert or internal split conducted if
+   * necessary.
+   *
    * @param key key of the entry
    * @param ptr pointer of the entry
    */
-  private void insertIndexEntry(int treeTraceIndex, String key, int ptr) throws MetadataException, IOException{
+  private void insertIndexEntry(int treeTraceIndex, String key, int ptr)
+      throws MetadataException, IOException {
     ISchemaPage iPage = getPageInstance(treeTrace[treeTraceIndex]);
     if (iPage.insertIndexEntry(key, ptr) < INTERNAL_SPLIT_VALVE) {
       if (treeTraceIndex > 1) {
@@ -372,7 +369,8 @@ public class SchemaFile implements ISchemaFile {
         insertIndexEntry(treeTraceIndex - 1, sk, splPage.getPageIndex());
         dirtyPages.put(splPage.getPageIndex(), splPage);
       } else {
-        // split as root internal, notice cannot transplant internal root, since there are many pointers to it
+        // split as root internal, notice cannot transplant internal root, since there are many
+        // pointers to it
         ISchemaPage splPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
         String sk = iPage.splitInternalSegment(key, ptr, splPage);
 
@@ -827,7 +825,8 @@ public class SchemaFile implements ISchemaFile {
   // endregion
   // region Segment Address Operation
 
-  private long getTargetSegmentAddress(long curSegAddr, String recKey) throws IOException, MetadataException {
+  private long getTargetSegmentAddress(long curSegAddr, String recKey)
+      throws IOException, MetadataException {
     // FIXME: concurrent write or read/write workload will fail for thread-unsafe treeTrace
     treeTrace[0] = 0;
     ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
@@ -841,7 +840,7 @@ public class SchemaFile implements ISchemaFile {
       treeTrace[i] = curPage.getPageIndex();
       curPage = getPageInstance(curPage.getIndexPointer(recKey));
     }
-    treeTrace[0] = i;  // bound in no.0 elem, points the parent the return
+    treeTrace[0] = i; // bound in no.0 elem, points the parent the return
 
     return getGlobalIndex(curPage.getPageIndex(), (short) 0);
   }
