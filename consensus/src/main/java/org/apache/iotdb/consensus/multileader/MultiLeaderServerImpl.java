@@ -53,7 +53,7 @@ public class MultiLeaderServerImpl {
   private final IStateMachine stateMachine;
   private final String storageDir;
   private final List<Peer> configuration;
-  private final IndexController currentNodeController;
+  private final IndexController controller;
   private final LogDispatcher logDispatcher;
 
   public MultiLeaderServerImpl(
@@ -61,7 +61,7 @@ public class MultiLeaderServerImpl {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
-    this.currentNodeController =
+    this.controller =
         new IndexController(storageDir, Utils.IPAddress(thisNode.getEndpoint()), true);
     this.configuration = configuration;
     if (configuration.isEmpty()) {
@@ -142,7 +142,7 @@ public class MultiLeaderServerImpl {
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     return new IndexedConsensusRequest(
-        currentNodeController.incrementAndGet(),
+        controller.incrementAndGet(),
         getCurrentSafelyDeletedSearchIndex(),
         TLogType.FragmentInstance,
         request);
@@ -158,7 +158,7 @@ public class MultiLeaderServerImpl {
   }
 
   public long getCurrentSafelyDeletedSearchIndex() {
-    return logDispatcher.getMinSyncIndex().orElseGet(currentNodeController::getCurrentIndex);
+    return logDispatcher.getMinSyncIndex().orElseGet(controller::getCurrentIndex);
   }
 
   public String getStorageDir() {
@@ -173,7 +173,7 @@ public class MultiLeaderServerImpl {
     return configuration;
   }
 
-  public IndexController getCurrentNodeController() {
-    return currentNodeController;
+  public IndexController getController() {
+    return controller;
   }
 }

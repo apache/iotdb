@@ -34,4 +34,5 @@ public class MultiLeaderConsensusConfig {
   public static final int MAX_PENDING_REQUEST_NUM_PER_NODE = 1000;
   public static final int MAX_REQUEST_PER_BATCH = 100;
   public static final int MAX_PENDING_BATCH = 50;
+  public static final int MAX_WAITING_TIME_FOR_ACCUMULATE_BATCH_IN_MS = 10;
 }

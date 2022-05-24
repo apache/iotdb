@@ -69,10 +69,13 @@ public class SyncStatus {
   }
 
   public long getNextSendingIndex() {
-    return 1
-        + (pendingBatches.isEmpty()
-            ? controller.getCurrentIndex()
-            : pendingBatches.get(pendingBatches.size() - 1).getEndIndex());
+    // we do not use ReentrantReadWriteLock because there will be only one thread reading this field
+    synchronized (this) {
+      return 1
+          + (pendingBatches.isEmpty()
+              ? controller.getCurrentIndex()
+              : pendingBatches.get(pendingBatches.size() - 1).getEndIndex());
+    }
   }
 
   @TestOnly

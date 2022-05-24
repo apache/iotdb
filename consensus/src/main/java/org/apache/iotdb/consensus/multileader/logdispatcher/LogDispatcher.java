@@ -154,12 +154,15 @@ public class LogDispatcher {
 
     @Override
     public void run() {
-      logger.info("{}: Dispatcher for {} stopped", impl.getThisNode(), peer);
+      logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
       try {
         PendingBatch batch;
         while (!Thread.interrupted()) {
           while ((batch = getBatch()).isEmpty()) {
             bufferedRequest.add(pendingRequest.take());
+            if (pendingRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+              Thread.sleep(MultiLeaderConsensusConfig.MAX_WAITING_TIME_FOR_ACCUMULATE_BATCH_IN_MS);
+            }
           }
           syncStatus.addNextBatch(batch);
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
@@ -176,7 +179,7 @@ public class LogDispatcher {
     public PendingBatch getBatch() {
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
-      long maxIndex = impl.getCurrentNodeController().getCurrentIndex();
+      long maxIndex = impl.getController().getCurrentIndex();
       long endIndex;
       if (bufferedRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
         pendingRequest.drainTo(
