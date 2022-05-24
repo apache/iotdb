@@ -53,12 +53,9 @@ public interface ISchemaPage {
    * decide whether update in place. <br>
    * If segment not enough, it will reallocate in this page first, and update segment offset list.
    * <br>
-   * If no more space for reallocation, throw {@link SchemaPageOverflowException} and return a
-   * negative for new page.
+   * If no more space for reallocation, throw {@link SchemaPageOverflowException}.
    *
    * <p>See {@linkplain #write(short, String, ByteBuffer)} for the detail reason of a twice try.
-   *
-   * @return spare space of the segment, negative if not enough
    */
   void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
@@ -126,10 +123,11 @@ public interface ISchemaPage {
   // TODO: methods below should belong to ISegment interface after abstraction refactor
   //  along with methods that insert/remove/get records, seg/get segment address
 
-  String splitLeafSegment(String key, ByteBuffer recBuf, ISchemaPage dstPage)
+  String splitLeafSegment(String key, ByteBuffer recBuf, ISchemaPage dstPage, boolean inclineSplit)
       throws MetadataException;
 
-  String splitInternalSegment(String key, int ptr, ISchemaPage dstPage) throws MetadataException;
+  String splitInternalSegment(String key, int ptr, ISchemaPage dstPage, boolean inclineSplit)
+      throws MetadataException;
 
   int insertIndexEntry(String key, int ptr) throws MetadataException;
 

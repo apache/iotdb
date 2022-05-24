@@ -190,10 +190,16 @@ public class InternalSegment implements ISegment<Integer, Integer> {
    * @param dstBuffer split segment buffer
    * @return search key for split segment
    */
-  public synchronized String splitByKey(String key, Integer tPk, ByteBuffer dstBuffer)
+  @Override
+  public synchronized String splitByKey(
+      String key, Integer tPk, ByteBuffer dstBuffer, boolean inclineSplit)
       throws MetadataException {
     if (dstBuffer.capacity() != this.buffer.capacity()) {
       throw new MetadataException("Segments only split with same capacity.");
+    }
+
+    if (key == null || tPk == null) {
+      throw new MetadataException("Internal Segment cannot split without insert key");
     }
 
     if (this.pointNum < 2) {
@@ -203,7 +209,7 @@ public class InternalSegment implements ISegment<Integer, Integer> {
     int pk = tPk;
     // whether to implement inclined split
     boolean monotonic =
-        SchemaFile.INCLINED_SPLIT
+        inclineSplit
             && (lastKey != null)
             && (penulKey != null)
             && ((key.compareTo(lastKey)) * (lastKey.compareTo(penulKey)) > 0);
@@ -284,7 +290,7 @@ public class InternalSegment implements ISegment<Integer, Integer> {
         splitPos =
             key.compareTo(lastKey) > 0
                 ? Math.max(pos, (this.pointNum + 1) / 2)
-                : Math.min(pos, (this.pointNum + 1) / 2);
+                : Math.min(pos, (this.pointNum + 2) / 2);
       } else {
         splitPos = (this.pointNum + 1) / 2;
       }

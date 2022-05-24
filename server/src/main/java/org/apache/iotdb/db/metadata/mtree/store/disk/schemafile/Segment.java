@@ -215,39 +215,44 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
   }
 
   @Override
-  public synchronized String splitByKey(String key, ByteBuffer recBuf, ByteBuffer dstBuffer)
+  public synchronized String splitByKey(
+      String key, ByteBuffer recBuf, ByteBuffer dstBuffer, boolean inclineSplit)
       throws MetadataException {
     if (this.buffer.capacity() != dstBuffer.capacity()) {
       throw new MetadataException("Segments only splits with same capacity.");
     }
 
+    if (key == null && keyAddressList.size() == 1) {
+      throw new MetadataException("Segment can not be split with only one record.");
+    }
+
+    // notice that key can be null here
     boolean monotonic =
         penuKey != null
+            && key != null
             && lastKey != null
-            && SchemaFile.INCLINED_SPLIT
+            && inclineSplit
             && (key.compareTo(lastKey)) * (lastKey.compareTo(penuKey)) > 0;
 
     int n = keyAddressList.size();
 
-    // actual index of key just smaller than the insert
-    int pos = binaryInsertPairList(keyAddressList, key) - 1;
+    // actual index of key just smaller than the insert, -2 for null key
+    int pos = key != null ? binaryInsertPairList(keyAddressList, key) - 1 : -2;
 
-    if (pos == -1) {
-      throw new MetadataException("The key occurs split cannot be the smallest within segment.");
-    }
+    // if (pos == -1) {
+    //   throw new MetadataException("The key occurs split cannot be the smallest within segment.");
+    // }
 
     int sp; // virtual index to split
     if (monotonic) {
-      sp = key.compareTo(lastKey) > 0 ? Math.max(pos + 1, n / 2) : Math.min(pos + 1, n / 2);
+      // new entry into part with more space
+      sp = key.compareTo(lastKey) > 0 ? Math.max(pos + 1, n / 2) : Math.min(pos + 2, n / 2);
     } else {
       sp = n / 2;
     }
 
     // little different from InternalSegment, only the front edge key can not split
     sp = sp <= 0 ? 1 : sp;
-    // if (sp <= 0 || sp == n - 1) {
-    //   sp = sp <= 0 ? 1 : n;  //
-    // }
 
     // prepare header for dstBuffer
     short length = this.length,
@@ -261,6 +266,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     String mKey, sKey = null;
     ByteBuffer srcBuf;
     int aix; // aix for actual index on keyAddressList
+    n = key == null ? n - 1 : n; // null key
     // TODO: implement bulk split further
     for (int ix = sp; ix <= n; ix++) {
       if (ix == pos + 1) {
@@ -273,7 +279,8 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
         recBuf.clear();
       } else {
         srcBuf = this.buffer;
-        aix = ix > pos ? ix - 1 : ix;
+        // pos equals -2 if key is null
+        aix = (ix > pos) && (pos != -2) ? ix - 1 : ix;
         mKey = keyAddressList.get(aix).left;
         keySize = 4 + mKey.getBytes().length;
 
@@ -308,7 +315,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     this.aliasKeyList.clear();
     compactRecords();
     reconstructAliasAddressList();
-    if (sp > pos + 1) {
+    if (sp > pos + 1 && key != null) {
       // new insert shall be in this
       if (insertRecord(key, recBuf) < 0) {
         throw new SegmentOverflowException(key);

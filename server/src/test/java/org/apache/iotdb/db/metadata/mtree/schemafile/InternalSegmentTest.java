@@ -85,7 +85,7 @@ public class InternalSegmentTest {
     }
 
     ByteBuffer buf2 = ByteBuffer.allocate(150);
-    String sk = seg.splitByKey("a8", 666, buf2);
+    String sk = seg.splitByKey("a8", 666, buf2, SchemaFile.INCLINED_SPLIT);
 
     Assert.assertEquals("a5", sk);
     buf2.clear();
@@ -113,7 +113,7 @@ public class InternalSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split when insert the biggest key
-    String sk = seg.splitByKey("a99", 666, buf2);
+    String sk = seg.splitByKey("a99", 666, buf2, SchemaFile.INCLINED_SPLIT);
 
     Assert.assertEquals("a9", sk);
     buf2.clear();
@@ -128,14 +128,14 @@ public class InternalSegmentTest {
     seg.insertRecord("a23", 22);
 
     // split when insert the second-biggest key
-    sk = seg.splitByKey("a64", 6464, buf2);
+    sk = seg.splitByKey("a64", 6464, buf2, SchemaFile.INCLINED_SPLIT);
     Assert.assertEquals("a63", sk);
 
     seg.insertRecord("a11", 11);
     seg.insertRecord("a12", 12);
 
     buf2.clear();
-    sk = seg.splitByKey("a24", 24, buf2);
+    sk = seg.splitByKey("a24", 24, buf2, SchemaFile.INCLINED_SPLIT);
 
     Assert.assertEquals("a23", sk);
     buf2.clear();
@@ -161,7 +161,7 @@ public class InternalSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split with the smallest key
-    String sk = ((InternalSegment) seg).splitByKey("a0", 90, buf2);
+    String sk = ((InternalSegment) seg).splitByKey("a0", 90, buf2, SchemaFile.INCLINED_SPLIT);
     Assert.assertEquals("a1", sk);
 
     Assert.assertEquals(253, seg.insertRecord("a0", 9));
@@ -172,7 +172,7 @@ public class InternalSegmentTest {
     seg.insertRecord("a12", 11);
 
     // split with the second-smallest key
-    sk = ((InternalSegment) seg).splitByKey("a11", 110, buf2);
+    sk = ((InternalSegment) seg).splitByKey("a11", 110, buf2, SchemaFile.INCLINED_SPLIT);
     Assert.assertEquals("a11", sk);
     Assert.assertEquals(253, seg.insertRecord("a0", 1));
     buf2.clear();
@@ -197,7 +197,7 @@ public class InternalSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split when insert the biggest key
-    String sk = seg.splitByKey("a04", 30, buf2);
+    String sk = seg.splitByKey("a04", 30, buf2, SchemaFile.INCLINED_SPLIT);
     Assert.assertEquals("a3", sk);
     Assert.assertEquals(6, seg.getAllRecords().size());
   }

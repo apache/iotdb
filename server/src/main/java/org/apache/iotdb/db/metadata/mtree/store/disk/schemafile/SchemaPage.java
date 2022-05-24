@@ -196,7 +196,7 @@ public class SchemaPage implements ISchemaPage {
 
     // relocate and try update twice ensures safety for reasonable big node
     try {
-      int res = seg.updateRecord(key, buffer);
+      seg.updateRecord(key, buffer);
     } catch (SegmentOverflowException e) {
       seg = relocateSegment(seg, segIdx, SchemaFile.reEstimateSegSize(seg.size()));
       int res = seg.updateRecord(key, buffer);
@@ -461,7 +461,8 @@ public class SchemaPage implements ISchemaPage {
   }
 
   @Override
-  public String splitLeafSegment(String key, ByteBuffer recBuf, ISchemaPage dstPage)
+  public String splitLeafSegment(
+      String key, ByteBuffer recBuf, ISchemaPage dstPage, boolean inclineSplit)
       throws MetadataException {
     // only full page leaf segment can be split
     if (getInternalSeg() != null || getSegment((short) 0).size() != SchemaFile.SEG_MAX_SIZ) {
@@ -473,11 +474,12 @@ public class SchemaPage implements ISchemaPage {
     ((SchemaPage) dstPage).pageSpareOffset =
         (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
 
-    return getSegment((short) 0).splitByKey(key, recBuf, ((SchemaPage) dstPage).getSegmentSlice());
+    return getSegment((short) 0)
+        .splitByKey(key, recBuf, ((SchemaPage) dstPage).getSegmentSlice(), inclineSplit);
   }
 
   @Override
-  public String splitInternalSegment(String key, int ptr, ISchemaPage dstPage)
+  public String splitInternalSegment(String key, int ptr, ISchemaPage dstPage, boolean inclineSplit)
       throws MetadataException {
     if (getInternalSeg() == null) {
       throw new SegmentNotFoundException(pageIndex);
@@ -489,7 +491,8 @@ public class SchemaPage implements ISchemaPage {
     ((SchemaPage) dstPage).pageSpareOffset =
         (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
 
-    return getInternalSeg().splitByKey(key, ptr, ((SchemaPage) dstPage).getSegmentSlice());
+    return getInternalSeg()
+        .splitByKey(key, ptr, ((SchemaPage) dstPage).getSegmentSlice(), inclineSplit);
   }
 
   // endregion

@@ -38,8 +38,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -100,7 +98,7 @@ public class SchemaFile implements ISchemaFile {
   public static String SCHEMA_FOLDER = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
 
   // debug only config
-  public static boolean DETAIL_SKETCH = false; // whether sketch leaf segment in detail
+  public static boolean DETAIL_SKETCH = true; // whether sketch leaf segment in detail
   public static int INTERNAL_SPLIT_VALVE = 0; // internal segment split at this spare
 
   // attributes for this schema file
@@ -245,7 +243,6 @@ public class SchemaFile implements ISchemaFile {
     return true;
   }
 
-  @SuppressWarnings("all")
   @Override
   public void writeMNode(IMNode node) throws MetadataException, IOException {
     int pageIndex;
@@ -306,10 +303,12 @@ public class SchemaFile implements ISchemaFile {
         if (curPage.getSegmentSize(getSegIndex(actualAddress)) == SEG_MAX_SIZ) {
           // cur is a leaf, split and set same prevSeg as cur
           ISchemaPage newPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
-          sk = curPage.splitLeafSegment(entry.getKey(), childBuffer, newPage);
+          sk =
+              curPage.splitLeafSegment(
+                  entry.getKey(), childBuffer, newPage, SchemaFile.INCLINED_SPLIT);
           curPage.setNextSegAddress((short) 0, getGlobalIndex(newPage.getPageIndex(), (short) 0));
           if (treeTrace[0] < 1) {
-            // first leaf to split and transplant, so that curSegAddr stay unchange
+            // first leaf to split and transplant, so that curSegAddr stay unchanged
             ISchemaPage trsPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
             trsPage.transplantSegment(curPage, (short) 0, SEG_MAX_SIZ);
             trsPage.setPrevSegAddress((short) 0, getGlobalIndex(curPage.getPageIndex(), (short) 0));
@@ -318,14 +317,12 @@ public class SchemaFile implements ISchemaFile {
             curPage.allocInternalSegment(trsPage.getPageIndex());
 
             curPage.insertIndexEntry(sk, newPage.getPageIndex());
-            // insertIndexEntry(curPage, sk, newPage.getPageIndex());
             curPage.setNextSegAddress((short) 0, getGlobalIndex(trsPage.getPageIndex(), (short) 0));
             dirtyPages.put(trsPage.getPageIndex(), trsPage);
           } else {
             insertIndexEntry(treeTrace[0], sk, newPage.getPageIndex());
           }
           dirtyPages.put(curPage.getPageIndex(), curPage);
-          dirtyPages.put(newPage.getPageIndex(), newPage);
         } else {
           // transplant and delete former segment
           short actSegId = getSegIndex(actualAddress);
@@ -334,18 +331,78 @@ public class SchemaFile implements ISchemaFile {
 
           // with single segment, curSegAddr equals actualAddress
           curSegAddr = newPage.transplantSegment(curPage, actSegId, newSegSize);
-
+          newPage.write(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           curPage.deleteSegment(actSegId);
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
           dirtyPages.put(curPage.getPageIndex(), curPage);
-          dirtyPages.put(newPage.getPageIndex(), newPage);
         }
       }
     }
 
     for (Map.Entry<String, IMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {}
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
+      child = entry.getValue();
+      actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey());
+      childBuffer = RecordUtils.node2Buffer(child);
+
+      curPage = getPageInstance(getPageIndex(actualAddress));
+      if (curPage.read(getSegIndex(actualAddress), entry.getKey()) == null) {
+        throw new MetadataException(
+            String.format(
+                "Node[%s] has no child[%s] in schema file.", node.getName(), entry.getKey()));
+      }
+
+      try {
+        curPage.update(getSegIndex(actualAddress), entry.getKey(), childBuffer);
+        dirtyPages.put(curPage.getPageIndex(), curPage);
+      } catch (SchemaPageOverflowException e) {
+        if (curPage.getSegmentSize(getSegIndex(actualAddress)) == SEG_MAX_SIZ) {
+          // split and update higer nodes
+          ISchemaPage splPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
+          sk = curPage.splitLeafSegment(null, null, splPage, false);
+          curPage.setNextSegAddress((short) 0, getGlobalIndex(splPage.getPageIndex(), (short) 0));
+
+          // update on page where it exists
+          if (entry.getKey().compareTo(sk) >= 0) {
+            splPage.update((short) 0, entry.getKey(), childBuffer);
+          } else {
+            curPage.update((short) 0, entry.getKey(), childBuffer);
+          }
+
+          // insert index entry upward
+          if (treeTrace[0] < 1) {
+            ISchemaPage trsPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
+            trsPage.transplantSegment(curPage, (short) 0, SEG_MAX_SIZ);
+            trsPage.setPrevSegAddress((short) 0, getGlobalIndex(curPage.getPageIndex(), (short) 0));
+            splPage.setPrevSegAddress((short) 0, getGlobalIndex(curPage.getPageIndex(), (short) 0));
+            curPage.deleteSegment((short) 0);
+            curPage.allocInternalSegment(trsPage.getPageIndex());
+
+            curPage.insertIndexEntry(sk, splPage.getPageIndex());
+            curPage.setNextSegAddress((short) 0, getGlobalIndex(trsPage.getPageIndex(), (short) 0));
+            dirtyPages.put(trsPage.getPageIndex(), trsPage);
+          } else {
+            insertIndexEntry(treeTrace[0], sk, splPage.getPageIndex());
+          }
+          dirtyPages.put(curPage.getPageIndex(), curPage);
+        } else {
+          // transplant into another bigger segment
+          short actSegId = getSegIndex(actualAddress);
+          short newSegSiz = reEstimateSegSize(curPage.getSegmentSize(actSegId));
+          ISchemaPage newPage = getMinApplicablePageInMem(newSegSiz);
+
+          // assign new segment address
+          curSegAddr = newPage.transplantSegment(curPage, actSegId, newSegSiz);
+          curPage.deleteSegment(actSegId);
+
+          newPage.update(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
+          setNodeAddress(node, curSegAddr);
+          updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
+          dirtyPages.put(curPage.getPageIndex(), curPage);
+        }
+      }
+    }
 
     flushAllDirtyPages();
   }
@@ -364,7 +421,7 @@ public class SchemaFile implements ISchemaFile {
       if (treeTraceIndex > 1) {
         // overflow, but parent exists
         ISchemaPage splPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
-        String sk = iPage.splitInternalSegment(key, ptr, splPage);
+        String sk = iPage.splitInternalSegment(key, ptr, splPage, SchemaFile.INCLINED_SPLIT);
 
         insertIndexEntry(treeTraceIndex - 1, sk, splPage.getPageIndex());
         dirtyPages.put(splPage.getPageIndex(), splPage);
@@ -372,7 +429,7 @@ public class SchemaFile implements ISchemaFile {
         // split as root internal, notice cannot transplant internal root, since there are many
         // pointers to it
         ISchemaPage splPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
-        String sk = iPage.splitInternalSegment(key, ptr, splPage);
+        String sk = iPage.splitInternalSegment(key, ptr, splPage, SchemaFile.INCLINED_SPLIT);
 
         ISchemaPage trsPage = getMinApplicablePageInMem(SEG_MAX_SIZ);
         ((SchemaPage) trsPage).transplantInternalSegment(iPage, (short) 0, SEG_MAX_SIZ);
@@ -389,220 +446,6 @@ public class SchemaFile implements ISchemaFile {
       }
     }
     dirtyPages.put(iPage.getPageIndex(), iPage);
-  }
-
-  /**
-   * Pseudocode for complete write process. No more segment-list, but segment-tree.
-   *
-   * <p>loop for nc in new_child: // notice that fPage is a leaf page fPage, segId, fAddr, cBuffer
-   * // prepare first page and buffer res = fPage.writeWithRearrange(segId, cBuffer) if res failed:
-   * if page.segSize(segId) < FULL_SEG: // getMinPageAndTrs() else: insertLeaf(fPage, segId, nc)
-   *
-   * <p>// a variant b+ tree that: 1) split by inserted key; 2) maintains root address unchanged.
-   * insertLeaf(fPage, segId, nc.key, nc.buffer) { // notice fPage must be a leaf nPage =
-   * allocPage();
-   *
-   * <p>// notice, oriMinKeyFPage may not be smaller than nc.key (as in left-most leaf)
-   * oriMinKeyFPage = fPage.getMinKey(segId); // TODO: Page.getMinKey
-   *
-   * <p>pPage = getPageInstance(fPage.getPageIdx, segId) if (pPage == null) { // TODO: alloc a new
-   * leaf split from fPage pPage = allocPage(); pPage.allocSegment();
-   *
-   * <p>// TODO: split fPage into nPage and pPage fPage.splitWithKeys(nPage, pPage, nc.key);
-   *
-   * <p>fPage.transformToInternal(); insertInternal(fPage, pPage.getMinKey, nPage, pPage) } else {
-   * fPage.splitWithKey(nPage, segId, nc.key, nc.buffer); // TODO: move records >= nc.key to nPage
-   * mKeyInNPage = nPage.getMinKey(); new_key, new_point <- page contains smaller min key among
-   * fPage and nPage insertInternal(pPage, new_key, new_point) } }
-   *
-   * <p>// insert into an existed internal insertInternal(fPage, nk, np) { if space_not_enough {
-   * pPage <- parent of fPage if (pPage == null) { allocate 2 page, split fPage into them clean
-   * fPage and insert entries of above 2 pages } else { allocate 1 page, split half fPage into it
-   * insertInternal(fPage, new_key, new_point) } } insert into slot and record }
-   *
-   * <p>// insert into an empty internal insertInternal() {
-   *
-   * <p>}
-   */
-  // @Override
-  public void writeMNodeFormer(IMNode node) throws MetadataException, IOException {
-    int pageIndex;
-    short curSegIdx;
-    ISchemaPage curPage = null;
-
-    // Get corresponding page instance, segment id
-    long curSegAddr = getNodeAddress(node);
-
-    if (node.isStorageGroup()) {
-      curSegAddr = lastSGAddr;
-      pageIndex = getPageIndex(lastSGAddr);
-      curSegIdx = getSegIndex(lastSGAddr);
-      isEntity = node.isEntity();
-      setNodeAddress(node, lastSGAddr);
-    } else {
-      if ((curSegAddr & 0x80000000_00000000L) != 0) {
-        throw new MetadataException(
-            String.format(
-                "Cannot store a node with segment address [%s] except for StorageGroupNode.",
-                curSegAddr));
-      }
-      pageIndex = SchemaFile.getPageIndex(curSegAddr);
-      curSegIdx = SchemaFile.getSegIndex(curSegAddr);
-    }
-
-    // Flush new child
-    for (Map.Entry<String, IMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet()) {
-
-      // Translate node.child into buffer and Pre-Allocate segment for internal child.
-      IMNode child = entry.getValue();
-      if (!child.isMeasurement()) {
-        if (getNodeAddress(child) < 0) {
-          short estSegSize = estimateSegmentSize(child);
-          long glbIndex = preAllocateSegment(estSegSize);
-          setNodeAddress(child, glbIndex);
-        } else {
-          // new child with a valid segment address, weird
-          throw new MetadataException("A child in newChildBuffer shall not have segmentAddress.");
-        }
-      }
-
-      ByteBuffer childBuffer = RecordUtils.node2Buffer(child);
-
-      // Write and Handle Overflow
-      // (inside curPage.write)
-      // write to curSeg, return 0 if succeeded, positive if next page, exception if no next and no
-      // spare
-      // (inside this method)
-      // get next segment if existed, retry till succeeded or exception
-      // allocate new page if exception, link or transplant by original segment size, write buffer
-      // to new segment
-      // throw exception if record larger than one page
-      try {
-        curPage = getPageInstance(pageIndex);
-
-        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
-        long npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
-
-        while (npAddress > 0) {
-          // get next page and retry
-          pageIndex = SchemaFile.getPageIndex(npAddress);
-          curSegIdx = SchemaFile.getSegIndex(npAddress);
-
-          curPage = getPageInstance(pageIndex);
-          npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
-        }
-
-        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
-
-      } catch (SchemaPageOverflowException e) {
-        // there is no more next page, need allocate new page
-        short newSegSize = SchemaFile.reEstimateSegSize(curPage.getSegmentSize(curSegIdx));
-        ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
-
-        if (newSegSize == curPage.getSegmentSize(curSegIdx)) {
-          // segment on multi pages
-          short newSegId = newPage.allocNewSegment(newSegSize);
-          long newSegAddr = SchemaFile.getGlobalIndex(newPage.getPageIndex(), newSegId);
-
-          // note that it doesn't modify address of node nor parental record
-          newPage.setPrevSegAddress(newSegId, curSegAddr);
-          curPage.setNextSegAddress(curSegIdx, newSegAddr);
-
-          curSegAddr = newSegAddr;
-        } else {
-          // segment on a single new page
-          curSegAddr = newPage.transplantSegment(curPage, curSegIdx, newSegSize);
-
-          curPage.deleteSegment(curSegIdx);
-
-          curSegIdx = SchemaFile.getSegIndex(curSegAddr);
-        }
-        setNodeAddress(node, curSegAddr);
-        updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
-
-        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
-
-        curPage = newPage;
-        pageIndex = curPage.getPageIndex();
-        curPage.write(curSegIdx, entry.getKey(), childBuffer);
-      }
-    }
-
-    curSegAddr = getNodeAddress(node);
-    // Flush updated child
-    for (Map.Entry<String, IMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
-      // Translate child into reocrd
-      IMNode child = entry.getValue();
-      ByteBuffer childBuffer = RecordUtils.node2Buffer(child);
-
-      // Get segment actually contains the record
-      long actualSegAddr = getTargetSegmentAddress(curSegAddr, entry.getKey());
-
-      if (actualSegAddr < 0) {
-        throw new MetadataException(
-            String.format(
-                "Node[%s] has no child[%s] in schema file.", node.getName(), entry.getKey()));
-      }
-
-      try {
-        curPage = getPageInstance(getPageIndex(actualSegAddr));
-        curSegIdx = getSegIndex(actualSegAddr);
-
-        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
-        // if current segment has no more space for new record, it will re-allocate segment, if
-        // failed, throw exception
-        curPage.update(curSegIdx, entry.getKey(), childBuffer);
-
-      } catch (SchemaPageOverflowException e) {
-        short newSegSize = reEstimateSegSize(curPage.getSegmentSize(curSegIdx));
-        if (curPage.getSegmentSize(curSegIdx) != newSegSize) {
-          // the segment should be extended, transplanted (no enough space in curPage) and then
-          // updated
-          ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
-          long newSegAddr = newPage.transplantSegment(curPage, curSegIdx, newSegSize);
-          newPage.update(getSegIndex(newSegAddr), entry.getKey(), childBuffer);
-
-          // delete and modify original infos
-          curPage.deleteSegment(curSegIdx);
-          setNodeAddress(node, newSegAddr);
-          updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
-          dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
-        } else {
-          // already full page segment, write updated record to another applicable segment or a
-          // blank new one
-          long existedSegAddr =
-              getApplicableLinkedSegments(curPage, curSegIdx, entry.getKey(), childBuffer);
-          if (existedSegAddr < 0) {
-            // get a blank new page and add it to linked segment list right behind curPage
-            ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
-            existedSegAddr =
-                getGlobalIndex(newPage.getPageIndex(), newPage.allocNewSegment(newSegSize));
-
-            long nextSegAddr = curPage.getNextSegAddress(curSegIdx);
-            if (nextSegAddr != -1) {
-              ISchemaPage nextPage = getPageInstance(getPageIndex(nextSegAddr));
-              nextPage.setPrevSegAddress(getSegIndex(nextSegAddr), existedSegAddr);
-              dirtyPages.putIfAbsent(nextPage.getPageIndex(), nextPage);
-            }
-
-            newPage.setNextSegAddress(getSegIndex(existedSegAddr), nextSegAddr);
-            newPage.setPrevSegAddress(getSegIndex(existedSegAddr), actualSegAddr);
-
-            curPage.setNextSegAddress(getSegIndex(actualSegAddr), existedSegAddr);
-          }
-
-          ISchemaPage existedPage = getPageInstance(getPageIndex(existedSegAddr));
-          existedPage.write(getSegIndex(existedSegAddr), entry.getKey(), childBuffer);
-          curPage.removeRecord(getSegIndex(actualSegAddr), entry.getKey());
-          dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
-          dirtyPages.putIfAbsent(existedPage.getPageIndex(), existedPage);
-        }
-      }
-    }
-
-    flushAllDirtyPages();
   }
 
   @Override
@@ -843,87 +686,6 @@ public class SchemaFile implements ISchemaFile {
     treeTrace[0] = i; // bound in no.0 elem, points the parent the return
 
     return getGlobalIndex(curPage.getPageIndex(), (short) 0);
-  }
-
-  /**
-   * It might be a weird but influential method. It searches for the real segment address with
-   * address from parental node and child name.
-   *
-   * <p>For now, it examines segments one by one with target child name, which has Operation(n).
-   *
-   * @param curSegAddr segment address from parental node
-   * @param recKey target child name
-   */
-  private long getTargetSegmentAddressFormer(long curSegAddr, String recKey)
-      throws IOException, MetadataException {
-    // TODO: improve efficiency
-    short curSegId = getSegIndex(curSegAddr);
-
-    ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
-
-    if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
-      return curSegAddr;
-    }
-
-    long nextSegAddr = curPage.getNextSegAddress(curSegId);
-    while (nextSegAddr >= 0) {
-      ISchemaPage pivotPage = getPageInstance(getPageIndex(nextSegAddr));
-      short pSegId = getSegIndex(nextSegAddr);
-      if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
-        return nextSegAddr;
-      }
-      nextSegAddr = pivotPage.getNextSegAddress(pSegId);
-    }
-
-    long prevSegAddr = curPage.getPrevSegAddress(curSegId);
-    while (prevSegAddr >= 0) {
-      ISchemaPage pivotPage = getPageInstance(getPageIndex(prevSegAddr));
-      short pSegId = getSegIndex(prevSegAddr);
-      if (pivotPage.hasRecordKeyInSegment(recKey, pSegId)) {
-        return prevSegAddr;
-      }
-      prevSegAddr = pivotPage.getPrevSegAddress(pSegId);
-    }
-
-    return -1;
-  }
-
-  /**
-   * To find a segment applicable for inserting (key, buffer), among pages linked to curPage.curSeg
-   *
-   * @param curPage
-   * @param curSegId
-   * @param key
-   * @param buffer
-   * @return
-   */
-  private long getApplicableLinkedSegments(
-      ISchemaPage curPage, short curSegId, String key, ByteBuffer buffer)
-      throws IOException, MetadataException {
-    if (curPage.getSegmentSize(curSegId) < SEG_MAX_SIZ) {
-      // only max segment can be linked
-      return -1;
-    }
-
-    short totalSize = (short) (key.getBytes().length + buffer.capacity() + 4 + 2);
-    long nextSegAddr = curPage.getNextSegAddress(curSegId);
-    while (nextSegAddr >= 0) {
-      ISchemaPage nextPage = getPageInstance(getPageIndex(nextSegAddr));
-      if (nextPage.isSegmentCapableFor(getSegIndex(nextSegAddr), totalSize)) {
-        return nextSegAddr;
-      }
-      nextSegAddr = nextPage.getNextSegAddress(getSegIndex(nextSegAddr));
-    }
-
-    long prevSegAddr = curPage.getPrevSegAddress(curSegId);
-    while (prevSegAddr >= 0) {
-      ISchemaPage prevPage = getPageInstance(getPageIndex(prevSegAddr));
-      if (prevPage.isSegmentCapableFor(getSegIndex(prevSegAddr), totalSize)) {
-        return prevSegAddr;
-      }
-      prevSegAddr = prevPage.getPrevSegAddress(getSegIndex(prevSegAddr));
-    }
-    return -1;
   }
 
   private long preAllocateSegment(short size) throws IOException, MetadataException {

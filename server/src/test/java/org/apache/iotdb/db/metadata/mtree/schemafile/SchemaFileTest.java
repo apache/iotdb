@@ -255,7 +255,8 @@ public class SchemaFileTest {
     essentialTestSchemaFile();
 
     IMNode node = new InternalMNode(null, "test");
-    ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(196608L);
+    ICachedMNodeContainer.getCachedMNodeContainer(node)
+        .setSegmentAddress(SchemaFile.getGlobalIndex(2, (short) 0));
     ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
     Iterator<IMNode> res = sf.getChildren(node);
@@ -414,14 +415,9 @@ public class SchemaFileTest {
     ICachedMNodeContainer.getCachedMNodeContainer(root).updateMNode("aa0");
 
     sf.writeMNode(root);
-
+    printSF(sf);
     Assert.assertEquals(
         "updatedupdatednode", sf.getChildNode(root, "aa0").getAsMeasurementMNode().getAlias());
-    Assert.assertEquals(
-        1,
-        getSegment(sf, getSegAddr(sf, getSegAddrInContainer(root), "aa0"))
-            .getKeyOffsetList()
-            .size());
 
     root.getChildren().clear();
 
@@ -524,10 +520,10 @@ public class SchemaFileTest {
     sf.writeMNode(ent2);
 
     Assert.assertEquals(
-        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") - 1,
+        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 1,
         getSegAddr(sf, getSegAddrInContainer(ent3), "e3m0"));
     Assert.assertEquals(
-        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") - 2,
+        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 2,
         getSegAddr(sf, getSegAddrInContainer(ent4), "e4m0"));
 
     root.getChildren().clear();
@@ -551,6 +547,7 @@ public class SchemaFileTest {
             "e5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5"
                 + "malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkks"));
     sf.writeMNode(ent5);
+    printSF(sf);
     Assert.assertEquals(20, getSegment(sf, getSegAddrInContainer(ent5)).getAllRecords().size());
 
     ent5.getChildren().clear();

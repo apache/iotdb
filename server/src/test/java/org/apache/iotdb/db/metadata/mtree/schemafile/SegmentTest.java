@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -118,27 +119,6 @@ public class SegmentTest {
   }
 
   @Test
-  public void bufferTest() {
-    ByteBuffer buffer1 = ByteBuffer.allocate(100);
-    ByteBuffer buffer2 = buffer1.slice();
-    buffer1.put("12346".getBytes());
-    buffer1.clear();
-
-    buffer2.position(10);
-    buffer2.put("091234".getBytes());
-    buffer2.clear();
-    printBuffer(buffer1);
-    printBuffer(buffer2);
-
-    byte[] a = new byte[10];
-    byte[] b = a;
-
-    a[0] = (byte) 7;
-    System.out.println(a[0]);
-    System.out.println(b[0]);
-  }
-
-  @Test
   public void evenSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
     ISegment<ByteBuffer, IMNode> seg = Segment.initAsSegment(buffer);
@@ -151,7 +131,7 @@ public class SegmentTest {
     }
 
     ByteBuffer buf2 = ByteBuffer.allocate(500);
-    String sk = seg.splitByKey("a55", buf, buf2);
+    String sk = seg.splitByKey("a55", buf, buf2, SchemaFile.INCLINED_SPLIT);
 
     Assert.assertEquals("a5", sk);
     Assert.assertEquals(4, seg.getAllRecords().size());
@@ -160,6 +140,18 @@ public class SegmentTest {
     seg.syncBuffer();
     ISegment seg3 = Segment.loadAsSegment(buffer);
     Assert.assertEquals(seg.getAllRecords().size(), seg3.getAllRecords().size());
+
+    buf2.clear();
+    seg.splitByKey(null, null, buf2, false);
+    Assert.assertEquals(2, seg.getAllRecords().size());
+
+    buf2.clear();
+    seg.splitByKey(null, null, buf2, false);
+    Assert.assertEquals(1, seg.getAllRecords().size());
+
+    buf2.clear();
+    seg.splitByKey("b", buf, buf2, false);
+    Assert.assertEquals(1, seg.getAllRecords().size());
   }
 
   @Test
@@ -175,7 +167,7 @@ public class SegmentTest {
       seg.insertRecord(test[i], buf);
     }
     // at largest
-    String sk = seg.splitByKey("a9", buf, buf2);
+    String sk = seg.splitByKey("a9", buf, buf2, SchemaFile.INCLINED_SPLIT);
     Assert.assertEquals("a9", sk);
     Assert.assertEquals(1, Segment.loadAsSegment(buf2).getAllRecords().size());
 
@@ -183,7 +175,7 @@ public class SegmentTest {
     seg.insertRecord("a71", buf);
     seg.insertRecord("a72", buf);
     buf2.clear();
-    sk = seg.splitByKey("a73", buf, buf2);
+    sk = seg.splitByKey("a73", buf, buf2, SchemaFile.INCLINED_SPLIT);
     Assert.assertEquals("a73", sk);
     Assert.assertEquals(2, Segment.loadAsSegment(buf2).getAllRecords().size());
 
@@ -191,7 +183,7 @@ public class SegmentTest {
     seg.insertRecord("a00", buf);
     seg.insertRecord("a01", buf);
     buf2.clear();
-    sk = seg.splitByKey("a02", buf, buf2);
+    sk = seg.splitByKey("a02", buf, buf2, SchemaFile.INCLINED_SPLIT);
     Assert.assertEquals("a3", sk);
     Assert.assertEquals(5, seg.getAllRecords().size());
   }
@@ -212,12 +204,10 @@ public class SegmentTest {
     seg.insertRecord("a12", buf);
     seg.insertRecord("a11", buf);
 
-    print(seg.inspect());
-
-    String sk = seg.splitByKey("a10", buf, buf2);
-    Assert.assertEquals("a10", sk);
-    Assert.assertEquals(1, seg.getAllRecords().size());
-    Assert.assertEquals(10, Segment.loadAsSegment(buf2).getAllRecords().size());
+    String sk = seg.splitByKey("a10", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    Assert.assertEquals("a11", sk);
+    Assert.assertEquals(2, seg.getAllRecords().size());
+    Assert.assertEquals(9, Segment.loadAsSegment(buf2).getAllRecords().size());
 
     // at higher half
     test = new String[] {"a5", "a6", "a7", "a8"};
@@ -227,9 +217,19 @@ public class SegmentTest {
     seg.insertRecord("a84", buf);
     seg.insertRecord("a83", buf);
     buf2.clear();
-    sk = seg.splitByKey("a82", buf, buf2);
+    sk = seg.splitByKey("a82", buf, buf2, SchemaFile.INCLINED_SPLIT);
 
     Assert.assertEquals("a7", sk);
+    Assert.assertEquals(4, seg.getAllRecords().size());
+
+    // at third-smallest
+    seg.insertRecord("a43", buf);
+    seg.insertRecord("a42", buf);
+
+    buf2.clear();
+    sk = seg.splitByKey("a41", buf, buf2, SchemaFile.INCLINED_SPLIT);
+
+    Assert.assertEquals("a42", sk);
     Assert.assertEquals(3, seg.getAllRecords().size());
   }
 

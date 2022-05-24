@@ -96,9 +96,11 @@ public interface ISegment<T, R> {
    * Split the segment into dstBuffer considering the passing in key, whether internal or leaf.
    *
    * @param entry content of the insert key.
+   * @param inclineSplit whether to split with incline
    * @return always the search key of the split segment
    */
-  String splitByKey(String key, T entry, ByteBuffer dstBuffer) throws MetadataException;
+  String splitByKey(String key, T entry, ByteBuffer dstBuffer, boolean inclineSplit)
+      throws MetadataException;
 
   String toString();
 
