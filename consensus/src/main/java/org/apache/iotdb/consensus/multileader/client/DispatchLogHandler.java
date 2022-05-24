@@ -61,6 +61,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
             try {
               Thread.sleep((long) (BASIC_RETRY_TIME_MS * Math.pow(1.2, retryCount)));
             } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
               logger.warn("Unexpected interruption during retry pending batch");
             }
             thread.sendBatchAsync(batch, this);
@@ -84,6 +85,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
           try {
             Thread.sleep((long) (BASIC_RETRY_TIME_MS * Math.pow(1.2, retryCount)));
           } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             logger.warn("Unexpected interruption during retry pending batch");
           }
           thread.sendBatchAsync(batch, this);
