@@ -42,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -55,10 +54,13 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
 public class SlidingWindowAggregationOperatorTest {
@@ -72,6 +74,45 @@ public class SlidingWindowAggregationOperatorTest {
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
   private ExecutorService instanceNotificationExecutor =
       IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+
+  private final List<AggregationType> leafAggregationTypes =
+      Arrays.asList(
+          AggregationType.COUNT,
+          AggregationType.SUM,
+          AggregationType.LAST_VALUE,
+          AggregationType.FIRST_VALUE,
+          AggregationType.MAX_VALUE,
+          AggregationType.MIN_VALUE);
+
+  private final List<AggregationType> rootAggregationTypes =
+      Arrays.asList(
+          AggregationType.COUNT,
+          AggregationType.AVG,
+          AggregationType.SUM,
+          AggregationType.LAST_VALUE,
+          AggregationType.MIN_TIME,
+          AggregationType.MAX_TIME,
+          AggregationType.FIRST_VALUE,
+          AggregationType.MAX_VALUE,
+          AggregationType.MIN_VALUE);
+
+  private final List<List<List<InputLocation>>> inputLocations =
+      Arrays.asList(
+          Collections.singletonList(Collections.singletonList(new InputLocation(0, 0))),
+          Collections.singletonList(
+              Arrays.asList(new InputLocation(0, 0), new InputLocation(0, 1))),
+          Collections.singletonList(Collections.singletonList(new InputLocation(0, 1))),
+          Collections.singletonList(
+              Arrays.asList(new InputLocation(0, 2), new InputLocation(0, 3))),
+          Collections.singletonList(Collections.singletonList(new InputLocation(0, 5))),
+          Collections.singletonList(Collections.singletonList(new InputLocation(0, 3))),
+          Collections.singletonList(
+              Arrays.asList(new InputLocation(0, 4), new InputLocation(0, 5))),
+          Collections.singletonList(Collections.singletonList(new InputLocation(0, 6))),
+          Collections.singletonList(Collections.singletonList(new InputLocation(0, 7))));
+
+  private final GroupByTimeParameter groupByTimeParameter =
+      new GroupByTimeParameter(0, 300, 100, 50, true);
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
@@ -88,60 +129,63 @@ public class SlidingWindowAggregationOperatorTest {
   }
 
   @Test
-  public void slidingWindowAggregationOperatorTest1() throws IllegalPathException {
-    List<AggregationType> aggregationTypes = new ArrayList<>();
-    List<List<InputLocation[]>> inputLocations = new ArrayList<>();
+  public void slidingWindowAggregationTest() throws IllegalPathException {
+    String[] retArray =
+        new String[] {
+          "0,100,20049.5,2004950.0,20099,0,99,20000,20099,20000",
+          "50,100,20099.5,2009950.0,20149,50,149,20050,20149,20050",
+          "100,100,20149.5,2014950.0,20199,100,199,20100,20199,20100",
+          "150,100,15199.5,1519950.0,10249,150,249,20150,20199,10200",
+          "200,100,6249.5,624950.0,299,200,299,10200,10259,260",
+          "250,50,2274.5,113725.0,299,250,299,10250,10259,260",
+        };
 
-    aggregationTypes.add(AggregationType.AVG);
-    List<InputLocation[]> inputLocationForOneAggregator1 = new ArrayList<>();
-    for (int i = 0; i < 2; i++) {
-      inputLocationForOneAggregator1.add(new InputLocation[] {new InputLocation(0, i)});
-    }
-    inputLocations.add(inputLocationForOneAggregator1);
-
-    aggregationTypes.add(AggregationType.FIRST_VALUE);
-    List<InputLocation[]> inputLocationForOneAggregator2 = new ArrayList<>();
-    for (int i = 2; i < 4; i++) {
-      inputLocationForOneAggregator2.add(new InputLocation[] {new InputLocation(0, i)});
-    }
-    inputLocations.add(inputLocationForOneAggregator2);
-
-    aggregationTypes.add(AggregationType.LAST_VALUE);
-    List<InputLocation[]> inputLocationForOneAggregator3 = new ArrayList<>();
-    for (int i = 4; i < 6; i++) {
-      inputLocationForOneAggregator3.add(new InputLocation[] {new InputLocation(0, i)});
-    }
-    inputLocations.add(inputLocationForOneAggregator3);
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 300, 100, 50, true);
-
-    SlidingWindowAggregationOperator slidingWindowAggregationOperator =
-        initSlidingWindowAggregationOperator(
-            aggregationTypes, groupByTimeParameter, inputLocations, false, true);
+    SlidingWindowAggregationOperator slidingWindowAggregationOperator1 =
+        initSlidingWindowAggregationOperator(true);
     int count = 0;
-    while (slidingWindowAggregationOperator.hasNext()) {
-      TsBlock resultTsBlock = slidingWindowAggregationOperator.next();
-      long time = resultTsBlock.getTimeColumn().getLong(0);
-      Assert.assertEquals(3, resultTsBlock.getValueColumnCount());
-      System.out.println("Time: " + time);
-      System.out.println("\tavg: " + resultTsBlock.getColumn(0).getDouble(0));
-      System.out.println("\tfirst_value: " + resultTsBlock.getColumn(1).getInt(0));
-      System.out.println("\tlast_value: " + resultTsBlock.getColumn(2).getInt(0));
+    while (slidingWindowAggregationOperator1.hasNext()) {
+      TsBlock resultTsBlock = slidingWindowAggregationOperator1.next();
+      Assert.assertEquals(9, resultTsBlock.getValueColumnCount());
+      Assert.assertEquals(retArray[count], getResultString(resultTsBlock));
       count++;
     }
     Assert.assertEquals(6, count);
+
+    SlidingWindowAggregationOperator slidingWindowAggregationOperator2 =
+        initSlidingWindowAggregationOperator(false);
+    count = retArray.length;
+    while (slidingWindowAggregationOperator2.hasNext()) {
+      TsBlock resultTsBlock = slidingWindowAggregationOperator2.next();
+      Assert.assertEquals(9, resultTsBlock.getValueColumnCount());
+      Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock));
+      count--;
+    }
+    Assert.assertEquals(0, count);
   }
 
-  /**
-   * @param aggregationTypes Aggregation function used in test
-   * @param groupByTimeParameter group by time parameter
-   * @param inputLocations each inputLocation is used in one aggregator
-   */
-  private SlidingWindowAggregationOperator initSlidingWindowAggregationOperator(
-      List<AggregationType> aggregationTypes,
-      GroupByTimeParameter groupByTimeParameter,
-      List<List<InputLocation[]>> inputLocations,
-      boolean isPartial,
-      boolean ascending)
+  private String getResultString(TsBlock resultTsBlock) {
+    return resultTsBlock.getTimeColumn().getLong(0)
+        + ","
+        + resultTsBlock.getColumn(0).getLong(0)
+        + ","
+        + resultTsBlock.getColumn(1).getDouble(0)
+        + ","
+        + resultTsBlock.getColumn(2).getDouble(0)
+        + ","
+        + resultTsBlock.getColumn(3).getInt(0)
+        + ","
+        + resultTsBlock.getColumn(4).getLong(0)
+        + ","
+        + resultTsBlock.getColumn(5).getLong(0)
+        + ","
+        + resultTsBlock.getColumn(6).getInt(0)
+        + ","
+        + resultTsBlock.getColumn(7).getInt(0)
+        + ","
+        + resultTsBlock.getColumn(8).getInt(0);
+  }
+
+  private SlidingWindowAggregationOperator initSlidingWindowAggregationOperator(boolean ascending)
       throws IllegalPathException {
     // Construct operator tree
     QueryId queryId = new QueryId("test");
@@ -161,7 +205,7 @@ public class SlidingWindowAggregationOperatorTest {
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
 
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, ascending)
+    AccumulatorFactory.createAccumulators(leafAggregationTypes, TSDataType.INT32, ascending)
         .forEach(
             accumulator -> aggregators.add(new Aggregator(accumulator, AggregationStep.PARTIAL)));
 
@@ -179,14 +223,16 @@ public class SlidingWindowAggregationOperatorTest {
         new QueryDataSource(seqResources, unSeqResources));
 
     List<SlidingWindowAggregator> finalAggregators = new ArrayList<>();
-    for (int i = 0; i < aggregationTypes.size(); i++) {
+    for (int i = 0; i < rootAggregationTypes.size(); i++) {
       finalAggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
-              aggregationTypes.get(i),
-              SchemaUtils.getSeriesTypeByPath(d0s0, aggregationTypes.get(i).name()),
+              rootAggregationTypes.get(i),
+              TSDataType.INT32,
               ascending,
-              inputLocations.get(i),
-              isPartial ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL));
+              inputLocations.get(i).stream()
+                  .map(tmpInputLocations -> tmpInputLocations.toArray(new InputLocation[0]))
+                  .collect(Collectors.toList()),
+              AggregationStep.FINAL));
     }
 
     return new SlidingWindowAggregationOperator(
