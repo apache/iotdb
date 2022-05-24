@@ -66,7 +66,7 @@ public class MonotonicQueueSlidingWindowAggregator extends SlidingWindowAggregat
     deque.addLast(partialResult);
     this.accumulator.reset();
     if (!deque.isEmpty()) {
-      this.accumulator.addIntermediate(partialResult.getPartialResult());
+      this.accumulator.addIntermediate(deque.getFirst().getPartialResult());
     }
   }
 }
