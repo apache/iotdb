@@ -25,6 +25,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 
 import java.util.List;
 
+/**
+ * The aggregation result is calculated from all pre-aggregation results in the currently maintained
+ * queue when calculating the COUNT, SUM, and AVG.
+ */
 public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator {
   public SmoothQueueSlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {

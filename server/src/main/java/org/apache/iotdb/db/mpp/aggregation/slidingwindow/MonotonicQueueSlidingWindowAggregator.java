@@ -27,6 +27,10 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * When computing MAX_VALUE, MIN_VALUE, EXTREME, we only add partial aggregation results that
+ * maintain monotonicity to queue. The aggregation result always appears at the head of the queue.
+ */
 public class MonotonicQueueSlidingWindowAggregator extends SlidingWindowAggregator {
 
   private final Comparator<Column> comparator;
