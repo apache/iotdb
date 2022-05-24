@@ -126,6 +126,10 @@ public interface ISchemaPage {
   // TODO: methods below should belong to ISegment interface after abstraction refactor
   //  along with methods that insert/remove/get records, seg/get segment address
 
+  String splitLeafSegment(String key, ByteBuffer recBuf, ISchemaPage dstPage) throws MetadataException;
+
+  String splitInternalSegment(String key, int ptr, ISchemaPage dstPage) throws MetadataException;
+
   int insertIndexEntry(String key, int ptr) throws MetadataException;
 
   int getIndexPointer(String key) throws MetadataException;

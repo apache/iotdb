@@ -108,9 +108,7 @@ public class InternalSegment implements ISegment<Integer, Integer> {
   }
 
   public static ISegment<Integer, Integer> loadInternalSegment(ByteBuffer buffer) {
-    return ReadWriteIOUtils.readShort(buffer) != (short) -1
-        ? null
-        : new InternalSegment(buffer, false, -1);
+    return new InternalSegment(buffer, false, -1);
   }
 
   private synchronized void flushBufferHeader() {

@@ -586,6 +586,43 @@ public class SchemaFileTest {
     }
   }
 
+  // region B+ Tree Segment SchemaFile Test
+
+  @Test
+  public void basicTest() throws IOException, MetadataException{
+    SchemaFile.INTERNAL_SPLIT_VALVE = 16000;
+    int i = 10000;
+    IMNode sgNode = new StorageGroupEntityMNode(null, "sgRoot", 11111111L);
+    Set<String> checkSet = new HashSet<>();
+    // write with empty entitiy
+    while (i >= 0) {
+      String name = Integer.toString(i);
+      if (i < 10) {
+        name = "00" + name;
+      } else if (i < 100) {
+        name = "0" + name;
+      }
+      IMNode aMeas = getMeasurementNode(sgNode, "s_" + name, null);
+      checkSet.add(aMeas.getName());
+      sgNode.addChild(aMeas);
+      i--;
+    }
+
+    Iterator<IMNode> orderedTree = getTreeBFT(sgNode);
+    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
+    sf.writeMNode(sgNode);
+
+    Iterator<IMNode> res = sf.getChildren(sgNode);
+    printSF(sf);
+    while (res.hasNext()) {
+      checkSet.remove(res.next().getName());
+    }
+    Assert.assertTrue(checkSet.isEmpty());
+  }
+
+  // endregion
+
+
   // region Quick Print
 
   private void printSF(ISchemaFile file) throws IOException, MetadataException {

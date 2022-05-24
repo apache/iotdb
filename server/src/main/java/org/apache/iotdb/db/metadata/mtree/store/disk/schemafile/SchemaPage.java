@@ -130,11 +130,6 @@ public class SchemaPage implements ISchemaPage {
     int res = tarSeg.insertRecord(key, buffer);
 
     if (res < 0) {
-      // If next segment exist, return next segment address first
-      if (tarSeg.getNextSegAddress() > 0) {
-        return tarSeg.getNextSegAddress();
-      }
-
       // relocate inside page, if not enough space for new size segment, throw exception
       tarSeg = relocateSegment(tarSeg, segIdx, SchemaFile.reEstimateSegSize(tarSeg.size()));
       res = tarSeg.insertRecord(key, buffer);
@@ -298,6 +293,10 @@ public class SchemaPage implements ISchemaPage {
     return thisIndex;
   }
 
+  /**
+   * Allocate all space of the page to construct an {@link InternalSegment}. <br>
+   * This method will modify nearly all status of the page, making a poor encapsulation.
+   */
   @Override
   public synchronized short allocInternalSegment(int ptr) throws SchemaPageOverflowException {
     // any segment left (even internal) will stop allocating InternalSegment
@@ -354,7 +353,28 @@ public class SchemaPage implements ISchemaPage {
     this.pageBuffer.limit(pageSpareOffset + newSegSize);
     ISegment<ByteBuffer, IMNode> newSeg = Segment.loadAsSegment(this.pageBuffer.slice());
 
+    // registerNewSegment will modify page status considering the new segment
     return SchemaFile.getGlobalIndex(pageIndex, registerNewSegment(newSeg));
+  }
+
+  // TODO: improve encapsulation
+  public void transplantInternalSegment(ISchemaPage srcPage, short segId, short newSegSize)
+      throws MetadataException {
+    if (!isCapableForSize(newSegSize)) {
+      throw new SchemaPageOverflowException(pageIndex);
+    }
+    ByteBuffer newBuf = ByteBuffer.allocate(newSegSize);
+    ((SchemaPage) srcPage).extendsSegmentTo(newBuf, segId);
+
+    newBuf.clear();
+    this.pageBuffer.clear();
+    this.pageBuffer.position(pageSpareOffset);
+    this.pageBuffer.put(newBuf);
+
+    this.segNum = 1;
+    this.segOffsetLst.add(pageSpareOffset);
+    pageSpareOffset += newSegSize;
+    this.syncPageBuffer();
   }
 
   /** Invoke all segments, translate into string, concatenate and return. */
@@ -389,7 +409,7 @@ public class SchemaPage implements ISchemaPage {
   @Override
   public void setNextSegAddress(short segId, long address) throws SegmentNotFoundException {
     if (getInternalSeg() != null) {
-      internalSeg.setNextSegAddress(address);
+      getInternalSeg().setNextSegAddress(address);
     } else {
       getSegment(segId).setNextSegAddress(address);
     }
@@ -398,7 +418,7 @@ public class SchemaPage implements ISchemaPage {
   @Override
   public void setPrevSegAddress(short segId, long address) throws SegmentNotFoundException {
     if (getInternalSeg() != null) {
-      internalSeg.setPrevSegAddress(address);
+      getInternalSeg().setPrevSegAddress(address);
     } else {
       getSegment(segId).setPrevSegAddress(address);
     }
@@ -408,36 +428,64 @@ public class SchemaPage implements ISchemaPage {
   public long getNextSegAddress(short segId) throws SegmentNotFoundException {
     return getInternalSeg() == null
         ? getSegment(segId).getNextSegAddress()
-        : internalSeg.getNextSegAddress();
+        : getInternalSeg().getNextSegAddress();
   }
 
   @Override
   public long getPrevSegAddress(short segId) throws SegmentNotFoundException {
     return getInternalSeg() == null
         ? getSegment(segId).getPrevSegAddress()
-        : internalSeg.getPrevSegAddress();
+        : getInternalSeg().getPrevSegAddress();
   }
 
   @Override
   public int insertIndexEntry(String key, int ptr)
       throws SegmentNotFoundException, RecordDuplicatedException {
-    if (internalSeg == null && getInternalSeg() == null) {
+    if (getInternalSeg() == null) {
       throw new SegmentNotFoundException(pageIndex);
     }
-    return internalSeg.insertRecord(key, ptr);
+    return getInternalSeg().insertRecord(key, ptr);
   }
 
   @Override
   public int getIndexPointer(String key) throws MetadataException {
-    if (internalSeg == null && getInternalSeg() == null) {
+    if (getInternalSeg() == null) {
       throw new SegmentNotFoundException(pageIndex);
     }
-    return internalSeg.getRecordByKey(key);
+    return getInternalSeg().getRecordByKey(key);
   }
 
   @Override
   public boolean containsInternalSegment() {
-    return internalSeg != null || getInternalSeg() != null;
+    return getInternalSeg() != null;
+  }
+
+  @Override
+  public String splitLeafSegment(String key, ByteBuffer recBuf, ISchemaPage dstPage) throws MetadataException {
+    // only full page leaf segment can be split
+    if (getInternalSeg() != null || getSegment((short) 0).size() != SchemaFile.SEG_MAX_SIZ) {
+      throw new SegmentNotFoundException(pageIndex, (short) 0);
+    }
+    // TODO: no check on dstPage
+    ((SchemaPage)dstPage).segOffsetLst.add(SchemaFile.PAGE_HEADER_SIZE);
+    ((SchemaPage)dstPage).segNum = 1;
+    ((SchemaPage)dstPage).pageSpareOffset = (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
+
+    return getSegment((short) 0).splitByKey(key, recBuf, ((SchemaPage)dstPage).getSegmentSlice());
+  }
+
+  @Override
+  public String splitInternalSegment(String key, int ptr, ISchemaPage dstPage) throws MetadataException {
+    if (getInternalSeg() == null) {
+      throw new SegmentNotFoundException(pageIndex);
+    }
+    // TODO: improve encapsulation
+
+    ((SchemaPage)dstPage).segOffsetLst.add(SchemaFile.PAGE_HEADER_SIZE);
+    ((SchemaPage)dstPage).segNum = 1;
+    ((SchemaPage)dstPage).pageSpareOffset = (short) (SchemaFile.PAGE_HEADER_SIZE + SchemaFile.SEG_MAX_SIZ);
+
+    return getInternalSeg().splitByKey(key, ptr, ((SchemaPage)dstPage).getSegmentSlice());
   }
 
   // endregion
@@ -539,6 +587,15 @@ public class SchemaPage implements ISchemaPage {
     pageBuffer.limit(pageSpareOffset + size);
 
     return pageBuffer.slice();
+  }
+
+  // NOTICE: only to support split
+  private ByteBuffer getSegmentSlice() {
+    synchronized (this.pageBuffer) {
+      this.pageBuffer.position(SchemaFile.PAGE_HEADER_SIZE);
+      this.pageBuffer.limit(this.pageBuffer.capacity() - SchemaFile.SEG_OFF_DIG);
+      return this.pageBuffer.slice();
+    }
   }
 
   /**
@@ -688,9 +745,10 @@ public class SchemaPage implements ISchemaPage {
     return newSeg;
   }
 
+  // TODO: improve to adapt 2 segment
   protected void extendsSegmentTo(ByteBuffer dstBuffer, short segId)
       throws SegmentNotFoundException {
-    ISegment<?, ?> sf = getSegment(segId);
+    ISegment<?, ?> sf = getSegment(segId) == null ? getInternalSeg() : getSegment(segId);
     try {
       sf.extendsTo(dstBuffer);
     } catch (MetadataException e) {

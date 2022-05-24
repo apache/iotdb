@@ -255,7 +255,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
         recordNum = 0,
         pairLength = 0;
     boolean delFlag = false;
-    long prevSegAddress = -1, nextSegAddress = this.nextSegAddress;
+    long prevSegAddress = this.prevSegAddress, nextSegAddress = this.nextSegAddress;
 
     int recSize, keySize;
     String mKey, sKey = null;
@@ -805,6 +805,10 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
 
   @Override
   public String inspect() {
+    if (!SchemaFile.DETAIL_SKETCH) {
+      return "";
+    }
+
     // Internal/Entity presents as (name, is_aligned, child_segment_address)
     // Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)
     ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
