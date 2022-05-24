@@ -66,7 +66,6 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
                             o.isUnderAlignedEntity(),
                             null)));
     Assert.assertEquals(
@@ -95,7 +94,6 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
                             o.isUnderAlignedEntity(),
                             null)));
     Assert.assertEquals(
