@@ -122,6 +122,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1624,7 +1625,7 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
-      throws IllegalPathException {
+      throws MetadataException {
     // check whether measurement is legal according to syntax convention
     isLegalMeasurementLists(req.getMeasurementsList());
     InsertTabletPlan insertTabletPlan =
@@ -1647,8 +1648,7 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   /** construct one InsertMultiTabletsPlan and process it */
-  public TSStatus insertTabletsInternally(TSInsertTabletsReq req)
-      throws IllegalPathException, TException {
+  public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws MetadataException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
     InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
@@ -1947,7 +1947,7 @@ public class TSServiceImpl implements TSIEventHandler {
       TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(plan);
-    } catch (IllegalPathException e) {
+    } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_SCHEMA_TEMPLATE, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
@@ -1960,7 +1960,7 @@ public class TSServiceImpl implements TSIEventHandler {
     try {
       // check whether measurement is legal according to syntax convention
       isLegalMeasurements(req.getMeasurements());
-    } catch (IllegalPathException e) {
+    } catch (IoTDBException e) {
       onIoTDBException(e, OperationType.EXECUTE_NON_QUERY_PLAN, e.getErrorCode());
     }
 
@@ -2139,34 +2139,54 @@ public class TSServiceImpl implements TSIEventHandler {
 
   // check whether measurement is legal according to syntax convention
   protected void isLegalMeasurementLists(List<List<String>> measurementLists)
-      throws IllegalPathException {
+      throws MetadataException {
     if (measurementLists == null) {
       return;
     }
-    StringBuilder path = new StringBuilder("root");
+    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
     for (List<String> measurementList : measurementLists) {
       for (String measurement : measurementList) {
         if (measurement != null) {
+          if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
+              && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+                  && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+            throw new IllegalPathException(measurement);
+          } else {
+            path.append(".");
+            path.append(measurement);
+          }
+        }
+      }
+    }
+    try {
+      PathUtils.isLegalPath(path.toString());
+    } catch (IllegalPathException e) {
+      throw new MetadataException("find wrong node name according to syntax convention");
+    }
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurements(List<String> measurements) throws MetadataException {
+    if (measurements == null) {
+      return;
+    }
+    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
+            && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+                && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+          throw new IllegalPathException(measurement);
+        } else {
           path.append(".");
           path.append(measurement);
         }
       }
     }
-    PathUtils.isLegalPath(path.toString());
-  }
-
-  // check whether measurement is legal according to syntax convention
-  protected void isLegalMeasurements(List<String> measurements) throws IllegalPathException {
-    if (measurements == null) {
-      return;
+    try {
+      PathUtils.isLegalPath(path.toString());
+    } catch (IllegalPathException e) {
+      throw new MetadataException("find wrong node name according to syntax convention");
     }
-    StringBuilder path = new StringBuilder("root");
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        path.append(".");
-        path.append(measurement);
-      }
-    }
-    PathUtils.isLegalPath(path.toString());
   }
 }
