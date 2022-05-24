@@ -998,6 +998,16 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
     nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer, NodeManagementType.CHILD_PATHS);
+    nodeManagementReq.setLevel(-1);
+    nodeManagementResp = processor.getSchemaNodeManagementPartition(nodeManagementReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
+    Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
+    Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
+    Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
+
+    nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer, NodeManagementType.CHILD_PATHS);
+    nodeManagementReq.setLevel(1);
     nodeManagementResp = processor.getSchemaNodeManagementPartition(nodeManagementReq);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());

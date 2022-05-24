@@ -503,7 +503,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         new Pair(new HashSet<>(), new HashSet<>());
     storageGroupReadWriteLock.readLock().lock();
     try {
-      matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, false, null);
+      matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, true, null);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in given level.", e);
     } finally {

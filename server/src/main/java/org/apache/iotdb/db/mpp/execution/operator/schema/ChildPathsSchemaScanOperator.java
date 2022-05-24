@@ -85,8 +85,7 @@ public class ChildPathsSchemaScanOperator implements SourceOperator {
       try {
         childPaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false, null)
-                    .stream()
+                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, true, null).stream()
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet());
       } catch (MetadataException e) {

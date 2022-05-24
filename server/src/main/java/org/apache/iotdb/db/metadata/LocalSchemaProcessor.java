@@ -570,7 +570,7 @@ public class LocalSchemaProcessor {
 
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    return getNodesListInGivenLevel(pathPattern, nodeLevel, false, filter);
+    return getNodesListInGivenLevel(pathPattern, nodeLevel, true, filter);
   }
 
   private List<PartialPath> getNodesListInGivenLevel(
