@@ -135,6 +135,7 @@ public class ConfigManager implements Manager {
 
   public void close() throws IOException {
     consensusManager.close();
+    partitionManager.getRegionCleaner().shutdown();
     procedureManager.shiftExecutor(false);
   }
 
