@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
+import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 
@@ -50,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class MultiLeaderConsensusTest {
@@ -168,11 +170,13 @@ public class MultiLeaderConsensusTest {
         IndexController.FLUSH_INTERVAL,
         servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(0).getRequestListSize());
+        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(0).getRequestSet().size());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(1).getRequestListSize());
+        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(1).getRequestSet().size());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(2).getRequestListSize());
+        IndexController.FLUSH_INTERVAL * 3, stateMachines.get(2).getRequestSet().size());
+    Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
+    Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
 
     stopServer();
     initServer();
@@ -273,11 +277,14 @@ public class MultiLeaderConsensusTest {
     }
 
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(0).getRequestListSize());
+        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(0).getRequestSet().size());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(1).getRequestListSize());
+        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(1).getRequestSet().size());
     Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(2).getRequestListSize());
+        IndexController.FLUSH_INTERVAL * 2, stateMachines.get(2).getRequestSet().size());
+
+    Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
+    Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
   }
 
   private static class TestEntry implements IConsensusRequest {
@@ -297,6 +304,23 @@ public class MultiLeaderConsensusTest {
     }
 
     @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      TestEntry testEntry = (TestEntry) o;
+      return num == testEntry.num && Objects.equals(peer, testEntry.peer);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(num, peer);
+    }
+
+    @Override
     public String toString() {
       return "TestEntry{" + "num=" + num + ", peer=" + peer + '}';
     }
@@ -304,10 +328,16 @@ public class MultiLeaderConsensusTest {
 
   private static class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
-    private final Set<IndexedConsensusRequest> requestList = new HashSet<>();
+    private final Set<IndexedConsensusRequest> requestSet = new HashSet<>();
 
-    public int getRequestListSize() {
-      return requestList.size();
+    public Set<IndexedConsensusRequest> getRequestSet() {
+      return requestSet;
+    }
+
+    public Set<TestEntry> getData() {
+      Set<TestEntry> data = new HashSet<>();
+      requestSet.forEach(x -> data.add((TestEntry) x.getRequest()));
+      return data;
     }
 
     @Override
@@ -321,14 +351,14 @@ public class MultiLeaderConsensusTest {
       IConsensusRequest innerRequest = ((IndexedConsensusRequest) request).getRequest();
       if (innerRequest instanceof ByteBufferConsensusRequest) {
         ByteBuffer buffer = ((ByteBufferConsensusRequest) innerRequest).getContent();
-        requestList.add(
+        requestSet.add(
             new IndexedConsensusRequest(
                 ((IndexedConsensusRequest) request).getSearchIndex(),
-                ((IndexedConsensusRequest) request).getSafelyDeletedSearchIndex(),
-                ((IndexedConsensusRequest) request).getType(),
+                -1,
+                TLogType.FragmentInstance,
                 new TestEntry(buffer.getInt(), Peer.deserialize(buffer))));
       } else {
-        requestList.add(((IndexedConsensusRequest) request));
+        requestSet.add(((IndexedConsensusRequest) request));
       }
       return new TSStatus();
     }
@@ -336,7 +366,7 @@ public class MultiLeaderConsensusTest {
     @Override
     public synchronized DataSet read(IConsensusRequest request) {
       if (request instanceof GetConsensusReqReaderPlan) {
-        return new FakeConsensusReqReader(new ArrayList<>(requestList));
+        return new FakeConsensusReqReader(new ArrayList<>(requestSet));
       }
       return null;
     }
