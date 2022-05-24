@@ -180,7 +180,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     TSDataType dataType;
     TSEncoding encoding;
     CompressionType compressor;
-    long tagOffset;
     String alias = null;
     Map<String, String> props = null;
     Map<String, String> tags = null;
@@ -197,7 +196,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
     compressor = CompressionType.values()[byteBuffer.get()];
-    tagOffset = byteBuffer.getLong();
 
     // alias
     if (byteBuffer.get() == 1) {
