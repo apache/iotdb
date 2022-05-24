@@ -148,6 +148,7 @@ public class TypeInferenceUtils {
       case SQLConstant.MAX_TIME:
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.LAST_VALUE:
+        return true;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
