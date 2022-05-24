@@ -249,6 +249,10 @@ public class IoTDBConfig {
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
+  /** External temporary lib directory for storing downloaded JAR files */
+  private String temporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
@@ -984,6 +988,7 @@ public class IoTDBConfig {
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
+    temporaryLibDir = addHomeDir(temporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
     mqttDir = addHomeDir(mqttDir);
     for (int i = 0; i < walDirs.length; i++) {
@@ -1175,6 +1180,10 @@ public class IoTDBConfig {
 
   public String getUdfDir() {
     return udfDir;
+  }
+
+  public String getTemporaryLibDir() {
+    return temporaryLibDir;
   }
 
   public void setUdfDir(String udfDir) {

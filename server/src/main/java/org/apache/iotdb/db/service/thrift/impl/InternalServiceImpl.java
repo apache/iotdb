@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -345,8 +347,20 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus createFunction(TCreateFunctionRequest req) throws TException {
-    throw new NotImplementedException();
+  public TSStatus createFunction(TCreateFunctionRequest request) throws TException {
+    try {
+      UDFRegistrationService.getInstance()
+          .register(
+              request.getUdfName(),
+              request.getClassName(),
+              request.getUris(),
+              UDFExecutableManager.getInstance(),
+              true);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
   }
 
   public void handleClientExit() {}
