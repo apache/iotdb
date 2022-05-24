@@ -68,8 +68,8 @@ public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     int level = buffer.getInt();
+    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new ChildPathsSchemaScanNode(planNodeId, path, level);
   }
 
