@@ -262,27 +262,32 @@ public class ConfigRequestExecutor {
       GetChildPathsPartitionReq getChildPathsPartitionReq = (GetChildPathsPartitionReq) req;
       partialPath = getChildPathsPartitionReq.getPartialPath();
       level = getChildPathsPartitionReq.getLevel();
+      if (-1 == level) {
+        // get child paths
+        Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel =
+            clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
+        alreadyMatchedNode = matchedChildInNextLevel.left;
+        needMatchedNode = matchedChildInNextLevel.right;
+      } else {
+        // count nodes
+        Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
+            clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
+        alreadyMatchedNode =
+            matchedChildInNextLevel.left.stream()
+                .map(PartialPath::getFullPath)
+                .collect(Collectors.toSet());
+        needMatchedNode = matchedChildInNextLevel.right;
+      }
     } else if (req.getType() == ConfigRequestType.GetChildNodesPartition) {
       GetChildNodesPartitionReq getChildNodesPartitionReq = (GetChildNodesPartitionReq) req;
       partialPath = getChildNodesPartitionReq.getPartialPath();
-      level = getChildNodesPartitionReq.getLevel();
-    } else {
-      throw new UnknownPhysicalPlanTypeException(req.getType());
-    }
-
-    if (-1 == level) {
+      // get child nodes
       Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel =
           clusterSchemaInfo.getChildNodeNameInNextLevel(partialPath);
       alreadyMatchedNode = matchedChildInNextLevel.left;
       needMatchedNode = matchedChildInNextLevel.right;
     } else {
-      Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
-      alreadyMatchedNode =
-          matchedChildInNextLevel.left.stream()
-              .map(PartialPath::getFullPath)
-              .collect(Collectors.toSet());
-      needMatchedNode = matchedChildInNextLevel.right;
+      throw new UnknownPhysicalPlanTypeException(req.getType());
     }
 
     needMatchedNode.forEach(childPath -> matchedStorageGroups.add(childPath.getFullPath()));

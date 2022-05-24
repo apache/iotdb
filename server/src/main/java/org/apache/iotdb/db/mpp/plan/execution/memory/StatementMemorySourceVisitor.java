@@ -80,12 +80,9 @@ public class StatementMemorySourceVisitor
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
     Set<String> matchedChildNodes = new TreeSet<>(context.getAnalysis().getMatchedNodes());
-    matchedChildNodes.forEach(
-        node -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
-          tsBlockBuilder.declarePosition();
-        });
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
+    tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }

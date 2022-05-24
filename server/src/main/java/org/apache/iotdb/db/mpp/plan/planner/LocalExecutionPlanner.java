@@ -447,7 +447,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               ChildPathsSchemaScanNode.class.getSimpleName());
       return new ChildPathsSchemaScanOperator(
-          node.getPlanNodeId(), operatorContext, node.getPrefixPath());
+          node.getPlanNodeId(), operatorContext, node.getPrefixPath(), node.getLevel());
     }
 
     @Override
