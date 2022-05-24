@@ -60,6 +60,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
   private Analysis analysis;
@@ -75,7 +77,44 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   public PlanNode visitDeleteTimeseries(
       DeleteTimeSeriesNode node, DistributionPlanContext context) {
-    return null;
+    // Step 1: split DeleteDataNode by partition
+    checkArgument(node.getChildren().size() == 1, "DeleteTimeSeriesNode should have 1 child");
+    checkArgument(
+        node.getChildren().get(0) instanceof DeleteDataNode,
+        "Child of DeleteTimeSeriesNode should be DeleteDataNode");
+
+    DeleteDataNode deleteDataNode = (DeleteDataNode) node.getChildren().get(0);
+    List<DeleteDataNode> deleteDataNodes = splitDeleteDataNode(deleteDataNode, context);
+
+    // Step 2: split DeleteTimeseriesNode by partition
+    List<DeleteTimeSeriesNode> deleteTimeSeriesNodes = splitDeleteTimeseries(node, context);
+
+    // Step 3: construct them as a Tree
+    checkArgument(
+        deleteTimeSeriesNodes.size() > 0,
+        "Size of DeleteTimeseriesNode splits should be larger than 0");
+    deleteDataNodes.forEach(split -> deleteTimeSeriesNodes.get(0).addChild(split));
+    for (int i = 1; i < deleteTimeSeriesNodes.size(); i++) {
+      deleteTimeSeriesNodes.get(i).addChild(deleteTimeSeriesNodes.get(i - 1));
+    }
+    return deleteTimeSeriesNodes.get(deleteTimeSeriesNodes.size() - 1);
+  }
+
+  private List<DeleteTimeSeriesNode> splitDeleteTimeseries(
+      DeleteTimeSeriesNode node, DistributionPlanContext context) {
+    List<DeleteTimeSeriesNode> ret = new ArrayList<>();
+    List<PartialPath> rawPaths = node.getPathList();
+    List<RegionReplicaSetInfo> relatedRegions =
+        analysis.getSchemaPartitionInfo().getSchemaDistributionInfo();
+    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
+      List<PartialPath> newPaths =
+          getRelatedPaths(rawPaths, regionReplicaSetInfo.getOwnedStorageGroups());
+      DeleteTimeSeriesNode split =
+          new DeleteTimeSeriesNode(context.queryContext.getQueryId().genPlanNodeId(), newPaths);
+      split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
+      ret.add(split);
+    }
+    return ret;
   }
 
   private List<DeleteDataNode> splitDeleteDataNode(
@@ -84,9 +123,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     List<PartialPath> rawPaths = node.getPathList();
     List<RegionReplicaSetInfo> relatedRegions =
         analysis.getDataPartitionInfo().getDataDistributionInfo();
-    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {}
-
-    return null;
+    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
+      List<PartialPath> newPaths =
+          getRelatedPaths(rawPaths, regionReplicaSetInfo.getOwnedStorageGroups());
+      DeleteDataNode split =
+          new DeleteDataNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              context.queryContext.getQueryId(),
+              newPaths,
+              regionReplicaSetInfo.getOwnedStorageGroups());
+      split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
+      ret.add(split);
+    }
+    return ret;
   }
 
   private List<PartialPath> getRelatedPaths(List<PartialPath> paths, List<String> storageGroups) {

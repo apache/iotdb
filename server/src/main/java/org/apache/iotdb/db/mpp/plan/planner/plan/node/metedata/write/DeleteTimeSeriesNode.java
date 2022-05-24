@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -36,9 +37,13 @@ public class DeleteTimeSeriesNode extends PlanNode implements IPartitionRelatedN
 
   private final List<PartialPath> pathList;
 
+  private TRegionReplicaSet regionReplicaSet;
+  private List<PlanNode> children;
+
   public DeleteTimeSeriesNode(PlanNodeId id, List<PartialPath> pathList) {
     super(id);
     this.pathList = pathList;
+    this.children = new ArrayList<>();
   }
 
   public List<PartialPath> getPathList() {
@@ -47,11 +52,13 @@ public class DeleteTimeSeriesNode extends PlanNode implements IPartitionRelatedN
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return children;
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    children.add(child);
+  }
 
   @Override
   public PlanNode clone() {
@@ -60,12 +67,17 @@ public class DeleteTimeSeriesNode extends PlanNode implements IPartitionRelatedN
 
   @Override
   public int allowedChildCount() {
-    return 0;
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
     return null;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitDeleteTimeseries(this, context);
   }
 
   @Override
@@ -89,6 +101,18 @@ public class DeleteTimeSeriesNode extends PlanNode implements IPartitionRelatedN
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return regionReplicaSet;
+  }
+
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
+
+  public String toString() {
+    return String.format(
+        "DeleteTimeseriesNode-%s: %s. Region: %s",
+        getPlanNodeId(),
+        pathList,
+        regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
   }
 }

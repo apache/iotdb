@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -38,6 +39,8 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
   private final QueryId queryId;
   private final List<PartialPath> pathList;
   private final List<String> storageGroups;
+
+  private TRegionReplicaSet regionReplicaSet;
 
   public DeleteDataNode(
       PlanNodeId id, QueryId queryId, List<PartialPath> pathList, List<String> storageGroups) {
@@ -53,7 +56,7 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return new ArrayList<>();
   }
 
   @Override
@@ -66,7 +69,7 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
 
   @Override
   public int allowedChildCount() {
-    return 0;
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
@@ -105,8 +108,17 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
   }
 
   @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitDeleteData(this, context);
+  }
+
+  @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return regionReplicaSet;
+  }
+
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public QueryId getQueryId() {
@@ -115,5 +127,14 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
 
   public List<String> getStorageGroups() {
     return storageGroups;
+  }
+
+  public String toString() {
+    return String.format(
+        "DeleteDataNode-%s[ Paths: %s, StorageGroups: %s, Region: %s ]",
+        getPlanNodeId(),
+        pathList,
+        storageGroups,
+        regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
   }
 }
