@@ -73,18 +73,15 @@ public class SyncDataNodeClientPool {
 
   public TSStatus invalidateSchemaCache(
       TEndPoint endPoint, TInvalidateCacheReq invalidateCacheReq) {
-    SyncDataNodeInternalServiceClient client;
     TSStatus status;
-    try {
-      client = clientManager.borrowClient(endPoint);
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
       status = client.invalidateSchemaCache(invalidateCacheReq);
-      LOGGER.info("Invalid Schema Cache {} successfully", invalidateCacheReq);
     } catch (IOException e) {
       LOGGER.error("Can't connect to DataNode {}", endPoint, e);
       status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
     } catch (TException e) {
       LOGGER.error("Invalid Schema Cache on DataNode {} failed", endPoint, e);
-      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
     return status;
   }
@@ -110,9 +107,7 @@ public class SyncDataNodeClientPool {
       TEndPoint endPoint,
       List<TConsensusGroupId> regionIds,
       Set<TRegionReplicaSet> deletedRegionSet) {
-    SyncDataNodeInternalServiceClient client;
-    try {
-      client = clientManager.borrowClient(endPoint);
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
       for (TConsensusGroupId regionId : regionIds) {
         LOGGER.debug("Delete region {} ", regionId);
         final TSStatus status = client.deleteRegion(regionId);
