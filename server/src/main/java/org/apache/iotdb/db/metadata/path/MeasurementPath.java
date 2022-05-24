@@ -155,11 +155,6 @@ public class MeasurementPath extends PartialPath {
     return Objects.equals(version, that.version);
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), version);
-  }
-
   /**
    * if isUnderAlignedEntity is true, return an AlignedPath with only one sub sensor otherwise,
    * return itself
