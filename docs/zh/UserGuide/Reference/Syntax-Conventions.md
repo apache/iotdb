@@ -602,6 +602,105 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 
 关于 IoTDB 的关键字和保留字列表，可以查看 [关键字和保留字](https://iotdb.apache.org/zh/UserGuide/Master/Reference/Keywords.html) 。
 
+## Session、TsFile API
+
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。
+
+1. 以创建时间序列 createTimeseries 为例：
+
+```Java
+public void createTimeseries(
+    String path,
+    TSDataType dataType,
+    TSEncoding encoding,
+    CompressionType compressor)
+    throws IoTDBConnectionException, StatementExecutionException;
+```
+
+如果您希望创建时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`，您使用的 SQL 语句应该如下所示：
+
+```SQL
+create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+
+# 路径结点名中包含特殊字符，时间序列各结点为["root","sg","a.`\"b"]
+create timeseries root.sg.`a.``"b` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+
+# 路径结点名为纯数字
+create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+```
+
+您在调用 createTimeseries 方法时，应该按照如下方法赋值 path 字符串，保证 path 字符串内容与使用 SQL 时一致：
+
+```Java
+// 时间序列 root.sg.a
+String path = "root.sg.a";
+
+// 时间序列 root.sg.`a``"b`
+String path = "root.sg.`a``\"b`";
+
+// 时间序列 root.sg.`111`
+String path = "root.sg.`111`";
+```
+
+2. 以插入数据 insertRecord 为例：
+
+```Java
+public void insertRecord(
+    String deviceId,
+    long time,
+    List<String> measurements,
+    List<TSDataType> types,
+    Object... values)
+    throws IoTDBConnectionException, StatementExecutionException;
+```
+
+如果您希望向时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`中插入数据，您使用的 SQL 语句应该如下所示：
+
+```SQL
+insert into root.sg(timestamp, a, `a.``"b`, `111`) values (1, 2, 2, 2);
+```
+
+您在调用 insertRecord 方法时，应该按照如下方法赋值 deviceId 和 measurements：
+
+```Java
+// deviceId 为 root.sg
+String deviceId = "root.sg";
+
+// measurements
+String[] measurements = new String[]{"a", "`a.``\"b`", "`111`"};
+List<String> measurementList = Arrays.asList(measurements);
+```
+
+3. 以查询数据 executeRawDataQuery 为例：
+
+```Java
+public SessionDataSet executeRawDataQuery(
+    List<String> paths, 
+    long startTime, 
+    long endTime)
+    throws StatementExecutionException, IoTDBConnectionException;
+```
+
+如果您希望查询时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`的数据，您使用的 SQL 语句应该如下所示：
+
+```SQL
+select a from root.sg
+
+# 路径结点名中包含特殊字符
+select `a.``"b` from root.sg;
+
+# 路径结点名为纯数字
+select `111` from root.sg
+```
+
+您在调用 executeRawDataQuery 方法时，应该按照如下方法赋值 paths：
+
+```Java
+// paths
+String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"};
+List<String> pathList = Arrays.asList(paths);
+```
+
 ## 了解更多
 
 请阅读代码仓库中的词法和语法描述文件：
