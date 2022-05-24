@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareGreaterThanT
 
 import java.nio.ByteBuffer;
 
-public class GreaterThanExpression extends BinaryExpression {
+public class GreaterThanExpression extends CompareBinaryExpression {
 
   public GreaterThanExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

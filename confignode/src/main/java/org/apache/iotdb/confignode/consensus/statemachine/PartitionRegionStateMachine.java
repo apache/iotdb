@@ -45,10 +45,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
   private final ConfigRequestExecutor executor;
   private ConfigManager configManager;
-  private TEndPoint currentNode;
+  private final TEndPoint currentNode;
 
-  public PartitionRegionStateMachine(ConfigManager configManager) {
-    this.executor = new ConfigRequestExecutor();
+  public PartitionRegionStateMachine(ConfigManager configManager, ConfigRequestExecutor executor) {
+    this.executor = executor;
     this.configManager = configManager;
     this.currentNode =
         new TEndPoint()

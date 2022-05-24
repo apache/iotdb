@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareLessThanTran
 
 import java.nio.ByteBuffer;
 
-public class LessThanExpression extends BinaryExpression {
+public class LessThanExpression extends CompareBinaryExpression {
 
   public LessThanExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

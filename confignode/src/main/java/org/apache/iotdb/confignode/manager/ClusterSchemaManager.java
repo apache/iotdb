@@ -41,18 +41,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private static final ClusterSchemaInfo clusterSchemaInfo = ClusterSchemaInfo.getInstance();
-
   private final Manager configManager;
+  private final ClusterSchemaInfo clusterSchemaInfo;
 
-  public ClusterSchemaManager(Manager configManager) {
+  public ClusterSchemaManager(Manager configManager, ClusterSchemaInfo clusterSchemaInfo) {
     this.configManager = configManager;
+    this.clusterSchemaInfo = clusterSchemaInfo;
   }
 
   /**
@@ -104,6 +105,17 @@ public class ClusterSchemaManager {
   public TStorageGroupSchema getStorageGroupSchemaByName(String storageGroup)
       throws MetadataException {
     return clusterSchemaInfo.getMatchedStorageGroupSchemaByName(storageGroup);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param rawPathList List<StorageGroupName>
+   * @return the matched StorageGroupSchemas
+   */
+  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
+      List<String> rawPathList) {
+    return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {

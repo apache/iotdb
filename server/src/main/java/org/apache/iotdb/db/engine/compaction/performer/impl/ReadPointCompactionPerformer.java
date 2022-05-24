@@ -228,10 +228,9 @@ public class ReadPointCompactionPerformer
     for (int i = 0; i < subTaskNums; i++) {
       try {
         futures.get(i).get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("SubCompactionTask meet errors ", e);
-        Thread.currentThread().interrupt();
-        throw new InterruptedException();
+      } catch (ExecutionException e) {
+        LOGGER.error("[Compaction] SubCompactionTask meet errors ", e);
+        throw new IOException(e);
       }
     }
 

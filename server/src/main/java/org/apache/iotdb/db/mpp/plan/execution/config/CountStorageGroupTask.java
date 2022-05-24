@@ -19,26 +19,30 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -55,18 +59,18 @@ public class CountStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
+  public ListenableFuture<ConfigTaskResult> execute(
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     int storageGroupNum = 0;
     if (config.isClusterMode()) {
       List<String> storageGroupPathPattern =
           Arrays.asList(countStorageGroupStatement.getPartialPath().getNodes());
-      ConfigNodeClient client = null;
-      try {
-        client = new ConfigNodeClient();
+      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
         storageGroupNum = resp.getCount();
-      } catch (IoTDBConnectionException e) {
+      } catch (TException | IOException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
       }

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.db.query.udf.core.transformer.unary.InTransformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -57,6 +59,15 @@ public class InExpression extends UnaryExpression {
 
   public LinkedHashSet<String> getValues() {
     return values;
+  }
+
+  @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) {
+    final String expressionString = toString();
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      typeProvider.setType(expressionString, expression.inferTypes(typeProvider));
+    }
+    return typeProvider.getType(expressionString);
   }
 
   @Override

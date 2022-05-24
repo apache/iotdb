@@ -23,6 +23,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -32,6 +35,7 @@ import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFTypeInferrer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.MultiInputColumnIntermediateLayer;
@@ -43,6 +47,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowTransform
 import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.unary.TransparentTransformer;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -239,6 +244,35 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) {
+    final String expressionString = toString();
+
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      for (Expression expression : expressions) {
+        expression.inferTypes(typeProvider);
+      }
+
+      if (isTimeSeriesGeneratingFunctionExpression()) {
+        typeProvider.setType(
+            expressionString, new UDTFTypeInferrer(this).inferOutputType(typeProvider));
+      } else {
+        if (expressions.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Builtin aggregation function only accepts 1 input expression. Actual %d input expressions.",
+                  expressions.size()));
+        }
+        typeProvider.setType(
+            expressionString,
+            TypeInferenceUtils.getAggrDataType(
+                functionName, typeProvider.getType(expressions.get(0).toString())));
+      }
+    }
+
+    return typeProvider.getType(expressionString);
+  }
+
+  @Override
   public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     for (Expression expression : expressions) {
       expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
@@ -247,10 +281,120 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public void bindInputLayerColumnIndexWithExpression(
+      Map<String, List<InputLocation>> inputLocations) {
+    for (Expression expression : expressions) {
+      expression.bindInputLayerColumnIndexWithExpression(inputLocations);
+    }
+
+    final String digest = toString();
+    if (inputLocations.containsKey(digest)) {
+      inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
+    }
+  }
+
+  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     for (Expression expression : expressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
       memoryAssigner.increaseExpressionReference(this);
+    }
+  }
+
+  @Override
+  public IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      float memoryBudgetInMB = memoryAssigner.assign();
+      Transformer transformer;
+      if (isBuiltInAggregationFunctionExpression) {
+        transformer =
+            new TransparentTransformer(
+                rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex));
+      } else {
+        IntermediateLayer udfInputIntermediateLayer =
+            constructUdfInputIntermediateLayer(
+                queryId,
+                udtfContext,
+                rawTimeSeriesInputLayer,
+                expressionIntermediateLayerMap,
+                typeProvider,
+                memoryAssigner);
+        transformer =
+            constructUdfTransformer(
+                queryId, udtfContext, typeProvider, memoryAssigner, udfInputIntermediateLayer);
+      }
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, transformer)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, transformer));
+    }
+
+    return expressionIntermediateLayerMap.get(this);
+  }
+
+  private IntermediateLayer constructUdfInputIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    List<IntermediateLayer> intermediateLayers = new ArrayList<>();
+    for (Expression expression : expressions) {
+      intermediateLayers.add(
+          expression.constructIntermediateLayer(
+              queryId,
+              udtfContext,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              typeProvider,
+              memoryAssigner));
+    }
+    return intermediateLayers.size() == 1
+        ? intermediateLayers.get(0)
+        : new MultiInputColumnIntermediateLayer(
+            this,
+            queryId,
+            memoryAssigner.assign(),
+            intermediateLayers.stream()
+                .map(IntermediateLayer::constructPointReader)
+                .collect(Collectors.toList()));
+  }
+
+  private UDFQueryTransformer constructUdfTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner,
+      IntermediateLayer udfInputIntermediateLayer)
+      throws QueryProcessException, IOException {
+    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
+
+    executor.beforeStart(queryId, memoryAssigner.assign(), typeProvider);
+
+    AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
+    switch (accessStrategy.getAccessStrategyType()) {
+      case ROW_BY_ROW:
+        return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
+      case SLIDING_SIZE_WINDOW:
+      case SLIDING_TIME_WINDOW:
+        return new UDFQueryRowWindowTransformer(
+            udfInputIntermediateLayer.constructRowWindowReader(
+                accessStrategy, memoryAssigner.assign()),
+            executor);
+      default:
+        throw new UnsupportedOperationException("Unsupported transformer access strategy");
     }
   }
 
@@ -300,6 +444,8 @@ public class FunctionExpression extends Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
+  // TODO: remove it after MPP finished
+  @Deprecated
   private IntermediateLayer constructUdfInputIntermediateLayer(
       long queryId,
       UDTFContext udtfContext,
@@ -330,6 +476,8 @@ public class FunctionExpression extends Expression {
                 .collect(Collectors.toList()));
   }
 
+  // TODO: remove it after MPP finished
+  @Deprecated
   private UDFQueryTransformer constructUdfTransformer(
       long queryId,
       UDTFContext udtfContext,

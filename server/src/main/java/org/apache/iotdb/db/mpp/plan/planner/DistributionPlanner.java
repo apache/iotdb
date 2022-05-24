@@ -39,11 +39,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -229,6 +232,51 @@ public class DistributionPlanner {
         timeJoinNode.addChild(split);
       }
       return timeJoinNode;
+    }
+
+    @Override
+    public PlanNode visitSeriesAggregationScan(
+        SeriesAggregationScanNode node, DistributionPlanContext context) {
+      List<TRegionReplicaSet> dataDistribution =
+          analysis.getPartitionInfo(node.getSeriesPath(), node.getTimeFilter());
+      if (dataDistribution.size() == 1) {
+        node.setRegionReplicaSet(dataDistribution.get(0));
+        return node;
+      }
+
+      List<AggregationDescriptor> leafAggDescriptorList = new ArrayList<>();
+      node.getAggregationDescriptorList()
+          .forEach(
+              descriptor -> {
+                leafAggDescriptorList.add(
+                    new AggregationDescriptor(
+                        descriptor.getAggregationType(),
+                        AggregationStep.PARTIAL,
+                        descriptor.getInputExpressions()));
+              });
+
+      List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
+      node.getAggregationDescriptorList()
+          .forEach(
+              descriptor -> {
+                rootAggDescriptorList.add(
+                    new AggregationDescriptor(
+                        descriptor.getAggregationType(),
+                        AggregationStep.FINAL,
+                        descriptor.getInputExpressions()));
+              });
+
+      AggregationNode aggregationNode =
+          new AggregationNode(
+              context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
+        SeriesAggregationScanNode split = (SeriesAggregationScanNode) node.clone();
+        split.setAggregationDescriptorList(leafAggDescriptorList);
+        split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+        split.setRegionReplicaSet(dataRegion);
+        aggregationNode.addChild(split);
+      }
+      return aggregationNode;
     }
 
     @Override
@@ -433,7 +481,8 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSeriesAggregate(SeriesAggregationScanNode node, NodeGroupContext context) {
+    public PlanNode visitSeriesAggregationScan(
+        SeriesAggregationScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
