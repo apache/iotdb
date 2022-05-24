@@ -71,6 +71,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
@@ -341,6 +342,11 @@ public class InternalServiceImpl implements InternalService.Iface {
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
     return consensusImpl.write(consensusGroupId, fragmentInstance).getStatus();
+  }
+
+  @Override
+  public TSStatus createFunction(TCreateFunctionRequest req) throws TException {
+    throw new NotImplementedException();
   }
 
   public void handleClientExit() {}

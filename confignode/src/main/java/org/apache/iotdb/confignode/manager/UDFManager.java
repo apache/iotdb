@@ -19,21 +19,30 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableResource;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.handlers.CreateFunctionHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
 
 public class UDFManager {
 
@@ -54,6 +63,7 @@ public class UDFManager {
             CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
   }
 
+  // TODO: using procedure
   public TSStatus createFunction(String functionName, String className, List<String> uris) {
     try {
       if (uris.isEmpty()) {
@@ -62,11 +72,17 @@ public class UDFManager {
         fetchExecutablesAndCheckInstantiation(className, uris);
       }
 
-      // TODO: notify data nodes
-      return configManager
-          .getConsensusManager()
-          .write(new CreateFunctionReq(functionName, className, uris))
-          .getStatus();
+      final TSStatus configNodeStatus =
+          configManager
+              .getConsensusManager()
+              .write(new CreateFunctionReq(functionName, className, uris))
+              .getStatus();
+      if (configNodeStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return configNodeStatus;
+      }
+
+      return squashDataNodeResponseStatusList(
+          createFunctionOnDataNodes(functionName, className, uris));
     } catch (Exception e) {
       final String errorMessage =
           String.format(
@@ -97,5 +113,45 @@ public class UDFManager {
     } finally {
       udfExecutableManager.removeFromTemporaryLibRoot(resource);
     }
+  }
+
+  private List<TSStatus> createFunctionOnDataNodes(
+      String functionName, String className, List<String> uris) {
+    final List<TDataNodeInfo> onlineDataNodes =
+        configManager.getNodeManager().getOnlineDataNodes(-1);
+    final List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(onlineDataNodes.size()));
+    final CountDownLatch countDownLatch = new CountDownLatch(onlineDataNodes.size());
+    final TCreateFunctionRequest request =
+        new TCreateFunctionRequest(functionName, className, uris);
+
+    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+      final TEndPoint endPoint = dataNodeInfo.getLocation().getInternalEndPoint();
+      AsyncDataNodeClientPool.getInstance()
+          .createFunction(
+              endPoint,
+              request,
+              new CreateFunctionHandler(
+                  countDownLatch, dataNodeResponseStatus, endPoint.getIp(), endPoint.getPort()));
+    }
+
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      LOGGER.error("UDFManager was interrupted during creating functions on data nodes", e);
+    }
+
+    return dataNodeResponseStatus;
+  }
+
+  private TSStatus squashDataNodeResponseStatusList(List<TSStatus> dataNodeResponseStatusList) {
+    final List<TSStatus> failedStatus =
+        dataNodeResponseStatusList.stream()
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .collect(Collectors.toList());
+    return failedStatus.isEmpty()
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(failedStatus.toString());
   }
 }

@@ -25,10 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.confignode.client.handlers.CreateFunctionHandler;
 import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 
 import org.apache.thrift.TException;
@@ -231,6 +233,20 @@ public class AsyncDataNodeClientPool {
    */
   public void resetClient(TEndPoint endPoint) {
     clientManager.clear(endPoint);
+  }
+
+  /**
+   * Only used in UDFManager
+   *
+   * @param endPoint The specific DataNode
+   */
+  public void createFunction(
+      TEndPoint endPoint, TCreateFunctionRequest request, CreateFunctionHandler handler) {
+    try {
+      clientManager.borrowClient(endPoint).createFunction(request, handler);
+    } catch (Exception e) {
+      LOGGER.error("Failed to asking DataNode to create function: {}", endPoint, e);
+    }
   }
 
   // TODO: Is the ClientPool must be a singleton?
