@@ -140,11 +140,12 @@ public class SchemaTree {
         measurementPath,
         (MeasurementSchema) measurementPath.getMeasurementSchema(),
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
-        measurementPath.isUnderAlignedEntity());
+        measurementPath.isUnderAlignedEntity(),
+        measurementPath.getVersion());
   }
 
   public void appendSingleMeasurement(
-      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned) {
+      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned, String version) {
     String[] nodes = path.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
@@ -152,7 +153,8 @@ public class SchemaTree {
       child = cur.getChild(nodes[i]);
       if (child == null) {
         if (i == nodes.length - 1) {
-          SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(nodes[i], schema);
+          SchemaMeasurementNode measurementNode =
+              new SchemaMeasurementNode(nodes[i], schema, version);
           if (alias != null) {
             measurementNode.setAlias(alias);
             cur.getAsEntityNode().addAliasChild(alias, measurementNode);
@@ -173,6 +175,16 @@ public class SchemaTree {
       }
       cur = child;
     }
+  }
+
+  public void pruneSingleMeasurement(PartialPath path) {
+    String[] nodes = path.getNodes();
+    SchemaNode cur = root;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      cur = cur.getChild(nodes[i]);
+    }
+
+    cur.removeChild(nodes[nodes.length - 1]);
   }
 
   public void mergeSchemaTree(SchemaTree schemaTree) {
