@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.service;
+package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 

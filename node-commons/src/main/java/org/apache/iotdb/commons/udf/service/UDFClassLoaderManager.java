@@ -17,13 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.service;
+package org.apache.iotdb.commons.udf.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -36,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UDFClassLoaderManager implements IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(UDFClassLoaderManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UDFClassLoaderManager.class);
 
   private final String libRoot;
 
@@ -50,9 +49,9 @@ public class UDFClassLoaderManager implements IService {
    */
   private volatile UDFClassLoader activeClassLoader;
 
-  UDFClassLoaderManager() {
-    libRoot = IoTDBDescriptor.getInstance().getConfig().getUdfDir();
-    logger.info("UDF lib root: {}", libRoot);
+  private UDFClassLoaderManager(String libRoot) {
+    this.libRoot = libRoot;
+    LOGGER.info("UDF lib root: {}", libRoot);
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
     activeClassLoader = null;
   }
@@ -67,7 +66,7 @@ public class UDFClassLoaderManager implements IService {
     try {
       classLoader.release();
     } catch (IOException e) {
-      logger.warn(
+      LOGGER.warn(
           "Failed to close UDFClassLoader (queryId: {}), because {}", queryId, e.toString());
     }
   }
@@ -111,14 +110,16 @@ public class UDFClassLoaderManager implements IService {
     return ServiceType.UDF_CLASSLOADER_MANAGER_SERVICE;
   }
 
-  public static UDFClassLoaderManager getInstance() {
-    return UDFClassLoaderManager.UDFClassLoaderManagerHelper.INSTANCE;
+  private static UDFClassLoaderManager INSTANCE = null;
+
+  public static synchronized UDFClassLoaderManager setupAndGetInstance(String libRoot) {
+    if (INSTANCE == null) {
+      INSTANCE = new UDFClassLoaderManager(libRoot);
+    }
+    return INSTANCE;
   }
 
-  private static class UDFClassLoaderManagerHelper {
-
-    private static final UDFClassLoaderManager INSTANCE = new UDFClassLoaderManager();
-
-    private UDFClassLoaderManagerHelper() {}
+  public static UDFClassLoaderManager getInstance() {
+    return INSTANCE;
   }
 }

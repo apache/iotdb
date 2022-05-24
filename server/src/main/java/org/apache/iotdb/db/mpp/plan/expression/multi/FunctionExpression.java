@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.api.customizer.strategy.AccessStrategy;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -44,7 +45,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.TransparentT
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFTypeInferrer;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -93,7 +93,7 @@ public class FunctionExpression extends Expression {
     expressions = new ArrayList<>();
 
     isBuiltInAggregationFunctionExpression =
-        SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = true;
   }
 
@@ -104,7 +104,7 @@ public class FunctionExpression extends Expression {
     this.expressions = expressions;
 
     isBuiltInAggregationFunctionExpression =
-        SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
     isUserDefinedAggregationFunctionExpression =
         expressions.stream()
@@ -124,7 +124,7 @@ public class FunctionExpression extends Expression {
     }
 
     isBuiltInAggregationFunctionExpression =
-        SQLConstant.getNativeFunctionNames().contains(functionName);
+        BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName);
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
     isUserDefinedAggregationFunctionExpression =
         expressions.stream()
