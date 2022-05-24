@@ -17,15 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.api.exception;
+package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
-public class UDFException extends RuntimeException {
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-  public UDFException(String message) {
-    super(message);
+public abstract class SeriesSourceNode extends SourceNode {
+  public SeriesSourceNode(PlanNodeId id) {
+    super(id);
   }
 
-  public UDFException(String message, Throwable cause) {
-    super(message, cause);
-  }
+  public abstract PartialPath getPartitionPath();
+
+  public abstract Filter getPartitionTimeFilter();
 }
