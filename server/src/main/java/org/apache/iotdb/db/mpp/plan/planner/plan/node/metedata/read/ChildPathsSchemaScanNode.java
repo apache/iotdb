@@ -85,11 +85,11 @@ public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
       return false;
     }
     ChildPathsSchemaScanNode that = (ChildPathsSchemaScanNode) o;
-    return prefixPath == that.prefixPath;
+    return level == that.level && Objects.equals(prefixPath, that.prefixPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), prefixPath);
+    return Objects.hash(super.hashCode(), prefixPath, level);
   }
 }
