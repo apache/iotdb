@@ -28,7 +28,10 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/** This strategy creates one wal node for each unique identifier */
+/**
+ * This strategy creates one wal node for each unique identifier. In other words, each identifier
+ * (like data region) has its own wal node.
+ */
 public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
   /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
   private final Lock nodesLock = new ReentrantLock();

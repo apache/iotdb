@@ -26,7 +26,10 @@ import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/** This strategy creates n wal nodes and allocate them by round-robin strategy */
+/**
+ * This strategy creates n wal nodes and allocate them by round-robin strategy. In other words,
+ * several identifiers (like data regions) can share one wal node.
+ */
 public class RoundRobinStrategy extends AbstractNodeAllocationStrategy {
   /** max wal nodes number */
   private final int maxWalNodeNum;
