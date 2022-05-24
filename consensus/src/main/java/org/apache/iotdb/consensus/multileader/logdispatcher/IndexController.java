@@ -30,7 +30,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 
 /** An index controller class to balance the performance degradation of frequent disk I/O. */
 @ThreadSafe
@@ -95,7 +94,7 @@ public class IndexController {
           newFile.getAbsolutePath());
       lastFlushedIndex = flushIndex;
     } catch (IOException e) {
-      logger.error("Error occurred when flushing next version.", e);
+      logger.error("Error occurred when flushing next version", e);
     }
   }
 
@@ -117,9 +116,10 @@ public class IndexController {
       for (int i = 0; i < versionFiles.length; i++) {
         if (i != maxVersionIndex) {
           try {
-            Files.delete(Paths.get(versionFiles[i].getName()));
+            Files.delete(versionFiles[i].toPath());
           } catch (IOException e) {
-            logger.error("Delete outdated version file {} failed.", versionFiles[i].getName(), e);
+            logger.error(
+                "Delete outdated version file {} failed", versionFiles[i].getAbsolutePath(), e);
           }
         }
       }
@@ -133,11 +133,9 @@ public class IndexController {
     } else {
       versionFile = new File(directory, prefix + "0");
       try {
-        if (!versionFile.createNewFile()) {
-          logger.warn("Cannot create new version file {}", versionFile);
-        }
+        Files.createFile(versionFile.toPath());
       } catch (IOException e) {
-        logger.error("Error occurred when creating new file {}.", versionFile.getName(), e);
+        logger.error("Error occurred when creating new file {}", versionFile.getAbsolutePath(), e);
       }
     }
   }

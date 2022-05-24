@@ -55,7 +55,9 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
     MultiLeaderServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("Unexpected consensusGroupId %s for TSyncLogReq %s", groupId, req);
+          String.format(
+              "Unexpected consensusGroupId %s for TSyncLogReq which size is %s",
+              groupId, req.getBatches().size());
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);

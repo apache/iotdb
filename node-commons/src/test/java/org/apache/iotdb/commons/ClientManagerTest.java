@@ -423,7 +423,8 @@ public class ClientManagerTest {
     // reuse the port to avoid `Bind Address already in use` which is caused by TIME_WAIT state
     // because port won't be usable immediately after we close it.
     metaServer.setReuseAddress(true);
-    metaServer.bind(new InetSocketAddress(9003));
+    metaServer.bind(new InetSocketAddress(endPoint.getIp(), endPoint.getPort()), 0);
+
     metaServerListeningThread =
         new Thread(
             () -> {
@@ -441,10 +442,12 @@ public class ClientManagerTest {
   public void stopServer() throws InterruptedException, IOException {
     if (metaServer != null) {
       metaServer.close();
+      metaServer = null;
     }
     if (metaServerListeningThread != null) {
       metaServerListeningThread.interrupt();
       metaServerListeningThread.join();
+      metaServerListeningThread = null;
     }
   }
 
