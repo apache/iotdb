@@ -310,4 +310,23 @@ public class DataPartition extends Partition {
       storageGroupNum--;
     }
   }
+
+  public List<RegionReplicaSetInfo> getDataDistributionInfo() {
+    Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
+
+    dataPartitionMap.forEach(
+        (storageGroup, partition) -> {
+          List<TRegionReplicaSet> ret =
+              partition.entrySet().stream()
+                  .flatMap(
+                      s -> s.getValue().entrySet().stream().flatMap(e -> e.getValue().stream()))
+                  .collect(Collectors.toList());
+          for (TRegionReplicaSet regionReplicaSet : ret) {
+            distributionMap
+                .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
+                .addStorageGroup(storageGroup);
+          }
+        });
+    return new ArrayList<>(distributionMap.values());
+  }
 }

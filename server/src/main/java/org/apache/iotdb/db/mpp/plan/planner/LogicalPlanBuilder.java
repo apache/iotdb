@@ -611,8 +611,10 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planDeleteData(List<PartialPath> paths) {
-    DeleteDataNode node = new DeleteDataNode(context.getQueryId().genPlanNodeId(), paths);
+  public LogicalPlanBuilder planDeleteData(List<PartialPath> paths, List<String> storageGroups) {
+    DeleteDataNode node =
+        new DeleteDataNode(
+            context.getQueryId().genPlanNodeId(), context.getQueryId(), paths, storageGroups);
     node.addChild(this.root);
     this.root = node;
     return this;

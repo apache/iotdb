@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.RegionReplicaSetInfo;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -30,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
@@ -67,6 +71,37 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   // TODO: (xingtanzjr) implement the method visitDeviceMergeNode()
   public PlanNode visitDeviceMerge(TimeJoinNode node, DistributionPlanContext context) {
     return null;
+  }
+
+  public PlanNode visitDeleteTimeseries(
+      DeleteTimeSeriesNode node, DistributionPlanContext context) {
+    return null;
+  }
+
+  private List<DeleteDataNode> splitDeleteDataNode(
+      DeleteDataNode node, DistributionPlanContext context) {
+    List<DeleteDataNode> ret = new ArrayList<>();
+    List<PartialPath> rawPaths = node.getPathList();
+    List<RegionReplicaSetInfo> relatedRegions =
+        analysis.getDataPartitionInfo().getDataDistributionInfo();
+    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {}
+
+    return null;
+  }
+
+  private List<PartialPath> getRelatedPaths(List<PartialPath> paths, List<String> storageGroups) {
+    List<PartialPath> ret = new ArrayList<>();
+    PathPatternTree patternTree = new PathPatternTree(paths);
+    for (String storageGroup : storageGroups) {
+      try {
+        ret.addAll(
+            patternTree.findOverlappedPattern(new PartialPath(storageGroup)).splitToPathList());
+      } catch (IllegalPathException e) {
+        // The IllegalPathException is definitely not threw here
+        throw new RuntimeException(e);
+      }
+    }
+    return ret;
   }
 
   @Override
@@ -496,10 +531,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           .forEach(d -> d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL));
     }
     return sources;
-  }
-
-  public PlanNode visit(DeleteDataNode node, DistributionPlanContext context) {
-    return null;
   }
 
   public PlanNode visit(PlanNode node, DistributionPlanContext context) {

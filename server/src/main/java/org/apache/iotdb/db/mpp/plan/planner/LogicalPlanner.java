@@ -545,11 +545,7 @@ public class LogicalPlanner {
       List<PartialPath> paths = deleteTimeSeriesStatement.getPaths();
       List<String> storageGroups =
           new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
-      return planBuilder
-          .planInvalidateSchemaCache(paths, storageGroups)
-          .planDeleteData(paths)
-          .planDeleteTimeseries(paths)
-          .getRoot();
+      return planBuilder.planDeleteData(paths, storageGroups).planDeleteTimeseries(paths).getRoot();
     }
   }
 }
