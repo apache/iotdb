@@ -57,13 +57,13 @@ public abstract class SlidingWindowAggregator extends Aggregator {
         step.isInputPartial(),
         "Step in SlidingWindowAggregationOperator can only process partial result");
     TimeColumn timeColumn = tsBlock.getTimeColumn();
-    Column[] valueColumn = new Column[inputLocationList.size()];
-    for (int i = 0; i < inputLocationList.size(); i++) {
-      InputLocation[] inputLocations = inputLocationList.get(i);
+    Column[] valueColumn = new Column[inputLocationList.get(0).length];
+    for (int i = 0; i < inputLocationList.get(0).length; i++) {
+      InputLocation inputLocation = inputLocationList.get(0)[i];
       checkArgument(
-          inputLocations[0].getTsBlockIndex() == 0,
+          inputLocation.getTsBlockIndex() == 0,
           "SlidingWindowAggregationOperator can only process one tsBlock input.");
-      valueColumn[i] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+      valueColumn[i] = tsBlock.getColumn(inputLocation.getValueColumnIndex());
     }
     processPartialResult(new PartialAggregationResult(timeColumn, valueColumn));
   }

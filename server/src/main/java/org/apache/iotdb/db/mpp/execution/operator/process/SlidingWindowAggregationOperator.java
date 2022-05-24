@@ -93,32 +93,38 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
     }
 
     // 2. Calculate aggregation result based on current time window
-    while (!calcFromTsBlock(curTimeRange)) {
+    TsBlock inputTsBlock = cachedTsBlock;
+    while (!calcFromTsBlock(inputTsBlock, curTimeRange)) {
       if (child.hasNext()) {
-        cachedTsBlock = child.next();
+        inputTsBlock = child.next();
       } else {
         break;
       }
+    }
+    if (inputTsBlock != null && !satisfied(inputTsBlock, curTimeRange, ascending)) {
+      cachedTsBlock = inputTsBlock;
+    } else {
+      cachedTsBlock = null;
     }
 
     // 3. Update result using aggregators
     return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
-  private boolean calcFromTsBlock(TimeRange timeRange) {
+  private boolean calcFromTsBlock(TsBlock inputTsBlock, TimeRange timeRange) {
     // check if the batchData does not contain points in current interval
-    if (cachedTsBlock != null && satisfied(cachedTsBlock, timeRange, ascending)) {
+    if (inputTsBlock != null && satisfied(inputTsBlock, timeRange, ascending)) {
       // skip points that cannot be calculated
-      cachedTsBlock = skipOutOfTimeRangePoints(cachedTsBlock, timeRange, ascending);
+      inputTsBlock = skipOutOfTimeRangePoints(inputTsBlock, timeRange, ascending);
       for (SlidingWindowAggregator aggregator : aggregators) {
-        aggregator.processTsBlock(cachedTsBlock);
+        aggregator.processTsBlock(inputTsBlock);
       }
     }
     // The result is calculated from the cache
-    return cachedTsBlock != null
+    return inputTsBlock != null
         && (ascending
-            ? cachedTsBlock.getEndTime() > timeRange.getMax()
-            : cachedTsBlock.getEndTime() < timeRange.getMin());
+            ? inputTsBlock.getEndTime() > timeRange.getMax()
+            : inputTsBlock.getEndTime() < timeRange.getMin());
   }
 
   @Override
