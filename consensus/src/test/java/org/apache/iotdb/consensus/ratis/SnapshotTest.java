@@ -125,7 +125,7 @@ public class SnapshotTest {
         + File.separator
         + termIndexMeta
         + File.separator
-        + ".meta."
+        + ".ratis_meta."
         + termIndexMeta;
   }
 }
