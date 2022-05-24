@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -148,12 +149,20 @@ public class NodeManager {
       resp.getConfigNodeList().add(req.getConfigNodeLocation());
     } else {
       resp.setStatus(new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode()));
+      Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
+      resp.getStatus().setRedirectNode(leader.getEndpoint());
     }
 
     return resp;
   }
 
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
+    if (!getConsensusManager().isLeader()) {
+      TSStatus status = new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
+      status.setRedirectNode(leader.getEndpoint());
+      return status;
+    }
     if (getConsensusManager().addConfigNodePeer(applyConfigNodeReq)) {
       return getConsensusManager().write(applyConfigNodeReq).getStatus();
     } else {

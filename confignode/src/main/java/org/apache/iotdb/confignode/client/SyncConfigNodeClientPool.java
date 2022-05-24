@@ -43,14 +43,11 @@ public class SyncConfigNodeClientPool {
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
-  private TEndPoint configNodeLeader;
-
   private SyncConfigNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
-    configNodeLeader = new TEndPoint();
   }
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */
@@ -63,10 +60,8 @@ public class SyncConfigNodeClientPool {
           TConfigNodeRegisterResp resp = client.registerConfigNode(req);
           if (resp.status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
             if (resp.status.isSetRedirectNode()) {
-              configNodeLeader =
-                  new TEndPoint(
-                      resp.status.getRedirectNode().getIp(),
-                      resp.status.getRedirectNode().getPort());
+              TEndPoint configNodeLeader = resp.status.getRedirectNode();
+              client.close();
               return clientManager.borrowClient(configNodeLeader).registerConfigNode(req);
             }
           } else {
@@ -94,11 +89,9 @@ public class SyncConfigNodeClientPool {
           TSStatus status = client.applyConfigNode(configNodeLocation);
           if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
             if (status.isSetRedirectNode()) {
-              configNodeLeader =
-                  new TEndPoint(
-                      status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
-              configNodeLocation.setConsensusEndPoint(configNodeLeader);
-              return client.applyConfigNode(configNodeLocation);
+              TEndPoint configNodeLeader = status.getRedirectNode();
+              client.close();
+              return clientManager.borrowClient(configNodeLeader).applyConfigNode(configNodeLocation);
             }
           } else {
             return status;

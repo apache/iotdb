@@ -154,6 +154,18 @@ public class ConsensusManager {
     return consensusImpl.isLeader(consensusGroupId);
   }
 
+  public Peer getLeader(ConsensusGroupId groupId) {
+    Peer leader = consensusImpl.getLeader(groupId);
+    TEndPoint endpoint = leader.getEndpoint();
+    for (TConfigNodeLocation configNodeLocation : conf.getConfigNodeList()) {
+      if (configNodeLocation.getConsensusEndPoint().equals(endpoint)) {
+        return new Peer(groupId, configNodeLocation.getInternalEndPoint());
+      }
+    }
+    LOGGER.info("The current ConfigNode is not leader. And ConfigNodeGroup is in leader election.");
+    return null;
+  }
+
   public ConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
   }

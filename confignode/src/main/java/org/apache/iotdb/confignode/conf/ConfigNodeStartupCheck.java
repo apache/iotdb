@@ -171,11 +171,10 @@ public class ConfigNodeStartupCheck {
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties
       List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
-      TEndPoint rpcEndPoint = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
       for (TEndPoint endPoint : conf.getTargetConfigNodeList()) {
         configNodeLocations.add(
             new TConfigNodeLocation(
-                rpcEndPoint, new TEndPoint(endPoint.getIp(), conf.getConsensusPort())));
+                endPoint, new TEndPoint(endPoint.getIp(), conf.getConsensusPort())));
       }
       conf.setConfigNodeList(configNodeLocations);
     }
