@@ -149,6 +149,7 @@ public class LogicalPlanBuilder {
             : AggregationStep.SINGLE;
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
+    boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
     for (Expression sourceExpression : sourceExpressions) {
@@ -163,7 +164,8 @@ public class LogicalPlanBuilder {
       }
       PartialPath selectPath =
           ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
-      if (SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
+      if (!needCheckAscending
+          || SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
         ascendingAggregations
             .computeIfAbsent(selectPath, key -> new ArrayList<>())
             .add(aggregationDescriptor);
@@ -176,8 +178,6 @@ public class LogicalPlanBuilder {
 
     Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
         MetaUtils.groupAlignedAggregations(ascendingAggregations);
-    Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
-        MetaUtils.groupAlignedAggregations(descendingAggregations);
     for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
         groupedAscendingAggregations.entrySet()) {
       sourceNodeList.add(
@@ -188,15 +188,20 @@ public class LogicalPlanBuilder {
               groupByTimeParameter,
               timeFilter));
     }
-    for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
-        groupedDescendingAggregations.entrySet()) {
-      sourceNodeList.add(
-          createAggregationScanNode(
-              pathAggregationsEntry.getKey(),
-              pathAggregationsEntry.getValue(),
-              scanOrder,
-              groupByTimeParameter,
-              timeFilter));
+
+    if (needCheckAscending) {
+      Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
+          MetaUtils.groupAlignedAggregations(descendingAggregations);
+      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+          groupedDescendingAggregations.entrySet()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                pathAggregationsEntry.getKey(),
+                pathAggregationsEntry.getValue(),
+                scanOrder,
+                groupByTimeParameter,
+                timeFilter));
+      }
     }
 
     if (curStep.isOutputPartial()) {
