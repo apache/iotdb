@@ -177,6 +177,16 @@ public class SchemaTree {
     }
   }
 
+  public void pruneSingleMeasurement(PartialPath path) {
+    String[] nodes = path.getNodes();
+    SchemaNode cur = root;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      cur = cur.getChild(nodes[i]);
+    }
+
+    cur.removeChild(nodes[nodes.length - 1]);
+  }
+
   public void mergeSchemaTree(SchemaTree schemaTree) {
     traverseAndMerge(this.root, null, schemaTree.root);
   }

@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class MeasurementPath extends PartialPath {
 
@@ -143,6 +144,20 @@ public class MeasurementPath extends PartialPath {
     result.measurementSchema = measurementSchema;
     result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    MeasurementPath that = (MeasurementPath) o;
+    return Objects.equals(version, that.version);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), version);
   }
 
   /**

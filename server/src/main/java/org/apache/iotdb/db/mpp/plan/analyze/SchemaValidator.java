@@ -20,13 +20,21 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class SchemaValidator {
 
   private static final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
+
+  private static final Set<MeasurementPath> blackList =
+      Collections.synchronizedSet(new HashSet<>());
 
   public static SchemaTree validate(InsertNode insertNode) {
 
@@ -46,6 +54,12 @@ public class SchemaValidator {
               insertNode.getMeasurements(),
               insertNode.getDataTypes(),
               insertNode.isAligned());
+    }
+
+    for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
+      if (blackList.contains(measurementPath)) {
+        schemaTree.pruneSingleMeasurement(measurementPath);
+      }
     }
 
     if (!insertNode.validateAndSetSchema(schemaTree)) {
