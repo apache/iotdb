@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -49,6 +50,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
@@ -62,7 +65,6 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-
 import org.apache.ratis.util.FileUtils;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -147,7 +149,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void registerAndQueryDataNodeTest() throws TException {
+  public void testRegisterAndQueryDataNode() throws TException {
     registerDataNodes();
 
     // test success re-register
@@ -201,7 +203,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void setAndQueryStorageGroupTest() throws TException {
+  public void testSetAndQueryStorageGroup() throws TException {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -499,7 +501,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void getAndCreateDataPartitionTest() throws TException {
+  public void testGetAndCreateDataPartition() throws TException {
     final String sg = "root.sg";
     final int storageGroupNum = 2;
     final int seriesPartitionSlotNum = 4;
@@ -1019,7 +1021,6 @@ public class ConfigNodeRPCServiceProcessorTest {
     TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
     List<String> sgs = Arrays.asList(sg0, sg1);
     deleteStorageGroupsReq.setPrefixPathList(sgs);
-    DeleteStorageGroupProcedure.setByPassForTest(true);
     TSStatus deleteSgStatus = processor.deleteStorageGroups(deleteStorageGroupsReq);
     TStorageGroupSchemaResp root =
         processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
@@ -1049,16 +1050,6 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
     nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer, NodeManagementType.CHILD_PATHS);
-    nodeManagementReq.setLevel(-1);
-    nodeManagementResp = processor.getSchemaNodeManagementPartition(nodeManagementReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
-    Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
-    Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
-    Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
-
-    nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer, NodeManagementType.CHILD_PATHS);
-    nodeManagementReq.setLevel(1);
     nodeManagementResp = processor.getSchemaNodeManagementPartition(nodeManagementReq);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
