@@ -106,6 +106,10 @@ public class ConfigNodeConf {
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
+  /** UDF directory, storage udf metadata and jars */
+  private String udfDir =
+      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.UDF_FOLDER;
+
   /** Time partition interval in seconds */
   private long timePartitionInterval = 604800;
 
@@ -341,6 +345,14 @@ public class ConfigNodeConf {
 
   public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getUdfDir() {
+    return udfDir;
+  }
+
+  public void setUdfDir(String udfDir) {
+    this.udfDir = udfDir;
   }
 
   public int getSchemaReplicationFactor() {

@@ -20,6 +20,8 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -55,6 +57,7 @@ import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
@@ -102,6 +105,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -141,7 +145,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    TSStatus loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+    TSStatus loginStatus;
+    try {
+      loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+    } catch (ConfigNodeConnectionException e) {
+      TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
+      return new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
+    }
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
     long sessionId = -1;
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -316,6 +326,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
       }
 
+      // measurementAlias is also a nodeName
+      isLegalMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -370,6 +382,11 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getMeasurements());
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurementAlias());
+
+      isLegalMeasurements(req.getMeasurements());
+
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
           (CreateAlignedTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -412,6 +429,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getPaths().size(),
             req.getPaths().get(0));
       }
+
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurementAliasList());
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
@@ -616,6 +636,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
@@ -660,6 +683,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.prefixPath,
             req.getTimestamps().get(0));
       }
+
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -707,6 +733,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.getTimestamps().get(0));
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
+
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
@@ -753,6 +782,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
+
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
       // permission check
@@ -788,6 +820,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
+
+      isLegalMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -827,6 +861,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
@@ -872,6 +908,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             req.prefixPaths.get(0),
             req.getTimestamps().get(0));
       }
+
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
@@ -1019,11 +1058,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) {
+    // todo: check measurement using isLegalMeasurements()
     throw new UnsupportedOperationException();
   }
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
+    // todo: check measurement using isLegalMeasurements()
     throw new UnsupportedOperationException();
   }
 
@@ -1065,6 +1106,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           SESSION_MANAGER.getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
+
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -1149,5 +1193,31 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private QueryId genQueryId(long id) {
     return new QueryId(String.valueOf(id));
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+    if (measurementLists == null) {
+      return;
+    }
+    for (List<String> measurementList : measurementLists) {
+      isLegalMeasurements(measurementList);
+    }
+  }
+
+  // check whether measurement is legal according to syntax convention
+  protected void isLegalMeasurements(List<String> measurements) throws TException {
+    if (measurements == null) {
+      return;
+    }
+    for (String measurement : measurements) {
+      try {
+        if (measurement != null) {
+          PathUtils.isLegalPath(measurement);
+        }
+      } catch (IllegalPathException e) {
+        throw new TException(e.getMessage());
+      }
+    }
   }
 }

@@ -180,6 +180,8 @@ public class ConfigNodeDescriptor {
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
+      conf.setUdfDir(properties.getProperty("udf_dir", conf.getUdfDir()));
+
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(

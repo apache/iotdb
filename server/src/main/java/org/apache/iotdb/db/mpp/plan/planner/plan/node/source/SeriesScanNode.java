@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -46,7 +46,7 @@ import java.util.Objects;
  *
  * <p>Children type: no child is allowed for SeriesScanNode
  */
-public class SeriesScanNode extends SourceNode {
+public class SeriesScanNode extends SeriesSourceNode {
 
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
@@ -213,7 +213,6 @@ public class SeriesScanNode extends SourceNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
@@ -231,18 +230,9 @@ public class SeriesScanNode extends SourceNode {
     }
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    TRegionReplicaSet dataRegionReplicaSet =
-        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesScanNode(
-        planNodeId,
-        partialPath,
-        scanOrder,
-        timeFilter,
-        valueFilter,
-        limit,
-        offset,
-        dataRegionReplicaSet);
+        planNodeId, partialPath, scanOrder, timeFilter, valueFilter, limit, offset, null);
   }
 
   @Override
@@ -284,5 +274,15 @@ public class SeriesScanNode extends SourceNode {
         limit,
         offset,
         regionReplicaSet);
+  }
+
+  @Override
+  public PartialPath getPartitionPath() {
+    return seriesPath;
+  }
+
+  @Override
+  public Filter getPartitionTimeFilter() {
+    return timeFilter;
   }
 }
