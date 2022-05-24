@@ -61,6 +61,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
@@ -144,7 +145,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     for (String storageGroup : storageGroups) {
       try {
         ret.addAll(
-            patternTree.findOverlappedPattern(new PartialPath(storageGroup)).splitToPathList());
+            patternTree.findOverlappedPaths(
+                new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
       } catch (IllegalPathException e) {
         // The IllegalPathException is definitely not threw here
         throw new RuntimeException(e);
