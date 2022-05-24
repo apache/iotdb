@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.db.wal.utils;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-
 import java.io.File;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class WALFileUtils {
-  public static final String FILE_PREFIX = "_";
-  public static final String FILE_SUFFIX = IoTDBConstant.WAL_FILE_SUFFIX;
-  public static final String FILE_SEPARATOR = IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_FILE_PREFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_START_SEARCH_INDEX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_VERSION_ID;
 
+public class WALFileUtils {
   /**
    * versionId is a self-incremented id number, helping to maintain the order of wal files.
    * startSearchIndex is the valid search index of last flushed wal entry. For example: <br>
@@ -41,7 +41,14 @@ public class WALFileUtils {
    * &nbsp _4-12.wal: 12, 13, 14, 15, 16, -1 <br>
    */
   public static final Pattern WAL_FILE_NAME_PATTERN =
-      Pattern.compile("_(?<versionId>\\d+)-(?<startSearchIndex>\\d+)\\.wal");
+      Pattern.compile(
+          WAL_FILE_PREFIX
+              + "(?<"
+              + WAL_VERSION_ID
+              + ">\\d+)-(?<"
+              + WAL_START_SEARCH_INDEX
+              + ">\\d+)\\"
+              + WAL_FILE_SUFFIX);
 
   /** Return true when this file is .wal file */
   public static boolean walFilenameFilter(File dir, String name) {
@@ -57,7 +64,7 @@ public class WALFileUtils {
   public static int parseVersionId(String filename) {
     Matcher matcher = WAL_FILE_NAME_PATTERN.matcher(filename);
     if (matcher.find()) {
-      return Integer.parseInt(matcher.group("versionId"));
+      return Integer.parseInt(matcher.group(WAL_VERSION_ID));
     }
     throw new RuntimeException("Invalid wal file name: " + filename);
   }
@@ -66,7 +73,7 @@ public class WALFileUtils {
   public static long parseStartSearchIndex(String filename) {
     Matcher matcher = WAL_FILE_NAME_PATTERN.matcher(filename);
     if (matcher.find()) {
-      return Long.parseLong(matcher.group("startSearchIndex"));
+      return Long.parseLong(matcher.group(WAL_START_SEARCH_INDEX));
     }
     throw new RuntimeException("Invalid wal file name: " + filename);
   }
@@ -122,6 +129,6 @@ public class WALFileUtils {
 
   /** Get .wal filename */
   public static String getLogFileName(int versionId, long startSearchIndex) {
-    return FILE_PREFIX + versionId + FILE_SEPARATOR + startSearchIndex + FILE_SUFFIX;
+    return WAL_FILE_PREFIX + versionId + FILE_NAME_SEPARATOR + startSearchIndex + WAL_FILE_SUFFIX;
   }
 }

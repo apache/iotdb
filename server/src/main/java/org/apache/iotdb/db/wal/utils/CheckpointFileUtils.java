@@ -18,23 +18,23 @@
  */
 package org.apache.iotdb.db.wal.utils;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-
 import java.io.File;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class CheckpointFileUtils {
-  public static final String FILE_PREFIX = "_";
-  public static final String FILE_SUFFIX = IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_FILE_PREFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_VERSION_ID;
 
+public class CheckpointFileUtils {
   /**
    * versionId is a self-incremented id number, helping to maintain the order of checkpoint files
    */
   public static final Pattern CHECKPOINT_FILE_NAME_PATTERN =
-      Pattern.compile("_(?<versionId>\\d+)\\.checkpoint");
+      Pattern.compile(
+          WAL_FILE_PREFIX + "(?<" + WAL_VERSION_ID + ">\\d+)\\" + WAL_CHECKPOINT_FILE_SUFFIX);
 
   /** Return true when this file is .checkpoint file */
   public static boolean checkpointFilenameFilter(File dir, String name) {
@@ -50,7 +50,7 @@ public class CheckpointFileUtils {
   public static int parseVersionId(String filename) {
     Matcher matcher = CHECKPOINT_FILE_NAME_PATTERN.matcher(filename);
     if (matcher.find()) {
-      return Integer.parseInt(matcher.group("versionId"));
+      return Integer.parseInt(matcher.group(WAL_VERSION_ID));
     }
     throw new RuntimeException("Invalid checkpoint file name: " + filename);
   }
@@ -64,6 +64,6 @@ public class CheckpointFileUtils {
 
   /** Get .checkpoint filename */
   public static String getLogFileName(long version) {
-    return FILE_PREFIX + version + FILE_SUFFIX;
+    return WAL_FILE_PREFIX + version + WAL_CHECKPOINT_FILE_SUFFIX;
   }
 }

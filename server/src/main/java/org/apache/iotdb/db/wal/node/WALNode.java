@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.node;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -274,8 +275,8 @@ public class WALNode implements IWALNode {
       Matcher matcher = pattern.matcher(name);
       boolean toDelete = false;
       if (matcher.find()) {
-        int versionId = Integer.parseInt(matcher.group("versionId"));
-        long startSearchIndex = Long.parseLong(matcher.group("startSearchIndex"));
+        int versionId = Integer.parseInt(matcher.group(IoTDBConstant.WAL_VERSION_ID));
+        long startSearchIndex = Long.parseLong(matcher.group(IoTDBConstant.WAL_START_SEARCH_INDEX));
         toDelete = versionId < firstValidVersionId && startSearchIndex < safelyDeletedSearchIndex;
       }
       return toDelete;
@@ -398,6 +399,12 @@ public class WALNode implements IWALNode {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
   }
 
+  /**
+   * Merge insert nodes sharing same search index ( e.g. tablet-100, tablet-100, tablet-100 will be
+   * merged to one multi-tablet). <br>
+   * Notice: the continuity of insert nodes sharing same search index should be protected by the
+   * upper layer.
+   */
   private static InsertNode mergeInsertNodes(List<InsertNode> insertNodes) {
     int size = insertNodes.size();
     if (size == 0) {
@@ -755,7 +762,7 @@ public class WALNode implements IWALNode {
       Matcher matcher = pattern.matcher(name);
       boolean toSearch = false;
       if (matcher.find()) {
-        int versionId = Integer.parseInt(matcher.group("versionId"));
+        int versionId = Integer.parseInt(matcher.group(IoTDBConstant.WAL_VERSION_ID));
         toSearch = versionId >= searchedFilesVersionId;
       }
       return toSearch;
