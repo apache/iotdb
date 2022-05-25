@@ -72,7 +72,7 @@ public class AggregationDistributionTest {
     String d2s1Path = "root.sg.d22.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT));
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -111,7 +111,7 @@ public class AggregationDistributionTest {
     String d3s1Path = "root.sg.d333.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT));
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -134,7 +134,7 @@ public class AggregationDistributionTest {
 
     String d4s1Path = "root.sg.d4444.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT));
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -169,7 +169,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))));
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -204,7 +204,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))));
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -255,7 +255,7 @@ public class AggregationDistributionTest {
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))));
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -312,7 +312,7 @@ public class AggregationDistributionTest {
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))));
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -347,7 +347,7 @@ public class AggregationDistributionTest {
     String d2s1Path = "root.sg.d22.s1";
 
     PlanNode root = genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT);
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
@@ -400,7 +400,7 @@ public class AggregationDistributionTest {
             OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());

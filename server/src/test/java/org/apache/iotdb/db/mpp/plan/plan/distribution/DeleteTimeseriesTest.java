@@ -46,7 +46,7 @@ public class DeleteTimeseriesTest {
     QueryId queryId = new QueryId("test_group_by_level_two_series");
     String d2s1Path = "root.sg.d22.s1";
     List<PartialPath> paths = Collections.singletonList(new PartialPath(d2s1Path));
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     LogicalQueryPlan logicalQueryPlan = constructLogicalPlan(queryId, paths, analysis);
 
     System.out.println(PlanNodeUtil.nodeToString(logicalQueryPlan.getRootNode()));

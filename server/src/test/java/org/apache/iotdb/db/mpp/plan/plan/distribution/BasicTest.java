@@ -63,7 +63,7 @@ public class BasicTest {
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             OrderBy.TIMESTAMP_ASC);
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -82,7 +82,7 @@ public class BasicTest {
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             OrderBy.TIMESTAMP_ASC);
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -116,7 +116,7 @@ public class BasicTest {
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
@@ -162,7 +162,7 @@ public class BasicTest {
             false,
             false));
     LimitNode root2 = new LimitNode(queryId.genPlanNodeId(), metaMergeNode, 10);
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
     DistributionPlanner planner2 =
         new DistributionPlanner(
             analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root2));
@@ -193,7 +193,7 @@ public class BasicTest {
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
@@ -230,7 +230,7 @@ public class BasicTest {
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -265,7 +265,7 @@ public class BasicTest {
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -287,7 +287,7 @@ public class BasicTest {
             OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -317,7 +317,7 @@ public class BasicTest {
           new MeasurementSchema("s1", TSDataType.INT32),
         });
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -365,7 +365,7 @@ public class BasicTest {
     node.setInsertRowNodeList(Arrays.asList(insertRowNode1, insertRowNode2));
     node.setInsertRowNodeIndexList(Arrays.asList(0, 1));
 
-    Analysis analysis = util.constructAnalysis();
+    Analysis analysis = Util.constructAnalysis();
 
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
