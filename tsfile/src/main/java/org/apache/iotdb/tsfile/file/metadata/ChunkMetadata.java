@@ -73,7 +73,7 @@ public class ChunkMetadata {
   // used for ChunkCache, Eg:"root.sg1/0/0"
   private String tsFilePrefixPath;
 
-  private ChunkMetadata() {}
+  public ChunkMetadata() {}
 
   /**
    * constructor of ChunkMetaData.
