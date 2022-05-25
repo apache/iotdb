@@ -257,7 +257,7 @@ public class CompactionTaskManager implements IService {
           CompactionMetricsManager.recordTaskInfo(
               task, CompactionTaskStatus.READY_TO_EXECUTE, currentTaskNum.get());
         } else {
-          logger.error("A task {} is not submitted", task);
+          logger.warn("A task {} is not submitted", task);
         }
       }
     } catch (InterruptedException e) {
@@ -314,7 +314,6 @@ public class CompactionTaskManager implements IService {
       storageGroupTasks
           .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
           .put(compactionTask, future);
-      logger.info("Submit a task {}", compactionTask);
       return future;
     }
     logger.warn(

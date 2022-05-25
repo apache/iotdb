@@ -336,11 +336,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       if (isHoldingReadLock[i]) {
         resource.readUnlock();
-        LOGGER.info("Release read lock of {}", resource);
       }
       if (isHoldingWriteLock[i]) {
         resource.writeUnlock();
-        LOGGER.info("Release write lock of {}", resource);
       }
       try {
         if (!resource.isDeleted()) {
@@ -355,7 +353,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     if (!tsFileManager.isAllowCompaction()) {
-      LOGGER.info("Return false because tsfile manager not allow");
       return false;
     }
     try {
@@ -363,7 +360,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         TsFileResource resource = selectedTsFileResourceList.get(i);
         resource.readLock();
         isHoldingReadLock[i] = true;
-        LOGGER.info("Get the read lock of {}", resource);
         if (resource.isCompacting()
             || !resource.isClosed()
             || !resource.getTsFile().exists()
@@ -371,7 +367,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           // this source file cannot be compacted
           // release the lock of locked files, and return
           releaseFileLocksAndResetMergingStatus();
-          LOGGER.info("Return false when checking valid");
           return false;
         }
       }
@@ -383,7 +378,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       releaseFileLocksAndResetMergingStatus();
       throw e;
     }
-    LOGGER.info("Return true when checking valid");
     return true;
   }
 }
