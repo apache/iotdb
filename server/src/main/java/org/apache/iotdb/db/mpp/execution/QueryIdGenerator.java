@@ -26,6 +26,7 @@ import javax.annotation.concurrent.GuardedBy;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 import static java.lang.String.format;
 import static java.time.ZoneOffset.UTC;
@@ -55,7 +56,9 @@ public class QueryIdGenerator {
   private int counter;
 
   public QueryIdGenerator() {
-    this.dataNodeId = String.valueOf(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    checkArgument(dataNodeId != -1, "DataNodeId should be init first!");
+    this.dataNodeId = String.valueOf(dataNodeId);
   }
 
   public String getCoordinatorId() {
