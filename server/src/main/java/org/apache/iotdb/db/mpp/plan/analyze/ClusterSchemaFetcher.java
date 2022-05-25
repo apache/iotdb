@@ -34,7 +34,7 @@ import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -320,24 +320,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       executeCreateStatement(createAlignedTimeSeriesStatement);
     } else {
-      CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
-          new CreateMultiTimeSeriesStatement();
-      List<PartialPath> paths = new ArrayList<>();
-      List<TSDataType> dataTypes = new ArrayList<>();
-      List<TSEncoding> tsEncodings = new ArrayList<>();
-      List<CompressionType> compressionTypes = new ArrayList<>();
-      for (int i = 0; i < measurements.size(); i++) {
-        paths.add(devicePath.concatNode(measurements.get(i)));
-        dataTypes.add(tsDataTypes.get(i));
-        tsEncodings.add(getDefaultEncoding(tsDataTypes.get(i)));
-        compressionTypes.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-      }
-      createMultiTimeSeriesStatement.setPaths(paths);
-      createMultiTimeSeriesStatement.setDataTypes(dataTypes);
-      createMultiTimeSeriesStatement.setEncodings(tsEncodings);
-      createMultiTimeSeriesStatement.setCompressors(compressionTypes);
 
-      executeCreateMultiTimeseriesStatement(createMultiTimeSeriesStatement);
+      executeCreateTimeseriesByDeviceStatement(
+          new CreateTimeSeriesByDeviceStatement(devicePath, measurements, tsDataTypes));
     }
   }
 
@@ -359,7 +344,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
   }
 
-  private void executeCreateMultiTimeseriesStatement(CreateMultiTimeSeriesStatement statement) {
+  private void executeCreateTimeseriesByDeviceStatement(
+      CreateTimeSeriesByDeviceStatement statement) {
     QueryId queryId =
         new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
     ExecutionResult executionResult =

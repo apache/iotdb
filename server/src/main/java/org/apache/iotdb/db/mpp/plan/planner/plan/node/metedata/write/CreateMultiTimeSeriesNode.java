@@ -101,7 +101,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     }
   }
 
-  private CreateMultiTimeSeriesNode(
+  public CreateMultiTimeSeriesNode(
       PlanNodeId planNodeId, Map<PartialPath, MeasurementGroup> measurementGroupMap) {
     super(planNodeId);
     this.measurementGroupMap = measurementGroupMap;

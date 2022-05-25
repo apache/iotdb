@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -80,6 +81,12 @@ public abstract class StatementVisitor<R, C> {
   public R visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement, C context) {
     return visitStatement(createAlignedTimeSeriesStatement, context);
+  }
+
+  // Create Timeseries by device
+  public R visitCreateTimeseriesByDevice(
+      CreateTimeSeriesByDeviceStatement createTimeSeriesByDeviceStatement, C context) {
+    return visitStatement(createTimeSeriesByDeviceStatement, context);
   }
 
   // Create Multi Timeseries
