@@ -108,6 +108,9 @@ public class IoTDBSessionSyntaxConventionIT {
     measurements.add("`a“（Φ）”b`");
     measurements.add("`a>b`");
     measurements.add("`\\\"a`");
+    for (int i = 0; i < 30; i++) {
+      measurements.add("`\\\"a`");
+    }
     List<String> values = new ArrayList<>();
 
     for (int i = 0; i < measurements.size(); i++) {

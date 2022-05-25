@@ -135,16 +135,18 @@ public class CreateTimeSeriesOperator extends Operator {
    * @throws SemanticException e
    */
   public void check() throws SemanticException {
-    if (!props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
-      throw new SemanticException("datatype must be declared");
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
+      String datatypeString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
+      try {
+        this.dataType = TSDataType.valueOf(datatypeString);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
+      }
     }
-    String datatypeString =
-        props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
-    try {
-      this.dataType = TSDataType.valueOf(datatypeString);
-      props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
-    } catch (Exception e) {
-      throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
+    if (this.dataType == null) {
+      throw new SemanticException("datatype must be declared");
     }
 
     final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
