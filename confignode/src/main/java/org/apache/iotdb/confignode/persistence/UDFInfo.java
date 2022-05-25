@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.api.exception.UDFException;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
@@ -47,15 +48,18 @@ public class UDFInfo implements SnapshotProcessor {
   private final UDFRegistrationService udfRegistrationService;
 
   public UDFInfo() {
-    try {
-      udfExecutableManager =
-          UDFExecutableManager.setupAndGetInstance(
-              CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
-      udfExecutableManager.start();
+    setupUdfServices();
+    udfExecutableManager = UDFExecutableManager.getInstance();
+    udfRegistrationService = UDFRegistrationService.getInstance();
+  }
 
-      udfRegistrationService =
-          UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
-      udfRegistrationService.start();
+  private void setupUdfServices() {
+    try {
+      UDFExecutableManager.setupAndGetInstance(
+              CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir())
+          .start();
+      UDFClassLoaderManager.setupAndGetInstance(CONFIG_NODE_CONF.getUdfLibDir()).start();
+      UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir()).start();
     } catch (Exception e) {
       throw new UDFException(e.getMessage());
     }
@@ -74,7 +78,7 @@ public class UDFInfo implements SnapshotProcessor {
           String.format(
               "Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
               functionName, className, uris, e);
-      LOGGER.warn(errorMessage);
+      LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
@@ -94,9 +98,5 @@ public class UDFInfo implements SnapshotProcessor {
 
   public UDFExecutableManager getUdfExecutableManager() {
     return udfExecutableManager;
-  }
-
-  public UDFRegistrationService getUdfRegistrationService() {
-    return udfRegistrationService;
   }
 }

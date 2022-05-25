@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,7 +98,6 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
       UDFExecutableManager udfExecutableManager,
       boolean writeToTemporaryLogFile)
       throws UDFRegistrationException {
-    Validate.isTrue(uris != null && !uris.isEmpty());
     functionName = functionName.toUpperCase();
     validateFunctionName(functionName, className);
     checkIfRegistered(functionName, className);
@@ -160,6 +158,10 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
       List<String> uris,
       UDFExecutableManager udfExecutableManager)
       throws UDFRegistrationException {
+    if (uris.isEmpty()) {
+      return;
+    }
+
     try {
       final UDFExecutableResource resource = udfExecutableManager.request(uris);
       try {
