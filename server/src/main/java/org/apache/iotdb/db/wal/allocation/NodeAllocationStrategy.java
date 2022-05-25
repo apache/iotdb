@@ -16,16 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.io;
+package org.apache.iotdb.db.wal.allocation;
 
-import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.wal.node.IWALNode;
+import org.apache.iotdb.db.wal.node.WALNode;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.util.List;
 
-/** WALWriter writes the binary {@link WALEntry} into .wal file. */
-public class WALWriter extends LogWriter {
-  public WALWriter(File logFile) throws FileNotFoundException {
-    super(logFile);
-  }
+/** This interface */
+public interface NodeAllocationStrategy {
+  /** Allocate one wal node for the applicant */
+  IWALNode applyForWALNode(String applicantUniqueId);
+  /** Get all wal nodes */
+  List<WALNode> getNodesSnapshot();
+
+  @TestOnly
+  void clear();
 }
