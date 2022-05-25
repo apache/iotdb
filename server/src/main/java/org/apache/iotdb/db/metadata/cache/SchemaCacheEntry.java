@@ -28,16 +28,16 @@ public class SchemaCacheEntry {
 
   private final MeasurementSchema measurementSchema;
 
-  private final String alias;
-
   private final boolean isAligned;
+
+  private final String version;
 
   private volatile ILastCacheContainer lastCacheContainer = null;
 
-  SchemaCacheEntry(MeasurementSchema measurementSchema, String alias, boolean isAligned) {
+  SchemaCacheEntry(MeasurementSchema measurementSchema, boolean isAligned, String version) {
     this.measurementSchema = measurementSchema;
-    this.alias = alias;
     this.isAligned = isAligned;
+    this.version = version;
   }
 
   public String getSchemaEntryId() {
@@ -52,12 +52,12 @@ public class SchemaCacheEntry {
     return measurementSchema.getType();
   }
 
-  public String getAlias() {
-    return alias;
-  }
-
   public boolean isAligned() {
     return isAligned;
+  }
+
+  public String getVersion() {
+    return version;
   }
 
   public ILastCacheContainer getLastCacheContainer() {

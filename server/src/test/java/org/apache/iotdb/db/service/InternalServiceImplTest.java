@@ -35,6 +35,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -136,7 +137,8 @@ public class InternalServiceImplTest {
                 put("attr2", "a2");
               }
             },
-            "meter1");
+            "meter1",
+            TimeseriesVersionUtil.generateVersion());
 
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
@@ -223,6 +225,12 @@ public class InternalServiceImplTest {
                       }
                     });
                 add(null);
+              }
+            },
+            new ArrayList<String>() {
+              {
+                add(TimeseriesVersionUtil.generateVersion());
+                add(TimeseriesVersionUtil.generateVersion());
               }
             });
 

@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.io;
+package org.apache.iotdb.db.metadata.utils;
 
-import org.apache.iotdb.db.wal.buffer.WALEntry;
+import java.util.UUID;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+public class TimeseriesVersionUtil {
 
-/** WALWriter writes the binary {@link WALEntry} into .wal file. */
-public class WALWriter extends LogWriter {
-  public WALWriter(File logFile) throws FileNotFoundException {
-    super(logFile);
+  public static String generateVersion() {
+    return UUID.randomUUID().toString();
   }
 }

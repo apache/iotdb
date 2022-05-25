@@ -73,6 +73,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
   public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
   public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
+  public static final String COLUMN_TIMESERIES_COMPRESSOR = "compressor";
   public static final String COLUMN_CHILD_PATHS = "child paths";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
@@ -210,8 +211,11 @@ public class IoTDBConstant {
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
 
   // write ahead log
+  public static final String WAL_FILE_PREFIX = "_";
   public static final String WAL_FILE_SUFFIX = ".wal";
   public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
+  public static final String WAL_VERSION_ID = "versionId";
+  public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
 
   // client version number
   public enum ClientVersion {
