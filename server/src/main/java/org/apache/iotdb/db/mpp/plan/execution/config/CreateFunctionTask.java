@@ -22,6 +22,8 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -47,10 +49,15 @@ public class CreateFunctionTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateFunctionTask.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private final CreateFunctionStatement createFunctionStatement;
+  private final String udfName;
+  private final String className;
+  private final List<String> uris;
 
   public CreateFunctionTask(CreateFunctionStatement createFunctionStatement) {
-    this.createFunctionStatement = createFunctionStatement;
+    udfName = createFunctionStatement.getUdfName();
+    className = createFunctionStatement.getClassName();
+    uris =
+        createFunctionStatement.getUris().stream().map(URI::toString).collect(Collectors.toList());
   }
 
   @Override
@@ -61,7 +68,7 @@ public class CreateFunctionTask implements IConfigTask {
     if (CONFIG.isClusterMode()) {
       executeCluster(clientManager, future);
     } else {
-      executeStandalone(clientManager, future);
+      executeStandalone(future);
     }
     return future;
   }
@@ -70,13 +77,6 @@ public class CreateFunctionTask implements IConfigTask {
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
       SettableFuture<ConfigTaskResult> future) {
     try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      final String udfName = createFunctionStatement.getUdfName();
-      final String className = createFunctionStatement.getClassName();
-      final List<String> uris =
-          createFunctionStatement.getUris().stream()
-              .map(URI::toString)
-              .collect(Collectors.toList());
-
       final TSStatus executionStatus =
           client.createFunction(new TCreateFunctionReq(udfName, className, uris));
 
@@ -97,10 +97,21 @@ public class CreateFunctionTask implements IConfigTask {
     }
   }
 
-  private void executeStandalone(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
-      SettableFuture<ConfigTaskResult> future) {
-    // TODO
-    throw new UnsupportedOperationException();
+  private void executeStandalone(SettableFuture<ConfigTaskResult> future) {
+    try {
+      UDFRegistrationService.getInstance()
+          .register(udfName, className, uris, UDFExecutableManager.getInstance(), true);
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      final String message =
+          String.format(
+              "Failed to create function %s(%s), URI: %s, because %s.",
+              udfName, className, uris, e.getMessage());
+      LOGGER.error(message, e);
+      future.setException(
+          new StatementExecutionException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(message)));
+    }
   }
 }
