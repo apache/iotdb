@@ -91,6 +91,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       devicePath = entry.getKey();
       measurementGroup = entry.getValue();
       size = measurementGroup.getMeasurements().size();
+      // todo implement batch creation of one device in SchemaRegion
       for (int i = 0; i < size; i++) {
         CreateTimeSeriesPlan plan =
             new CreateTimeSeriesPlan(
