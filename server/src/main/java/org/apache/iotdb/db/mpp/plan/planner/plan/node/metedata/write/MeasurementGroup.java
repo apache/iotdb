@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class MeasurementGroup {
 
@@ -240,5 +241,35 @@ public class MeasurementGroup {
     for (int i = 0; i < size; i++) {
       versionList.add(ReadWriteIOUtils.readString(byteBuffer));
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    MeasurementGroup that = (MeasurementGroup) o;
+    return Objects.equals(measurements, that.measurements)
+        && Objects.equals(dataTypes, that.dataTypes)
+        && Objects.equals(encodings, that.encodings)
+        && Objects.equals(compressors, that.compressors)
+        && Objects.equals(aliasList, that.aliasList)
+        && Objects.equals(propsList, that.propsList)
+        && Objects.equals(tagsList, that.tagsList)
+        && Objects.equals(attributesList, that.attributesList)
+        && Objects.equals(versionList, that.versionList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        aliasList,
+        propsList,
+        tagsList,
+        attributesList,
+        versionList);
   }
 }
