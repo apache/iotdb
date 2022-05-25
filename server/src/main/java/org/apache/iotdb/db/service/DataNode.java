@@ -241,8 +241,8 @@ public class DataNode implements DataNodeMBean {
 
     try {
       // TODO: Start consensus layer in some where else
-      DataRegionConsensusImpl.getInstance().start();
       SchemaRegionConsensusImpl.getInstance().start();
+      DataRegionConsensusImpl.getInstance().start();
     } catch (IOException e) {
       throw new StartupException(e);
     }

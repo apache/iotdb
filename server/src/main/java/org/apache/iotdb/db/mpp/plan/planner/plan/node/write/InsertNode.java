@@ -178,6 +178,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
   @Override
   public void serializeRequest(ByteBuffer buffer) {
     serializeAttributes(buffer);
+    getPlanNodeId().serialize(buffer);
   }
 
   @Override

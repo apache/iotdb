@@ -50,7 +50,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
         && response.getStatus().get(0).getCode()
             == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
       logger.warn(
-          "Can not send {} to peer for {} times {} because {}",
+          "Can not send {} to peer {} for {} times because {}",
           batch,
           thread.getPeer(),
           ++retryCount,
@@ -83,7 +83,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
     CompletableFuture.runAsync(
         () -> {
           try {
-            Thread.sleep((long) (BASIC_RETRY_TIME_MS * Math.pow(1.2, retryCount)));
+            Thread.sleep((long) (BASIC_RETRY_TIME_MS * Math.pow(2, retryCount)));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.warn("Unexpected interruption during retry pending batch");
