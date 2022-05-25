@@ -21,9 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.udf.api.exception.UDFException;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
-import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableResource;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -50,21 +48,8 @@ public class UDFInfo implements SnapshotProcessor {
   private final UDFRegistrationService udfRegistrationService;
 
   public UDFInfo() {
-    setupUdfServices();
     udfExecutableManager = UDFExecutableManager.getInstance();
     udfRegistrationService = UDFRegistrationService.getInstance();
-  }
-
-  private void setupUdfServices() {
-    try {
-      UDFExecutableManager.setupAndGetInstance(
-              CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir())
-          .start();
-      UDFClassLoaderManager.setupAndGetInstance(CONFIG_NODE_CONF.getUdfLibDir()).start();
-      UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir()).start();
-    } catch (Exception e) {
-      throw new UDFException(e.getMessage());
-    }
   }
 
   public synchronized void validateBeforeRegistration(

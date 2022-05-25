@@ -278,7 +278,7 @@ public class DataNode implements DataNodeMBean {
         .getConfig()
         .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
 
-    initUdfServices();
+    registerUdfServices();
 
     registerManager.register(ReceiverService.getInstance());
     registerManager.register(MetricsService.getInstance());
@@ -321,7 +321,7 @@ public class DataNode implements DataNodeMBean {
     logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
   }
 
-  private void initUdfServices() throws StartupException {
+  private void registerUdfServices() throws StartupException {
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
         UDFExecutableManager.setupAndGetInstance(
