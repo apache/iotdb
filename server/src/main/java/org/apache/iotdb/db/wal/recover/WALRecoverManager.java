@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
-import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 
@@ -64,7 +63,7 @@ public class WALRecoverManager {
       List<File> walNodeDirs = new ArrayList<>();
       for (String walDir : config.getWalDirs()) {
         File walDirFile = SystemFileFactory.INSTANCE.getFile(walDir);
-        File[] nodeDirs = walDirFile.listFiles(WALNode::walNodeFolderNameFilter);
+        File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
         if (nodeDirs == null) {
           continue;
         }

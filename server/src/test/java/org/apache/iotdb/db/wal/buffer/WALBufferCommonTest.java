@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.wal.io.WALReader;
-import org.apache.iotdb.db.wal.io.WALWriter;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -94,7 +94,7 @@ public abstract class WALBufferCommonTest {
     }
     Thread.sleep(1_000);
     // check .wal files
-    File[] walFiles = new File(logDirectory).listFiles(WALWriter::walFilenameFilter);
+    File[] walFiles = WALFileUtils.listAllWALFiles(new File(logDirectory));
     Set<InsertRowPlan> actualInsertRowPlans = new HashSet<>();
     if (walFiles != null) {
       for (File walFile : walFiles) {

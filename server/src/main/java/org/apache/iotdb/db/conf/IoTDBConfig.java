@@ -181,6 +181,9 @@ public class IoTDBConfig {
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
+  /** Size threshold of each checkpoint file. Unit: byte */
+  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024;
+
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
 
@@ -878,6 +881,12 @@ public class IoTDBConfig {
    */
   private int partitionCacheSize = 10000;
 
+  /** Cache size of user and role */
+  private int authorCacheSize = 100;
+
+  /** Cache expire time of user and role */
+  private int authorCacheExpireTime = 30;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -1461,6 +1470,14 @@ public class IoTDBConfig {
 
   void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
+  }
+
+  public long getCheckpointFileSizeThresholdInByte() {
+    return checkpointFileSizeThresholdInByte;
+  }
+
+  public void setCheckpointFileSizeThresholdInByte(long checkpointFileSizeThresholdInByte) {
+    this.checkpointFileSizeThresholdInByte = checkpointFileSizeThresholdInByte;
   }
 
   public double getWalMinEffectiveInfoRatio() {
@@ -2748,5 +2765,21 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getAuthorCacheSize() {
+    return authorCacheSize;
+  }
+
+  public void setAuthorCacheSize(int authorCacheSize) {
+    this.authorCacheSize = authorCacheSize;
+  }
+
+  public int getAuthorCacheExpireTime() {
+    return authorCacheExpireTime;
+  }
+
+  public void setAuthorCacheExpireTime(int authorCacheExpireTime) {
+    this.authorCacheExpireTime = authorCacheExpireTime;
   }
 }
