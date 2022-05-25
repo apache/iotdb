@@ -115,6 +115,7 @@
         <module>metrics</module>
         <module>integration</module>
         <module>consensus</module>
+        <module>external-pipe-api</module>
         <module>library-udf</module>
         <module>schema-engine-rocksdb</module>
     </modules>
