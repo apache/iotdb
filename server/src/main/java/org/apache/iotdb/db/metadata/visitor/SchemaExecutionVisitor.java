@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
@@ -32,9 +33,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -44,7 +45,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /** Schema write PlanNode visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
@@ -79,32 +82,46 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesNode node, ISchemaRegion schemaRegion) {
-    CreateMultiTimeSeriesPlan multiPlan =
-        (CreateMultiTimeSeriesPlan)
-            node.accept(new PhysicalPlanTransformer(), new TransformerContext());
-    for (int i = 0; i < multiPlan.getPaths().size(); i++) {
-      if (multiPlan.getResults().containsKey(i) || multiPlan.isExecuted(i)) {
-        continue;
-      }
-      CreateTimeSeriesPlan plan =
-          new CreateTimeSeriesPlan(
-              multiPlan.getPaths().get(i),
-              multiPlan.getDataTypes().get(i),
-              multiPlan.getEncodings().get(i),
-              multiPlan.getCompressors().get(i),
-              multiPlan.getProps() == null ? null : multiPlan.getProps().get(i),
-              multiPlan.getTags() == null ? null : multiPlan.getTags().get(i),
-              multiPlan.getAttributes() == null ? null : multiPlan.getAttributes().get(i),
-              multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
-      try {
-        schemaRegion.createTimeseries(plan, -1);
-      } catch (MetadataException e) {
-        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-        multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
+    List<TSStatus> failingStatus = new ArrayList<>();
+    PartialPath devicePath;
+    MeasurementGroup measurementGroup;
+    int size;
+    for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+      devicePath = entry.getKey();
+      measurementGroup = entry.getValue();
+      size = measurementGroup.getMeasurements().size();
+      // todo implement batch creation of one device in SchemaRegion
+      for (int i = 0; i < size; i++) {
+        CreateTimeSeriesPlan plan =
+            new CreateTimeSeriesPlan(
+                devicePath.concatNode(measurementGroup.getMeasurements().get(i)),
+                measurementGroup.getDataTypes().get(i),
+                measurementGroup.getEncodings().get(i),
+                measurementGroup.getCompressors().get(i),
+                measurementGroup.getPropsList() == null
+                    ? null
+                    : measurementGroup.getPropsList().get(i),
+                measurementGroup.getTagsList() == null
+                    ? null
+                    : measurementGroup.getTagsList().get(i),
+                measurementGroup.getAttributesList() == null
+                    ? null
+                    : measurementGroup.getAttributesList().get(i),
+                measurementGroup.getAliasList() == null
+                    ? null
+                    : measurementGroup.getAliasList().get(i));
+        try {
+          schemaRegion.createTimeseries(plan, -1, measurementGroup.getVersionList().get(i));
+        } catch (MetadataException e) {
+          logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+          failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
     }
-    if (!multiPlan.getResults().isEmpty()) {
-      return RpcUtils.getStatus(Arrays.asList(multiPlan.getFailingStatus()));
+
+    if (!failingStatus.isEmpty()) {
+      return RpcUtils.getStatus(failingStatus);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
@@ -182,20 +199,6 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           node.getAliasList(),
           node.getTagsList(),
           node.getAttributesList());
-    }
-
-    public PhysicalPlan visitCreateMultiTimeSeries(
-        CreateMultiTimeSeriesNode node, TransformerContext context) {
-      CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
-      multiPlan.setPaths(node.getPaths());
-      multiPlan.setDataTypes(node.getDataTypes());
-      multiPlan.setEncodings(node.getEncodings());
-      multiPlan.setCompressors(node.getCompressors());
-      multiPlan.setProps(node.getPropsList());
-      multiPlan.setAlias(node.getAliasList());
-      multiPlan.setTags(node.getTagsList());
-      multiPlan.setAttributes(node.getAttributesList());
-      return multiPlan;
     }
   }
 

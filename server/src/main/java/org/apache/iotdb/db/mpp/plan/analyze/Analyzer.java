@@ -63,6 +63,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
@@ -959,6 +960,25 @@ public class Analyzer {
               new PathPatternTree(
                   createAlignedTimeSeriesStatement.getDevicePath(),
                   createAlignedTimeSeriesStatement.getMeasurements()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateTimeseriesByDevice(
+        CreateTimeSeriesByDeviceStatement createTimeSeriesByDeviceStatement,
+        MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createTimeSeriesByDeviceStatement);
+
+      SchemaPartition schemaPartitionInfo;
+      schemaPartitionInfo =
+          partitionFetcher.getOrCreateSchemaPartition(
+              new PathPatternTree(
+                  createTimeSeriesByDeviceStatement.getDevicePath(),
+                  createTimeSeriesByDeviceStatement.getMeasurements()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
