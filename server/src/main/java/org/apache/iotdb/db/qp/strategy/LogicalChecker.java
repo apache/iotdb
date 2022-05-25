@@ -24,7 +24,6 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 
 public class LogicalChecker {
 
@@ -42,10 +41,6 @@ public class LogicalChecker {
 
     if (operator instanceof CreateContinuousQueryOperator) {
       ((CreateContinuousQueryOperator) operator).getQueryOperator().check();
-    }
-
-    if (operator instanceof CreateTimeSeriesOperator) {
-      ((CreateTimeSeriesOperator) operator).check();
     }
   }
 }

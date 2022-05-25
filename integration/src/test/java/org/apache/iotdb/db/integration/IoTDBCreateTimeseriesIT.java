@@ -178,7 +178,10 @@ public class IoTDBCreateTimeseriesIT {
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               "root.sg.d.a\".\"b"));
       fail();
-    } catch (SQLException ignored) {
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "401: Error occurred while parsing SQL to physical plan: line 1:29 mismatched input '\".\"' expecting {DATATYPE, WITH, DATATYPE_VALUE, '('}",
+          e.getMessage());
     }
 
     try {
@@ -187,7 +190,10 @@ public class IoTDBCreateTimeseriesIT {
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               "root.sg.d.a“（Φ）”b"));
       fail();
-    } catch (SQLException ignored) {
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "401: Error occurred while parsing SQL to physical plan: line 1:29 token recognition error at: '“'",
+          e.getMessage());
     }
 
     try {
@@ -196,7 +202,10 @@ public class IoTDBCreateTimeseriesIT {
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               "root.sg.d.a>b"));
       fail();
-    } catch (SQLException ignored) {
+    } catch (SQLException e) {
+      Assert.assertEquals(
+          "401: Error occurred while parsing SQL to physical plan: line 1:29 mismatched input '>' expecting {DATATYPE, WITH, DATATYPE_VALUE, '('}",
+          e.getMessage());
     }
 
     String[] timeSeriesArray = {
@@ -246,69 +255,6 @@ public class IoTDBCreateTimeseriesIT {
 
     for (String timeseries : timeSeriesArray) {
       Assert.assertTrue(collect.contains(timeseries));
-    }
-  }
-
-  @Test
-  public void testCreateTimeSeriesWithWrongAttribute() {
-    try {
-      statement.execute(
-          String.format("create timeseries %s with datatype=INT64, datatype = test", "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
-    }
-
-    try {
-      statement.execute(String.format("create timeseries %s with encoding=plain", "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
-    }
-
-    try {
-      statement.execute(
-          String.format(
-              "create timeseries %s with encoding=plain, compressor=snappy", "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
-    }
-
-    try {
-      statement.execute(
-          String.format("create timeseries %s with datatype=float, encoding=plan", "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
-    }
-
-    try {
-      statement.execute(
-          String.format("create timeseries %s with datatype=INT64, encoding=test", "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
-    }
-
-    try {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=test, compression=test",
-              "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
-    }
-
-    try {
-      statement.execute(
-          String.format("create timeseries %s with datatype=INT64,compression=test", "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
-    }
-
-    try {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=test",
-              "root.sg.a"));
-      fail();
-    } catch (SQLException ignored) {
     }
   }
 }

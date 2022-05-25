@@ -51,6 +51,8 @@ keyWords
     | CACHE
     | CHILD
     | CLEAR
+    | COMPRESSION
+    | COMPRESSOR
     | CONCAT
     | CONFIGURATION
     | CONTINUOUS
@@ -59,6 +61,7 @@ keyWords
     | CQ
     | CQS
     | CREATE
+    | DATATYPE
     | DEBUG
     | DELETE
     | DESC
@@ -67,6 +70,7 @@ keyWords
     | DEVICES
     | DISABLE
     | DROP
+    | ENCODING
     | END
     | EVERY
     | EXPLAIN
@@ -168,5 +172,8 @@ keyWords
     | WITH
     | WITHOUT
     | WRITABLE
+    | DATATYPE_VALUE
+    | ENCODING_VALUE
+    | COMPRESSOR_VALUE
     | PRIVILEGE_VALUE
     ;
