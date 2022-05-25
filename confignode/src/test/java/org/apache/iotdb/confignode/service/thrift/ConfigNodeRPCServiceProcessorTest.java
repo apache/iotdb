@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import org.apache.ratis.util.FileUtils;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -1010,6 +1011,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg1 = "root.sg1";
     // register DataNodes
     registerDataNodes();
+    ConfigNodeProcedureEnv.setSkipForTest(true);
     TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
     // set StorageGroup0 by default values
     status = processor.setStorageGroup(setReq0);
@@ -1050,6 +1052,7 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
     nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer, NodeManagementType.CHILD_PATHS);
+    nodeManagementReq.setLevel(-1);
     nodeManagementResp = processor.getSchemaNodeManagementPartition(nodeManagementReq);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
