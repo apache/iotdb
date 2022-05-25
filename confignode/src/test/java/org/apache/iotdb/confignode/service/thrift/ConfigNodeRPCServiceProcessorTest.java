@@ -306,7 +306,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void getAndCreateSchemaPartitionTest()
+  public void testGetAndCreateSchemaPartition()
       throws TException, IOException, IllegalPathException {
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
@@ -562,7 +562,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void permissionTest() throws TException {
+  public void testPermission() throws TException {
     TSStatus status;
 
     List<String> userList = new ArrayList<>();
@@ -899,7 +899,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void deleteStorageGroupTest() throws TException {
+  public void testDeleteStorageGroup() throws TException {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -925,7 +925,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void deleteStorageGroupInvalidateCacheFailedTest() throws TException {
+  public void testDeleteStorageGroupInvalidateCacheFailed() throws TException {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -1002,32 +1002,6 @@ public class ConfigNodeRPCServiceProcessorTest {
       status = processor.operatePermission(authorizerReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
-  }
-
-  @Test
-  public void testDeleteStorageGroup() throws TException {
-    TSStatus status;
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
-    // register DataNodes
-    registerDataNodes();
-    ConfigNodeProcedureEnv.setSkipForTest(true);
-    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
-    // set StorageGroup0 by default values
-    status = processor.setStorageGroup(setReq0);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    // set StorageGroup1 by specific values
-    TSetStorageGroupReq setReq1 = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
-    status = processor.setStorageGroup(setReq1);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
-    List<String> sgs = Arrays.asList(sg0, sg1);
-    deleteStorageGroupsReq.setPrefixPathList(sgs);
-    TSStatus deleteSgStatus = processor.deleteStorageGroups(deleteStorageGroupsReq);
-    TStorageGroupSchemaResp root =
-        processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
-    Assert.assertTrue(root.getStorageGroupSchemaMap().isEmpty());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
   }
 
   @Test
