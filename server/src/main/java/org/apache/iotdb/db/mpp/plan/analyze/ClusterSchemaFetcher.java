@@ -113,10 +113,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       // The query will be transited to FINISHED when invoking getBatchResult() at the last time
       // So we don't need to clean up it manually
       Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-      if (!tsBlock.isPresent()) {
+      if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
         break;
       }
-
       Binary binary;
       SchemaTree fetchedSchemaTree;
       Column column = tsBlock.get().getColumn(0);

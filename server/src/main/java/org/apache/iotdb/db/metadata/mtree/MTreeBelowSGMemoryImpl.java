@@ -610,6 +610,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
             }
+            path.setVersion(node.getVersion());
             result.add(path);
           }
         };

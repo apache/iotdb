@@ -151,6 +151,16 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
+  public String getVersion() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setVersion(String version) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     throw new UnsupportedOperationException();
   }

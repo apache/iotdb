@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.utils;
 
-package org.apache.iotdb.confignode.procedure.state;
+import java.util.UUID;
 
-public enum DeleteStorageGroupState {
-  DELETE_STORAGE_GROUP_PREPARE,
-  DELETE_PRE,
-  INVALIDATE_CACHE,
-  DELETE_CONFIG
+public class TimeseriesVersionUtil {
+
+  public static String generateVersion() {
+    return UUID.randomUUID().toString();
+  }
 }

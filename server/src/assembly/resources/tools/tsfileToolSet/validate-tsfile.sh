@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,23 +18,31 @@
 # under the License.
 #
 
-rpc_address=0.0.0.0
-rpc_port=22277
-consensus_port=22278
-target_confignode=0.0.0.0:22277
-config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
-#data_node_consensus_protocol_class=org.apache.iotdb.consensus.standalone.StandAloneConsensus
-data_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+echo ---------------------
+echo Starting Validating the TsFile
+echo ---------------------
 
-# Default number of SchemaRegion replicas
-# Datatype: int
-#schema_replication_factor=1
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
+fi
 
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
+fi
 
-# Default number of DataRegion replicas
-# Datatype: int
-#data_replication_factor=1
-system_dir=target/confignode1/system
-data_dirs=target/confignode1/data
-consensus_dir=target/confignode1/consensus
-proc_wal_dir=target/confignode1/proc
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+MAIN_CLASS=org.apache.iotdb.db.tools.validate.TsFileValidationTool
+
+"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+exit $?
