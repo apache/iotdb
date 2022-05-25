@@ -117,8 +117,12 @@ class RatisConsensus implements IConsensus {
       throws IOException {
     myself = Utils.fromTEndPointAndPriorityToRaftPeer(endpoint, DEFAULT_PRIORITY);
 
+    System.setProperty(
+        "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
+    // TODO make this configurable so that RatisConsensusTest can trigger multiple snapshot process
+    // RaftServerConfigKeys.Snapshot.setAutoTriggerThreshold(properties, 20);
     RaftServerConfigKeys.Rpc.setSlownessTimeout(
         properties, TimeDuration.valueOf(10, TimeUnit.MINUTES));
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(2, TimeUnit.SECONDS));

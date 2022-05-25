@@ -214,6 +214,8 @@
         <awaitility.version>4.0.2</awaitility.version>
         <!-- JDK1.8 only support google java format 1.7-->
         <google.java.format.version>1.7</google.java.format.version>
+        <!-- caffeine cache -->
+        <caffeine>2.9.1</caffeine>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -602,6 +604,11 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-server</artifactId>
                 <version>${jetty-server.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

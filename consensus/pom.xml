@@ -61,6 +61,6 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <ratis.version>2.2.0</ratis.version>
+        <ratis.version>2.3.0</ratis.version>
     </properties>
 </project>
