@@ -22,8 +22,10 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.api.exception.UDFException;
+import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFExecutableResource;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -65,6 +67,38 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
+  public synchronized void validateBeforeRegistration(
+      String functionName, String className, List<String> uris) throws Exception {
+    udfRegistrationService.validate(functionName, className);
+
+    if (uris.isEmpty()) {
+      fetchExecutablesAndCheckInstantiation(className);
+    } else {
+      fetchExecutablesAndCheckInstantiation(className, uris);
+    }
+  }
+
+  private void fetchExecutablesAndCheckInstantiation(String className) throws Exception {
+    try (UDFClassLoader temporaryUdfClassLoader =
+        new UDFClassLoader(CONFIG_NODE_CONF.getUdfLibDir())) {
+      Class.forName(className, true, temporaryUdfClassLoader)
+          .getDeclaredConstructor()
+          .newInstance();
+    }
+  }
+
+  private void fetchExecutablesAndCheckInstantiation(String className, List<String> uris)
+      throws Exception {
+    final UDFExecutableResource resource = udfExecutableManager.request(uris);
+    try (UDFClassLoader temporaryUdfClassLoader = new UDFClassLoader(resource.getResourceDir())) {
+      Class.forName(className, true, temporaryUdfClassLoader)
+          .getDeclaredConstructor()
+          .newInstance();
+    } finally {
+      udfExecutableManager.removeFromTemporaryLibRoot(resource);
+    }
+  }
+
   public synchronized TSStatus createFunction(CreateFunctionReq req) {
     final String functionName = req.getFunctionName();
     final String className = req.getClassName();
@@ -94,9 +128,5 @@ public class UDFInfo implements SnapshotProcessor {
   public synchronized void processLoadSnapshot(File snapshotDir) throws IOException {
     udfExecutableManager.processLoadSnapshot(snapshotDir);
     udfRegistrationService.processLoadSnapshot(snapshotDir);
-  }
-
-  public UDFExecutableManager getUdfExecutableManager() {
-    return udfExecutableManager;
   }
 }

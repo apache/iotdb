@@ -81,6 +81,13 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
     registrationLock.unlock();
   }
 
+  /** invoked by config leader for validation before registration */
+  public void validate(String functionName, String className) {
+    functionName = functionName.toUpperCase();
+    validateFunctionName(functionName, className);
+    checkIfRegistered(functionName, className);
+  }
+
   public void register(String functionName, String className, boolean writeToTemporaryLogFile)
       throws UDFRegistrationException {
     functionName = functionName.toUpperCase();
