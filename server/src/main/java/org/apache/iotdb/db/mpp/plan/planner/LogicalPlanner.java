@@ -429,6 +429,8 @@ public class LogicalPlanner {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
           .planChildPathsSchemaSource(countStatement.getPartialPath(), countStatement.getLevel())
+          .planSchemaQueryMerge(false)
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_PATHS)
           .planCountMerge()
           .getRoot();
     }
