@@ -20,7 +20,7 @@
   <div style="background:linear-gradient(top,#A2A2A2,#fff);">
     
     <div style="width:100%;margin: 0 auto;position: relative;height:480px;text-align:center;">
-      <h2 class="h2" style="font-size:80px;">Apache IoTDB</h2>
+      <h2 class="h2">Apache IoTDB</h2>
       <p
         style="font-size: 20px;line-height:23px;margin: 10px 0 20px 0;font-family: 'Arimo', sans-serif;
     text-transform: uppercase;
@@ -33,17 +33,19 @@
 Apache IoTDB（物联网数据库）是一体化收集、存储、管理与分析物联网时序数据的软件系统。
 Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与Apache Hadoop、Spark和Flink等进行了深度集成，可以满足工业物联网领域的海量数据存储、高速数据读取和复杂数据分析需求。
       </p>
-      <div style="margin-top:40px; text-align: center">
+      <el-row style="margin-top:40px;text-align: center;">
         <el-button
           type="warning"
           round
-          style="font-size: 18px;letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
+          style="width:220px;
+    font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
           @click="addRoutes1"
         >下载</el-button>
         <el-button
           type="info"
           round
-          style="font-size: 18px;letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
+          style="width:220px;
+    font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
           @click="addRoutes2"
         >快速开始</el-button>
       </el-row>
@@ -52,11 +54,11 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
     <p class="home-title" style="font-size: 50px;">应用场景</p>
 
     <div class="block">
-        <el-carousel trigger="click" height="1000px" indicator-position="outside">
-          <el-carousel-item v-for="(item,index) in imgBlock" :key="index"  style="text-align:center;">
+        <el-carousel trigger="click" height="700px">
+          <el-carousel-item v-for="(item,index) in imgBlock" :key="index" style="text-align:center;">
             <img :src="item.src" height="500px">
-            <h3 class="carousel-title" style="font-size: 30px;color: #fcac45;text-align: center;line-height: normal;">{{item.des}}</h3>
-            <p class="carousel-text" style="font-size: 18px;line-height: 22px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
+            <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: 0px;">{{item.des}}</h3>
+            <p style="font-size: 18px;padding:10px;line-height: 22px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
           </el-carousel-item>
         </el-carousel>
     </div>
@@ -64,11 +66,11 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
     <p class="home-title" style="font-size: 50px;">主要特点</p>
 
     <el-row style="margin-top:50px;" :gutter="20">
-        <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
+      <el-col :span="8" style="text-align:center;">
           <el-popover
             placement="top-start"
             title="高吞吐量读写"
-            width="325"
+            width="350"
             trigger="hover"
             content="Apache IoTDB中可以支持数百万个低功耗和智能联网设备的高速写访问。 它还提供数据快速读取访问以查询。"
             >
@@ -77,12 +79,12 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
               <p>高吞吐量读写</p>
               </el-button>
           </el-popover>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
+      </el-col>
+      <el-col :span="8" style="text-align:center;">
           <el-popover
             placement="top-start"
             title="高效的目录结构"
-            width="325"
+            width="350"
             trigger="hover"
             content="Apache IoTDB可以对拥有复杂组织关系的物联网设备进行树形结构管理，并使用通配符对这些元数据进行模糊匹配。"
             >
@@ -90,12 +92,12 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
               <img src="/img/home-icon2.png" style="width:40px;height:40px;">
              <p> 高效的树形元数据结构</p></el-button>
           </el-popover>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
+      </el-col>
+      <el-col :span="8" style="text-align:center;">
           <el-popover
             placement="top-start"
             title="丰富的查询语义"
-            width="325"
+            width="400"
             trigger="hover"
             content="Apache IoTDB可以支持跨设备和传感器的时间对齐查询，在时间维度上的聚合（降采样）等。"
             >
@@ -103,12 +105,15 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
              <img src="/img/home-icon3.png" style="width:40px;height:40px;">
              <p>丰富的查询语义</p></el-button>
           </el-popover>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
+      </el-col>
+    </el-row>
+
+    <el-row style="margin-top:100px;height:300px;" :gutter="20">
+      <el-col :span="8" style="text-align:center;">
           <el-popover
             placement="top-start"
             title="硬件成本低"
-            width="325"
+            width="400"
             trigger="hover"
             content="Apache IoTDB可以实现磁盘存储的高压缩率。"
             >
@@ -116,12 +121,12 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
              <img src="/img/home-icon4.png" style="width:40px;height:40px;">
              <p>硬件成本低</p></el-button>
           </el-popover>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
+      </el-col>
+      <el-col :span="8" style="text-align:center;">
           <el-popover
             placement="top-start"
             title="灵活的部署"
-            width="325"
+            width="400"
             trigger="hover"
             content="Apache IoTDB可以为用户提供云上的一键式安装、终端访问工具以及边-云之间的协同（数据同步工具）。"
             >
@@ -129,12 +134,12 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
              <img src="/img/home-icon5.png" style="width:40px;height:40px;">
              <p>灵活的部署</p></el-button>
           </el-popover>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
+      </el-col>
+      <el-col :span="8" style="text-align:center;">
           <el-popover
             placement="top-start"
             title="与开源生态系统的紧密集成"
-            width="325"
+            width="400"
             trigger="hover"
             content="Apache IoTDB支持许多大数据软件生态系统，例如Hadoop、Spark、Flink和Grafana（可视化工具）。"
             >
@@ -145,7 +150,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
           </el-popover>
       </el-col>
     </el-row>
-      <span style="margin: 10px"></span>
+
   </div>
 </template>
 
@@ -233,12 +238,6 @@ export default {
   .carousel-inner {
     min-height: 530px;
   }
-  .carousel-title {
-    padding-top:0;
-  }
-  .carousel-text {
-    padding:15px;
-  }
 }
 
 @media (min-width: 768px) {
@@ -247,12 +246,6 @@ export default {
   }
   .carousel-inner {
     min-height: 520px;
-  }
-  .carousel-title {
-    padding-top:100px;
-  }
-  .carousel-text {
-    padding:0 100px 0 100px;
   }
 }
 
@@ -263,12 +256,6 @@ export default {
   .carousel-inner {
     min-height: 580px;
   }
-  .carousel-title {
-    padding-top:100px;
-  }
-  .carousel-text {
-    padding:0 100px 0 100px;
-  }
 }
 
 @media (min-width: 1200px) {
@@ -277,12 +264,6 @@ export default {
   }
   .carousel-inner {
     min-height: 650px;
-  }
-  .carousel-title {
-    padding-top:100px;
-  }
-  .carousel-text {
-    padding:0 100px 0 100px;
   }
 }
 
