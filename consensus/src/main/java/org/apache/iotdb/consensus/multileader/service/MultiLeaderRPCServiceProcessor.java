@@ -63,17 +63,19 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       status.setMessage(message);
       return new TSyncLogRes(Collections.singletonList(status));
     }
-    List<TSStatus> status = new ArrayList<>();
+    List<TSStatus> statuses = new ArrayList<>();
+    // We use synchronized to ensure atomicity of executing multiple logs
     synchronized (impl.getStateMachine()) {
       for (TLogBatch batch : req.getBatches()) {
-        status.add(
+        statuses.add(
             impl.getStateMachine()
                 .write(
                     impl.buildIndexedConsensusRequestForRemoteRequest(
                         new ByteBufferConsensusRequest(batch.data), batch.type)));
       }
     }
-    return new TSyncLogRes(status);
+    logger.debug("Execute TSyncLogReq for {} with result {}", req.consensusGroupId, statuses);
+    return new TSyncLogRes(statuses);
   }
 
   public void handleClientExit() {}

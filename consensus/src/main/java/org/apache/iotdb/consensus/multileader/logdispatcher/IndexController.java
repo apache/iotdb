@@ -44,6 +44,7 @@ public class IndexController {
 
   private final String storageDir;
   private final String prefix;
+  // Indicates whether currentIndex needs to be incremented by FLUSH_INTERVAL interval after restart
   private final boolean incrementIntervalAfterRestart;
 
   public IndexController(String storageDir, String prefix, boolean incrementIntervalAfterRestart) {
@@ -60,7 +61,14 @@ public class IndexController {
   }
 
   public synchronized long updateAndGet(long index) {
-    currentIndex = Math.max(currentIndex, index);
+    long newCurrentIndex = Math.max(currentIndex, index);
+    logger.debug(
+        "update index from currentIndex {} to {} for file prefix {} in {}",
+        currentIndex,
+        newCurrentIndex,
+        prefix,
+        storageDir);
+    currentIndex = newCurrentIndex;
     checkPersist();
     return currentIndex;
   }

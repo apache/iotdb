@@ -35,6 +35,7 @@ public class SyncStatus {
     this.controller = controller;
   }
 
+  /** we may block here if the synchronization pipeline is full */
   public void addNextBatch(PendingBatch batch) throws InterruptedException {
     synchronized (this) {
       while (pendingBatches.size() >= MultiLeaderConsensusConfig.MAX_PENDING_BATCH) {
@@ -44,11 +45,12 @@ public class SyncStatus {
     }
   }
 
+  /**
+   * We only set a flag if this batch is not the first one. Notice, We need to confirm that the
+   * batch in the parameter is actually in pendingBatches, rather than a reference to a different
+   * object with equal data, so we do not inherit method equals for PendingBatch
+   */
   public void removeBatch(PendingBatch batch) {
-    // We only set a flag if this batch is not the first one.
-    // Notice, We need to confirm that the batch in the parameter is actually in pendingBatches,
-    // rather than a reference to a different object with equal data, so we do not inherit method
-    // equals for PendingBatch
     batch.setSynced(true);
     synchronized (this) {
       if (pendingBatches.size() > 0 && pendingBatches.get(0).equals(batch)) {
@@ -63,11 +65,13 @@ public class SyncStatus {
             break;
           }
         }
+        // wake up logDispatcherThread that might be blocked
         notifyAll();
       }
     }
   }
 
+  /** Gets the first index that is not currently synchronized */
   public long getNextSendingIndex() {
     // we do not use ReentrantReadWriteLock because there will be only one thread reading this field
     synchronized (this) {

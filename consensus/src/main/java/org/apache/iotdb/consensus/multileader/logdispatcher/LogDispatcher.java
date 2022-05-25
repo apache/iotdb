@@ -55,6 +55,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/** Manage all asynchronous replication threads and corresponding async clients */
 public class LogDispatcher {
 
   private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
@@ -90,6 +91,7 @@ public class LogDispatcher {
 
   public void stop() {
     if (!threads.isEmpty()) {
+      threads.forEach(LogDispatcherThread::stop);
       executorService.shutdownNow();
       clientManager.close();
       int timeout = 10;
@@ -119,15 +121,19 @@ public class LogDispatcher {
 
   public class LogDispatcherThread implements Runnable {
 
+    private volatile boolean stopped = false;
     private final Peer peer;
     private final IndexController controller;
+    // A sliding window class that manages asynchronously pendingBatches
     private final SyncStatus syncStatus;
+    // A queue used to receive asynchronous replication requests
     private final BlockingQueue<IndexedConsensusRequest> pendingRequest =
         new ArrayBlockingQueue<>(MultiLeaderConsensusConfig.MAX_PENDING_REQUEST_NUM_PER_NODE);
+    // A container used to cache requests, whose size changes dynamically
     private final List<IndexedConsensusRequest> bufferedRequest = new LinkedList<>();
+    // A reader management class that gets requests from the DataRegion
     private final ConsensusReqReader reader =
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
-    private boolean stopped = false;
 
     public LogDispatcherThread(Peer peer) {
       this.peer = peer;
@@ -153,19 +159,27 @@ public class LogDispatcher {
       return pendingRequest.offer(request);
     }
 
+    public void stop() {
+      stopped = true;
+    }
+
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
       try {
         PendingBatch batch;
-        while (!Thread.interrupted()) {
+        while (!Thread.interrupted() && !stopped) {
           while ((batch = getBatch()).isEmpty()) {
+            // we may block here if there is no requests in the queue
             bufferedRequest.add(pendingRequest.take());
+            // If write pressure is low, we simply sleep a little to reduce the number of RPC
             if (pendingRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
               Thread.sleep(MultiLeaderConsensusConfig.MAX_WAITING_TIME_FOR_ACCUMULATE_BATCH_IN_MS);
             }
           }
+          // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
+          // sends batch asynchronously and migrates the retry logic into the callback function
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
       } catch (InterruptedException e) {
@@ -174,15 +188,16 @@ public class LogDispatcher {
         logger.error("Unexpected error in logDispatcher for peer {}", peer, e);
       }
       logger.info("{}: Dispatcher for {} exits", impl.getThisNode(), peer);
-      stopped = true;
     }
 
     public PendingBatch getBatch() {
+      PendingBatch batch;
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex = impl.getController().getCurrentIndex();
       long endIndex;
       if (bufferedRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+        // Use drainTo instead of poll to reduce lock overhead
         pendingRequest.drainTo(
             bufferedRequest,
             MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH - bufferedRequest.size());
@@ -190,9 +205,13 @@ public class LogDispatcher {
       if (bufferedRequest.isEmpty()) {
         // only execute this after a restart
         endIndex = constructBatchFromWAL(startIndex, maxIndex, logBatches);
+        batch = new PendingBatch(startIndex, endIndex, logBatches);
+        logger.debug("accumulated a {} from wal", batch);
       } else {
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
+        // Prevents gap between logs. For example, some requests are not written into the queue when
+        // the queue is full. In this case, requests need to be loaded from the WAL
         constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
         endIndex = prev.getSearchIndex();
@@ -200,16 +219,23 @@ public class LogDispatcher {
         while (iterator.hasNext()
             && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
           IndexedConsensusRequest current = iterator.next();
+          // Prevents gap between logs. For example, some logs are not written into the queue when
+          // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
             constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
           }
           constructBatchIndexedFromConsensusRequest(current, logBatches);
           endIndex = current.getSearchIndex();
           prev = current;
+          // We might not be able to remove all the elements in the bufferedRequest in the
+          // current function, but that's fine, we'll continue processing these elements in the
+          // bufferedRequest the next time we go into the function, they're never lost
           iterator.remove();
         }
+        batch = new PendingBatch(startIndex, endIndex, logBatches);
+        logger.debug("accumulated a {} from queue and wal", batch);
       }
-      return new PendingBatch(startIndex, endIndex, logBatches);
+      return batch;
     }
 
     public void sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {
@@ -239,6 +265,8 @@ public class LogDispatcher {
           ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
           data.serializeRequest(buffer);
           buffer.flip();
+          // since WAL can no longer recover FragmentInstance, but only PlanNode, we need to give
+          // special flags to use different deserialization methods in the dataRegion stateMachine
           logBatches.add(new TLogBatch(TLogType.InsertNode, buffer));
         }
       }

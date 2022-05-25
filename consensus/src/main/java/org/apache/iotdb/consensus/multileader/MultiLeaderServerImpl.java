@@ -86,6 +86,9 @@ public class MultiLeaderServerImpl {
     logDispatcher.stop();
   }
 
+  /**
+   * records the index of the log and writes locally, and then asynchronous replication is performed
+   */
   public TSStatus write(IConsensusRequest request) {
     synchronized (stateMachine) {
       IndexedConsensusRequest indexedConsensusRequest =
@@ -157,6 +160,10 @@ public class MultiLeaderServerImpl {
         request);
   }
 
+  /**
+   * In the case of multiple copies, the minimum synchronization index is selected. In the case of
+   * single copies, the current index is selected
+   */
   public long getCurrentSafelyDeletedSearchIndex() {
     return logDispatcher.getMinSyncIndex().orElseGet(controller::getCurrentIndex);
   }

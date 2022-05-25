@@ -28,6 +28,7 @@ public class PendingBatch {
   private final long startIndex;
   private final long endIndex;
   private final List<TLogBatch> batches;
+  // indicates whether this batch has been successfully synchronized to another node
   private boolean synced;
 
   public PendingBatch(long startIndex, long endIndex, List<TLogBatch> batches) {

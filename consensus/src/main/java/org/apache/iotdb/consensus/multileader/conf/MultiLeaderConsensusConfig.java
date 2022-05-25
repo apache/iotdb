@@ -35,4 +35,6 @@ public class MultiLeaderConsensusConfig {
   public static final int MAX_REQUEST_PER_BATCH = 100;
   public static final int MAX_PENDING_BATCH = 50;
   public static final int MAX_WAITING_TIME_FOR_ACCUMULATE_BATCH_IN_MS = 10;
+  public static final long BASIC_RETRY_WAIT_TIME_MS = TimeUnit.MILLISECONDS.toMillis(100);
+  public static final long MAX_RETRY_WAIT_TIME_MS = TimeUnit.SECONDS.toMillis(20);
 }

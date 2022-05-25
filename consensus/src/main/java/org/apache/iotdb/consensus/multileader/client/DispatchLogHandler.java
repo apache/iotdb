@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.multileader.client;
 
+import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.multileader.logdispatcher.PendingBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
@@ -33,7 +34,6 @@ import java.util.concurrent.CompletableFuture;
 public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
 
   private final Logger logger = LoggerFactory.getLogger(DispatchLogHandler.class);
-  private final int BASIC_RETRY_TIME_MS = 100;
 
   private final LogDispatcherThread thread;
   private final PendingBatch batch;
@@ -55,17 +55,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
           thread.getPeer(),
           ++retryCount,
           response.getStatus().get(0).getMessage());
-      // TODO handle forever retry
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              Thread.sleep((long) (BASIC_RETRY_TIME_MS * Math.pow(1.2, retryCount)));
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-              logger.warn("Unexpected interruption during retry pending batch");
-            }
-            thread.sendBatchAsync(batch, this);
-          });
+      sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
       thread.getSyncStatus().removeBatch(batch);
     }
@@ -79,11 +69,19 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
         thread.getPeer(),
         ++retryCount,
         exception);
+    sleepCorrespondingTimeAndRetryAsynchronous();
+  }
+
+  private void sleepCorrespondingTimeAndRetryAsynchronous() {
     // TODO handle forever retry
     CompletableFuture.runAsync(
         () -> {
           try {
-            Thread.sleep((long) (BASIC_RETRY_TIME_MS * Math.pow(2, retryCount)));
+            long defaultSleepTime =
+                (long)
+                    (MultiLeaderConsensusConfig.BASIC_RETRY_WAIT_TIME_MS * Math.pow(2, retryCount));
+            Thread.sleep(
+                Math.min(defaultSleepTime, MultiLeaderConsensusConfig.MAX_RETRY_WAIT_TIME_MS));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.warn("Unexpected interruption during retry pending batch");
