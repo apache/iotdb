@@ -304,6 +304,11 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitCreateMultiTimeseries(
         CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, MPPQueryContext context) {
+      int size = createMultiTimeSeriesStatement.getPaths().size();
+      List<String> versionList = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        versionList.add(TimeseriesVersionUtil.generateVersion());
+      }
       return new CreateMultiTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
           createMultiTimeSeriesStatement.getPaths(),
@@ -313,7 +318,8 @@ public class LogicalPlanner {
           createMultiTimeSeriesStatement.getPropsList(),
           createMultiTimeSeriesStatement.getAliasList(),
           createMultiTimeSeriesStatement.getTagsList(),
-          createMultiTimeSeriesStatement.getAttributesList());
+          createMultiTimeSeriesStatement.getAttributesList(),
+          versionList);
     }
 
     @Override
