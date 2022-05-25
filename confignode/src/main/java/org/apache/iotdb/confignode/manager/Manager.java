@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -206,10 +207,10 @@ public interface Manager {
   DataSet queryPermission(ConfigRequest configRequest);
 
   /** login */
-  TSStatus login(String username, String password);
+  TPermissionInfoResp login(String username, String password);
 
   /** Check User Privileges */
-  TSStatus checkUserPrivileges(String username, List<String> paths, int permission);
+  TPermissionInfoResp checkUserPrivileges(String username, List<String> paths, int permission);
 
   /**
    * Register ConfigNode when it is first startup

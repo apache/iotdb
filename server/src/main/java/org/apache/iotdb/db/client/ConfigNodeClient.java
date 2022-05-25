@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -525,11 +526,11 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
-  public TSStatus login(TLoginReq req) throws TException {
+  public TPermissionInfoResp login(TLoginReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.login(req);
-        if (!updateConfigNodeLeader(status)) {
+        TPermissionInfoResp status = client.login(req);
+        if (!updateConfigNodeLeader(status.getStatus())) {
           return status;
         }
       } catch (TException e) {
@@ -541,11 +542,11 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
-  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+  public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.checkUserPrivileges(req);
-        if (!updateConfigNodeLeader(status)) {
+        TPermissionInfoResp status = client.checkUserPrivileges(req);
+        if (!updateConfigNodeLeader(status.getStatus())) {
           return status;
         }
       } catch (TException e) {

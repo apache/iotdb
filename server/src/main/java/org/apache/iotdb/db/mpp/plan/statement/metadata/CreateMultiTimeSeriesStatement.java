@@ -42,7 +42,6 @@ public class CreateMultiTimeSeriesStatement extends Statement {
   private List<String> aliasList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
-  private List<Long> tagOffsets;
 
   public CreateMultiTimeSeriesStatement() {
     super();
@@ -116,24 +115,6 @@ public class CreateMultiTimeSeriesStatement extends Statement {
 
   public void addAttributesList(Map<String, String> attributes) {
     this.attributesList.add(attributes);
-  }
-
-  public List<Long> getTagOffsets() {
-    if (tagOffsets == null) {
-      tagOffsets = new ArrayList<>();
-      for (int i = 0; i < paths.size(); i++) {
-        tagOffsets.add(Long.parseLong("-1"));
-      }
-    }
-    return tagOffsets;
-  }
-
-  public void setTagOffsets(List<Long> tagOffsets) {
-    this.tagOffsets = tagOffsets;
-  }
-
-  public void addTagOffsets(Long tagsOffset) {
-    this.tagOffsets.add(tagsOffset);
   }
 
   @Override

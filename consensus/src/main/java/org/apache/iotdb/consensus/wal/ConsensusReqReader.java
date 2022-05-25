@@ -22,6 +22,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /** This interface provides search interface for consensus requests via index. */
@@ -30,7 +31,7 @@ public interface ConsensusReqReader {
    * Gets the consensus request at the specified position.
    *
    * @param index index of the consensus request to return
-   * @return the consensus request at the specified position
+   * @return the consensus request at the specified position, null if the request doesn't exist
    */
   IConsensusRequest getReq(long index);
 
@@ -57,23 +58,24 @@ public interface ConsensusReqReader {
     /** Like {@link Iterator#hasNext()} */
     boolean hasNext();
 
-    /** Like {@link Iterator#next()} */
+    /**
+     * Like {@link Iterator#next()}
+     *
+     * @throws java.util.NoSuchElementException if the iteration has no more elements, wait a moment
+     *     or call {@link this#waitForNextReady} for more elements
+     */
     IConsensusRequest next();
 
     /**
-     * Returns the next element in the iteration, blocked until next element is available.
-     *
-     * @return the next element in the iteration
+     * Wait for the next element in the iteration ready, blocked until next element is available.
      */
-    IConsensusRequest waitForNext() throws InterruptedException;
+    void waitForNextReady() throws InterruptedException;
 
     /**
-     * Returns the next element in the iteration, blocked until next element is available or a
-     * specified amount of time has elapsed.
-     *
-     * @return the next element in the iteration
+     * Wait for the next element in the iteration ready, blocked until next element is available or
+     * a specified amount of time has elapsed.
      */
-    IConsensusRequest waitForNext(long timeout) throws InterruptedException, TimeoutException;
+    void waitForNextReady(long time, TimeUnit unit) throws InterruptedException, TimeoutException;
 
     /**
      * Skips to target position of next element in the iteration <br>

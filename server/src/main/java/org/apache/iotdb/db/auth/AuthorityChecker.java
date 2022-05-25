@@ -21,16 +21,9 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
-import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -41,11 +34,9 @@ import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,10 +50,6 @@ public class AuthorityChecker {
 
   private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
   private static SessionManager sessionManager = SessionManager.getInstance();
-
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private AuthorityChecker() {}
 
@@ -118,7 +105,7 @@ public class AuthorityChecker {
    */
   public static boolean checkPermission(
       String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
-      throws ConfigNodeConnectionException {
+      throws AuthException, ConfigNodeConnectionException {
     if (SUPER_USER.equals(username)) {
       return true;
     }
@@ -141,7 +128,7 @@ public class AuthorityChecker {
       allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
     }
 
-    TSStatus status = checkPath(username, allPath, permission);
+    TSStatus status = authorizerManager.checkPermissionCache(username, allPath, permission);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return true;
     } else {
@@ -161,25 +148,6 @@ public class AuthorityChecker {
       throw new AuthException(e);
     }
     return false;
-  }
-
-  /** Check the user */
-  public static TSStatus checkUser(String username, String password)
-      throws ConfigNodeConnectionException {
-    TLoginReq req = new TLoginReq(username, password);
-    TSStatus status = null;
-    try (ConfigNodeClient configNodeClient =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // Send request to some API server
-      status = configNodeClient.login(req);
-    } catch (TException | IOException e) {
-      throw new ConfigNodeConnectionException("Couldn't connect config node");
-    } finally {
-      if (status == null) {
-        status = new TSStatus();
-      }
-    }
-    return status;
   }
 
   /** Check whether specific Session has the authorization to given plan. */
@@ -212,24 +180,6 @@ public class AuthorityChecker {
     }
     return AuthorityChecker.checkPermission(
         username, statement.getPaths(), statement.getType(), targetUser);
-  }
-
-  public static TSStatus checkPath(String username, List<String> allPath, int permission)
-      throws ConfigNodeConnectionException {
-    TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
-    TSStatus status = null;
-    try (ConfigNodeClient configNodeClient =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // Send request to some API server
-      status = configNodeClient.checkUserPrivileges(req);
-    } catch (TException | IOException e) {
-      throw new ConfigNodeConnectionException("Couldn't connect config node");
-    } finally {
-      if (status == null) {
-        status = new TSStatus();
-      }
-    }
-    return status;
   }
 
   private static int translateToPermissionId(Operator.OperatorType type) {

@@ -141,6 +141,11 @@ struct TCreateFunctionRequest {
   3: required list<string> uris
 }
 
+struct TInvalidatePermissionCacheReq {
+  1: required string username
+  2: required string roleName
+}
+
 service InternalService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -223,6 +228,13 @@ service InternalService {
    * @param function name, function class name, and executable uris
    **/
   common.TSStatus createFunction(TCreateFunctionRequest req)
+
+  /**
+   * Config node will invalidate permission Info cache.
+   *
+   * @param string:username, list<string>:roleList
+   */
+  common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 }
 
 service DataBlockService {

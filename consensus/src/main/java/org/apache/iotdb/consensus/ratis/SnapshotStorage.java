@@ -43,17 +43,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * TODO: Warning, currently in Ratis 2.2.0, there is a bug in installSnapshot. In subsequent
- * installSnapshot, a follower may fail to install while the leader assume it success. This bug will
- * be triggered when the snapshot threshold is low. This is fixed in current Ratis Master, and
- * hopefully will be introduced in Ratis 2.3.0.
- */
 public class SnapshotStorage implements StateMachineStorage {
+  private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
   private final IStateMachine applicationStateMachine;
+  private final String META_FILE_PREFIX = ".ratis_meta.";
 
   private File stateMachineDir;
-  private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
 
   public SnapshotStorage(IStateMachine applicationStateMachine) {
     this.applicationStateMachine = applicationStateMachine;
@@ -87,6 +82,7 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File findLatestSnapshotDir() {
+    moveSnapshotFileToSubDirectory();
     Path[] snapshots = getSortedSnapshotDirPaths();
     if (snapshots == null || snapshots.length == 0) {
       return null;
@@ -140,5 +136,82 @@ public class SnapshotStorage implements StateMachineStorage {
 
   public File getSnapshotDir(String snapshotMetadata) {
     return new File(stateMachineDir.getAbsolutePath() + File.separator + snapshotMetadata);
+  }
+
+  /**
+   * Currently, we name the snapshotDir with Term_Index so that we can tell which directory contains
+   * the latest snapshot files. Unfortunately, when leader install snapshot to a slow follower,
+   * current Ratis implementation will flatten the directory and place all the snapshots directly
+   * under statemachine dir. Under this scenario, we cannot restore Term_Index from directory name.
+   * We decided to add an empty metadata file containing only Term_Index into the snapshotDir. his
+   * metadata file will be installed along with application snapshot files, so that Term_Index
+   * information is kept during InstallSnapshot.
+   */
+  public boolean addTermIndexMetaFile(File snapshotDir, String termIndexMetadata) {
+    File snapshotMetaFile = new File(getMetafilePath(snapshotDir, termIndexMetadata));
+    try {
+      return snapshotMetaFile.createNewFile();
+    } catch (IOException e) {
+      logger.warn("cannot create snapshot metafile: ", e);
+      return false;
+    }
+  }
+
+  private String getMetafilePath(File snapshotDir, String termIndexMetadata) {
+    // e.g. /_sm/3_39/.ratis_meta.3_39
+    return snapshotDir.getAbsolutePath() + File.separator + META_FILE_PREFIX + termIndexMetadata;
+  }
+
+  private String getMetafileMatcherRegex() {
+    // meta file should always end with term_index
+    return META_FILE_PREFIX + "\\d+_\\d+$";
+  }
+
+  /**
+   * After leader InstallSnapshot to a slow follower, Ratis will put all snapshot files directly
+   * under statemachineDir. We need to handle this special scenario and rearrange these files to
+   * appropriate sub-directory this function will move all snapshot files directly under /sm to
+   * /sm/term_index/
+   */
+  void moveSnapshotFileToSubDirectory() {
+    File[] potentialMetafile =
+        stateMachineDir.listFiles((dir, name) -> name.matches(getMetafileMatcherRegex()));
+    if (potentialMetafile == null || potentialMetafile.length == 0) {
+      // the statemachine dir contains no direct metafile
+      return;
+    }
+    String metadata = potentialMetafile[0].getName().substring(META_FILE_PREFIX.length());
+
+    File snapshotDir = getSnapshotDir(metadata);
+    snapshotDir.mkdir();
+
+    File[] snapshotFiles = stateMachineDir.listFiles();
+
+    // move files to snapshotDir, if an error occurred, delete snapshotDir
+    try {
+      if (snapshotFiles == null) {
+        logger.error(
+            "An unexpected condition triggered. please check implementation "
+                + this.getClass().getName());
+        FileUtils.deleteFully(snapshotDir);
+        return;
+      }
+
+      for (File file : snapshotFiles) {
+        boolean success = file.renameTo(new File(snapshotDir + File.separator + file.getName()));
+        if (!success) {
+          logger.warn(
+              "move snapshot file "
+                  + file.getAbsolutePath()
+                  + " to sub-directory "
+                  + snapshotDir.getAbsolutePath()
+                  + "failed");
+          FileUtils.deleteFully(snapshotDir);
+          break;
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("delete directory failed: ", e);
+    }
   }
 }

@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -146,6 +147,8 @@ public class ConfigRequestExecutor {
       case DeleteStorageGroup:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
+      case PreDeleteStorageGroup:
+        return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupReq) req);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLReq) req);
       case SetSchemaReplicationFactor:
