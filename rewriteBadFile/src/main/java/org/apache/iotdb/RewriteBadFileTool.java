@@ -144,8 +144,10 @@ public class RewriteBadFileTool {
       String targetFilePath =
           backUpDirPath + File.separator + "sequence" + badFilePath.split("sequence")[1];
       try {
-        if (new File(targetFilePath).exists()) {
+        File targetFile = new File(targetFilePath);
+        if (targetFile.exists()) {
           rewriteWrongTsFile(targetFilePath, session);
+          targetFile.renameTo(new File(targetFilePath + "." + "finish"));
         } else {
           printBoth("---- Meet error in rewriting, " + targetFilePath + " does not exist.");
         }
