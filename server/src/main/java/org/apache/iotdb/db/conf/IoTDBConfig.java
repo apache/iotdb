@@ -181,6 +181,9 @@ public class IoTDBConfig {
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
+  /** Size threshold of each checkpoint file. Unit: byte */
+  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024;
+
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
 
@@ -252,6 +255,10 @@ public class IoTDBConfig {
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
+  /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
+  private String extPipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
@@ -349,7 +356,7 @@ public class IoTDBConfig {
   private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 10000;
+  private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
@@ -878,6 +885,12 @@ public class IoTDBConfig {
    */
   private int partitionCacheSize = 10000;
 
+  /** Cache size of user and role */
+  private int authorCacheSize = 100;
+
+  /** Cache expire time of user and role */
+  private int authorCacheExpireTime = 30;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -989,6 +1002,7 @@ public class IoTDBConfig {
     for (int i = 0; i < walDirs.length; i++) {
       walDirs[i] = addHomeDir(walDirs[i]);
     }
+    extPipeDir = addHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1461,6 +1475,14 @@ public class IoTDBConfig {
 
   void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
+  }
+
+  public long getCheckpointFileSizeThresholdInByte() {
+    return checkpointFileSizeThresholdInByte;
+  }
+
+  public void setCheckpointFileSizeThresholdInByte(long checkpointFileSizeThresholdInByte) {
+    this.checkpointFileSizeThresholdInByte = checkpointFileSizeThresholdInByte;
   }
 
   public double getWalMinEffectiveInfoRatio() {
@@ -2746,7 +2768,31 @@ public class IoTDBConfig {
     return partitionCacheSize;
   }
 
+  public String getExtPipeDir() {
+    return extPipeDir;
+  }
+
+  public void setExtPipeDir(String extPipeDir) {
+    this.extPipeDir = extPipeDir;
+  }
+
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getAuthorCacheSize() {
+    return authorCacheSize;
+  }
+
+  public void setAuthorCacheSize(int authorCacheSize) {
+    this.authorCacheSize = authorCacheSize;
+  }
+
+  public int getAuthorCacheExpireTime() {
+    return authorCacheExpireTime;
+  }
+
+  public void setAuthorCacheExpireTime(int authorCacheExpireTime) {
+    this.authorCacheExpireTime = authorCacheExpireTime;
   }
 }

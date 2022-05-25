@@ -70,15 +70,15 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
 
   @Override
   protected MeasurementPath generateResult() {
+    SchemaMeasurementNode measurementNode = nextMatchedNode.getAsMeasurementNode();
     MeasurementPath result =
-        new MeasurementPath(
-            generateFullPathNodes(nextMatchedNode),
-            nextMatchedNode.getAsMeasurementNode().getSchema());
+        new MeasurementPath(generateFullPathNodes(measurementNode), measurementNode.getSchema());
     result.setUnderAlignedEntity(ancestorStack.peek().getNode().getAsEntityNode().isAligned());
-    String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
+    String alias = measurementNode.getAlias();
     if (nodes[nodes.length - 1].equals(alias)) {
       result.setMeasurementAlias(alias);
     }
+    result.setVersion(measurementNode.getVersion());
 
     return result;
   }

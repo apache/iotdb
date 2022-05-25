@@ -63,6 +63,13 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
     insertRowNodeIndexList = new ArrayList<>();
   }
 
+  public InsertRowsNode(
+      PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> insertRowNodeList) {
+    super(id);
+    this.insertRowNodeIndexList = insertRowNodeIndexList;
+    this.insertRowNodeList = insertRowNodeList;
+  }
+
   /** record the result of insert rows */
   private Map<Integer, TSStatus> results = new HashMap<>();
 
@@ -89,11 +96,13 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
 
   @Override
   public void setSearchIndex(long index) {
+    searchIndex = index;
     insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
   }
 
   @Override
   public void setSafelyDeletedSearchIndex(long index) {
+    safelyDeletedSearchIndex = index;
     insertRowNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
   }
 

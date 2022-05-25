@@ -71,7 +71,10 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
    */
   protected IDeviceID deviceID;
 
-  /** this index is used by wal search, its order should be protected by the upper layer */
+  /**
+   * this index is used by wal search, its order should be protected by the upper layer, and the
+   * value should start from 1
+   */
   protected long searchIndex = NO_CONSENSUS_INDEX;
   /**
    * this index pass info to wal, indicating that insert nodes whose search index are before this
@@ -155,6 +158,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
     return searchIndex;
   }
 
+  /** Search index should start from 1 */
   public void setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
   }

@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -135,6 +136,7 @@ public class ConfigManager implements Manager {
 
   public void close() throws IOException {
     consensusManager.close();
+    partitionManager.getRegionCleaner().shutdown();
     procedureManager.shiftExecutor(false);
   }
 
@@ -502,22 +504,27 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus login(String username, String password) {
+  public TPermissionInfoResp login(String username, String password) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.login(username, password);
     } else {
-      return status;
+      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(status);
+      return permissionInfoResp;
     }
   }
 
   @Override
-  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+  public TPermissionInfoResp checkUserPrivileges(
+      String username, List<String> paths, int permission) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
-      return status;
+      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(status);
+      return permissionInfoResp;
     }
   }
 

@@ -21,8 +21,11 @@ package org.apache.iotdb.db.service.thrift.impl;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
@@ -98,6 +101,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -115,6 +119,7 @@ import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERS
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_TIME_MANAGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
@@ -147,7 +152,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
     TSStatus loginStatus;
     try {
-      loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+      loginStatus = AuthorizerManager.getInstance().checkUser(req.username, req.password);
     } catch (ConfigNodeConnectionException e) {
       TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
       return new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
@@ -327,7 +332,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // measurementAlias is also a nodeName
-      isLegalMeasurements(Collections.singletonList(req.getMeasurementAlias()));
+      isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -350,6 +355,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -383,9 +390,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurements(req.getMeasurementAlias());
+      isLegalSingleMeasurements(req.getMeasurementAlias());
 
-      isLegalMeasurements(req.getMeasurements());
+      isLegalSingleMeasurements(req.getMeasurements());
 
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
@@ -409,6 +416,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -431,7 +440,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurements(req.getMeasurementAliasList());
+      isLegalSingleMeasurements(req.getMeasurementAliasList());
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
@@ -455,6 +464,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -637,7 +648,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurementLists(req.getMeasurementsList());
+      isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
@@ -660,6 +671,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -685,7 +698,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurementLists(req.getMeasurementsList());
+      isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -709,6 +722,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -734,7 +749,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurementLists(req.getMeasurementsList());
+      isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -758,6 +773,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e,
@@ -783,7 +800,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurements(req.getMeasurements());
+      isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -805,6 +822,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -821,7 +840,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
-      isLegalMeasurementLists(req.getMeasurementsList());
+      isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -845,6 +864,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -862,7 +883,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurements(req.getMeasurements());
+      isLegalSingleMeasurements(req.getMeasurements());
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
@@ -885,6 +906,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -910,7 +933,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurementLists(req.getMeasurementsList());
+      isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
@@ -931,6 +954,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1058,13 +1083,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) {
-    // todo: check measurement using isLegalMeasurements()
+    // todo: check measurement using isLegalSingleMeasurements()
     throw new UnsupportedOperationException();
   }
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
-    // todo: check measurement using isLegalMeasurements()
+    // todo: check measurement using isLegalSingleMeasurements()
     throw new UnsupportedOperationException();
   }
 
@@ -1108,7 +1133,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
-      isLegalMeasurements(req.getMeasurements());
+      isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -1130,6 +1155,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1195,8 +1222,71 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     return new QueryId(String.valueOf(id));
   }
 
-  // check whether measurement is legal according to syntax convention
-  protected void isLegalMeasurementLists(List<List<String>> measurementLists) throws TException {
+  /**
+   * check whether measurement is legal according to syntax convention measurement can only be a
+   * single node name
+   */
+  protected void isLegalSingleMeasurementLists(List<List<String>> measurementLists)
+      throws MetadataException {
+    if (measurementLists == null) {
+      return;
+    }
+    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
+    for (List<String> measurementList : measurementLists) {
+      for (String measurement : measurementList) {
+        if (measurement != null) {
+          if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
+              && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+                  && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+            throw new IllegalPathException(measurement);
+          } else {
+            path.append(TsFileConstant.PATH_SEPARATOR);
+            path.append(measurement);
+          }
+        }
+      }
+    }
+    try {
+      PathUtils.isLegalPath(path.toString());
+    } catch (IllegalPathException e) {
+      throw new MetadataException("find wrong node name according to syntax convention");
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement can only be a
+   * single node name
+   */
+  protected void isLegalSingleMeasurements(List<String> measurements) throws MetadataException {
+    if (measurements == null) {
+      return;
+    }
+    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
+            && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+                && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+          throw new IllegalPathException(measurement);
+        } else {
+          path.append(TsFileConstant.PATH_SEPARATOR);
+          path.append(measurement);
+        }
+      }
+    }
+    try {
+      PathUtils.isLegalPath(path.toString());
+    } catch (IllegalPathException e) {
+      throw new MetadataException("find wrong node name according to syntax convention");
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement could be like a.b
+   * (more than one node name), in template?
+   */
+  protected void isLegalMeasurementLists(List<List<String>> measurementLists)
+      throws IllegalPathException {
     if (measurementLists == null) {
       return;
     }
@@ -1205,18 +1295,17 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     }
   }
 
-  // check whether measurement is legal according to syntax convention
-  protected void isLegalMeasurements(List<String> measurements) throws TException {
+  /**
+   * check whether measurement is legal according to syntax convention measurement could be like a.b
+   * (more than one node name), in template?
+   */
+  protected void isLegalMeasurements(List<String> measurements) throws IllegalPathException {
     if (measurements == null) {
       return;
     }
     for (String measurement : measurements) {
-      try {
-        if (measurement != null) {
-          PathUtils.isLegalPath(measurement);
-        }
-      } catch (IllegalPathException e) {
-        throw new TException(e.getMessage());
+      if (measurement != null) {
+        PathUtils.isLegalPath(measurement);
       }
     }
   }
