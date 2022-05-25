@@ -145,7 +145,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     String metadata = Utils.getMetadataFromTermIndex(lastApplied);
     File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
 
-    // delete snapshotDir fully in case of last failed take snapshot
+    // delete snapshotDir fully in case of last takeSnapshot() crashed
     FileUtils.deleteFully(snapshotDir);
 
     snapshotDir.mkdir();

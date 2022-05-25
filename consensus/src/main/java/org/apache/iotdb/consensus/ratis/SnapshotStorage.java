@@ -82,7 +82,7 @@ public class SnapshotStorage implements StateMachineStorage {
   }
 
   public File findLatestSnapshotDir() {
-    rearrangeSMDirHierarchyIfNecessary();
+    moveSnapshotFileToSubDirectory();
     Path[] snapshots = getSortedSnapshotDirPaths();
     if (snapshots == null || snapshots.length == 0) {
       return null;
@@ -173,7 +173,7 @@ public class SnapshotStorage implements StateMachineStorage {
    * appropriate sub-directory this function will move all snapshot files directly under /sm to
    * /sm/term_index/
    */
-  void rearrangeSMDirHierarchyIfNecessary() {
+  void moveSnapshotFileToSubDirectory() {
     File[] potentialMetafile =
         stateMachineDir.listFiles((dir, name) -> name.matches(getMetafileMatcherRegex()));
     if (potentialMetafile == null || potentialMetafile.length == 0) {
@@ -200,6 +200,12 @@ public class SnapshotStorage implements StateMachineStorage {
       for (File file : snapshotFiles) {
         boolean success = file.renameTo(new File(snapshotDir + File.separator + file.getName()));
         if (!success) {
+          logger.warn(
+              "move snapshot file "
+                  + file.getAbsolutePath()
+                  + " to sub-directory "
+                  + snapshotDir.getAbsolutePath()
+                  + "failed");
           FileUtils.deleteFully(snapshotDir);
           break;
         }
