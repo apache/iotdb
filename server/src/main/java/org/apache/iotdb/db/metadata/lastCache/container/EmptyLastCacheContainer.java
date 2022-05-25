@@ -19,30 +19,35 @@
 
 package org.apache.iotdb.db.metadata.lastCache.container;
 
+import org.apache.iotdb.db.metadata.lastCache.container.value.ILastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+public class EmptyLastCacheContainer implements ILastCacheContainer {
 
-/** this interface declares the operations of LastCache data */
-public interface ILastCacheContainer {
+    ILastCacheValue lastCacheValue = null;
 
-  // get lastCache of monad timseries
-  TimeValuePair getCachedLast();
+    @Override
+    public TimeValuePair getCachedLast(){
+        return null;
+    };
 
-  /**
-   * update last point cache
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   */
-  void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
+    @Override
+    public void updateCachedLast(
+            TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime){
 
-  // reset all lastCache data of one timeseries(monad or vector)
-  void resetLastCache();
+    };
 
-  // whether the entry contains lastCache Value.
-  boolean isEmpty();
+    @Override
+    public synchronized void resetLastCache() {
+        lastCacheValue = null;
+    }
 
-  // whether the instance is empty container
-  boolean isEmptyContainer();
+    @Override
+    public boolean isEmpty() {
+        return true;
+    };
+
+    @Override
+    public boolean isEmptyContainer() {return false;}
+
 }

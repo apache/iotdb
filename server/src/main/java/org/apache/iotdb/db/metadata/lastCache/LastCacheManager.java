@@ -21,7 +21,9 @@ package org.apache.iotdb.db.metadata.lastCache;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.metadata.lastCache.container.EmptyLastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -85,6 +87,10 @@ public class LastCacheManager {
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
+    if(lastCacheContainer.isEmptyContainer()){
+      lastCacheContainer = new LastCacheContainer();
+      node.setLastCacheContainer(lastCacheContainer);
+    }
     lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
@@ -101,9 +107,13 @@ public class LastCacheManager {
 
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-    ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-    lastCacheContainer.resetLastCache();
+//    ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
+//    lastCacheContainer.resetLastCache();
+    node.setLastCacheContainer(new EmptyLastCacheContainer());
+
   }
+
+
 
   private static void checkIsTemplateLastCacheAndSetIfAbsent(IMeasurementMNode node) {
     IEntityMNode entityMNode = node.getParent();

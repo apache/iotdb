@@ -67,4 +67,7 @@ public class LastCacheContainer implements ILastCacheContainer {
   public boolean isEmpty() {
     return lastCacheValue == null;
   }
+
+  @Override
+  public boolean isEmptyContainer() {return false;}
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.lastCache.container.EmptyLastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -261,6 +262,7 @@ public class LastQueryExecutor {
       }
     }
     for (int i = 0; i < cacheAccessors.size(); i++) {
+      if(cacheAccessors.get(i).checkEmptyContainer()){ continue; }
       TimeValuePair tvPair = cacheAccessors.get(i).read();
       if (tvPair == null) {
         resultContainer.add(new Pair<>(false, null));
@@ -292,6 +294,10 @@ public class LastQueryExecutor {
     public TimeValuePair read();
 
     public void write(TimeValuePair pair);
+
+    public boolean checkEmptyContainer();
+
+
   }
 
   private static class MManagerLastCacheAccessor implements LastCacheAccessor {
@@ -329,6 +335,14 @@ public class LastQueryExecutor {
         IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
       }
     }
+
+    public boolean checkEmptyContainer(){
+      if (node == null){
+        return false;
+      } else {
+        return node.getLastCacheContainer().isEmptyContainer();
+      }
+    }
   }
 
   private static class IDTableLastCacheAccessor implements LastCacheAccessor {
@@ -361,6 +375,10 @@ public class LastQueryExecutor {
       } catch (MetadataException | StorageEngineException e) {
         logger.error("last query can't find storage group: path is: " + fullPath);
       }
+    }
+
+    public boolean checkEmptyContainer(){
+      return false;
     }
   }
 

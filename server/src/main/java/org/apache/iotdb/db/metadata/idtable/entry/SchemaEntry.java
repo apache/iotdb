@@ -213,4 +213,11 @@ public class SchemaEntry implements ILastCacheContainer {
     return Objects.hash(schema);
   }
   // endregion
+
+  @Override
+  public boolean isEmptyContainer() {
+    return false;
+  };
+
+
 }
