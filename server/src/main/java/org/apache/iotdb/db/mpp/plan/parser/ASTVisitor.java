@@ -549,12 +549,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private List<URI> parseUris(List<UriContext> uriContexts) {
     List<URI> uris = new ArrayList<>();
-    for (UriContext uriContext : uriContexts) {
-      final String uriString = uriContext.getText();
-      try {
-        uris.add(new URI(parseStringLiteral(uriString)));
-      } catch (URISyntaxException e) {
-        throw new SemanticException(String.format("'%s' is not a legal URI.", uriString));
+    if (uriContexts != null) {
+      for (UriContext uriContext : uriContexts) {
+        final String uriString = uriContext.getText();
+        try {
+          uris.add(new URI(parseStringLiteral(uriString)));
+        } catch (URISyntaxException e) {
+          throw new SemanticException(String.format("'%s' is not a legal URI.", uriString));
+        }
       }
     }
     return uris;
