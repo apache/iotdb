@@ -2162,7 +2162,7 @@ public class TSServiceImpl implements TSIEventHandler {
     }
     for (String measurement : measurements) {
       if (measurement == null) {
-        throw new IllegalPathException("null");
+        continue;
       }
       if (!(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
           && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
