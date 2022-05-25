@@ -103,6 +103,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1231,25 +1232,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     if (measurementLists == null) {
       return;
     }
-    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
-    for (List<String> measurementList : measurementLists) {
-      for (String measurement : measurementList) {
-        if (measurement != null) {
-          if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
-              && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
-                  && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
-            throw new IllegalPathException(measurement);
-          } else {
-            path.append(TsFileConstant.PATH_SEPARATOR);
-            path.append(measurement);
-          }
-        }
-      }
-    }
-    try {
-      PathUtils.isLegalPath(path.toString());
-    } catch (IllegalPathException e) {
-      throw new MetadataException("find wrong node name according to syntax convention");
+    for (List<String> measurements : measurementLists) {
+      isLegalMeasurements(measurements);
     }
   }
 
@@ -1261,23 +1245,17 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     if (measurements == null) {
       return;
     }
-    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
     for (String measurement : measurements) {
-      if (measurement != null) {
-        if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
-            && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
-                && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+      if (measurement == null) {
+        throw new IllegalPathException("null");
+      }
+      if (!(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+          && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+        if (StringUtils.isNumeric(measurement)
+            || !TsFileConstant.NODE_NAME_PATTERN.matcher(measurement).matches()) {
           throw new IllegalPathException(measurement);
-        } else {
-          path.append(TsFileConstant.PATH_SEPARATOR);
-          path.append(measurement);
         }
       }
-    }
-    try {
-      PathUtils.isLegalPath(path.toString());
-    } catch (IllegalPathException e) {
-      throw new MetadataException("find wrong node name according to syntax convention");
     }
   }
 
