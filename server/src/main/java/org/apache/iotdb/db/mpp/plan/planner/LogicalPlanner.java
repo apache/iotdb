@@ -110,6 +110,12 @@ public class LogicalPlanner {
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
 
+      if (queryStatement.isLastQuery()) {
+        return planBuilder
+            .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())
+            .getRoot();
+      }
+
       if (queryStatement.isAlignByDevice()) {
         Map<String, PlanNode> deviceToSubPlanMap = new HashMap<>();
         for (String deviceName : analysis.getDeviceToSourceExpressions().keySet()) {
