@@ -20,12 +20,7 @@ package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import java.util.concurrent.TimeUnit;
-
-/**
- * This class serializes and flushes {@link WALEntry}. If search is enabled, the order of search
- * index should be protected by the upper layer, and the value should start from 1.
- */
+/** Currently, there are 2 buffer types, including wal rolling buffer and wal segmented buffer. */
 public interface IWALBuffer extends AutoCloseable {
   /**
    * Write WALEntry into wal buffer.
@@ -39,12 +34,6 @@ public interface IWALBuffer extends AutoCloseable {
 
   @Override
   void close();
-
-  /** Wait for next flush operation done */
-  void waitForFlush() throws InterruptedException;
-
-  /** Wait for next flush operation done */
-  boolean waitForFlush(long time, TimeUnit unit) throws InterruptedException;
 
   @TestOnly
   boolean isAllWALEntriesConsumed();

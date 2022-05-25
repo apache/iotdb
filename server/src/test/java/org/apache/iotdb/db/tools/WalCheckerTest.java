@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.SystemCheckException;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALFileTest;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
-import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
@@ -80,7 +80,8 @@ public class WalCheckerTest {
         File walNodeDir = new File(tempRoot, String.valueOf(i));
         walNodeDir.mkdir();
 
-        File walFile = new File(walNodeDir, WALFileUtils.getLogFileName(i, 0));
+        File walFile =
+            new File(walNodeDir, WALWriter.FILE_PREFIX + i + IoTDBConstant.WAL_FILE_SUFFIX);
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
@@ -116,7 +117,7 @@ public class WalCheckerTest {
         File walNodeDir = new File(tempRoot, String.valueOf(i));
         walNodeDir.mkdir();
 
-        File walFile = new File(walNodeDir, WALFileUtils.getLogFileName(i, 0));
+        File walFile = new File(walNodeDir, "_" + i + IoTDBConstant.WAL_FILE_SUFFIX);
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
@@ -157,7 +158,7 @@ public class WalCheckerTest {
         File walNodeDir = new File(tempRoot, String.valueOf(i));
         walNodeDir.mkdir();
 
-        File walFile = new File(walNodeDir, WALFileUtils.getLogFileName(i, 0));
+        File walFile = new File(walNodeDir, "_" + i + IoTDBConstant.WAL_FILE_SUFFIX);
 
         FileOutputStream fileOutputStream = new FileOutputStream(walFile);
         try {

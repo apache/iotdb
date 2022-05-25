@@ -29,8 +29,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
+import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.recover.CheckpointRecoverUtils;
-import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -115,7 +115,7 @@ public class WALNodeTest {
     }
     Thread.sleep(1_000);
     // check .wal files
-    File[] walFiles = WALFileUtils.listAllWALFiles(new File(logDirectory));
+    File[] walFiles = new File(logDirectory).listFiles(WALWriter::walFilenameFilter);
     Set<InsertTabletPlan> actualInsertTabletPlans = new HashSet<>();
     if (walFiles != null) {
       for (File walFile : walFiles) {
@@ -258,16 +258,12 @@ public class WALNodeTest {
     }
     walNode.onMemTableFlushed(memTable);
     walNode.onMemTableCreated(new PrimitiveMemTable(), tsFilePath);
-    // check existence of _0-0.wal file
-    assertTrue(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(0, 0)).exists());
-    assertTrue(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(1, 0)).exists());
+    // check existence of _0.wal file
+    assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(0)).exists());
+    assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(1)).exists());
     walNode.deleteOutdatedFiles();
-    assertFalse(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(0, 0)).exists());
-    assertTrue(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(1, 0)).exists());
+    assertFalse(new File(logDirectory + File.separator + WALWriter.getLogFileName(0)).exists());
+    assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(1)).exists());
     // check flush listeners
     try {
       for (WALFlushListener walFlushListener : walFlushListeners) {

@@ -25,8 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.node.WALNode;
-import org.apache.iotdb.db.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.wal.io.WALWriter;
+import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -66,42 +66,22 @@ public class WALManagerTest {
   }
 
   @Test
-  public void testDeleteOutdatedWALFiles() throws IllegalPathException {
+  public void testAllocateWALNode() throws IllegalPathException {
     WALManager walManager = WALManager.getInstance();
-    WALNode[] walNodes = new WALNode[6];
+    IWALNode[] walNodes = new IWALNode[6];
     for (int i = 0; i < 12; i++) {
-      WALNode walNode = (WALNode) walManager.applyForWALNode(String.valueOf(i));
+      IWALNode walNode = walManager.applyForWALNode();
       if (i < 6) {
         walNodes[i] = walNode;
       } else {
         assertEquals(walNodes[i % 6], walNode);
       }
       walNode.log(i, getInsertRowPlan());
-      walNode.rollWALFile();
     }
-
     for (String walDir : walDirs) {
       File walDirFile = new File(walDir);
       assertTrue(walDirFile.exists());
-      File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
-      assertNotNull(nodeDirs);
-      for (File nodeDir : nodeDirs) {
-        assertTrue(nodeDir.exists());
-        assertEquals(3, WALFileUtils.listAllWALFiles(nodeDir).length);
-      }
-    }
-
-    walManager.deleteOutdatedWALFiles();
-
-    for (String walDir : walDirs) {
-      File walDirFile = new File(walDir);
-      assertTrue(walDirFile.exists());
-      File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
-      assertNotNull(nodeDirs);
-      for (File nodeDir : nodeDirs) {
-        assertTrue(nodeDir.exists());
-        assertEquals(1, WALFileUtils.listAllWALFiles(nodeDir).length);
-      }
+      assertNotNull(walDirFile.list(WALWriter::walFilenameFilter));
     }
   }
 

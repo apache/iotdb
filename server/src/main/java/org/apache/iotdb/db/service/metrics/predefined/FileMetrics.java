@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -82,7 +83,7 @@ public class FileMetrics implements IMetricSet {
                 .mapToLong(
                     dir -> {
                       File walFolder = new File(dir);
-                      File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
+                      File[] walNodeFolders = walFolder.listFiles(WALNode::walNodeFolderNameFilter);
                       for (File walNodeFolder : walNodeFolders) {
                         if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
                           return org.apache.commons.io.FileUtils.listFiles(

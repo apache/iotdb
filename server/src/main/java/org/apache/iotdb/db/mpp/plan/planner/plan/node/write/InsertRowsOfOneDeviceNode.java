@@ -72,26 +72,17 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     insertRowNodeList = new ArrayList<>();
   }
 
-  public InsertRowsOfOneDeviceNode(
-      PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> insertRowNodeList) {
-    super(id);
-    this.insertRowNodeIndexList = insertRowNodeIndexList;
-    this.insertRowNodeList = insertRowNodeList;
-  }
-
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
 
   @Override
   public void setSearchIndex(long index) {
-    searchIndex = index;
     insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
   }
 
   @Override
   public void setSafelyDeletedSearchIndex(long index) {
-    safelyDeletedSearchIndex = index;
     insertRowNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
   }
 

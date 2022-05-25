@@ -96,20 +96,11 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     insertTabletNodeList = new ArrayList<>();
   }
 
-  public InsertMultiTabletsNode(
-      PlanNodeId id,
-      List<Integer> parentInsertTabletNodeIndexList,
-      List<InsertTabletNode> insertTabletNodeList) {
-    super(id);
-    this.parentInsertTabletNodeIndexList = parentInsertTabletNodeIndexList;
-    this.insertTabletNodeList = insertTabletNodeList;
-  }
-
   public List<Integer> getParentInsertTabletNodeIndexList() {
     return parentInsertTabletNodeIndexList;
   }
 
-  private void setParentInsertTabletNodeIndexList(List<Integer> parentInsertTabletNodeIndexList) {
+  public void setParentInsertTabletNodeIndexList(List<Integer> parentInsertTabletNodeIndexList) {
     this.parentInsertTabletNodeIndexList = parentInsertTabletNodeIndexList;
   }
 
@@ -117,7 +108,7 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     return insertTabletNodeList;
   }
 
-  private void setInsertTabletNodeList(List<InsertTabletNode> insertTabletNodeList) {
+  public void setInsertTabletNodeList(List<InsertTabletNode> insertTabletNodeList) {
     this.insertTabletNodeList = insertTabletNodeList;
   }
 
@@ -128,13 +119,11 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
 
   @Override
   public void setSearchIndex(long index) {
-    searchIndex = index;
     insertTabletNodeList.forEach(plan -> plan.setSearchIndex(index));
   }
 
   @Override
   public void setSafelyDeletedSearchIndex(long index) {
-    safelyDeletedSearchIndex = index;
     insertTabletNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
   }
 
