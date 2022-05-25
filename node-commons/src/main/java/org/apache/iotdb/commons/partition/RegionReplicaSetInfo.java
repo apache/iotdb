@@ -16,20 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
+
+package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-public abstract class SourceNode extends PlanNode implements AutoCloseable, IPartitionRelatedNode {
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-  public SourceNode(PlanNodeId id) {
-    super(id);
+public class RegionReplicaSetInfo {
+  private TRegionReplicaSet regionReplicaSet;
+  private Set<String> ownedStorageGroups;
+
+  public RegionReplicaSetInfo(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+    this.ownedStorageGroups = new HashSet<>();
   }
 
-  public abstract void open() throws Exception;
+  public void addStorageGroup(String storageGroup) {
+    ownedStorageGroups.add(storageGroup);
+  }
 
-  public abstract void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet);
+  public TRegionReplicaSet getRegionReplicaSet() {
+    return regionReplicaSet;
+  }
+
+  public List<String> getOwnedStorageGroups() {
+    return new ArrayList<>(ownedStorageGroups);
+  }
 }

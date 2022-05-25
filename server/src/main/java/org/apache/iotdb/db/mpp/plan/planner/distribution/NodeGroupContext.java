@@ -16,20 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+package org.apache.iotdb.db.mpp.plan.planner.distribution;
+
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-public abstract class SourceNode extends PlanNode implements AutoCloseable, IPartitionRelatedNode {
+import java.util.HashMap;
+import java.util.Map;
 
-  public SourceNode(PlanNodeId id) {
-    super(id);
+public class NodeGroupContext {
+  protected MPPQueryContext queryContext;
+  protected Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+
+  public NodeGroupContext(MPPQueryContext queryContext) {
+    this.queryContext = queryContext;
+    this.nodeDistributionMap = new HashMap<>();
   }
 
-  public abstract void open() throws Exception;
+  public void putNodeDistribution(PlanNodeId nodeId, NodeDistribution distribution) {
+    this.nodeDistributionMap.put(nodeId, distribution);
+  }
 
-  public abstract void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet);
+  public NodeDistribution getNodeDistribution(PlanNodeId nodeId) {
+    return this.nodeDistributionMap.get(nodeId);
+  }
 }

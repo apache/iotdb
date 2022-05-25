@@ -16,20 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
-public abstract class SourceNode extends PlanNode implements AutoCloseable, IPartitionRelatedNode {
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 
-  public SourceNode(PlanNodeId id) {
-    super(id);
+public class DistributionPlanContext {
+  protected MPPQueryContext queryContext;
+
+  protected DistributionPlanContext(MPPQueryContext queryContext) {
+    this.queryContext = queryContext;
   }
-
-  public abstract void open() throws Exception;
-
-  public abstract void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet);
 }
