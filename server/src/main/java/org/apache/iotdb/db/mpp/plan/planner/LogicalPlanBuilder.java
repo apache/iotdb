@@ -145,7 +145,7 @@ public class LogicalPlanBuilder {
       if (selectPath.isUnderAlignedEntity()) {
         sourceNodeList.add(
             new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath), null));
+                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
       } else {
         sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
       }
