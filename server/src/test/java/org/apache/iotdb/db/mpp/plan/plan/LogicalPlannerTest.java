@@ -551,8 +551,12 @@ public class LogicalPlannerTest {
     String sql = "COUNT NODES root.ln LEVEL=1";
     try {
       CountSchemaMergeNode countSchemaMergeNode = (CountSchemaMergeNode) parseSQLToPlanNode(sql);
+      NodeManagementMemoryMergeNode nodeManagementMemoryMergeNode =
+          (NodeManagementMemoryMergeNode) countSchemaMergeNode.getChildren().get(0);
+      SchemaQueryMergeNode schemaQueryMergeNode =
+          (SchemaQueryMergeNode) nodeManagementMemoryMergeNode.getChildren().get(0);
       ChildPathsSchemaScanNode childPathsSchemaScanNode =
-          (ChildPathsSchemaScanNode) countSchemaMergeNode.getChildren().get(0);
+          (ChildPathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
       Assert.assertNotNull(childPathsSchemaScanNode);
       Assert.assertEquals(new PartialPath("root.ln"), childPathsSchemaScanNode.getPrefixPath());
       Assert.assertEquals(1, childPathsSchemaScanNode.getLevel());
