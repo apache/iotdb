@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 public class SchemaPartition extends Partition {
 
@@ -91,28 +90,21 @@ public class SchemaPartition extends Partition {
    * Get SchemaPartition by partitionSlotsMap
    *
    * @param partitionSlotsMap Map<StorageGroup, List<SeriesPartitionSlot>>
-   * @param preDeletedStorageGroup
    * @return Subset of current SchemaPartition, including Map<StorageGroup, Map<SeriesPartitionSlot,
    *     RegionReplicaSet>>
    */
   public SchemaPartition getSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap,
-      Set<String> preDeletedStorageGroup) {
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
-      final Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> resultAll =
-          new HashMap<>(schemaPartitionMap);
-      for (String preDeleted : preDeletedStorageGroup) {
-        resultAll.remove(preDeleted);
-      }
-      return new SchemaPartition(resultAll, seriesSlotExecutorName, seriesPartitionSlotNum);
+      return new SchemaPartition(
+          new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
     } else {
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
 
       partitionSlotsMap.forEach(
           (storageGroup, seriesPartitionSlots) -> {
-            if (schemaPartitionMap.containsKey(storageGroup)
-                && !preDeletedStorageGroup.contains(storageGroup)) {
+            if (schemaPartitionMap.containsKey(storageGroup)) {
               if (seriesPartitionSlots.isEmpty()) {
                 // Return all SchemaPartitions in one StorageGroup when the queried
                 // SeriesPartitionSlots is empty

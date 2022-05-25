@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -158,9 +157,6 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case UpdateProcedure:
           req = new UpdateProcedureReq();
-          break;
-        case PreDeleteStorageGroup:
-          req = new PreDeleteStorageGroupReq();
           break;
         case DeleteStorageGroup:
           req = new DeleteStorageGroupReq();

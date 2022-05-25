@@ -36,7 +36,6 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
@@ -62,12 +61,9 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -86,9 +82,6 @@ public class PartitionInfo implements SnapshotProcessor {
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap;
   // Map<TConsensusGroupId, allocatedSlotsNumber>
   private final Map<TConsensusGroupId, Long> regionSlotsCounter;
-  // preDeleted TODO: Combine it with Partition.class
-  private final Set<String> preDeletedStorageGroup = new CopyOnWriteArraySet<>();
-  private final Set<TRegionReplicaSet> deletedRegionSet = new HashSet<>();
 
   // SchemaPartition read write lock
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
@@ -173,7 +166,7 @@ public class PartitionInfo implements SnapshotProcessor {
     regionReadWriteLock.writeLock().lock();
     try {
       for (TConsensusGroupId consensusGroupId : req.getConsensusGroupIds()) {
-        deletedRegionSet.add(regionReplicaMap.remove(consensusGroupId));
+        regionReplicaMap.remove(consensusGroupId);
         regionSlotsCounter.remove(consensusGroupId);
       }
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -216,7 +209,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
     try {
       schemaPartitionResp.setSchemaPartition(
-          schemaPartition.getSchemaPartition(req.getPartitionSlotsMap(), preDeletedStorageGroup));
+          schemaPartition.getSchemaPartition(req.getPartitionSlotsMap()));
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
       schemaPartitionResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -290,8 +283,7 @@ public class PartitionInfo implements SnapshotProcessor {
           dataPartition.getDataPartition(
               req.getPartitionSlotsMap(),
               ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-              ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum(),
-              preDeletedStorageGroup));
+              ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
     } finally {
       dataPartitionReadWriteLock.readLock().unlock();
       dataPartitionResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -418,7 +410,6 @@ public class PartitionInfo implements SnapshotProcessor {
     dataPartitionReadWriteLock.writeLock().lock();
     try {
       dataPartition.getDataPartitionMap().remove(storageGroup);
-      preDeletedStorageGroup.remove(storageGroup);
     } finally {
       dataPartitionReadWriteLock.writeLock().unlock();
     }
@@ -428,29 +419,9 @@ public class PartitionInfo implements SnapshotProcessor {
     schemaPartitionReadWriteLock.writeLock().lock();
     try {
       schemaPartition.getSchemaPartitionMap().remove(storageGroup);
-      preDeletedStorageGroup.remove(storageGroup);
     } finally {
       schemaPartitionReadWriteLock.writeLock().unlock();
     }
-  }
-
-  public TSStatus preDeleteStorageGroup(PreDeleteStorageGroupReq preDeleteStorageGroupReq) {
-    final PreDeleteStorageGroupReq.PreDeleteType preDeleteType =
-        preDeleteStorageGroupReq.getPreDeleteType();
-    final String storageGroup = preDeleteStorageGroupReq.getStorageGroup();
-    switch (preDeleteType) {
-      case EXECUTE:
-        preDeletedStorageGroup.add(storageGroup);
-        break;
-      case ROLLBACK:
-        preDeletedStorageGroup.remove(storageGroup);
-        break;
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  public Set<TRegionReplicaSet> getDeletedRegionSet() {
-    return deletedRegionSet;
   }
 
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
@@ -476,8 +447,6 @@ public class PartitionInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(nextRegionGroupId.get(), fileOutputStream);
       // serialize regionMap
       serializeRegionMap(fileOutputStream, protocol);
-      // serialize deletedRegionSet
-      serializeDeletedRegionSet(fileOutputStream, protocol);
       // serialize schemaPartition
       schemaPartition.serialize(fileOutputStream, protocol);
       // serialize dataPartition
@@ -522,8 +491,6 @@ public class PartitionInfo implements SnapshotProcessor {
       // start to restore
       nextRegionGroupId.set(ReadWriteIOUtils.readInt(fileInputStream));
       deserializeRegionMap(fileInputStream, protocol);
-      // deserialize deletedRegionSet
-      deserializeDeletedRegionSet(fileInputStream, protocol);
       schemaPartition.deserialize(fileInputStream, protocol);
       dataPartition.deserialize(fileInputStream, protocol);
     } finally {
@@ -606,25 +573,6 @@ public class PartitionInfo implements SnapshotProcessor {
 
       regionReplicaMap.put(tConsensusGroupId, tRegionReplicaSet);
       regionSlotsCounter.put(tConsensusGroupId, count);
-      size--;
-    }
-  }
-
-  private void serializeDeletedRegionSet(OutputStream outputStream, TProtocol protocol)
-      throws TException, IOException {
-    ReadWriteIOUtils.write(regionReplicaMap.size(), outputStream);
-    for (TRegionReplicaSet regionReplicaSet : deletedRegionSet) {
-      regionReplicaSet.write(protocol);
-    }
-  }
-
-  private void deserializeDeletedRegionSet(InputStream inputStream, TProtocol protocol)
-      throws TException, IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    while (size > 0) {
-      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-      tRegionReplicaSet.read(protocol);
-      deletedRegionSet.add(tRegionReplicaSet);
       size--;
     }
   }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure;
 
-import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
 import org.junit.After;

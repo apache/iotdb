@@ -27,7 +27,6 @@ public enum ConfigRequestType {
   SetDataReplicationFactor,
   SetTimePartitionInterval,
   DeleteStorageGroup,
-  PreDeleteStorageGroup,
   GetStorageGroup,
   CountStorageGroup,
   CreateRegions,

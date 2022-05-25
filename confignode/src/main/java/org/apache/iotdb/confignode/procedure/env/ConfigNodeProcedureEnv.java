@@ -19,22 +19,19 @@
 
 package org.apache.iotdb.confignode.procedure.env;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 public class ConfigNodeProcedureEnv {
@@ -43,84 +40,45 @@ public class ConfigNodeProcedureEnv {
 
   private final ConfigManager configManager;
 
-  private static boolean skipForTest = false;
-
-  private static boolean invalidCacheResult = true;
-
-  public static void setSkipForTest(boolean skipForTest) {
-    ConfigNodeProcedureEnv.skipForTest = skipForTest;
-  }
-
-  public static void setInvalidCacheResult(boolean result) {
-    ConfigNodeProcedureEnv.invalidCacheResult = result;
-  }
-
   public ConfigNodeProcedureEnv(ConfigManager configManager) {
     this.configManager = configManager;
   }
+
+  // TODO: reuse the same ClientPool with other module
+  private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      INTERNAL_SERVICE_CLIENT_MANAGER =
+          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+              .createClientManager(
+                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   public ConfigManager getConfigManager() {
     return configManager;
   }
 
-  /**
-   * Delete config node information, includes (mTree, partitionInfo, regionMap)
-   *
-   * @param deleteSgSchema storage group name
-   * @return tsStatus
-   */
-  public TSStatus deleteConfig(TStorageGroupSchema deleteSgSchema) {
-    DeleteStorageGroupReq deleteStorageGroupReq = new DeleteStorageGroupReq(deleteSgSchema);
-    return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupReq);
-  }
-
-  /**
-   * Pre delete a storage group
-   *
-   * @param preDeleteType execute/rollback
-   * @param deleteSgName storage group name
-   */
-  public void preDelete(PreDeleteStorageGroupReq.PreDeleteType preDeleteType, String deleteSgName) {
-    configManager.getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
-  }
-
-  /**
-   * @param storageGroupName Storage group name
-   * @return ALL SUCCESS OR NOT
-   * @throws IOException IOE
-   * @throws TException Thrift IOE
-   */
-  public boolean invalidateCache(String storageGroupName) throws IOException, TException {
-    // TODO: Remove it after IT is supported
-    if (skipForTest) {
-      return invalidCacheResult;
-    }
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
-    TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
-    invalidateCacheReq.setStorageGroup(true);
-    invalidateCacheReq.setFullPath(storageGroupName);
-    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
-      final TSStatus invalidateSchemaStatus =
-          SyncDataNodeClientPool.getInstance()
-              .invalidateSchemaCache(
-                  dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
-      final TSStatus invalidatePartitionStatus =
-          SyncDataNodeClientPool.getInstance()
-              .invalidatePartitionCache(
-                  dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
-      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-        LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
-            invalidatePartitionStatus,
-            invalidateSchemaStatus);
-        return false;
+  public InternalService.Client getDataNodeClient(TRegionReplicaSet dataRegionReplicaSet)
+      throws IOException {
+    List<TDataNodeLocation> dataNodeLocations = dataRegionReplicaSet.getDataNodeLocations();
+    int retry = dataNodeLocations.size() - 1;
+    for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+      try {
+        return INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(dataNodeLocation.getInternalEndPoint());
+      } catch (IOException e) {
+        if (retry-- > 0) {
+          LOG.warn(
+              "Connect dataRegion-{} at dataNode-{} failed, trying next replica..",
+              dataRegionReplicaSet.getRegionId(),
+              dataNodeLocation);
+        } else {
+          LOG.warn("Connect dataRegion{} failed", dataRegionReplicaSet.getRegionId());
+          throw e;
+        }
       }
     }
-    return true;
+    return null;
   }
 
-  public boolean verifySucceed(TSStatus... status) {
-    return Arrays.stream(status)
-        .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public InternalService.Client getDataNodeClient(TDataNodeLocation dataNodeLocation)
+      throws IOException {
+    return INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(dataNodeLocation.getInternalEndPoint());
   }
 }

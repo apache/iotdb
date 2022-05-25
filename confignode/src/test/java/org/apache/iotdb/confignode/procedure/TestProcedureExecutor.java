@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.confignode.procedure.entity.IncProcedure;
 import org.apache.iotdb.confignode.procedure.entity.NoopProcedure;
 import org.apache.iotdb.confignode.procedure.entity.StuckProcedure;
-import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 
 import org.junit.Assert;

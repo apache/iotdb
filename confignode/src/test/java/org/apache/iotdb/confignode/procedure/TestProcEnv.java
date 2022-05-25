@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.env;
+package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 
