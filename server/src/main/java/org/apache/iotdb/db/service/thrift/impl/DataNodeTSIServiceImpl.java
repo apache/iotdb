@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
@@ -151,7 +152,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
     TSStatus loginStatus;
     try {
-      loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+      loginStatus = AuthorizerManager.getInstance().checkUser(req.username, req.password);
     } catch (ConfigNodeConnectionException e) {
       TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
       return new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
