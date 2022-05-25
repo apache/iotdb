@@ -99,6 +99,7 @@ public class UDFManager {
     try {
       countDownLatch.await();
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       LOGGER.error("UDFManager was interrupted during creating functions on data nodes", e);
     }
 
