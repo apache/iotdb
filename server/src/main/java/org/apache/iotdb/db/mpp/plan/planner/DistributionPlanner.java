@@ -172,6 +172,7 @@ public class DistributionPlanner {
     public PlanNode visitSchemaQueryMerge(
         SchemaQueryMergeNode node, DistributionPlanContext context) {
       SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
+      // TODO check
       SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
       TreeSet<TRegionReplicaSet> schemaRegions =
           new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
@@ -203,7 +204,12 @@ public class DistributionPlanner {
     @Override
     public PlanNode visitCountMerge(CountSchemaMergeNode node, DistributionPlanContext context) {
       CountSchemaMergeNode root = (CountSchemaMergeNode) node.clone();
-      SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
+      // TODO this implementation will change in future version.
+      PlanNode tempNode = node.getChildren().get(0);
+      while (!(tempNode instanceof SchemaQueryScanNode) && tempNode.getChildren().size() > 0) {
+        tempNode = tempNode.getChildren().get(0);
+      }
+      SchemaQueryScanNode seed = (SchemaQueryScanNode) tempNode;
       Set<TRegionReplicaSet> schemaRegions = new HashSet<>();
       analysis
           .getSchemaPartitionInfo()
