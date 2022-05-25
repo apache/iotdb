@@ -335,11 +335,9 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       calcFromBatch(tsBlock, curTimeRange);
 
       // judge whether the calculation finished
-      if (isEndCalc(aggregators)
-          || (tsBlockIterator.hasNext()
-              && (ascending
-                  ? tsBlockIterator.currentTime() > curTimeRange.getMax()
-                  : tsBlockIterator.currentTime() < curTimeRange.getMin()))) {
+      if (isEndCalc(aggregators) || ascending
+          ? tsBlock.getEndTime() > curTimeRange.getMax()
+          : tsBlock.getEndTime() < curTimeRange.getMin()) {
         return true;
       }
     }

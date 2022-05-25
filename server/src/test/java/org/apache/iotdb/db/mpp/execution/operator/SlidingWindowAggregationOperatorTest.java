@@ -156,8 +156,7 @@ public class SlidingWindowAggregationOperatorTest {
     while (slidingWindowAggregationOperator2.hasNext()) {
       TsBlock resultTsBlock = slidingWindowAggregationOperator2.next();
       Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-      // TODO: remove comment after bug fix
-      // Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock));
+      Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock));
       count--;
     }
     Assert.assertEquals(0, count);
