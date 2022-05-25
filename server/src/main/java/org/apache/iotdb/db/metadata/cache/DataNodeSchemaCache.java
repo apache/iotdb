@@ -71,9 +71,8 @@ public class DataNodeSchemaCache {
             devicePath.concatNode(
                 schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
             schemaCacheEntry.getMeasurementSchema(),
-            null,
-            schemaCacheEntry.isAligned(),
-            schemaCacheEntry.getVersion());
+            schemaCacheEntry.getAlias(),
+            schemaCacheEntry.isAligned());
       }
     }
     return schemaTree;
@@ -84,9 +83,17 @@ public class DataNodeSchemaCache {
       SchemaCacheEntry schemaCacheEntry =
           new SchemaCacheEntry(
               (MeasurementSchema) measurementPath.getMeasurementSchema(),
-              measurementPath.isUnderAlignedEntity(),
-              measurementPath.getVersion());
+              measurementPath.isMeasurementAliasExists()
+                  ? measurementPath.getMeasurementAlias()
+                  : null,
+              measurementPath.isUnderAlignedEntity());
       cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
+      if (measurementPath.isMeasurementAliasExists()) {
+        // cache alias path
+        cache.put(
+            measurementPath.getDevicePath().concatNode(measurementPath.getMeasurementAlias()),
+            schemaCacheEntry);
+      }
     }
   }
 

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
-import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -281,19 +280,13 @@ public class LogicalPlanner {
           createTimeSeriesStatement.getProps(),
           createTimeSeriesStatement.getTags(),
           createTimeSeriesStatement.getAttributes(),
-          createTimeSeriesStatement.getAlias(),
-          TimeseriesVersionUtil.generateVersion());
+          createTimeSeriesStatement.getAlias());
     }
 
     @Override
     public PlanNode visitCreateAlignedTimeseries(
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
-      int size = createAlignedTimeSeriesStatement.getMeasurements().size();
-      List<String> versionList = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
-        versionList.add(TimeseriesVersionUtil.generateVersion());
-      }
       return new CreateAlignedTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
           createAlignedTimeSeriesStatement.getDevicePath(),
@@ -303,8 +296,7 @@ public class LogicalPlanner {
           createAlignedTimeSeriesStatement.getCompressors(),
           createAlignedTimeSeriesStatement.getAliasList(),
           createAlignedTimeSeriesStatement.getTagsList(),
-          createAlignedTimeSeriesStatement.getAttributesList(),
-          versionList);
+          createAlignedTimeSeriesStatement.getAttributesList());
     }
 
     @Override
