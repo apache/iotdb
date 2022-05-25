@@ -135,7 +135,8 @@ public class CreateTimeSeriesOperator extends Operator {
    * @throws SemanticException e
    */
   public void check() throws SemanticException {
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
       String datatypeString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
       try {
@@ -151,7 +152,8 @@ public class CreateTimeSeriesOperator extends Operator {
 
     final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
     this.encoding = ioTDBDescriptor.getDefaultEncodingByType(this.dataType);
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
       try {
@@ -163,7 +165,7 @@ public class CreateTimeSeriesOperator extends Operator {
     }
 
     this.compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION)) {
+    if (props != null && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION)) {
       String compressionString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
       try {
@@ -173,7 +175,7 @@ public class CreateTimeSeriesOperator extends Operator {
         throw new SemanticException(
             String.format("Unsupported compression: %s", compressionString));
       }
-    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR)) {
+    } else if (props != null && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR)) {
       String compressorString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
       try {

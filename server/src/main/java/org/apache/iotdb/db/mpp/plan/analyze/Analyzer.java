@@ -887,7 +887,8 @@ public class Analyzer {
 
     private void checkProps(CreateTimeSeriesStatement createTimeSeriesStatement) {
       Map<String, String> props = createTimeSeriesStatement.getProps();
-      if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
+      if (props != null
+          && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
         String datatypeString =
             props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
         try {
@@ -904,7 +905,8 @@ public class Analyzer {
       final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
       createTimeSeriesStatement.setEncoding(
           ioTDBDescriptor.getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
-      if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      if (props != null
+          && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
         String encodingString =
             props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
         try {
@@ -917,7 +919,8 @@ public class Analyzer {
 
       createTimeSeriesStatement.setCompressor(
           TSFileDescriptor.getInstance().getConfig().getCompressor());
-      if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      if (props != null
+          && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
         String compressionString =
             props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
         try {
@@ -927,7 +930,8 @@ public class Analyzer {
           throw new SemanticException(
               String.format("Unsupported compression: %s", compressionString));
         }
-      } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      } else if (props != null
+          && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
         String compressorString =
             props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
         try {
