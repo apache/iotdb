@@ -27,8 +27,6 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,12 +34,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class UDFExecutableManager implements IService, SnapshotProcessor {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(UDFExecutableManager.class);
 
   private final String temporaryLibRoot;
   private final String udfLibRoot;
@@ -181,62 +176,21 @@ public class UDFExecutableManager implements IService, SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return takeSnapshotForDir(
+    return SnapshotUtils.takeSnapshotForDir(
             temporaryLibRoot,
             snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary")
-        && takeSnapshotForDir(
+        && SnapshotUtils.takeSnapshotForDir(
             udfLibRoot,
             snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf");
   }
 
-  private boolean takeSnapshotForDir(String source, String snapshotDestination) throws IOException {
-    final SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    final File sourceFile = systemFileFactory.getFile(source);
-    final File destinationFile = systemFileFactory.getFile(snapshotDestination);
-    final File temporaryFile =
-        systemFileFactory.getFile(destinationFile.getAbsolutePath() + "-" + UUID.randomUUID());
-
-    FileUtils.deleteQuietly(temporaryFile);
-    FileUtils.forceMkdir(temporaryFile);
-
-    try {
-      FileUtils.copyDirectory(sourceFile, temporaryFile);
-      FileUtils.deleteQuietly(destinationFile);
-      return temporaryFile.renameTo(destinationFile);
-    } finally {
-      FileUtils.deleteQuietly(temporaryFile);
-    }
-  }
-
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    loadSnapshotForDir(
+    SnapshotUtils.loadSnapshotForDir(
         snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "temporary",
         temporaryLibRoot);
-    loadSnapshotForDir(
+    SnapshotUtils.loadSnapshotForDir(
         snapshotDir.getAbsolutePath() + File.separator + "ext" + File.separator + "udf",
         udfLibRoot);
-  }
-
-  private void loadSnapshotForDir(String snapshotSource, String destination) throws IOException {
-    final SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    final File sourceFile = systemFileFactory.getFile(snapshotSource);
-    final File destinationFile = systemFileFactory.getFile(destination);
-    final File temporaryFile =
-        systemFileFactory.getFile(destinationFile.getAbsolutePath() + "-" + UUID.randomUUID());
-
-    try {
-      FileUtils.moveDirectory(destinationFile, temporaryFile);
-      FileUtils.forceMkdir(destinationFile);
-      try {
-        FileUtils.copyDirectory(sourceFile, destinationFile);
-      } catch (Exception e) {
-        LOGGER.error("Failed to load udf snapshot and rollback.");
-        FileUtils.deleteQuietly(destinationFile);
-        FileUtils.moveDirectory(temporaryFile, destinationFile);
-      }
-    } finally {
-      FileUtils.deleteQuietly(temporaryFile);
-    }
   }
 }

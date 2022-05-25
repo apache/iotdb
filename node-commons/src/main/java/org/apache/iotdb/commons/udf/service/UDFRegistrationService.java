@@ -59,7 +59,7 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
   private final String temporaryLogFileName;
 
   private final ReentrantLock registrationLock;
-  private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
+  private ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
 
   private final ReentrantReadWriteLock logWriterLock;
   private UDFLogWriter logWriter;
@@ -325,13 +325,18 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
   @Override
   public void start() throws StartupException {
     try {
-      registerBuiltinTimeSeriesGeneratingFunctions();
-      makeDirIfNecessary();
-      doRecovery();
-      logWriter = new UDFLogWriter(logFileName);
+      recovery();
     } catch (Exception e) {
       throw new StartupException(e);
     }
+  }
+
+  private void recovery() throws Exception {
+    registrationInformation = new ConcurrentHashMap<>();
+    registerBuiltinTimeSeriesGeneratingFunctions();
+    makeDirIfNecessary();
+    doRecovery();
+    logWriter = new UDFLogWriter(logFileName);
   }
 
   private void registerBuiltinTimeSeriesGeneratingFunctions() {
@@ -480,9 +485,19 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return false;
+    return SnapshotUtils.takeSnapshotForDir(
+        ulogFileDir, snapshotDir.getAbsolutePath() + File.separator + "udf");
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws IOException {}
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
+    SnapshotUtils.loadSnapshotForDir(
+        snapshotDir.getAbsolutePath() + File.separator + "udf", ulogFileDir);
+
+    try {
+      recovery();
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+  }
 }
