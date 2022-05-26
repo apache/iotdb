@@ -58,6 +58,7 @@ import org.apache.ratis.protocol.RaftClientRequest;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
+import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
@@ -468,7 +469,7 @@ class RatisConsensus implements IConsensus {
         return failed(new RatisRequestFailedException(configChangeReply.getException()));
       }
       // TODO tuning for timeoutMs
-      reply = client.getRaftClient().admin().transferLeadership(newRaftLeader.getId(), 5000);
+      reply = client.getRaftClient().admin().transferLeadership(null, 5000);
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
@@ -527,19 +528,16 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public Peer getLeader(ConsensusGroupId groupId) {
-    if (isLeader(groupId)) {
-      return new Peer(groupId, Utils.formRaftPeerIdToTEndPoint(myself.getId()));
-    }
-
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftClient client;
+    RaftPeerId leaderId;
+
     try {
-      client = server.getDivision(raftGroupId).getRaftClient();
+      leaderId = server.getDivision(raftGroupId).getInfo().getLeaderId();
     } catch (IOException e) {
-      logger.warn("cannot find raft client for group " + groupId);
+      logger.warn("fetch division info for group " + groupId + " failed due to: ", e);
       return null;
     }
-    TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(client.getLeaderId());
+    TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(leaderId);
     return new Peer(groupId, leaderEndpoint);
   }
 
