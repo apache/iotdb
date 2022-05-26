@@ -221,7 +221,8 @@ public class LogicalPlanner {
                   aggregationExpressions,
                   analysis.getGroupByTimeParameter(),
                   curStep,
-                  analysis.getTypeProvider());
+                  analysis.getTypeProvider(),
+                  queryStatement.getResultOrder());
 
           if (curStep.isOutputPartial()) {
             if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
@@ -230,8 +231,11 @@ public class LogicalPlanner {
                       ? AggregationStep.INTERMEDIATE
                       : AggregationStep.FINAL;
               planBuilder =
-                  planBuilder.planGroupByTime(
-                      aggregationExpressions, analysis.getGroupByTimeParameter(), curStep);
+                  planBuilder.planSlidingWindowAggregation(
+                      aggregationExpressions,
+                      analysis.getGroupByTimeParameter(),
+                      curStep,
+                      queryStatement.getResultOrder());
             }
 
             if (queryStatement.isGroupByLevel()) {
