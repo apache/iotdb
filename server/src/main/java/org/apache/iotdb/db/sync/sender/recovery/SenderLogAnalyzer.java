@@ -26,7 +26,6 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.MsgManager;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
@@ -47,7 +46,7 @@ public class SenderLogAnalyzer {
   private final List<Pipe> pipes;
 
   private Pipe runningPipe;
-  private PipeStatus runningPipeStatus;
+  private Pipe.PipeStatus runningPipeStatus;
   private MsgManager msgManager;
 
   public SenderLogAnalyzer() throws IOException {
@@ -102,15 +101,15 @@ public class SenderLogAnalyzer {
             msgManager.addPipe(runningPipe);
             break;
           case STOP_PIPE: // ignore status check
-            runningPipeStatus = PipeStatus.STOP;
+            runningPipeStatus = Pipe.PipeStatus.STOP;
             msgManager.recoverMsg(parseStrings);
             break;
           case START_PIPE:
-            runningPipeStatus = PipeStatus.RUNNING;
+            runningPipeStatus = Pipe.PipeStatus.RUNNING;
             msgManager.recoverMsg(parseStrings);
             break;
           case DROP_PIPE:
-            runningPipeStatus = PipeStatus.DROP;
+            runningPipeStatus = Pipe.PipeStatus.DROP;
             runningPipe.drop();
             msgManager.removeAllPipe();
             break;

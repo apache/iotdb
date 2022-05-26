@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogAnalyzer;
@@ -121,7 +120,7 @@ public class SenderService implements IService {
       throw new PipeSinkException("PipeSink " + name + " is not exist.");
     }
     if (runningPipe != null
-        && runningPipe.getStatus() != PipeStatus.DROP
+        && runningPipe.getStatus() != Pipe.PipeStatus.DROP
         && runningPipe.getPipeSink().getName().equals(name)) {
       throw new PipeSinkException(
           String.format(
@@ -144,7 +143,7 @@ public class SenderService implements IService {
   /** pipe * */
   public synchronized void addPipe(CreatePipePlan plan) throws PipeException {
     // common check
-    if (runningPipe != null && runningPipe.getStatus() != PipeStatus.DROP) {
+    if (runningPipe != null && runningPipe.getStatus() != Pipe.PipeStatus.DROP) {
       throw new PipeException(
           String.format(
               "Pipe %s is %s, please retry after drop it.",
@@ -207,7 +206,7 @@ public class SenderService implements IService {
 
   public synchronized void stopPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
-    if (runningPipe.getStatus() == PipeStatus.RUNNING) {
+    if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
       runningPipe.stop();
       transportHandler.stop();
     }
@@ -216,7 +215,7 @@ public class SenderService implements IService {
 
   public synchronized void startPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
-    if (runningPipe.getStatus() == PipeStatus.STOP) {
+    if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       runningPipe.start();
       transportHandler.start();
     }
@@ -256,7 +255,7 @@ public class SenderService implements IService {
   }
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
-    if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
+    if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       throw new PipeException("There is no existing pipe.");
     }
     if (!runningPipe.getName().equals(pipeName)) {
@@ -284,7 +283,7 @@ public class SenderService implements IService {
   }
 
   public synchronized void receiveMsg(SyncResponse response) {
-    if (runningPipe == null || runningPipe.getStatus() == PipeStatus.DROP) {
+    if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       logger.info(String.format("No running pipe for receiving msg %s.", response));
       return;
     }
@@ -304,7 +303,7 @@ public class SenderService implements IService {
       case WARN:
         msgManager.recordMsg(
             runningPipe,
-            runningPipe.getStatus() == PipeStatus.RUNNING
+            runningPipe.getStatus() == Pipe.PipeStatus.RUNNING
                 ? Operator.OperatorType.START_PIPE
                 : Operator.OperatorType.STOP_PIPE,
             response.type,
@@ -334,7 +333,7 @@ public class SenderService implements IService {
 
   @Override
   public void stop() {
-    if (runningPipe != null && !PipeStatus.DROP.equals(runningPipe.getStatus())) {
+    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
         transportHandler.stop();
@@ -353,7 +352,7 @@ public class SenderService implements IService {
     msgManager = null;
     senderLogger.close();
 
-    if (runningPipe != null && !PipeStatus.DROP.equals(runningPipe.getStatus())) {
+    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
         transportHandler.close();
@@ -381,11 +380,11 @@ public class SenderService implements IService {
     this.runningPipe = analyzer.getRecoveryRunningPipe();
     this.msgManager = analyzer.getMsgManager();
 
-    if (runningPipe != null && !PipeStatus.DROP.equals(runningPipe.getStatus())) {
+    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       this.transportHandler =
           TransportHandler.getNewTransportHandler(
               runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
-      if (PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
+      if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
         transportHandler.start();
       }
     }
