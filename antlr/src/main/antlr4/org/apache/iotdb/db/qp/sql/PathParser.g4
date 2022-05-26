@@ -44,6 +44,7 @@ nodeName
     : wildcard
     | wildcard? identifier wildcard?
     | identifier
+    | INTEGER_LITERAL
     ;
 
 wildcard
