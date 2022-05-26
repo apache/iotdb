@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
@@ -109,7 +110,7 @@ public class AlignedSeriesCompactionExecutor {
             continue;
           }
           measurementSet.add(chunkMetadata.getMeasurementUid());
-          Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
+          Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetadata);
           ChunkHeader header = chunk.getHeader();
           schemaSet.add(
               new MeasurementSchema(

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.ReadPointPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -65,7 +67,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -153,8 +154,7 @@ public class ReadPointCompactionPerformer
     MultiTsFileDeviceIterator.AlignedMeasurementIterator alignedMeasurementIterator =
         deviceIterator.iterateAlignedSeries(device);
     Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
-    ConcurrentHashMap<String, MeasurementSchema> schemaMap =
-        getMeasurementSchema(device, allMeasurements);
+    Map<String, MeasurementSchema> schemaMap = getMeasurementSchema(device, allMeasurements);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -194,8 +194,7 @@ public class ReadPointCompactionPerformer
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
-    ConcurrentHashMap<String, MeasurementSchema> schemaMap =
-        getMeasurementSchema(device, allMeasurements);
+    Map<String, MeasurementSchema> schemaMap = getMeasurementSchema(device, allMeasurements);
 
     // assign all measurements to different sub tasks
     Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
@@ -237,9 +236,9 @@ public class ReadPointCompactionPerformer
     compactionWriter.endChunkGroup();
   }
 
-  private ConcurrentHashMap<String, MeasurementSchema> getMeasurementSchema(
+  private Map<String, MeasurementSchema> getMeasurementSchema(
       String device, Set<String> measurements) throws IllegalPathException, IOException {
-    ConcurrentHashMap<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+    HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
     List<TsFileResource> allResources = new LinkedList<>(seqFiles);
     allResources.addAll(unseqFiles);
     for (String measurement : measurements) {
@@ -253,7 +252,8 @@ public class ReadPointCompactionPerformer
                     tsFileResource,
                     x -> {
                       try {
-                        return new TsFileSequenceReader(x.getTsFilePath());
+                        FileReaderManager.getInstance().increaseFileReaderReference(x, true);
+                        return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
                       } catch (IOException e) {
                         throw new RuntimeException(
                             String.format(
@@ -277,7 +277,7 @@ public class ReadPointCompactionPerformer
     List<ChunkMetadata> chunkMetadata =
         reader.getChunkMetadataList(new PartialPath(device, measurement));
     if (chunkMetadata.size() > 0) {
-      Chunk chunk = reader.readMemChunk(chunkMetadata.get(0));
+      Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(0));
       ChunkHeader header = chunk.getHeader();
       return new MeasurementSchema(
           measurement, header.getDataType(), header.getEncodingType(), header.getCompressionType());
@@ -286,8 +286,8 @@ public class ReadPointCompactionPerformer
   }
 
   private void clearReaderCache() throws IOException {
-    for (TsFileSequenceReader reader : readerCacheMap.values()) {
-      reader.close();
+    for (TsFileResource resource : readerCacheMap.keySet()) {
+      FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
     }
   }
 

@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -73,9 +72,8 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
   @Override
   public Void call() throws Exception {
     for (String measurement : measurementList) {
-      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(schemaMap.get(measurement));
-
+      List<IMeasurementSchema> measurementSchemas =
+          Collections.singletonList(schemaMap.get(measurement));
       IBatchReader dataBatchReader =
           ReadPointCompactionPerformer.constructReader(
               device,

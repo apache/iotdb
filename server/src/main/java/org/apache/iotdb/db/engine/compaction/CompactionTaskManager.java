@@ -406,7 +406,10 @@ public class CompactionTaskManager implements IService {
       }
       if (this.subCompactionTaskExecutionPool != null) {
         subCompactionTaskExecutionPool.shutdownNow();
-        this.subCompactionTaskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+        if (!this.subCompactionTaskExecutionPool.awaitTermination(
+            MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new RuntimeException("Failed to shutdown subCompactionTaskExecutionPool");
+        }
       }
       this.taskExecutionPool =
           (WrappedScheduledExecutorService)

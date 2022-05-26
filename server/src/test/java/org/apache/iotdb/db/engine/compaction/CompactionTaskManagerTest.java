@@ -43,6 +43,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.fail;
+
 public class CompactionTaskManagerTest extends InnerCompactionTest {
   static final Logger logger = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
   File tempSGDir;
@@ -121,7 +123,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", manager.getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
   }
@@ -180,7 +182,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", CompactionTaskManager.getInstance().getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
     for (TsFileResource resource : seqResources) {
@@ -233,7 +235,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
           logger.warn("{}", manager.getRunningCompactionTaskList());
         }
         if (waitingTime > MAX_WAITING_TIME) {
-          Assert.fail();
+          fail();
         }
       }
     }
@@ -279,7 +281,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", manager.getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
   }
@@ -342,8 +344,13 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
 
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+    long waitingTime = 0;
     while (!task.isTaskFinished()) {
       TimeUnit.MILLISECONDS.sleep(200);
+      waitingTime += 200;
+      if (waitingTime > 10_000) {
+        fail();
+      }
     }
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());
