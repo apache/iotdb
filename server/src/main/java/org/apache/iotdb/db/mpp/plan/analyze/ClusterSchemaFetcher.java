@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -97,8 +96,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
 
-    QueryId queryId =
-        new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
     // TODO: (xingtanzjr) throw exception
@@ -327,8 +325,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private void executeCreateStatement(Statement statement) {
-    QueryId queryId =
-        new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
@@ -346,8 +343,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private void executeCreateTimeseriesByDeviceStatement(
       CreateTimeSeriesByDeviceStatement statement) {
-    QueryId queryId =
-        new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
