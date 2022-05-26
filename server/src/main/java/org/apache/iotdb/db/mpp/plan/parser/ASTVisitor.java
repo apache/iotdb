@@ -1286,11 +1286,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       return unWrapped;
     }
-    checkSpecialCharacters(nodeName);
+    checkNodeName(nodeName);
     return nodeName;
   }
 
-  private void checkSpecialCharacters(String src) {
+  private void checkNodeName(String src) {
     // node name could starts with * and ends with *
     if (src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
         && src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {

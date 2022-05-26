@@ -2637,11 +2637,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       return unWrapped;
     }
-    checkSpecialCharacters(nodeName);
+    checkNodeName(nodeName);
     return nodeName;
   }
 
-  private void checkSpecialCharacters(String src) {
+  private void checkNodeName(String src) {
     // node name could starts with * and ends with *
     // todo: check double star?
     if ((src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
