@@ -211,6 +211,13 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+// UDF
+struct TCreateFunctionReq {
+  1: required string udfName
+  2: required string className
+  3: required list<string> uris
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -270,4 +277,8 @@ service ConfigIService {
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  /* UDF */
+
+  common.TSStatus createFunction(TCreateFunctionReq req)
 }

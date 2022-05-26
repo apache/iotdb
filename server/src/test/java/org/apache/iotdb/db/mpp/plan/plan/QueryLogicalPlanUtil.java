@@ -37,11 +37,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
@@ -101,6 +104,46 @@ public class QueryLogicalPlanUtil {
     } catch (IllegalPathException e) {
       e.printStackTrace();
     }
+  }
+
+  /* Last Query */
+  static {
+    String sql = "SELECT last * FROM root.sg.** WHERE time > 100";
+
+    QueryId queryId = new QueryId("test");
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
+    sourceNodeList.add(
+        new AlignedLastQueryScanNode(
+            queryId.genPlanNodeId(),
+            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1"))));
+    sourceNodeList.add(
+        new AlignedLastQueryScanNode(
+            queryId.genPlanNodeId(),
+            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s2"))));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
+
+    LastQueryMergeNode lastQueryMergeNode =
+        new LastQueryMergeNode(queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100));
+
+    querySQLs.add(sql);
+    sqlToPlanMap.put(sql, lastQueryMergeNode);
   }
 
   /* Simple Query */
