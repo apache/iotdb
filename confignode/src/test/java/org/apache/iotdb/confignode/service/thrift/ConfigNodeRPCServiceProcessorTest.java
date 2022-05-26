@@ -33,6 +33,10 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
@@ -92,6 +96,11 @@ public class ConfigNodeRPCServiceProcessorTest {
 
   @BeforeClass
   public static void beforeClass() throws StartupException, ConfigurationException, IOException {
+    final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+    UDFExecutableManager.setupAndGetInstance(
+        configNodeConf.getTemporaryLibDir(), configNodeConf.getUdfLibDir());
+    UDFClassLoaderManager.setupAndGetInstance(configNodeConf.getUdfLibDir());
+    UDFRegistrationService.setupAndGetInstance(configNodeConf.getSystemUdfDir());
     ConfigNodeStartupCheck.getInstance().startUpCheck();
   }
 
@@ -111,6 +120,9 @@ public class ConfigNodeRPCServiceProcessorTest {
 
   @AfterClass
   public static void afterClass() throws IOException {
+    UDFExecutableManager.getInstance().stop();
+    UDFClassLoaderManager.getInstance().stop();
+    UDFRegistrationService.getInstance().stop();
     FileUtils.deleteFully(new File(ConfigNodeConstant.DATA_DIR));
   }
 

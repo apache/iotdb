@@ -32,10 +32,10 @@ import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -551,9 +551,9 @@ public class LogicalPlannerTest {
   public void testCountNodes() {
     String sql = "COUNT NODES root.ln LEVEL=1";
     try {
-      CountSchemaMergeNode countSchemaMergeNode = (CountSchemaMergeNode) parseSQLToPlanNode(sql);
+      NodePathsCountNode nodePathsCountNode = (NodePathsCountNode) parseSQLToPlanNode(sql);
       NodeManagementMemoryMergeNode nodeManagementMemoryMergeNode =
-          (NodeManagementMemoryMergeNode) countSchemaMergeNode.getChildren().get(0);
+          (NodeManagementMemoryMergeNode) nodePathsCountNode.getChildren().get(0);
       SchemaQueryMergeNode schemaQueryMergeNode =
           (SchemaQueryMergeNode) nodeManagementMemoryMergeNode.getChildren().get(0);
       NodePathsSchemaScanNode nodePathsSchemaScanNode =
