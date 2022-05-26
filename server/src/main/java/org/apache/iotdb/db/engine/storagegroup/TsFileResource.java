@@ -95,9 +95,9 @@ public class TsFileResource {
   /** time index type, V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
   private byte timeIndexType;
 
-  private ModificationFile modFile;
+  private volatile ModificationFile modFile;
 
-  private ModificationFile compactionModFile;
+  private volatile ModificationFile compactionModFile;
 
   protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
 
@@ -130,7 +130,7 @@ public class TsFileResource {
 
   private long ramSize;
 
-  private long tsFileSize = -1L;
+  private volatile long tsFileSize = -1L;
 
   private TsFileProcessor processor;
 
