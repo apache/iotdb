@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -119,11 +119,15 @@ public class ShowTTLTask implements IConfigTask {
       }
     }
     // build TSBlock
-    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
+    TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showTTLHeader.getRespDataTypes());
     for (Map.Entry<String, Long> entry : storageGroupToTTL.entrySet()) {
       builder.getTimeColumnBuilder().writeLong(0);
       builder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
-      builder.getColumnBuilder(1).writeLong(entry.getValue());
+      if (Long.MAX_VALUE == entry.getValue()) {
+        builder.getColumnBuilder(1).writeBinary(new Binary(IoTDBConstant.TLL_NOT_SET));
+      } else {
+        builder.getColumnBuilder(1).writeBinary(new Binary(entry.getValue().toString()));
+      }
       builder.declarePosition();
     }
     DatasetHeader datasetHeader = HeaderConstant.showTTLHeader;

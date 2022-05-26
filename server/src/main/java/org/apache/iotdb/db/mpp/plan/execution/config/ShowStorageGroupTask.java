@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -104,7 +105,13 @@ public class ShowStorageGroupTask implements IConfigTask {
       TStorageGroupSchema storageGroupSchema = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(storageGroup));
-      builder.getColumnBuilder(1).writeLong(storageGroupSchema.getTTL());
+      if (Long.MAX_VALUE == storageGroupSchema.getTTL()) {
+        builder.getColumnBuilder(1).writeBinary(new Binary(IoTDBConstant.TLL_NOT_SET));
+      } else {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(String.valueOf(storageGroupSchema.getTTL())));
+      }
       builder.getColumnBuilder(2).writeInt(storageGroupSchema.getSchemaReplicationFactor());
       builder.getColumnBuilder(3).writeInt(storageGroupSchema.getDataReplicationFactor());
       builder.getColumnBuilder(4).writeLong(storageGroupSchema.getTimePartitionInterval());

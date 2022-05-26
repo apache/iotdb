@@ -132,7 +132,7 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
+                new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
                 new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
                 new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64)),
@@ -141,7 +141,7 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
+                new ColumnHeader(COLUMN_TTL, TSDataType.TEXT)),
             true);
     showChildPathsHeader =
         new DatasetHeader(
