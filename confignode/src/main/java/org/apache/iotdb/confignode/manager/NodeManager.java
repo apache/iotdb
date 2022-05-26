@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
@@ -168,6 +169,21 @@ public class NodeManager {
     } else {
       return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
+    }
+  }
+
+  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
+    if (!getConsensusManager().isLeader()) {
+      TSStatus status = new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
+      status.setRedirectNode(leader.getEndpoint());
+      return status;
+    }
+    if (getConsensusManager().removeConfigNodePeer(removeConfigNodeReq)) {
+      return getConsensusManager().write(removeConfigNodeReq).getStatus();
+    } else {
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+          .setMessage("Remove ConfigNode failed because there is no ConfigNode.");
     }
   }
 

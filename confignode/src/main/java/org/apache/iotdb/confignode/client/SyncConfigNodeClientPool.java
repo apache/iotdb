@@ -43,11 +43,26 @@ public class SyncConfigNodeClientPool {
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
+  private TEndPoint configNodeLeader;
+
   private SyncConfigNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    configNodeLeader = new TEndPoint();
+  }
+
+  private boolean updateConfigNodeLeader(TSStatus status) {
+    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      if (status.isSetRedirectNode()) {
+        configNodeLeader = status.getRedirectNode();
+      } else {
+        configNodeLeader = null;
+      }
+      return true;
+    }
+    return false;
   }
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */
@@ -58,12 +73,9 @@ public class SyncConfigNodeClientPool {
       for (int retry = 0; retry < retryNum; retry++) {
         try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
           TConfigNodeRegisterResp resp = client.registerConfigNode(req);
-          if (resp.status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-            if (resp.status.isSetRedirectNode()) {
-              TEndPoint configNodeLeader = resp.status.getRedirectNode();
-              client.close();
-              return clientManager.borrowClient(configNodeLeader).registerConfigNode(req);
-            }
+          if (updateConfigNodeLeader(resp.status)) {
+            client.close();
+            return clientManager.borrowClient(configNodeLeader).registerConfigNode(req);
           } else {
             return resp;
           }
@@ -87,12 +99,9 @@ public class SyncConfigNodeClientPool {
       for (int retry = 0; retry < retryNum; retry++) {
         try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
           TSStatus status = client.applyConfigNode(configNodeLocation);
-          if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-            if (status.isSetRedirectNode()) {
-              TEndPoint configNodeLeader = status.getRedirectNode();
-              client.close();
-              return clientManager.borrowClient(configNodeLeader).applyConfigNode(configNodeLocation);
-            }
+          if (updateConfigNodeLeader(status)) {
+            client.close();
+            return clientManager.borrowClient(configNodeLeader).applyConfigNode(configNodeLocation);
           } else {
             return status;
           }
@@ -103,6 +112,21 @@ public class SyncConfigNodeClientPool {
       }
     }
     LOGGER.error("Apply ConfigNode failed");
+    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+        .setMessage("All retry failed.");
+  }
+
+  public TSStatus removeConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
+    // TODO: Unified retry logic
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+        return client.removeConfigNode(configNodeLocation);
+      } catch (Exception e) {
+        LOGGER.warn("Remove ConfigNode failed, retrying...", e);
+        doRetryWait();
+      }
+    }
+    LOGGER.error("Remove ConfigNode failed");
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed.");
   }

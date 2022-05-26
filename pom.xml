@@ -1231,29 +1231,29 @@
                 </file>
             </activation>
             <properties>
-                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>D:\Software\Study\thrift-0.14.2\thrift-0.14.2.exe</thrift.exec.absolute.path>
             </properties>
             <build>
                 <plugins>
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-thrift-executable</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>${thrift.download-url}</url>
-                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>
-                                    <outputFileName>${thrift.executable}</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
+                    <!--                    <plugin>-->
+                    <!--                        <groupId>com.googlecode.maven-download-plugin</groupId>-->
+                    <!--                        <artifactId>download-maven-plugin</artifactId>-->
+                    <!--                        <version>1.6.7</version>-->
+                    <!--                        <executions>-->
+                    <!--                            <execution>-->
+                    <!--                                <id>get-thrift-executable</id>-->
+                    <!--                                <phase>generate-sources</phase>-->
+                    <!--                                <goals>-->
+                    <!--                                    <goal>wget</goal>-->
+                    <!--                                </goals>-->
+                    <!--                                <configuration>-->
+                    <!--                                    <url>${thrift.download-url}</url>-->
+                    <!--                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>-->
+                    <!--                                    <outputFileName>${thrift.executable}</outputFileName>-->
+                    <!--                                </configuration>-->
+                    <!--                            </execution>-->
+                    <!--                        </executions>-->
+                    <!--                    </plugin>-->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>

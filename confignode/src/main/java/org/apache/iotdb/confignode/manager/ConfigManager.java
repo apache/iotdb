@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -554,6 +555,11 @@ public class ConfigManager implements Manager {
   @Override
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     return nodeManager.applyConfigNode(applyConfigNodeReq);
+  }
+
+  @Override
+  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
+    return nodeManager.removeConfigNode(removeConfigNodeReq);
   }
 
   public ProcedureManager getProcedureManager() {

@@ -18,21 +18,33 @@
  */
 package org.apache.iotdb.confignode.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 
 public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
+  private static final int onlineConfigNodeNum = 1;
 
   private final String mbeanName =
       String.format(
@@ -107,6 +119,66 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public void stop() throws IOException {
     deactivate();
+  }
+
+  public void doRemoveNode() throws IOException {
+    LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
+    List<TConfigNodeLocation> onlineConfigNodes =
+        configManager.getNodeManager().getOnlineConfigNodes();
+    ConsensusGroupId consensusGroupId = configManager.getConsensusManager().getConsensusGroupId();
+    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+    Peer leader = configManager.getConsensusManager().getLeader(consensusGroupId);
+    TEndPoint removeConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
+    if (checkConfigNodeDuplicateNum(onlineConfigNodes)) {
+      LOGGER.error("Remove ConfigNode failed, because there is only one ConfigNode in Cluster!");
+      return;
+    }
+
+    if (leader.getEndpoint().equals(removeConfigNode)) {
+      LOGGER.info("The remove ConfigNode is leader, need to transfer leader.");
+      leader = transferLeader(onlineConfigNodes, consensusGroupId);
+    }
+
+    TSStatus status =
+        SyncConfigNodeClientPool.getInstance()
+            .removeConfigNode(
+                leader.getEndpoint(),
+                new TConfigNodeLocation(
+                    removeConfigNode,
+                    new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.error(status.getMessage());
+      throw new IOException("Remove ConfigNode failed:");
+    }
+    LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
+  }
+
+  private Peer transferLeader(
+      List<TConfigNodeLocation> onlineConfigNodes, ConsensusGroupId groupId) {
+    Peer leader = configManager.getConsensusManager().getLeader(groupId);
+    for (TConfigNodeLocation onlineConfigNode : onlineConfigNodes) {
+      if (!leader.getEndpoint().equals(onlineConfigNode.getInternalEndPoint())) {
+        Peer newLeader = new Peer(groupId, onlineConfigNode.getInternalEndPoint());
+        ConsensusGenericResponse resp =
+            configManager
+                .getConsensusManager()
+                .getConsensusImpl()
+                .transferLeader(groupId, newLeader);
+        if (resp.isSuccess()) {
+          LOGGER.info("Transfer ConfigNode Leader success.");
+          return newLeader;
+        }
+      }
+    }
+    return leader;
+  }
+
+  private boolean checkConfigNodeDuplicateNum(List<TConfigNodeLocation> onlineConfigNodes) {
+    if (onlineConfigNodes.size() <= onlineConfigNodeNum) {
+      LOGGER.info("Only {} ConfigNode in current Cluster!", onlineConfigNodes.size());
+      return true;
+    }
+    return false;
   }
 
   private static class ConfigNodeHolder {
