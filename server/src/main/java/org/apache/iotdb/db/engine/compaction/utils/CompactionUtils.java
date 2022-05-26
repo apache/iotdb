@@ -72,10 +72,11 @@ public class CompactionUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  private static Pair<ChunkMetadata, Chunk> readByAppendPageMerge(
+  private static List<Pair<ChunkMetadata, Chunk>> readByAppendPageMerge(
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap) throws IOException {
     ChunkMetadata newChunkMetadata = null;
     Chunk newChunk = null;
+    List<Pair<ChunkMetadata, Chunk>> newChunkList = new LinkedList<>();
     for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
         readerChunkMetadataMap.entrySet()) {
       TsFileSequenceReader reader = entry.getKey();
@@ -89,9 +90,17 @@ public class CompactionUtils {
           newChunk.mergeChunk(chunk);
           newChunkMetadata.mergeChunkMetadata(chunkMetadata);
         }
+        if (newChunk.getHeader().getDataSize() >= 8L * 1024L * 1024L) {
+          newChunkList.add(new Pair<>(newChunkMetadata, newChunk));
+          newChunkMetadata = null;
+          newChunk = null;
+        }
       }
     }
-    return new Pair<>(newChunkMetadata, newChunk);
+    if (newChunk != null) {
+      newChunkList.add(new Pair<>(newChunkMetadata, newChunk));
+    }
+    return newChunkList;
   }
 
   private static void readByDeserializePageMerge(
@@ -156,17 +165,19 @@ public class CompactionUtils {
       TsFileResource targetResource,
       RestorableTsFileIOWriter writer)
       throws IOException {
-    Pair<ChunkMetadata, Chunk> chunkPair = readByAppendPageMerge(entry.getValue());
-    ChunkMetadata newChunkMetadata = chunkPair.left;
-    Chunk newChunk = chunkPair.right;
-    if (newChunkMetadata != null && newChunk != null) {
-      // wait for limit write
-      MergeManager.mergeRateLimiterAcquire(
-          compactionWriteRateLimiter,
-          (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
-      writer.writeChunk(newChunk, newChunkMetadata);
-      targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
-      targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
+    List<Pair<ChunkMetadata, Chunk>> chunkPairList = readByAppendPageMerge(entry.getValue());
+    for (Pair<ChunkMetadata, Chunk> chunkPair : chunkPairList) {
+      ChunkMetadata newChunkMetadata = chunkPair.left;
+      Chunk newChunk = chunkPair.right;
+      if (newChunkMetadata != null && newChunk != null) {
+        // wait for limit write
+        MergeManager.mergeRateLimiterAcquire(
+            compactionWriteRateLimiter,
+            (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
+        writer.writeChunk(newChunk, newChunkMetadata);
+        targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
+        targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
+      }
     }
   }
 
