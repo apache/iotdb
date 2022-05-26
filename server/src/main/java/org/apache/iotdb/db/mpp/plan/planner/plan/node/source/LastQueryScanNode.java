@@ -34,8 +34,8 @@ import java.util.Objects;
 
 public class LastQueryScanNode extends SourceNode {
 
-  public static final List<String> LAST_QUERY_COLUMN_HEADERS =
-      ImmutableList.of("Time", "timeseries", "value", "dataType");
+  public static final List<String> LAST_QUERY_HEADER_COLUMNS =
+      ImmutableList.of("timeseries", "value", "dataType");
 
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
@@ -97,7 +97,7 @@ public class LastQueryScanNode extends SourceNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return LAST_QUERY_COLUMN_HEADERS;
+    return LAST_QUERY_HEADER_COLUMNS;
   }
 
   @Override

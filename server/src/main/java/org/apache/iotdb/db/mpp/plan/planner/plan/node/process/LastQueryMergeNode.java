@@ -33,7 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_COLUMN_HEADERS;
+import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
 public class LastQueryMergeNode extends ProcessNode {
 
@@ -76,7 +76,7 @@ public class LastQueryMergeNode extends ProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return LAST_QUERY_COLUMN_HEADERS;
+    return LAST_QUERY_HEADER_COLUMNS;
   }
 
   @Override
