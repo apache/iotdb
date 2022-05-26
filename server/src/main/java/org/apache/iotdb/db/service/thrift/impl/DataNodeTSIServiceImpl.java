@@ -1085,14 +1085,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
+      AUDIT_LOGGER.debug("Session {} execute  Data Query: {}", req.sessionId, req);
       long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
-      QueryId id = new QueryId(String.valueOf(queryId));
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
-              id,
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -1102,7 +1101,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         throw new RuntimeException("error code: " + result.status);
       }
 
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(id);
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
       TSExecuteStatementResp resp;
       if (queryExecution.isQuery()) {
@@ -1118,7 +1117,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
       long costTime = System.currentTimeMillis() - startTime;
