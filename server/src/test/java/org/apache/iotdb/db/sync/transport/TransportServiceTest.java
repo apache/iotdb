@@ -131,7 +131,10 @@ public class TransportServiceTest {
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     TransportClient client =
         new TransportClient(
-            pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getPipeServerPort());
+            pipe,
+            "127.0.0.1",
+            IoTDBDescriptor.getInstance().getConfig().getPipeServerPort(),
+            "127.0.0.1");
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
       client.senderTransport(pipeData);
