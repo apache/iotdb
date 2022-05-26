@@ -2646,17 +2646,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     // todo: check double star?
     if ((src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
         && src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      checkWithPattern(src.substring(1, src.length() - 1));
+      checkIdentifier(src.substring(1, src.length() - 1));
     } else if (src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      checkWithPattern(src.substring(1));
+      checkIdentifier(src.substring(1));
     } else if (src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      checkWithPattern(src.substring(0, src.length() - 1));
+      checkIdentifier(src.substring(0, src.length() - 1));
     } else {
-      checkWithPattern(src);
+      checkIdentifier(src);
     }
   }
 
-  private void checkWithPattern(String src) {
+  private void checkIdentifier(String src) {
     if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
       throw new SQLParserException(
           String.format(
@@ -3263,7 +3263,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return src.substring(1, src.length() - 1)
           .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
-    checkSpecialCharacters(src);
+    checkIdentifier(src);
     return src;
   }
 
