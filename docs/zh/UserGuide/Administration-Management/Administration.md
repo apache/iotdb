@@ -49,11 +49,11 @@ IoTDB 为用户提供了权限管理操作，从而为用户提供对于数据�
 
 ### 创建用户
 
-使用 `CREATE USER <userName> <password>` 创建用户。例如，我们可以使用具有所有权限的root用户为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。SQL 语句为：
+使用 `CREATE USER <userName> <password>` 创建用户。例如，我们可以使用具有所有权限的root用户为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。建议使用单引号包裹用户名。SQL 语句为：
 
 ```
-CREATE USER ln_write_user 'write_pwd'
-CREATE USER sgcc_write_user 'write_pwd'
+CREATE USER `ln_write_user` 'write_pwd'
+CREATE USER `sgcc_write_user` 'write_pwd'
 ```
 此时使用展示用户的 SQL 语句：
 
@@ -63,9 +63,9 @@ LIST USER
 我们可以看到这两个已经被创建的用户，结果如下：
 
 ```
-IoTDB> CREATE USER ln_write_user 'write_pwd'
+IoTDB> CREATE USER `ln_write_user` 'write_pwd'
 Msg: The statement is executed successfully.
-IoTDB> CREATE USER sgcc_write_user 'write_pwd'
+IoTDB> CREATE USER `sgcc_write_user` 'write_pwd'
 Msg: The statement is executed successfully.
 IoTDB> LIST USER
 +---------------+
@@ -98,15 +98,15 @@ Msg: 602: No permissions for this operation INSERT
 我们使用 `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` 语句赋予用户权限，例如：
 
 ```
-GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
-GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
+GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 ```
 执行状态如下所示：
 
 ```
-IoTDB> GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
+IoTDB> GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-IoTDB> GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
 ```
 
@@ -121,16 +121,16 @@ Msg: The statement is executed successfully.
 授予用户权限后，我们可以使用 `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` 来撤销已授予的用户权限。例如，用root用户撤销ln_write_user和sgcc_write_user的权限：
 
 ```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 ```
 
 执行状态如下所示：
 
 ```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
+REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
 ```
 
@@ -148,70 +148,70 @@ Msg: 602: No permissions for this operation INSERT
 
 ```
 CREATE USER <userName> <password>;  
-Eg: IoTDB > CREATE USER thulab 'passwd';
+Eg: IoTDB > CREATE USER `thulab` 'passwd';
 ```
 
 * 删除用户
 
 ```
 DROP USER <userName>;  
-Eg: IoTDB > DROP USER xiaoming;
+Eg: IoTDB > DROP USER `xiaoming`;
 ```
 
 * 创建角色
 
 ```
 CREATE ROLE <roleName>;  
-Eg: IoTDB > CREATE ROLE admin;
+Eg: IoTDB > CREATE ROLE `admin`;
 ```
 
 * 删除角色
 
 ```
 DROP ROLE <roleName>;  
-Eg: IoTDB > DROP ROLE admin;
+Eg: IoTDB > DROP ROLE `admin`;
 ```
 
 * 赋予用户权限
 
 ```
 GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * 赋予角色权限
 
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * 赋予用户角色
 
 ```
 GRANT <roleName> TO <userName>;  
-Eg: IoTDB > GRANT temprole TO tempuser;
+Eg: IoTDB > GRANT `temprole` TO tempuser;
 ```
 
 * 撤销用户权限
 
 ```
 REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * 撤销角色权限
 
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * 撤销用户角色
 
 ```
 REVOKE <roleName> FROM <userName>;
-Eg: IoTDB > REVOKE temprole FROM tempuser;
+Eg: IoTDB > REVOKE `temprole` FROM tempuser;
 ```
 
 * 列出用户
@@ -232,49 +232,49 @@ Eg: IoTDB > LIST ROLE
 
 ```
 LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER sgcc_write_user ON root.sgcc.**;
+Eg: IoTDB > LIST PRIVILEGES USER `sgcc_write_user` ON root.sgcc.**;
 ```
 
 * 列出角色权限
 
 ```
 LIST ROLE PRIVILEGES <roleName>
-Eg: IoTDB > LIST ROLE PRIVILEGES actor;
+Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
 ```
 
 * 列出角色在具体路径上的权限
 
 ```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE write_role ON root.sgcc.**;
+Eg: IoTDB > LIST PRIVILEGES ROLE `write_role` ON root.sgcc.**;
 ```
 
 * 列出用户权限
 
 ```
 LIST USER PRIVILEGES <username> ;   
-Eg: IoTDB > LIST USER PRIVILEGES tempuser;
+Eg: IoTDB > LIST USER PRIVILEGES `tempuser`;
 ```
 
 * 列出用户所有的角色
 
 ```
 LIST ALL ROLE OF USER <username> ;  
-Eg: IoTDB > LIST ALL ROLE OF USER tempuser;
+Eg: IoTDB > LIST ALL ROLE OF USER `tempuser`;
 ```
 
 * 列出所有用户的角色
 
 ```
 LIST ALL USER OF ROLE <roleName>;
-Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
+Eg: IoTDB > LIST ALL USER OF ROLE `roleuser`;
 ```
 
 * 更新密码
 
 ```
 ALTER USER <username> SET PASSWORD <password>;
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
+Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 ```
 
 

@@ -139,6 +139,8 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
   public static final String COLUMN_PIPE_MSG = "message";
+  public static final String COLUMN_PIPE_ERRORS = "errors";
+  public static final String COLUMN_PIPE_PERF_INFO = "performance_info";
 
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
@@ -173,9 +175,11 @@ public class IoTDBConstant {
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
+  public static final String TMP_FOLDER_NAME = "temporary";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
+  public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";

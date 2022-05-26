@@ -328,14 +328,23 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
 
-    // register DataNodes
-    registerDataNodes();
-
     // Set StorageGroups
     status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // Test getOrCreateSchemaPartition, the result should be NOT_ENOUGH_DATANODE
+    buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
+    schemaPartitionReq = new TSchemaPartitionReq(buffer);
+    schemaPartitionResp = processor.getOrCreateSchemaPartition(schemaPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(),
+        schemaPartitionResp.getStatus().getCode());
+    Assert.assertNull(schemaPartitionResp.getSchemaRegionMap());
+
+    // register DataNodes
+    registerDataNodes();
 
     // Test getSchemaPartition, the result should be empty
     buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
@@ -512,9 +521,6 @@ public class ConfigNodeRPCServiceProcessorTest {
     TDataPartitionReq dataPartitionReq;
     TDataPartitionResp dataPartitionResp;
 
-    // register DataNodes
-    registerDataNodes();
-
     // Prepare partitionSlotsMap
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap0 =
         constructPartitionSlotsMap(storageGroupNum, seriesPartitionSlotNum, timePartitionSlotNum);
@@ -528,6 +534,16 @@ public class ConfigNodeRPCServiceProcessorTest {
       status = processor.setStorageGroup(setReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
+
+    // Test getOrCreateDataPartition, the result should be NOT_ENOUGH_DATANODE
+    dataPartitionReq = new TDataPartitionReq(partitionSlotsMap0);
+    dataPartitionResp = processor.getOrCreateDataPartition(dataPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), dataPartitionResp.getStatus().getCode());
+    Assert.assertNull(dataPartitionResp.getDataPartitionMap());
+
+    // register DataNodes
+    registerDataNodes();
 
     // Test getDataPartition, the result should be empty
     dataPartitionReq = new TDataPartitionReq(partitionSlotsMap0);
