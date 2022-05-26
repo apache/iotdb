@@ -586,9 +586,10 @@ public class LogicalPlanner {
         ShowChildNodesStatement showChildNodesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildNodesSchemaSource(showChildNodesStatement.getPartialPath())
+          .planChildPathsSchemaSource(showChildNodesStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
           .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_NODES)
+          .planNodePathsConvert()
           .getRoot();
     }
 

@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class ChildPathsSchemaScanOperator implements SourceOperator {
+public class NodePathsSchemaScanOperator implements SourceOperator {
   private final PlanNodeId sourceId;
 
   private final OperatorContext operatorContext;
@@ -44,7 +44,7 @@ public class ChildPathsSchemaScanOperator implements SourceOperator {
 
   private boolean isFinished;
 
-  public ChildPathsSchemaScanOperator(
+  public NodePathsSchemaScanOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, PartialPath partialPath, int level) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
@@ -86,8 +86,8 @@ public class ChildPathsSchemaScanOperator implements SourceOperator {
         childPaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, true, null).stream()
-                .map(PartialPath::getFullPath)
-                .collect(Collectors.toSet());
+                    .map(PartialPath::getFullPath)
+                    .collect(Collectors.toSet());
       } catch (MetadataException e) {
         throw new RuntimeException(e.getMessage(), e);
       }

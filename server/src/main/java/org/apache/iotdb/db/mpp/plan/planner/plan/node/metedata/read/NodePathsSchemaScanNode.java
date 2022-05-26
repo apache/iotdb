@@ -30,12 +30,12 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
+public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   // the path could be a prefix path with wildcard
   private PartialPath prefixPath;
   private int level = -1;
 
-  public ChildPathsSchemaScanNode(PlanNodeId id, PartialPath prefixPath, int level) {
+  public NodePathsSchemaScanNode(PlanNodeId id, PartialPath prefixPath, int level) {
     super(id);
     this.prefixPath = prefixPath;
     this.level = level;
@@ -51,7 +51,7 @@ public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new ChildPathsSchemaScanNode(getPlanNodeId(), prefixPath, level);
+    return new NodePathsSchemaScanNode(getPlanNodeId(), prefixPath, level);
   }
 
   @Override
@@ -61,7 +61,7 @@ public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.CHILD_PATHS_SCAN.serialize(byteBuffer);
+    PlanNodeType.NODE_PATHS_SCAN.serialize(byteBuffer);
     prefixPath.serialize(byteBuffer);
     byteBuffer.putInt(level);
   }
@@ -70,7 +70,7 @@ public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
     PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
     int level = buffer.getInt();
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new ChildPathsSchemaScanNode(planNodeId, path, level);
+    return new NodePathsSchemaScanNode(planNodeId, path, level);
   }
 
   @Override
@@ -84,7 +84,7 @@ public class ChildPathsSchemaScanNode extends SchemaQueryScanNode {
     if (!super.equals(o)) {
       return false;
     }
-    ChildPathsSchemaScanNode that = (ChildPathsSchemaScanNode) o;
+    NodePathsSchemaScanNode that = (NodePathsSchemaScanNode) o;
     return level == that.level && Objects.equals(prefixPath, that.prefixPath);
   }
 
