@@ -1085,7 +1085,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute  Data Query: {}", req.sessionId, req);
+      AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
       long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
       // create and cache dataset
       ExecutionResult result =
