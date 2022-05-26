@@ -140,11 +140,13 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processNoChildSourceNode(node, context);
   }
 
+  @Override
   public PlanNode visitSeriesAggregationScan(
       SeriesAggregationScanNode node, NodeGroupContext context) {
     return processNoChildSourceNode(node, context);
   }
 
+  @Override
   public PlanNode visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, NodeGroupContext context) {
     return processNoChildSourceNode(node, context);
@@ -190,6 +192,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processMultiChildNode(node, context);
   }
 
+  @Override
   public PlanNode visitRowBasedSeriesAggregate(AggregationNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
