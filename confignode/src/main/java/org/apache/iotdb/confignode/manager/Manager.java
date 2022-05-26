@@ -91,6 +91,13 @@ public interface Manager {
   LoadManager getLoadManager();
 
   /**
+   * Get UDFManager
+   *
+   * @return UDFManager instance
+   */
+  UDFManager getUDFManager();
+
+  /**
    * Register DataNode
    *
    * @return DataNodeConfigurationDataSet
@@ -218,4 +225,6 @@ public interface Manager {
    * @return status
    */
   TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
+
+  TSStatus createFunction(String udfName, String className, List<String> uris);
 }

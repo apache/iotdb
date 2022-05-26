@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
@@ -186,6 +187,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();
+          break;
+        case CreateFunction:
+          req = new CreateFunctionReq();
           break;
         case GetChildPathsPartition:
           req = new GetChildPathsPartitionReq();

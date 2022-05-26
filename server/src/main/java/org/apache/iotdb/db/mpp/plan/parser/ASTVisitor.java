@@ -78,6 +78,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -99,7 +100,9 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountNodesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -112,6 +115,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -593,6 +598,30 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       path = new PartialPath(SQLConstant.getSingleRootArray());
     }
     return new CountStorageGroupStatement(path);
+  }
+
+  // Create Function
+  @Override
+  public Statement visitCreateFunction(CreateFunctionContext ctx) {
+    return new CreateFunctionStatement(
+        parseIdentifier(ctx.udfName.getText()),
+        parseStringLiteral(ctx.className.getText()),
+        parseUris(ctx.uri()));
+  }
+
+  private List<URI> parseUris(List<UriContext> uriContexts) {
+    List<URI> uris = new ArrayList<>();
+    if (uriContexts != null) {
+      for (UriContext uriContext : uriContexts) {
+        final String uriString = uriContext.getText();
+        try {
+          uris.add(new URI(parseStringLiteral(uriString)));
+        } catch (URISyntaxException e) {
+          throw new SemanticException(String.format("'%s' is not a legal URI.", uriString));
+        }
+      }
+    }
+    return uris;
   }
 
   // Show Child Paths =====================================================================
