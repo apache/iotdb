@@ -32,7 +32,7 @@ WS
 
 
 /**
- * 2. Keywords
+ * 2. Keywords, new keywords should be added into IdentifierParser.g4
  */
 
 // Common Keywords
@@ -117,14 +117,6 @@ CLEAR
     : C L E A R
     ;
 
-COMPRESSION
-    : C O M P R E S S I O N
-    ;
-
-COMPRESSOR
-    : C O M P R E S S O R
-    ;
-
 CONCAT
     : C O N C A T
     ;
@@ -157,10 +149,6 @@ CREATE
     : C R E A T E
     ;
 
-DATATYPE
-    : D A T A T Y P E
-    ;
-
 DEBUG
     : D E B U G
     ;
@@ -191,10 +179,6 @@ DISABLE
 
 DROP
     : D R O P
-    ;
-
-ENCODING
-    : E N C O D I N G
     ;
 
 END
@@ -619,103 +603,6 @@ WRITABLE
     ;
 
 
-// Data Type Keywords
-
-DATATYPE_VALUE
-    : BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
-    ;
-
-BOOLEAN
-    : B O O L E A N
-    ;
-
-DOUBLE
-    : D O U B L E
-    ;
-
-FLOAT
-    : F L O A T
-    ;
-
-INT32
-    : I N T '3' '2'
-    ;
-
-INT64
-    : I N T '6' '4'
-    ;
-
-TEXT
-    : T E X T
-    ;
-
-
-// Encoding Type Keywords
-
-ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | ZIGZAG | FREQ
-    ;
-
-DICTIONARY
-    : D I C T I O N A R Y
-    ;
-
-DIFF
-    : D I F F
-    ;
-
-GORILLA
-    : G O R I L L A
-    ;
-
-PLAIN
-    : P L A I N
-    ;
-
-REGULAR
-    : R E G U L A R
-    ;
-
-RLE
-    : R L E
-    ;
-
-TS_2DIFF
-    : T S '_' '2' D I F F
-    ;
-
-ZIGZAG
-    : Z I G Z A G
-    ;
-
-FREQ
-    : F R E Q
-    ;
-
-
-// Compressor Type Keywords
-
-COMPRESSOR_VALUE
-    : GZIP | LZ4 | SNAPPY | UNCOMPRESSED
-    ;
-
-GZIP
-    : G Z I P
-    ;
-
-LZ4
-    : L Z '4'
-    ;
-
-SNAPPY
-    : S N A P P Y
-    ;
-
-UNCOMPRESSED
-    : U N C O M P R E S S E D
-    ;
-
-
 // Privileges Keywords
 
 PRIVILEGE_VALUE
@@ -836,6 +723,17 @@ DROP_CONTINUOUS_QUERY
     : D R O P '_' C O N T I N U O U S '_' Q U E R Y
     ;
 
+SCHEMA_REPLICATION_FACTOR
+    : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
+    ;
+
+DATA_REPLICATION_FACTOR
+    : D A T A '_' R E P L I C A T I O N '_' F A C T O R
+    ;
+
+TIME_PARTITION_INTERVAL
+    : T I M E '_' P A R T I T I O N '_' I N T E R V A L
+    ;
 
 /**
  * 3. Operators
@@ -964,18 +862,14 @@ NAN_LITERAL
 
 
 /**
- * 6. Identifier
+ * 6. ID
  */
 
 ID
     : NAME_CHAR+
     ;
 
-QUTOED_ID_IN_NODE_NAME
-    : BQUOTA_STRING_IN_NODE_NAME
-    ;
-
-QUTOED_ID
+QUOTED_ID
     : BQUOTA_STRING
     ;
 
@@ -998,20 +892,17 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | ~('"'| '\\') )* '"'
+    : '"' ( '\\'. | '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | ~('\''| '\\') )* '\''
+    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\'. | ~('`'| '\\') )* '`'
+    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
     ;
 
-fragment BQUOTA_STRING_IN_NODE_NAME
-    : '`' ( '\\' ('`'|'\\'|'\''|'"') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
-    ;
 
 // Characters and write it this way for case sensitivity
 

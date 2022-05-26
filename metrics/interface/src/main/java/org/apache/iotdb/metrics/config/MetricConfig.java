@@ -25,13 +25,15 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
   /** enable publishing data. */
   private Boolean enableMetric = false;
+
+  /** Is stat performance of sub-module enable */
+  private Boolean enablePerformanceStat = false;
 
   /** The of monitor frame */
   private MonitorType monitorType = MonitorType.MICROMETER;
@@ -43,7 +45,7 @@ public class MetricConfig {
   private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
   private List<PredefinedMetric> predefinedMetrics =
-      Collections.singletonList(PredefinedMetric.JVM);
+      Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
 
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";
@@ -51,9 +53,9 @@ public class MetricConfig {
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
 
   public static class IoTDBReporterConfig {
-    /** The host of iotdb */
+    /** The host of iotdb that store metric value */
     private String host = "127.0.0.1";
-    /** The port of iotdb */
+    /** The port of iotdb that store metric value */
     private Integer port = 6667;
     /** The username of iotdb */
     private String username = "root";
@@ -145,10 +147,10 @@ public class MetricConfig {
     }
   }
 
-  /** the host of Instance */
-  private String InstanceHost = "127.0.0.1";
-  /** the port of Instance */
-  private Integer InstancePort = 8086;
+  /** the host of iotdb instance that is monitored */
+  private String instanceHost = "127.0.0.1";
+  /** the port of iotdb instance that is monitored */
+  private Integer instancePort = 6667;
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
@@ -166,6 +168,14 @@ public class MetricConfig {
 
   public void setEnableMetric(Boolean enableMetric) {
     this.enableMetric = enableMetric;
+  }
+
+  public Boolean getEnablePerformanceStat() {
+    return enablePerformanceStat;
+  }
+
+  public void setEnablePerformanceStat(Boolean enablePerformanceStat) {
+    this.enablePerformanceStat = enablePerformanceStat;
   }
 
   public MonitorType getMonitorType() {
@@ -217,19 +227,19 @@ public class MetricConfig {
   }
 
   public String getInstanceHost() {
-    return InstanceHost;
+    return instanceHost;
   }
 
   public void setInstanceHost(String instanceHost) {
-    InstanceHost = instanceHost;
+    this.instanceHost = instanceHost;
   }
 
   public Integer getInstancePort() {
-    return InstancePort;
+    return instancePort;
   }
 
   public void setInstancePort(Integer instancePort) {
-    InstancePort = instancePort;
+    this.instancePort = instancePort;
   }
 
   @Override

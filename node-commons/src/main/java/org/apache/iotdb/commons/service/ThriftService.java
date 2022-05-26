@@ -63,11 +63,9 @@ public abstract class ThriftService implements IService {
     }
   }
 
-  public abstract ThriftService getImplementation();
-
   @Override
   public void start() throws StartupException {
-    JMXService.registerMBean(getImplementation(), mbeanName);
+    JMXService.registerMBean(this, mbeanName);
     startService();
   }
 

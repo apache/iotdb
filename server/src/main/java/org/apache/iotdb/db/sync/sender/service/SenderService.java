@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
@@ -33,14 +32,16 @@ import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
+import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
+import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
+import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogger;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
-import org.apache.iotdb.db.sync.transport.client.TransportClient;
+import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -64,9 +65,12 @@ public class SenderService implements IService {
   private List<Pipe> pipes;
 
   private Pipe runningPipe;
-  private String runningMsg;
+  private MsgManager msgManager;
 
   private TransportHandler transportHandler;
+
+  /* handle external Pipe */
+  private ExtPipePluginManager extPipePluginManager;
 
   private SenderService() {}
 
@@ -83,6 +87,10 @@ public class SenderService implements IService {
   /** pipesink * */
   public PipeSink getPipeSink(String name) {
     return pipeSinks.getOrDefault(name, null);
+  }
+
+  public ExtPipePluginManager getExternalPipeManager() {
+    return extPipePluginManager;
   }
 
   public boolean isPipeSinkExist(String name) {
@@ -107,15 +115,14 @@ public class SenderService implements IService {
     } catch (UnsupportedOperationException e) {
       throw new PipeSinkException(e.getMessage());
     }
-    for (Pair<String, String> pair : plan.getPipeSinkAttributes()) {
-      pipeSink.setAttribute(pair.left, pair.right);
-    }
+
+    pipeSink.setAttribute(plan.getPipeSinkAttributes());
     return pipeSink;
   }
 
   // should guarantee the adding pipesink is not exist.
   public void addPipeSink(PipeSink pipeSink) {
-    pipeSinks.put(pipeSink.getName(), pipeSink);
+    pipeSinks.put(pipeSink.getPipeSinkName(), pipeSink);
   }
 
   public void dropPipeSink(String name) throws PipeSinkException {
@@ -124,7 +131,7 @@ public class SenderService implements IService {
     }
     if (runningPipe != null
         && runningPipe.getStatus() != Pipe.PipeStatus.DROP
-        && runningPipe.getPipeSink().getName().equals(name)) {
+        && runningPipe.getPipeSink().getPipeSinkName().equals(name)) {
       throw new PipeSinkException(
           String.format(
               "Can not drop pipeSink %s, because pipe %s is using it.",
@@ -166,32 +173,32 @@ public class SenderService implements IService {
 
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
     runningPipe = parseCreatePipePlan(plan, runningPipeSink, currentTime);
-    try {
-      ITransportClient transportClient =
-          new TransportClient(
-              runningPipe,
-              ((IoTDBPipeSink) runningPipeSink).getIp(),
-              ((IoTDBPipeSink) runningPipeSink).getPort());
-      transportHandler =
-          new TransportHandler(transportClient, runningPipe.getName(), runningPipe.getCreateTime());
-      sendMsg(RequestType.CREATE);
-    } catch (ClassCastException e) {
-      logger.error(
-          String.format(
-              "Cast Class to %s error when create pipe %s.",
-              IoTDBPipeSink.class.getName(), plan.getPipeName()),
-          e);
-      runningPipe = null;
-      throw new PipeException(
-          String.format(
-              "Wrong pipeSink type %s for create pipe %s",
-              runningPipeSink.getType(), runningPipeSink.getName()));
-    } catch (PipeException e) {
-      runningPipe = null;
-      throw e;
+    if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
+      try {
+        transportHandler =
+            TransportHandler.getNewTransportHandler(runningPipe, (IoTDBPipeSink) runningPipeSink);
+        sendMsg(RequestType.CREATE);
+      } catch (ClassCastException e) {
+        logger.error(
+            String.format(
+                "Cast Class to %s error when create pipe %s.",
+                IoTDBPipeSink.class.getName(), plan.getPipeName()),
+            e);
+        runningPipe = null;
+        throw new PipeException(
+            String.format(
+                "Wrong pipeSink type %s for create pipe %s",
+                runningPipeSink.getType(), runningPipeSink.getPipeSinkName()));
+      } catch (PipeException e) {
+        runningPipe = null;
+        throw e;
+      }
+    } else { // for external pipe
+      // == start ExternalPipeProcessor for send data to external pipe plugin
+      startExternalPipeManager(false);
     }
 
-    runningMsg = "";
+    msgManager.addPipe(runningPipe);
     pipes.add(runningPipe);
     senderLogger.addPipe(plan, currentTime);
   }
@@ -215,9 +222,23 @@ public class SenderService implements IService {
   public synchronized void stopPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
-      sendMsg(RequestType.STOP);
-      runningPipe.stop();
-      transportHandler.stop();
+      if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
+        runningPipe.stop();
+        transportHandler.stop();
+      } else { // for external PIPE
+        // == pause externalPipeProcessor's task
+        if (extPipePluginManager != null) {
+          try {
+            String extPipeSinkTypeName =
+                ((ExternalPipeSink) (runningPipe.getPipeSink())).getExtPipeSinkTypeName();
+            extPipePluginManager.stopExtPipe(extPipeSinkTypeName);
+          } catch (Exception e) {
+            throw new PipeException("Failed to stop externalPipeProcessor. " + e.getMessage());
+          }
+        }
+
+        runningPipe.stop();
+      }
     }
     senderLogger.operatePipe(pipeName, Operator.OperatorType.STOP_PIPE);
   }
@@ -225,27 +246,83 @@ public class SenderService implements IService {
   public synchronized void startPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
-      sendMsg(RequestType.START);
-      runningPipe.start();
-      transportHandler.start();
+      if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
+        runningPipe.start();
+        transportHandler.start();
+      } else { // for external PIPE
+        runningPipe.start();
+        startExternalPipeManager(true);
+      }
     }
     senderLogger.operatePipe(pipeName, Operator.OperatorType.START_PIPE);
+  }
+
+  /** Start ExternalPipeProcessor who handle externalPipe */
+  private void startExternalPipeManager(boolean startExtPipe) throws PipeException {
+    if (!(runningPipe instanceof TsFilePipe)) {
+      logger.error("startExternalPipeManager(), runningPipe is not TsFilePipe. " + runningPipe);
+      return;
+    }
+
+    PipeSink pipeSink = runningPipe.getPipeSink();
+    if (!(pipeSink instanceof ExternalPipeSink)) {
+      logger.error("startExternalPipeManager(), pipeSink is not ExternalPipeSink." + pipeSink);
+      return;
+    }
+
+    String extPipeSinkTypeName = ((ExternalPipeSink) pipeSink).getExtPipeSinkTypeName();
+    IExternalPipeSinkWriterFactory externalPipeSinkWriterFactory =
+        ExtPipePluginRegister.getInstance().getWriteFactory(extPipeSinkTypeName);
+    if (externalPipeSinkWriterFactory == null) {
+      logger.error(
+          String.format(
+              "startExternalPipeManager(), can not found ExternalPipe plugin for {}.",
+              extPipeSinkTypeName));
+      throw new PipeException("Can not found ExternalPipe plugin for " + extPipeSinkTypeName + ".");
+    }
+
+    if (extPipePluginManager == null) {
+      extPipePluginManager = new ExtPipePluginManager((TsFilePipe) this.runningPipe);
+    }
+
+    if (startExtPipe) {
+      try {
+        extPipePluginManager.startExtPipe(
+            extPipeSinkTypeName, ((ExternalPipeSink) pipeSink).getSinkParams());
+      } catch (IOException e) {
+        logger.error("Failed to start External Pipe: {}.", extPipeSinkTypeName, e);
+        throw new PipeException(
+            "Failed to start External Pipe: " + extPipeSinkTypeName + ". " + e.getMessage());
+      }
+    }
   }
 
   public synchronized void dropPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     try {
-      if (!transportHandler.close()) {
-        throw new PipeException(
-            String.format(
-                "Close pipe %s transport error after %s %s, please try again.",
-                runningPipe.getName(),
-                SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS,
-                TimeUnit.MILLISECONDS.name()));
+      if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
+        if (!transportHandler.close()) {
+          throw new PipeException(
+              String.format(
+                  "Close pipe %s transport error after %s %s, please try again.",
+                  runningPipe.getName(),
+                  SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS,
+                  TimeUnit.MILLISECONDS.name()));
+        }
+        runningPipe.drop();
+        msgManager.removeAllPipe();
+        sendMsg(RequestType.DROP);
+      } else { // for external pipe
+        // == drop ExternalPipeProcesser
+        if (extPipePluginManager != null) {
+          String extPipeSinkTypeName =
+              ((ExternalPipeSink) runningPipe.getPipeSink()).getExtPipeSinkTypeName();
+          extPipePluginManager.dropExtPipe(extPipeSinkTypeName);
+          extPipePluginManager = null;
+        }
+        runningPipe.drop();
       }
 
-      runningPipe.drop();
-      sendMsg(RequestType.DROP);
       senderLogger.operatePipe(pipeName, Operator.OperatorType.DROP_PIPE);
     } catch (InterruptedException e) {
       logger.warn(
@@ -260,7 +337,7 @@ public class SenderService implements IService {
   }
 
   public synchronized String getPipeMsg(Pipe pipe) {
-    return pipe == runningPipe ? runningMsg : "";
+    return msgManager.getPipeMsg(pipe);
   }
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
@@ -293,7 +370,7 @@ public class SenderService implements IService {
 
   public synchronized void receiveMsg(SyncResponse response) {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
-      logger.warn(String.format("No running pipe for receiving msg %s.", response));
+      logger.info(String.format("No running pipe for receiving msg %s.", response));
       return;
     }
     switch (response.type) {
@@ -304,21 +381,18 @@ public class SenderService implements IService {
         try {
           stopPipe(runningPipe.getName());
         } catch (PipeException e) {
-          logger.error(
+          logger.warn(
               String.format(
                   "Stop pipe %s when meeting error in sender service.", runningPipe.getName()),
               e);
         }
       case WARN:
-        if (runningMsg.length() > 0) {
-          runningMsg += System.lineSeparator();
-        }
-        runningMsg += (response.type.name() + " " + response.msg);
-        senderLogger.recordMsg(
-            runningPipe.getName(),
+        msgManager.recordMsg(
+            runningPipe,
             runningPipe.getStatus() == Pipe.PipeStatus.RUNNING
                 ? Operator.OperatorType.START_PIPE
                 : Operator.OperatorType.STOP_PIPE,
+            response.type,
             response.msg);
         break;
     }
@@ -327,10 +401,20 @@ public class SenderService implements IService {
   /** IService * */
   @Override
   public void start() throws StartupException {
+    // == Check whether loading extPipe plugin successfully.
+    ExtPipePluginRegister extPipePluginRegister = ExtPipePluginRegister.getInstance();
+    if (extPipePluginRegister == null) {
+      throw new StartupException("Load ExternalPipe Plugin error.");
+    }
+    logger.info(
+        "Load {} ExternalPipe Plugin: {}",
+        extPipePluginRegister.getAllPluginName().size(),
+        extPipePluginRegister.getAllPluginName());
+
     this.pipeSinks = new HashMap<>();
     this.pipes = new ArrayList<>();
     this.senderLogger = new SenderLogger();
-    this.runningMsg = "";
+    this.msgManager = new MsgManager(senderLogger);
 
     File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
     if (senderLog.exists()) {
@@ -348,33 +432,35 @@ public class SenderService implements IService {
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
+        transportHandler.stop();
       } catch (PipeException e) {
         logger.warn(
-            String.format(
-                "Stop pipe %s error when stop Sender Service, because %s.",
-                runningPipe.getName(), e));
+            String.format("Stop pipe %s error when stop Sender Service.", runningPipe.getName()),
+            e);
       }
     }
   }
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
+    pipeSinks = null;
+    pipes = null;
+    msgManager = null;
+    senderLogger.close();
+
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
-      } catch (PipeException e) {
+        transportHandler.close();
+        runningPipe.close();
+      } catch (PipeException | InterruptedException e) {
         logger.warn(
             String.format(
-                "Stop pipe %s error when shutdown Sender Service, because %s.",
-                runningPipe.getName(), e));
+                "Stop pipe %s error when shutdown Sender Service.", runningPipe.getName()),
+            e);
         throw new ShutdownException(e);
       }
     }
-
-    pipeSinks = null;
-    pipes = null;
-    runningMsg = null;
-    senderLogger.close();
   }
 
   @Override
@@ -382,36 +468,28 @@ public class SenderService implements IService {
     return ServiceType.SENDER_SERVICE;
   }
 
-  private void recover() throws IOException, InterruptedException {
+  private void recover() throws IOException, PipeException {
     SenderLogAnalyzer analyzer = new SenderLogAnalyzer();
     analyzer.recover();
     this.pipeSinks = analyzer.getRecoveryAllPipeSinks();
     this.pipes = analyzer.getRecoveryAllPipes();
     this.runningPipe = analyzer.getRecoveryRunningPipe();
-    this.runningMsg = analyzer.getRecoveryRunningMsg();
+    this.msgManager = analyzer.getMsgManager();
 
-    if (runningPipe != null) {
-      IoTDBPipeSink pipeSink = (IoTDBPipeSink) runningPipe.getPipeSink();
-      ITransportClient transportClient =
-          new TransportClient(runningPipe, pipeSink.getIp(), pipeSink.getPort());
+    if (runningPipe == null || Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
+      return;
+    }
+
+    if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       this.transportHandler =
-          new TransportHandler(transportClient, runningPipe.getName(), runningPipe.getCreateTime());
+          TransportHandler.getNewTransportHandler(
+              runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
       if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
         transportHandler.start();
-      } else if (Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
-        transportHandler.close();
       }
+    } else { // for external pipe
+      // == start ExternalPipeProcessor for send data to external pipe plugin
+      startExternalPipeManager(runningPipe.getStatus() == Pipe.PipeStatus.RUNNING);
     }
-  }
-
-  /** test */
-  @TestOnly
-  public Pipe getRunningPipe() {
-    return runningPipe;
-  }
-
-  @TestOnly
-  public void setTransportHandler(TransportHandler handler) {
-    this.transportHandler = handler;
   }
 }

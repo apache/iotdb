@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
@@ -329,23 +329,22 @@ public class SchemaPage implements ISchemaPage {
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "SchemaPage Inspect: id:%d, totalSeg:%d, spareOffset:%d\n",
-                pageIndex, segNum, pageSpareOffset));
+                "page_id:%d, total_seg:%d, spare_from:%d\n", pageIndex, segNum, pageSpareOffset));
     for (int idx = 0; idx < segOffsetLst.size(); idx++) {
       short offset = segOffsetLst.get(idx);
       if (offset < 0) {
-        builder.append(String.format("Sgt id:%d deleted, offset:%d\n", idx, offset));
+        builder.append(String.format("seg_id:%d deleted, offset:%d\n", idx, offset));
       } else {
         ISegment seg = getSegment((short) idx);
         builder.append(
             String.format(
-                "Sgt id:%d, offset:%d, address:%s, next:%s, pref:%s, %s\n",
+                "seg_id:%d, offset:%d, address:%s, next_seg:%s, prev_seg:%s, %s\n",
                 idx,
                 offset,
                 Long.toHexString(SchemaFile.getGlobalIndex(pageIndex, (short) idx)),
                 seg.getNextSegAddress() == -1 ? -1 : Long.toHexString(seg.getNextSegAddress()),
                 seg.getPrevSegAddress() == -1 ? -1 : Long.toHexString(seg.getPrevSegAddress()),
-                seg.toString()));
+                seg.inspect()));
       }
     }
     return builder.toString();

@@ -94,6 +94,6 @@ public class PlanFragmentId {
 
   @Override
   public int hashCode() {
-    return Objects.hash(queryId, id, nextFragmentInstanceId);
+    return Objects.hash(queryId, id);
   }
 }

@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.wal.io.WALReader;
-import org.apache.iotdb.db.wal.io.WALWriter;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -42,12 +43,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public abstract class WALBufferCommonTest {
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected static final String identifier = String.valueOf(Integer.MAX_VALUE);
-  protected static final String logDirectory = "wal-test";
+  protected static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   protected static final String devicePath = "root.test_sg.test_d";
   protected IWALBuffer walBuffer;
 
@@ -92,7 +94,7 @@ public abstract class WALBufferCommonTest {
     }
     Thread.sleep(1_000);
     // check .wal files
-    File[] walFiles = new File(logDirectory).listFiles(WALWriter::walFilenameFilter);
+    File[] walFiles = WALFileUtils.listAllWALFiles(new File(logDirectory));
     Set<InsertRowPlan> actualInsertRowPlans = new HashSet<>();
     if (walFiles != null) {
       for (File walFile : walFiles) {

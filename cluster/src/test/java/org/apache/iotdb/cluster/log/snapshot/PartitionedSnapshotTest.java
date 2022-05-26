@@ -22,12 +22,12 @@ package org.apache.iotdb.cluster.log.snapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -112,10 +112,10 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < loadedFiles.size(); i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
@@ -189,7 +189,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
       }
       DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-      assertEquals(-1, processor.getPartitionMaxFileVersions(0));
+      assertEquals(0, processor.getPartitionMaxFileVersions(0));
       List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(0, loadedFiles.size());
       assertEquals(0, processor.getUnSequenceFileList().size());

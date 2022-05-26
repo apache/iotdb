@@ -25,6 +25,8 @@ import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -197,6 +199,25 @@ public class DoubleTVList extends TVList {
       value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.DOUBLE, value));
+  }
+
+  @Override
+  protected void writeValidValuesIntoTsBlock(
+      TsBlockBuilder builder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList) {
+    Integer deleteCursor = 0;
+    for (int i = 0; i < rowCount; i++) {
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
+        builder.getTimeColumnBuilder().writeLong(getTime(i));
+        builder
+            .getColumnBuilder(0)
+            .writeDouble(roundValueWithGivenPrecision(getDouble(i), floatPrecision, encoding));
+        builder.declarePosition();
+      }
+    }
   }
 
   @Override

@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.hash;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
+import org.apache.iotdb.confignode.persistence.PartitionInfo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -61,7 +62,7 @@ public class DeviceGroupHashExecutorManualTest {
   }
 
   public void GeneralIndexTest() throws IOException {
-    PartitionManager manager = new PartitionManager(new ConfigManager());
+    PartitionManager manager = new PartitionManager(new ConfigManager(), new PartitionInfo());
     int[] bucket = new int[deviceGroupCount];
     Arrays.fill(bucket, 0);
 

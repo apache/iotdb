@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
@@ -331,6 +331,9 @@ public class SeriesReader {
 
     if (firstChunkMetadata != null) {
       return true;
+      // hasNextFile() has not been invoked
+    } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
+      return false;
     }
 
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {

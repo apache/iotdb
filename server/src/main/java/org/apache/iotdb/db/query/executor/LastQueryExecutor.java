@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -66,6 +67,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
 
 public class LastQueryExecutor {
 
@@ -283,8 +285,7 @@ public class LastQueryExecutor {
           QueryResourceManager.getInstance()
               .getQueryDataSource(seriesPaths.get(i), context, filter, ascending);
       LastPointReader lastReader =
-          seriesPaths
-              .get(i)
+          ResourceByPathUtils.getResourceInstance(seriesPaths.get(i))
               .createLastPointReader(
                   dataTypes.get(i),
                   deviceMeasurementsMap.getOrDefault(
@@ -377,10 +378,6 @@ public class LastQueryExecutor {
         logger.error("last query can't find storage group: path is: " + fullPath);
       }
     }
-  }
-
-  private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
-    return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 
   public static void clear() {

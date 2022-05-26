@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
-import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -38,6 +39,7 @@ import java.util.concurrent.CountDownLatch;
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(WALNodeRecoverTask.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final WALRecoverManager walRecoverManger = WALRecoverManager.getInstance();
 
   /** this directory store one wal node's .wal and .checkpoint files */
@@ -57,6 +59,7 @@ public class WALNodeRecoverTask implements Runnable {
 
   @Override
   public void run() {
+    logger.info("Start recovering WAL node in the directory {}", logDirectory);
     try {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
@@ -76,8 +79,20 @@ public class WALNodeRecoverTask implements Runnable {
         }
       }
     }
-    // delete this wal node folder
-    FileUtils.deleteDirectory(logDirectory);
+
+    if (!config.isClusterMode()) {
+      // delete this wal node folder
+      FileUtils.deleteDirectory(logDirectory);
+      logger.info(
+          "Successfully recover WAL node in the directory {}, so delete these wal files.",
+          logDirectory);
+    } else {
+      WALManager.getInstance()
+          .registerWALNode(logDirectory.getName(), logDirectory.getAbsolutePath());
+      logger.info(
+          "Successfully recover WAL node in the directory {}, add this node to WALManger.",
+          logDirectory);
+    }
   }
 
   private void recoverInfoFromCheckpoints() {
@@ -112,12 +127,14 @@ public class WALNodeRecoverTask implements Runnable {
     // find all valid .wal files
     File[] walFiles =
         logDirectory.listFiles(
-            (dir, name) -> WALWriter.parseVersionId(name) >= firstValidVersionId);
+            (dir, name) ->
+                WALFileUtils.walFilenameFilter(dir, name)
+                    && WALFileUtils.parseVersionId(name) >= firstValidVersionId);
     if (walFiles == null) {
       return;
     }
-    Arrays.sort(
-        walFiles, Comparator.comparingInt(file -> WALWriter.parseVersionId(file.getName())));
+    // asc sort by version id
+    WALFileUtils.ascSortByVersionId(walFiles);
     // read .wal files and redo logs
     for (File walFile : walFiles) {
       try (WALReader walReader = new WALReader(walFile)) {

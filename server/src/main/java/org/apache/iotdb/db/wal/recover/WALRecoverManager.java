@@ -20,13 +20,12 @@ package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
-import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 
@@ -58,12 +57,13 @@ public class WALRecoverManager {
   private WALRecoverManager() {}
 
   public void recover() throws WALRecoverException {
+    logger.info("Start recovering wal.");
     try {
       // collect wal nodes' information
       List<File> walNodeDirs = new ArrayList<>();
       for (String walDir : config.getWalDirs()) {
         File walDirFile = SystemFileFactory.INSTANCE.getFile(walDir);
-        File[] nodeDirs = walDirFile.listFiles(WALNode::walNodeFolderNameFilter);
+        File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
         if (nodeDirs == null) {
           continue;
         }
@@ -81,6 +81,8 @@ public class WALRecoverManager {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
       }
+      logger.info(
+          "Data regions have submitted all unsealed TsFiles, start recovering TsFiles in each wal node.");
       // recover each wal node's TsFiles
       if (!walNodeDirs.isEmpty()) {
         recoverThreadPool =
@@ -131,6 +133,7 @@ public class WALRecoverManager {
       }
       clear();
     }
+    logger.info("Successfully recover all wal nodes.");
   }
 
   public WALRecoverListener addRecoverPerformer(UnsealedTsFileRecoverPerformer recoverPerformer) {

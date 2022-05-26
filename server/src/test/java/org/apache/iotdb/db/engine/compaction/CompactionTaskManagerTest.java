@@ -188,7 +188,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
   }
 
-  @Test
+  @Test(expected = RuntimeException.class)
   public void testRepeatedSubmitAfterExecution() throws Exception {
     logger.warn("testRepeatedSubmitAfterExecution");
     TsFileManager tsFileManager =
@@ -211,7 +211,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             new ReadChunkCompactionPerformer(seqResources),
             new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
-    manager.addTaskToWaitingQueue(task1);
+    Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
     manager.submitTaskFromTaskQueue();
     while (manager.getTotalTaskCount() > 0) {
       Thread.sleep(10);
@@ -219,19 +219,22 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     seqResources.get(0).readLock();
 
     // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
-    Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
-    manager.submitTaskFromTaskQueue();
-    Assert.assertEquals(manager.getExecutingTaskCount(), 0);
-    seqResources.get(0).readUnlock();
-    long waitingTime = 0;
-    while (manager.getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", manager.getRunningCompactionTaskList());
-      }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+    try {
+      Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
+      manager.submitTaskFromTaskQueue();
+      Assert.assertEquals(manager.getExecutingTaskCount(), 0);
+      seqResources.get(0).readUnlock();
+    } finally {
+      long waitingTime = 0;
+      while (manager.getRunningCompactionTaskList().size() > 0) {
+        Thread.sleep(100);
+        waitingTime += 100;
+        if (waitingTime % 10000 == 0) {
+          logger.warn("{}", manager.getRunningCompactionTaskList());
+        }
+        if (waitingTime > MAX_WAITING_TIME) {
+          Assert.fail();
+        }
       }
     }
   }

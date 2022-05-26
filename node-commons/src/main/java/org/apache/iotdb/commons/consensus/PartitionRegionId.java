@@ -19,64 +19,16 @@
 
 package org.apache.iotdb.commons.consensus;
 
-import java.nio.ByteBuffer;
-import java.util.Objects;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-public class PartitionRegionId implements ConsensusGroupId {
-
-  private int id;
-
-  public PartitionRegionId() {}
+public class PartitionRegionId extends ConsensusGroupId {
 
   public PartitionRegionId(int id) {
     this.id = id;
   }
 
   @Override
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) GroupType.PartitionRegion.ordinal());
-    buffer.putInt(id);
-  }
-
-  @Override
-  public void deserializeImpl(ByteBuffer buffer) {
-    // TODO: (xingtanzjr) should we add validation for the ordinal ?
-    id = buffer.getInt();
-  }
-
-  @Override
-  public int getId() {
-    return id;
-  }
-
-  @Override
-  public void setId(int id) {
-    this.id = id;
-  }
-
-  @Override
-  public GroupType getType() {
-    return GroupType.PartitionRegion;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    PartitionRegionId that = (PartitionRegionId) o;
-    return id == that.id;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(id, GroupType.PartitionRegion);
-  }
-
-  public String toString() {
-    return String.format("%s[%d]", getType(), getId());
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.PartitionRegion;
   }
 }

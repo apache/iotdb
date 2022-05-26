@@ -19,58 +19,90 @@
 
 package org.apache.iotdb.commons.consensus;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-public interface ConsensusGroupId {
+import java.util.Objects;
 
-  // contains specific id and type
-  void serializeImpl(ByteBuffer buffer);
+// we abstract this class to hide word `ConsensusGroup` for IoTDB StorageEngine/SchemaEngine
+public abstract class ConsensusGroupId {
 
-  // only deserialize specific id
-  void deserializeImpl(ByteBuffer buffer);
+  protected int id;
 
   // return specific id
-  int getId();
-
-  void setId(int id);
+  public int getId() {
+    return id;
+  }
 
   // return specific type
-  GroupType getType();
+  public abstract TConsensusGroupType getType();
 
-  class Factory {
-    public static ConsensusGroupId create(ByteBuffer buffer) {
-      int index = buffer.get();
-      if (index >= GroupType.values().length) {
-        throw new IllegalArgumentException("invalid ConsensusGroup type. Ordinal is: " + index);
-      }
-      GroupType type = GroupType.values()[index];
-      ConsensusGroupId groupId = createEmpty(type);
-      groupId.deserializeImpl(buffer);
-      return groupId;
+  @Override
+  public int hashCode() {
+    return Objects.hash(getType(), getId());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ConsensusGroupId that = (ConsensusGroupId) o;
+    return getId() == that.getId() && getType() == that.getType();
+  }
 
-    public static ConsensusGroupId createEmpty(GroupType type) {
+  @Override
+  public String toString() {
+    return String.format("%s[%d]", getType(), getId());
+  }
+
+  public static class Factory {
+
+    public static ConsensusGroupId create(int type, int id) {
       ConsensusGroupId groupId;
-      switch (type) {
-        case DataRegion:
-          groupId = new DataRegionId();
-          break;
-        case SchemaRegion:
-          groupId = new SchemaRegionId();
-          break;
-        case PartitionRegion:
-          groupId = new PartitionRegionId();
-          break;
-        default:
-          throw new IllegalArgumentException("unrecognized id type " + type);
+      if (type == TConsensusGroupType.DataRegion.getValue()) {
+        groupId = new DataRegionId(id);
+      } else if (type == TConsensusGroupType.SchemaRegion.getValue()) {
+        groupId = new SchemaRegionId(id);
+      } else if (type == TConsensusGroupType.PartitionRegion.getValue()) {
+        groupId = new PartitionRegionId(id);
+      } else {
+        throw new IllegalArgumentException(
+            "Unrecognized TConsensusGroupType: " + type + " with id = " + id);
       }
       return groupId;
     }
 
-    public static ConsensusGroupId create(int id, GroupType type) {
-      ConsensusGroupId groupId = createEmpty(type);
-      groupId.setId(id);
-      return groupId;
+    public static ConsensusGroupId createFromTConsensusGroupId(
+        TConsensusGroupId tConsensusGroupId) {
+      return create(tConsensusGroupId.getType().getValue(), tConsensusGroupId.getId());
     }
+  }
+
+  public static TConsensusGroupId convertToTConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    return new TConsensusGroupId(consensusGroupId.getType(), consensusGroupId.getId());
+  }
+
+  public static String formatTConsensusGroupId(TConsensusGroupId groupId) {
+    StringBuilder format = new StringBuilder();
+
+    switch (groupId.getType()) {
+      case SchemaRegion:
+        format.append("SchemaRegion");
+        break;
+      case DataRegion:
+        format.append("DataRegion");
+        break;
+      case PartitionRegion:
+        format.append("PartitionRegion");
+        break;
+    }
+
+    format.append("(").append(groupId.getId()).append(")");
+
+    return format.toString();
   }
 }

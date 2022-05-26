@@ -47,8 +47,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private IMeasurementSchema schema;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
-  /** registered trigger */
-  private TriggerExecutor triggerExecutor = null;
+
+  private String version = null;
 
   /**
    * MeasurementMNode factory method. The type of returned MeasurementMNode is according to the
@@ -148,6 +148,16 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
     this.lastCacheContainer = lastCacheContainer;
+  }
+
+  @Override
+  public String getVersion() {
+    return version;
+  }
+
+  @Override
+  public void setVersion(String version) {
+    this.version = version;
   }
 
   @Override

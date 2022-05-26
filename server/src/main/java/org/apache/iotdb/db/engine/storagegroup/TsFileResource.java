@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,7 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -550,7 +551,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: ", file.toString(), status);
+    return String.format("file is %s, status: %s", file.toString(), status);
   }
 
   @Override
@@ -600,7 +601,8 @@ public class TsFileResource {
           this.status = TsFileResourceStatus.DELETED;
         } else {
           throw new RuntimeException(
-              "Cannot set the status of an unclosed TsFileResource to DELETED");
+              this.file.getAbsolutePath()
+                  + " Cannot set the status of an unclosed TsFileResource to DELETED");
         }
         break;
       case COMPACTING:
@@ -608,7 +610,8 @@ public class TsFileResource {
           this.status = TsFileResourceStatus.COMPACTING;
         } else {
           throw new RuntimeException(
-              "Cannot set the status of TsFileResource to COMPACTING while its status is "
+              this.file.getAbsolutePath()
+                  + " Cannot set the status of TsFileResource to COMPACTING while its status is "
                   + this.status);
         }
         break;
@@ -617,7 +620,8 @@ public class TsFileResource {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
         } else {
           throw new RuntimeException(
-              "Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
+              this.file.getAbsolutePath()
+                  + " Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
                   + this.status);
         }
         break;
@@ -1001,8 +1005,9 @@ public class TsFileResource {
     for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
       pathToTimeSeriesMetadataMap.put(
           path,
-          path.generateTimeSeriesMetadata(
-              pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
+          ResourceByPathUtils.getResourceInstance(path)
+              .generateTimeSeriesMetadata(
+                  pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
     }
   }
 

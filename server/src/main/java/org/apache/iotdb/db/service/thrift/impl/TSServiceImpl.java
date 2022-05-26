@@ -18,24 +18,25 @@
  */
 package org.apache.iotdb.db.service.thrift.impl;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -72,15 +73,56 @@ import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Operation;
+import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
+import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -804,7 +846,7 @@ public class TSServiceImpl implements TSIEventHandler {
         resp.setQueryDataSet(tsQueryDataSet);
       } catch (RedirectException e) {
         if (plan.isEnableRedirect()) {
-          EndPoint endPoint = e.getEndPoint();
+          TEndPoint endPoint = e.getEndPoint();
           return redirectQueryToAnotherNode(resp, context, endPoint.ip, endPoint.port);
         } else {
           LOGGER.error(
@@ -864,7 +906,7 @@ public class TSServiceImpl implements TSIEventHandler {
         ip,
         port);
     TSStatus status = new TSStatus();
-    status.setRedirectNode(new EndPoint(ip, port));
+    status.setRedirectNode(new TEndPoint(ip, port));
     status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
     resp.setStatus(status);
     resp.setQueryId(context.getQueryId());
@@ -995,12 +1037,7 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   private WatermarkEncoder getWatermarkEncoder(String userName) throws TException, AuthException {
-    IAuthorizer authorizer;
-    try {
-      authorizer = BasicAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new TException(e);
-    }
+    IAuthorizer authorizer = AuthorizerManager.getInstance();
 
     WatermarkEncoder encoder = null;
     if (CONFIG.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
@@ -1151,9 +1188,12 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getTimestamps().get(0));
     }
     boolean allCheckSuccess = true;
+
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       try {
+        // check whether measurement is legal according to syntax convention
+        isLegalSingleMeasurements(req.getMeasurementsList().get(i));
         InsertRowPlan plan =
             new InsertRowPlan(
                 new PartialPath(req.getPrefixPaths().get(i)),
@@ -1225,6 +1265,8 @@ public class TSServiceImpl implements TSIEventHandler {
 
     List<TSStatus> statusList = new ArrayList<>();
     try {
+      // check whether measurement is legal according to syntax convention
+      isLegalSingleMeasurementLists(req.getMeasurementsList());
       InsertRowsOfOneDevicePlan plan =
           new InsertRowsOfOneDevicePlan(
               new PartialPath(req.getPrefixPath()),
@@ -1274,6 +1316,8 @@ public class TSServiceImpl implements TSIEventHandler {
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
+        // check whether measurement is legal according to syntax convention
+        isLegalSingleMeasurements(req.getMeasurementsList().get(i));
         plan.setDevicePath(new PartialPath(req.getPrefixPath()));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
@@ -1332,6 +1376,8 @@ public class TSServiceImpl implements TSIEventHandler {
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
+        // check whether measurement is legal according to syntax convention
+        isLegalSingleMeasurements(req.getMeasurementsList().get(i));
         plan.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
@@ -1439,6 +1485,10 @@ public class TSServiceImpl implements TSIEventHandler {
           req.getPrefixPath(),
           req.getTimestamp());
 
+      // check whether measurement is legal according to syntax convention
+
+      isLegalSingleMeasurements(req.getMeasurements());
+
       InsertRowPlan plan =
           new InsertRowPlan(
               new PartialPath(req.getPrefixPath()),
@@ -1468,6 +1518,9 @@ public class TSServiceImpl implements TSIEventHandler {
           SESSION_MANAGER.getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
+
+      // check whether measurement is legal according to syntax convention
+      isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDevicePath(new PartialPath(req.getPrefixPath()));
@@ -1521,6 +1574,10 @@ public class TSServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
+      // check whether measurement is legal according to syntax convention
+
+      isLegalSingleMeasurements(req.getMeasurements());
+
       InsertTabletPlan insertTabletPlan =
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
@@ -1568,7 +1625,9 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
-      throws IllegalPathException {
+      throws MetadataException {
+    // check whether measurement is legal according to syntax convention
+    isLegalSingleMeasurementLists(req.getMeasurementsList());
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(req.prefixPaths.get(i)), req.measurementsList.get(i));
     insertTabletPlan.setTimes(
@@ -1589,7 +1648,7 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   /** construct one InsertMultiTabletsPlan and process it */
-  public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws IllegalPathException {
+  public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws MetadataException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
     InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
@@ -1659,6 +1718,8 @@ public class TSServiceImpl implements TSIEventHandler {
             "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
       }
 
+      // measurementAlias is also a nodeName
+      isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       CreateTimeSeriesPlan plan =
           new CreateTimeSeriesPlan(
               new PartialPath(req.path),
@@ -1696,6 +1757,12 @@ public class TSServiceImpl implements TSIEventHandler {
                 req.encodings.get(0),
                 req.compressors.get(0)));
       }
+
+      // check whether measurement is legal according to syntax convention
+
+      isLegalSingleMeasurements(req.getMeasurements());
+
+      isLegalSingleMeasurements(req.getMeasurementAlias());
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
@@ -1753,6 +1820,10 @@ public class TSServiceImpl implements TSIEventHandler {
             req.getPaths().size(),
             req.getPaths().get(0));
       }
+
+      // measurementAlias is also a nodeName
+
+      isLegalSingleMeasurements(req.measurementAliasList);
 
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
       List<PartialPath> paths = new ArrayList<>(req.paths.size());
@@ -1871,9 +1942,13 @@ public class TSServiceImpl implements TSIEventHandler {
       // Construct plan from serialized request
       ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
       plan = CreateTemplatePlan.deserializeFromReq(buffer);
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurementLists(plan.getMeasurements());
       TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(plan);
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.CREATE_SCHEMA_TEMPLATE, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_SCHEMA_TEMPLATE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1882,6 +1957,13 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
+    try {
+      // check whether measurement is legal according to syntax convention
+      isLegalMeasurements(req.getMeasurements());
+    } catch (IoTDBException e) {
+      onIoTDBException(e, OperationType.EXECUTE_NON_QUERY_PLAN, e.getErrorCode());
+    }
+
     int size = req.getMeasurementsSize();
     String[] measurements = new String[size];
     TSDataType[] dataTypes = new TSDataType[size];
@@ -2040,7 +2122,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
-    if (CONFIG.isEnablePerformanceStat()) {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
       MetricsService.getInstance()
           .getMetricManager()
           .histogram(
@@ -2052,6 +2134,94 @@ public class TSServiceImpl implements TSIEventHandler {
       MetricsService.getInstance()
           .getMetricManager()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement can only be a
+   * single node name
+   */
+  protected void isLegalSingleMeasurementLists(List<List<String>> measurementLists)
+      throws MetadataException {
+    if (measurementLists == null) {
+      return;
+    }
+    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
+    for (List<String> measurementList : measurementLists) {
+      for (String measurement : measurementList) {
+        if (measurement != null) {
+          if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
+              && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+                  && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+            throw new IllegalPathException(measurement);
+          } else {
+            path.append(TsFileConstant.PATH_SEPARATOR);
+            path.append(measurement);
+          }
+        }
+      }
+    }
+    try {
+      PathUtils.isLegalPath(path.toString());
+    } catch (IllegalPathException e) {
+      throw new MetadataException("find wrong node name according to syntax convention");
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement can only be a
+   * single node name
+   */
+  protected void isLegalSingleMeasurements(List<String> measurements) throws MetadataException {
+    if (measurements == null) {
+      return;
+    }
+    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
+            && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+                && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
+          throw new IllegalPathException(measurement);
+        } else {
+          path.append(TsFileConstant.PATH_SEPARATOR);
+          path.append(measurement);
+        }
+      }
+    }
+    try {
+      PathUtils.isLegalPath(path.toString());
+    } catch (IllegalPathException e) {
+      throw new MetadataException("find wrong node name according to syntax convention");
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement could be like a.b
+   * (more than one node name), in template?
+   */
+  protected void isLegalMeasurementLists(List<List<String>> measurementLists)
+      throws IllegalPathException {
+    if (measurementLists == null) {
+      return;
+    }
+    for (List<String> measurementList : measurementLists) {
+      isLegalMeasurements(measurementList);
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement could be like a.b
+   * (more than one node name), in template?
+   */
+  protected void isLegalMeasurements(List<String> measurements) throws IllegalPathException {
+    if (measurements == null) {
+      return;
+    }
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        PathUtils.isLegalPath(measurement);
+      }
     }
   }
 }

@@ -34,8 +34,9 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBAliasIT {
@@ -274,7 +275,7 @@ public class IoTDBAliasIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("ALTER timeseries root.sg.d2.s3 UPSERT ALIAS=powerNew");
+      statement.execute("ALTER timeseries root.sg.d2.s3 UPSERT ALIAS='powerNew'");
       boolean hasResult = statement.execute("show timeseries root.sg.d2.s3");
       assertTrue(hasResult);
       try (ResultSet resultSet = statement.getResultSet()) {

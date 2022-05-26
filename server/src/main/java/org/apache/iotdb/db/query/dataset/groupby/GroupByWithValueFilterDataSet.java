@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -194,10 +194,12 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
     curAggregateResults = new AggregateResult[paths.size()];
     for (SlidingWindowGroupByExecutor slidingWindowGroupByExecutor :
         slidingWindowGroupByExecutors) {
-      slidingWindowGroupByExecutor.setTimeRange(curStartTime, curEndTime);
+      slidingWindowGroupByExecutor.setTimeRange(
+          curAggrTimeRange.getMin(), curAggrTimeRange.getMax());
     }
     while (!isEndCal()) {
-      AggregateResult[] aggregations = calcResult(curPreAggrStartTime, curPreAggrEndTime);
+      AggregateResult[] aggregations =
+          calcResult(curPreAggrTimeRange.getMin(), curPreAggrTimeRange.getMax());
       for (int i = 0; i < aggregations.length; i++) {
         slidingWindowGroupByExecutors[i].update(aggregations[i].clone());
       }

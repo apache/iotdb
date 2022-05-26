@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -33,6 +37,7 @@ import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
@@ -55,14 +60,13 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
+
+  private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
   private final IoTDBConfig conf = new IoTDBConfig();
 
@@ -163,17 +167,20 @@ public class IoTDBDescriptor {
                   "rpc_advanced_compression_enable",
                   Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
 
+      conf.setConnectionTimeoutInMS(
+          Integer.parseInt(
+              properties.getProperty(
+                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+      conf.setSelectorNumOfClientManager(
+          Integer.parseInt(
+              properties.getProperty(
+                  "selector_thread_nums_of_client_manager",
+                  String.valueOf(conf.getSelectorNumOfClientManager()))));
+
       conf.setRpcPort(
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
-
-      conf.setMppMode(
-          Boolean.parseBoolean(
-              properties.getProperty("mpp_mode", Boolean.toString(conf.isMppMode()))));
-
-      conf.setMppPort(
-          Integer.parseInt(
-              properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));
 
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
@@ -221,11 +228,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))));
-
-      conf.setEnableLastCache(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
 
       initMemoryAllocate(properties);
 
@@ -590,13 +592,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
-      conf.setEnablePerformanceStat(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
       int maxConcurrentClientNum =
           Integer.parseInt(
               properties.getProperty(
@@ -646,10 +641,6 @@ public class IoTDBDescriptor {
           properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
       conf.setKerberosPrincipal(
           properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
-
-      conf.setDefaultTTL(
-          Long.parseLong(
-              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
       // the num of memtables in each storage group
       conf.setConcurrentWritingTimePartition(
@@ -756,16 +747,20 @@ public class IoTDBDescriptor {
       conf.setSchemaEngineMode(
           properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
 
+      conf.setEnableLastCache(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
+
+      if (conf.getSchemaEngineMode().equals("Rocksdb_based")) {
+        conf.setEnableLastCache(false);
+      }
+
       conf.setCachedMNodeSizeInSchemaFileMode(
           Integer.parseInt(
               properties.getProperty(
                   "cached_mnode_size_in_schema_file_mode",
                   String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
-
-      conf.setMaxSchemaFlushThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_schema_flush_thread", String.valueOf(conf.getMaxSchemaFlushThreadNum()))));
 
       conf.setMinimumSegmentInSchemaFile(
           Short.parseShort(
@@ -782,11 +777,6 @@ public class IoTDBDescriptor {
       // mqtt
       loadMqttProps(properties);
 
-      conf.setAuthorizerProvider(
-          properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
-      // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", conf.getOpenIdProviderUrl()));
-
       conf.setEnablePartition(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -797,15 +787,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
-      conf.setAdminName(properties.getProperty("admin_name", conf.getAdminName()));
-
-      conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
-
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
+      conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
       conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
           Integer.parseInt(
@@ -813,14 +801,11 @@ public class IoTDBDescriptor {
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
-      conf.setEncryptDecryptProvider(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider", conf.getEncryptDecryptProvider()));
-
-      conf.setEncryptDecryptProviderParameter(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider_parameter",
-              conf.getEncryptDecryptProviderParameter()));
+      conf.setDataNodeSchemaCacheSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "datanode_schema_cache_size",
+                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
@@ -877,6 +862,10 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      // commons
+      commonDescriptor.loadCommonProps(properties);
+      commonDescriptor.initCommonConfigDir(conf.getSystemDir());
+
       // timed flush memtable
       loadTimedService(properties);
 
@@ -900,6 +889,9 @@ public class IoTDBDescriptor {
 
       // shuffle
       loadShuffleProps(properties);
+
+      // author cache
+      loadAuthorCache(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -909,7 +901,19 @@ public class IoTDBDescriptor {
     } finally {
       // update all data seriesPath
       conf.updatePath();
+      commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
     }
+  }
+
+  private void loadAuthorCache(Properties properties) {
+    conf.setAuthorCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "author_cache_size", String.valueOf(conf.getAuthorCacheSize()))));
+    conf.setAuthorCacheExpireTime(
+        Integer.parseInt(
+            properties.getProperty(
+                "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
   }
 
   // to keep consistent with the cluster module.
@@ -924,27 +928,19 @@ public class IoTDBDescriptor {
       conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
     }
 
-    List<String> newConfigNodeUrls = new ArrayList<>();
-    for (String nodeUrl : conf.getConfigNodeUrls()) {
-      String[] splits = nodeUrl.split(":");
-      if (splits.length != 2) {
-        throw new BadNodeUrlFormatException(nodeUrl);
-      }
-      String nodeIP = splits[0];
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(nodeIP);
+    for (TEndPoint configNode : conf.getConfigNodeList()) {
+      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
       if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(nodeIP).getHostAddress();
-        newConfigNodeUrls.add(newNodeIP + ":" + splits[1]);
-      } else {
-        newConfigNodeUrls.add(nodeUrl);
+        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
+        configNode.setIp(newNodeIP);
       }
     }
-    conf.setConfigNodeUrls(newConfigNodeUrls);
+
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
         conf.getInternalIp(),
-        conf.getConfigNodeUrls());
+        conf.getConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -952,14 +948,6 @@ public class IoTDBDescriptor {
         WALMode.valueOf((properties.getProperty("wal_mode", conf.getWalMode().toString()))));
 
     conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
-
-    long fsyncWalDelayInMs =
-        Long.parseLong(
-            properties.getProperty(
-                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
-    if (fsyncWalDelayInMs > 0) {
-      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
-    }
 
     int maxWalNodesNum =
         Integer.parseInt(
@@ -993,6 +981,18 @@ public class IoTDBDescriptor {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
+    loadWALHotModifiedProps(properties);
+  }
+
+  private void loadWALHotModifiedProps(Properties properties) {
+    long fsyncWalDelayInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
+    if (fsyncWalDelayInMs > 0) {
+      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
+    }
+
     long walFileSizeThreshold =
         Long.parseLong(
             properties.getProperty(
@@ -1002,11 +1002,13 @@ public class IoTDBDescriptor {
       conf.setWalFileSizeThresholdInByte(walFileSizeThreshold);
     }
 
-    long walFileTTL =
-        Long.parseLong(
-            properties.getProperty("wal_file_ttl_in_ms", Long.toString(conf.getWalFileTTLInMs())));
-    if (walFileTTL > 0) {
-      conf.setWalFileTTLInMs(walFileTTL);
+    double walMinEffectiveInfoRatio =
+        Double.parseDouble(
+            properties.getProperty(
+                "wal_min_effective_info_ratio",
+                Double.toString(conf.getWalMinEffectiveInfoRatio())));
+    if (walMinEffectiveInfoRatio > 0) {
+      conf.setWalMinEffectiveInfoRatio(walMinEffectiveInfoRatio);
     }
 
     long walMemTableSnapshotThreshold =
@@ -1359,6 +1361,13 @@ public class IoTDBDescriptor {
                       Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                   .trim()));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
+
+      // update wal config
+      long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
+      loadWALHotModifiedProps(properties);
+      if (prevDeleteWalFilesPeriodInMs != conf.getDeleteWalFilesPeriodInMs()) {
+        WALManager.getInstance().rebootWALDeleteThread();
+      }
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1540,8 +1549,12 @@ public class IoTDBDescriptor {
   public void loadClusterProps(Properties properties) {
     String configNodeUrls = properties.getProperty("config_nodes");
     if (configNodeUrls != null) {
-      List<String> urlList = getNodeUrlList(configNodeUrls);
-      conf.setConfigNodeUrls(urlList);
+      try {
+        conf.setConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+      } catch (BadNodeUrlException e) {
+        logger.error(
+            "Config nodes are set in wrong format, please set them like 0.0.0.0:22277,0.0.0.0:22281");
+      }
     }
 
     conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
@@ -1575,6 +1588,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "data_block_manager_keep_alive_time_in_ms",
                 Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+
+    conf.setPartitionCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
   }
 
   /** Get default encode algorithm by data type */
@@ -1593,28 +1611,6 @@ public class IoTDBDescriptor {
       default:
         return conf.getDefaultTextEncoding();
     }
-  }
-
-  /**
-   * Split the node urls as one list.
-   *
-   * @param nodeUrls the config node urls.
-   * @return the node urls as a list.
-   */
-  public static List<String> getNodeUrlList(String nodeUrls) {
-    if (nodeUrls == null) {
-      return Collections.emptyList();
-    }
-    List<String> urlList = new ArrayList<>();
-    String[] split = nodeUrls.split(",");
-    for (String nodeUrl : split) {
-      nodeUrl = nodeUrl.trim();
-      if ("".equals(nodeUrl)) {
-        continue;
-      }
-      urlList.add(nodeUrl);
-    }
-    return urlList;
   }
 
   // These configurations are received from config node when registering

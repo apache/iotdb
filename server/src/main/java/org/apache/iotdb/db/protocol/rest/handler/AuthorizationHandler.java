@@ -17,7 +17,7 @@
 
 package org.apache.iotdb.db.protocol.rest.handler;
 
-import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.control.SessionManager;

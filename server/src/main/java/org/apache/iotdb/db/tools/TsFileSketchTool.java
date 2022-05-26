@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -85,7 +86,10 @@ public class TsFileSketchTool {
       // get metadata information
       tsFileMetaData = reader.readFileMetadata();
       allChunkGroupMetadata = new ArrayList<>();
-      reader.selfCheck(null, allChunkGroupMetadata, false);
+      if (reader.selfCheck(null, allChunkGroupMetadata, false) != TsFileCheckStatus.COMPLETE_FILE) {
+        throw new IOException(
+            String.format("Cannot load file %s because the file has crashed.", filename));
+      }
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -182,13 +186,13 @@ public class TsFileSketchTool {
 
       printlnBoth(
           pw,
-          String.format("%20s", (reader.getFileMetadataPos() + reader.getFileMetadataSize()))
+          String.format("%20s", (reader.getFileMetadataPos() + reader.getTsFileMetadataSize()))
               + "|\t[TsFileMetadataSize] "
-              + reader.getFileMetadataSize());
+              + reader.getTsFileMetadataSize());
 
       printlnBoth(
           pw,
-          String.format("%20s", reader.getFileMetadataPos() + reader.getFileMetadataSize() + 4)
+          String.format("%20s", reader.getFileMetadataPos() + reader.getTsFileMetadataSize() + 4)
               + "|\t[magic tail] "
               + reader.readTailMagic());
     } catch (IOException e) {

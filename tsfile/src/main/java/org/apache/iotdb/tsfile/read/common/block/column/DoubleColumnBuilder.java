@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -33,7 +34,7 @@ public class DoubleColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(DoubleColumnBuilder.class).instanceSize();
-  private static final DoubleColumn NULL_VALUE_BLOCK =
+  public static final DoubleColumn NULL_VALUE_BLOCK =
       new DoubleColumn(0, 1, new boolean[] {true}, new double[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;
@@ -73,25 +74,24 @@ public class DoubleColumnBuilder implements ColumnBuilder {
     return this;
   }
 
+  /** Write an Object to the current entry, which should be the Double type; */
   @Override
-  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
-    return writeDouble(value.getDouble());
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Double) {
+      writeDouble((Double) value);
+      return this;
+    }
+    throw new UnSupportedDataTypeException("DoubleColumn only support Double data type");
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    DoubleColumn column = (DoubleColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeDouble(column.getDouble(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder write(Column column, int index) {
+    return writeDouble(column.getDouble(index));
+  }
+
+  @Override
+  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
+    return writeDouble(value.getDouble());
   }
 
   @Override

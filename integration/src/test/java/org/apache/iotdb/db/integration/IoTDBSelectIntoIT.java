@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -125,7 +125,7 @@ public class IoTDBSelectIntoIT {
         null);
 
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.datatype"),
+        new PartialPath("root.sg.d1.`datatype`"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
@@ -543,11 +543,7 @@ public class IoTDBSelectIntoIT {
       statement.execute("select s1 into target from root.sg.*");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains(
-                  "the number of source paths and the number of target paths should be the same"));
+      assertTrue(throwable.getMessage().contains("* and ** are not allowed in a target path."));
     }
 
     try (Connection connection =

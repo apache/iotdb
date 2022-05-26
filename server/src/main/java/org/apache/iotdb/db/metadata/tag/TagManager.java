@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -38,6 +39,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -71,6 +73,38 @@ public class TagManager {
   public TagManager(String sgSchemaDirPath) throws IOException {
     this.sgSchemaDirPath = sgSchemaDirPath;
     tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+  }
+
+  public synchronized boolean createSnapshot(File targetDir) {
+    File tagLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagLogSnapshotTmp =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT_TMP);
+    try {
+      tagLogFile.copyTo(tagLogSnapshotTmp);
+      if (tagLogSnapshot.exists() && !tagLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating tagManager snapshot.",
+            tagLogSnapshot.getName());
+        return false;
+      }
+      if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
+        logger.error(
+            "Failed to rename {} to {} while creating tagManager snapshot.",
+            tagLogSnapshotTmp.getName(),
+            tagLogSnapshot.getName());
+        tagLogSnapshot.delete();
+        return false;
+      }
+
+      return true;
+    } catch (IOException e) {
+      logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
+      tagLogSnapshot.delete();
+      return false;
+    } finally {
+      tagLogSnapshotTmp.delete();
+    }
   }
 
   public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -208,7 +208,7 @@ public class StatusUtils {
     return status;
   }
 
-  public static TSStatus getStatus(TSStatusCode statusCode, EndPoint redirectedNode) {
+  public static TSStatus getStatus(TSStatusCode statusCode, TEndPoint redirectedNode) {
     TSStatus status = getStatus(statusCode);
     status.setRedirectNode(redirectedNode);
     return status;
@@ -220,7 +220,7 @@ public class StatusUtils {
     return newStatus;
   }
 
-  public static TSStatus getStatus(TSStatus status, EndPoint redirectedNode) {
+  public static TSStatus getStatus(TSStatus status, TEndPoint redirectedNode) {
     TSStatus newStatus = status.deepCopy();
     newStatus.setRedirectNode(redirectedNode);
     return newStatus;

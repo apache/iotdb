@@ -104,6 +104,27 @@ public class TimeColumn implements Column {
     return new TimeColumn(positionOffset + arrayOffset, length, values);
   }
 
+  @Override
+  public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new TimeColumn(arrayOffset + fromIndex, positionCount - fromIndex, values);
+  }
+
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      long time = values[i];
+      values[i] = values[j];
+      values[j] = time;
+    }
+  }
+
+  public long getStartTime() {
+    return values[arrayOffset];
+  }
+
   public long getEndTime() {
     return values[getPositionCount() + arrayOffset - 1];
   }
