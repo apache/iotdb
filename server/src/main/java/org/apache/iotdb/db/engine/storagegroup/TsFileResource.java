@@ -98,7 +98,7 @@ public class TsFileResource {
 
   private ModificationFile modFile;
 
-  private ModificationFile compactionModFile;
+  private volatile ModificationFile compactionModFile;
 
   protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
 
@@ -131,7 +131,7 @@ public class TsFileResource {
 
   private long ramSize;
 
-  private long tsFileSize = -1L;
+  private volatile long tsFileSize = -1L;
 
   private TsFileProcessor processor;
 
