@@ -157,6 +157,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return node.clone();
   }
 
+  @Override
   public PlanNode visitDeleteData(DeleteDataNode node, NodeGroupContext context) {
     context.putNodeDistribution(
         node.getPlanNodeId(),
@@ -164,6 +165,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return node;
   }
 
+  @Override
   public PlanNode visitDeleteTimeseries(DeleteTimeSeriesNode node, NodeGroupContext context) {
     List<PlanNode> visitedChildren = new ArrayList<>();
     node.getChildren()
