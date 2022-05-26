@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -68,7 +68,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
-import org.apache.iotdb.confignode.rpc.thrift.TOperatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TOperateReceiverPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -394,9 +394,9 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus operatePipe(TOperatePipeReq req) throws TException {
-    OperatePipeReq operatePipeReq = new OperatePipeReq(req);
-    TSStatus status = configManager.operatePipe(operatePipeReq);
+  public TSStatus operatePipe(TOperateReceiverPipeReq req) throws TException {
+    OperateReceiverPipeReq operateReceiverPipeReq = new OperateReceiverPipeReq(req);
+    TSStatus status = configManager.operatePipe(operateReceiverPipeReq);
 
     // Print log to record the ConfigNode that performs the OperatePipeRequest
     LOGGER.info("Execute OperatePipeRequest {} with result {}", req, status);

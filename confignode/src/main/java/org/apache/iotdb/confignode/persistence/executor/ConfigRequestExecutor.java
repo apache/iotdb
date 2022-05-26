@@ -40,7 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -188,7 +188,7 @@ public class ConfigRequestExecutor {
       case ApplyConfigNode:
         return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
       case OperatePipe:
-        return syncReceiverInfo.operatePipe((OperatePipeReq) req);
+        return syncReceiverInfo.operatePipe((OperateReceiverPipeReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

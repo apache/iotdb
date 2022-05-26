@@ -50,6 +50,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TOperateReceiverPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -59,11 +61,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.ratis.util.FileUtils;
@@ -1004,5 +1010,43 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
     Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
     Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
+  }
+
+  @Test
+  public void testOperateReceiverPipe() throws Exception {
+    TSStatus status;
+    // create pipe p
+    TOperateReceiverPipeReq createReq =
+        new TOperateReceiverPipeReq(RequestType.CREATE, "p", "192.168.11.11", 1);
+    status = processor.operatePipe(createReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    // create pipe p1
+    TOperateReceiverPipeReq createReq1 =
+        new TOperateReceiverPipeReq(RequestType.CREATE, "p1", "192.168.22.22", 2);
+    status = processor.operatePipe(createReq1);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    // start pipe p
+    TOperateReceiverPipeReq startReq =
+        new TOperateReceiverPipeReq(RequestType.START, "p", "192.168.11.11", 1);
+    status = processor.operatePipe(startReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    // show pipe
+    TShowPipeResp showPipeResp = processor.showPipe(new TShowPipeReq());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showPipeResp.getStatus().getCode());
+    Assert.assertEquals(2, showPipeResp.getPipeInfoList().size());
+    for (TPipeInfo pipeInfo : showPipeResp.getPipeInfoList()) {
+      if (pipeInfo.getPipeName().equals("p")) {
+        Assert.assertEquals("RUNNING", pipeInfo.getStatus());
+        Assert.assertEquals("192.168.11.11", pipeInfo.getRemote());
+        Assert.assertEquals(DatetimeUtils.convertLongToDate(1), pipeInfo.getCreateTime());
+        Assert.assertEquals("receiver", pipeInfo.getRole());
+      } else if (pipeInfo.getPipeName().equals("p1")) {
+        Assert.assertEquals("STOP", pipeInfo.getStatus());
+        Assert.assertEquals("192.168.22.22", pipeInfo.getRemote());
+        Assert.assertEquals(DatetimeUtils.convertLongToDate(2), pipeInfo.getCreateTime());
+        Assert.assertEquals("receiver", pipeInfo.getRole());
+      }
+    }
   }
 }

@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -189,7 +189,7 @@ public abstract class ConfigRequest implements IConsensusRequest {
           req = new GetChildPathsPartitionReq();
           break;
         case OperatePipe:
-          req = new OperatePipeReq();
+          req = new OperateReceiverPipeReq();
           break;
         case ShowPipe:
           req = new ShowPipeReq();

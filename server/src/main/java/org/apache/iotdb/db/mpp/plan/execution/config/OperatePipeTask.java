@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.confignode.rpc.thrift.TOperatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TOperateReceiverPipeReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -54,7 +54,7 @@ public class OperatePipeTask implements IConfigTask {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (config.isClusterMode()) {
       //      // Construct request using statement
-      TOperatePipeReq req = new TOperatePipeReq();
+      TOperateReceiverPipeReq req = new TOperateReceiverPipeReq();
       req.setType(operatePipeStatement.getOperateType());
       req.setRemoteIp(operatePipeStatement.getRemoteIp());
       req.setPipeName(operatePipeStatement.getPipeName());

@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -228,7 +228,7 @@ public interface Manager {
    */
   TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
 
-  TSStatus operatePipe(OperatePipeReq operatePipeReq);
+  TSStatus operatePipe(OperateReceiverPipeReq operateReceiverPipeReq);
 
   DataSet showPipe(ShowPipeReq showPipeReq);
 }

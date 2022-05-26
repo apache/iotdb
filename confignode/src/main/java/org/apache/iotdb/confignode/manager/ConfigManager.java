@@ -39,7 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -604,10 +604,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus operatePipe(OperatePipeReq operatePipeReq) {
+  public TSStatus operatePipe(OperateReceiverPipeReq operateReceiverPipeReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return syncReceiverManager.operatePipe(operatePipeReq);
+      return syncReceiverManager.operatePipe(operateReceiverPipeReq);
     } else {
       return status;
     }

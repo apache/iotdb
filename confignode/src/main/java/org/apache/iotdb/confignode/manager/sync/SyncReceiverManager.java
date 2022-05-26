@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.manager.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
-import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.response.PipeInfoResp;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.Manager;
@@ -45,7 +45,7 @@ public class SyncReceiverManager {
    *
    * @return SUCCESS_STATUS if operate pipe successfully.
    */
-  public synchronized TSStatus operatePipe(OperatePipeReq req) {
+  public synchronized TSStatus operatePipe(OperateReceiverPipeReq req) {
     return getConsensusManager().write(req).getStatus();
   }
 

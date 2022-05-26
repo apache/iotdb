@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
-import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.response.PipeInfoResp;
 import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
@@ -73,7 +73,7 @@ public class SyncReceiverInfo {
     }
   }
 
-  public TSStatus operatePipe(OperatePipeReq req) {
+  public TSStatus operatePipe(OperateReceiverPipeReq req) {
     try {
       switch (req.getOperateType()) {
         case HEARTBEAT:

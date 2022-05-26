@@ -194,7 +194,7 @@ struct TConfigNodeRegisterResp {
 }
 
 // Sync
-struct TOperatePipeReq{
+struct TOperateReceiverPipeReq{
   1:required transport.RequestType type // todo(cyz) 移到common，并改名
   2:required string pipeName
   3:required string remoteIp
@@ -282,7 +282,7 @@ service ConfigIService {
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /* Sync */
-  common.TSStatus operatePipe(TOperatePipeReq req)
+  common.TSStatus operateReceiverPipe(TOperateReceiverPipeReq req)
 
   TShowPipeResp showPipe(TShowPipeReq req)
 }

@@ -21,24 +21,24 @@ package org.apache.iotdb.confignode.consensus.request.write;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.confignode.rpc.thrift.TOperatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TOperateReceiverPipeReq;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class OperatePipeReq extends ConfigRequest {
+public class OperateReceiverPipeReq extends ConfigRequest {
   private RequestType operateType;
   private String pipeName;
   private String remoteIp;
   private long createTime;
 
-  public OperatePipeReq() {
+  public OperateReceiverPipeReq() {
     super(ConfigRequestType.OperatePipe);
   }
 
-  public OperatePipeReq(TOperatePipeReq req) {
+  public OperateReceiverPipeReq(TOperateReceiverPipeReq req) {
     this();
     this.operateType = req.getType();
     this.pipeName = req.getPipeName();
@@ -99,7 +99,7 @@ public class OperatePipeReq extends ConfigRequest {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    OperatePipeReq that = (OperatePipeReq) o;
+    OperateReceiverPipeReq that = (OperateReceiverPipeReq) o;
     return createTime == that.createTime
         && operateType == that.operateType
         && Objects.equals(pipeName, that.pipeName)
