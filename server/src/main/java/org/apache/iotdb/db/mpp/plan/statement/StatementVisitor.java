@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -137,6 +138,10 @@ public abstract class StatementVisitor<R, C> {
   // Select Statement
   public R visitQuery(QueryStatement queryStatement, C context) {
     return visitStatement(queryStatement, context);
+  }
+
+  public R visitLastPointFetch(LastPointFetchStatement lastPointFetchStatement, C context) {
+    return visitStatement(lastPointFetchStatement, context);
   }
 
   // Insert Statement
