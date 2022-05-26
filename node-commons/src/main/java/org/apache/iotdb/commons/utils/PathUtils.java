@@ -81,10 +81,15 @@ public class PathUtils {
       if (measurement == null) {
         continue;
       }
+      // todo: `` blank str
       // quoted with ` is always legal
       if (measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
           && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-        continue;
+        if (checkBackQuotes(measurement.substring(1, measurement.length() - 1))) {
+          continue;
+        } else {
+          throw new IllegalPathException(measurement);
+        }
       }
       if (IoTDBConstant.reservedWords.contains(measurement.toUpperCase())
           || StringUtils.isNumeric(measurement)
@@ -121,5 +126,13 @@ public class PathUtils {
         PathUtils.isLegalPath(measurement);
       }
     }
+  }
+
+  private static boolean checkBackQuotes(String src) {
+    int num = src.length() - src.replace("`", "").length();
+    if (num % 2 == 1) {
+      return false;
+    }
+    return src.length() == (src.replace("``", "").length() + num);
   }
 }
