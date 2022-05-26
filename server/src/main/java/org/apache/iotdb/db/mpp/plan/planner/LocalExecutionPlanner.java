@@ -1148,7 +1148,7 @@ public class LocalExecutionPlanner {
               UpdateLastCacheOperator.class.getSimpleName()),
           lastQueryScan,
           node.getSeriesPath(),
-          node.getSeriesPath().getSeriesType(),
+          node.getSeriesPath().getSchemaList().get(0).getType(),
           DATA_NODE_SCHEMA_CACHE,
           context.needUpdateLastCache);
     }
@@ -1163,7 +1163,8 @@ public class LocalExecutionPlanner {
               AlignedSeriesAggregationScanOperator.class.getSimpleName());
 
       // last_time, last_value
-      List<Aggregator> aggregators = LastQueryUtil.createAggregators(seriesPath.getSeriesType());
+      List<Aggregator> aggregators =
+          LastQueryUtil.createAggregators(seriesPath.getSchemaList().get(0).getType());
       AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
           new AlignedSeriesAggregationScanOperator(
               node.getPlanNodeId(),
