@@ -54,12 +54,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTimeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -134,6 +137,26 @@ public class LogicalPlanBuilder {
     }
 
     this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
+    return this;
+  }
+
+  public LogicalPlanBuilder planLast(Set<Expression> sourceExpressions, Filter globalTimeFilter) {
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    for (Expression sourceExpression : sourceExpressions) {
+      MeasurementPath selectPath =
+          (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+      if (selectPath.isUnderAlignedEntity()) {
+        sourceNodeList.add(
+            new AlignedLastQueryScanNode(
+                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
+      } else {
+        sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
+      }
+    }
+
+    this.root =
+        new LastQueryMergeNode(
+            context.getQueryId().genPlanNodeId(), sourceNodeList, globalTimeFilter);
     return this;
   }
 

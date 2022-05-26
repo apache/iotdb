@@ -49,7 +49,7 @@ IoTDB 为用户提供了权限管理操作，从而为用户提供对于数据�
 
 ### 创建用户
 
-使用 `CREATE USER <userName> <password>` 创建用户。例如，我们可以使用具有所有权限的root用户为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。建议使用单引号包裹用户名。SQL 语句为：
+使用 `CREATE USER <userName> <password>` 创建用户。例如，我们可以使用具有所有权限的root用户为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。建议使用反引号(`)包裹用户名。SQL 语句为：
 
 ```
 CREATE USER `ln_write_user` 'write_pwd'

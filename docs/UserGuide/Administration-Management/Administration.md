@@ -50,7 +50,7 @@ According to the [sample data](https://github.com/thulab/iotdb/files/4438687/Oth
 
 ### Create User
 
-We use `CREATE USER <userName> <password>` to create users. For example, we can use root user who has all privileges to create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. It is recommended to wrap the username in single quotes. The SQL statement is:
+We use `CREATE USER <userName> <password>` to create users. For example, we can use root user who has all privileges to create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. It is recommended to wrap the username in backtick(`). The SQL statement is:
 
 ```
 CREATE USER `ln_write_user` 'write_pwd'
