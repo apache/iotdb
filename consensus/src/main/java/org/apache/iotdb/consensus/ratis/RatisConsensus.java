@@ -426,14 +426,18 @@ class RatisConsensus implements IConsensus {
   }
 
   /**
-   * transferLeader in Ratis implementation is not guaranteed to transfer leadership to the
-   * designated peer Thus, it may produce undetermined results. Caller should not count on this API.
+   * transferLeader is implemented by 1. modify peer priority 2. ask current leader to step down
+   *
+   * <p>1. call setConfiguration to upgrade newLeader's priority to 1 and degrade all follower peers
+   * to 0. By default, Ratis gives every Raft Peer same priority 0. Ratis does not allow a peer with
+   * priority <= currentLeader.priority to becomes the leader, so we have to upgrade leader's
+   * priority to 1
+   *
+   * <p>2. call transferLeadership to force current leader to step down and raise a new round of
+   * election. In this election, the newLeader peer with priority 1 is guaranteed to be elected.
    */
   @Override
   public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
-    // By default, Ratis gives every Raft Peer same priority 0
-    // Ratis does not allow a peer.priority <= currentLeader.priority to becomes the leader
-    // So we have to enhance to leader's priority
 
     // first fetch the newest information
 
@@ -468,6 +472,8 @@ class RatisConsensus implements IConsensus {
         return failed(new RatisRequestFailedException(configChangeReply.getException()));
       }
       // TODO tuning for timeoutMs
+      // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
+      // election
       reply = client.getRaftClient().admin().transferLeadership(null, 5000);
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
