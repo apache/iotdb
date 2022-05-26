@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
+import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -29,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -49,19 +52,25 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesState
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -108,6 +117,12 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+
+      if (queryStatement.isLastQuery()) {
+        return planBuilder
+            .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())
+            .getRoot();
+      }
 
       if (queryStatement.isAlignByDevice()) {
         Map<String, PlanNode> deviceToSubPlanMap = new HashMap<>();
@@ -274,13 +289,19 @@ public class LogicalPlanner {
           createTimeSeriesStatement.getProps(),
           createTimeSeriesStatement.getTags(),
           createTimeSeriesStatement.getAttributes(),
-          createTimeSeriesStatement.getAlias());
+          createTimeSeriesStatement.getAlias(),
+          TimeseriesVersionUtil.generateVersion());
     }
 
     @Override
     public PlanNode visitCreateAlignedTimeseries(
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
+      int size = createAlignedTimeSeriesStatement.getMeasurements().size();
+      List<String> versionList = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        versionList.add(TimeseriesVersionUtil.generateVersion());
+      }
       return new CreateAlignedTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
           createAlignedTimeSeriesStatement.getDevicePath(),
@@ -290,12 +311,40 @@ public class LogicalPlanner {
           createAlignedTimeSeriesStatement.getCompressors(),
           createAlignedTimeSeriesStatement.getAliasList(),
           createAlignedTimeSeriesStatement.getTagsList(),
-          createAlignedTimeSeriesStatement.getAttributesList());
+          createAlignedTimeSeriesStatement.getAttributesList(),
+          versionList);
+    }
+
+    @Override
+    public PlanNode visitCreateTimeseriesByDevice(
+        CreateTimeSeriesByDeviceStatement createTimeSeriesByDeviceStatement,
+        MPPQueryContext context) {
+      int size = createTimeSeriesByDeviceStatement.getMeasurements().size();
+
+      MeasurementGroup measurementGroup = new MeasurementGroup();
+      for (int i = 0; i < size; i++) {
+        measurementGroup.addMeasurement(
+            createTimeSeriesByDeviceStatement.getMeasurements().get(i),
+            createTimeSeriesByDeviceStatement.getTsDataTypes().get(i),
+            getDefaultEncoding(createTimeSeriesByDeviceStatement.getTsDataTypes().get(i)),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            TimeseriesVersionUtil.generateVersion());
+      }
+
+      return new CreateMultiTimeSeriesNode(
+          context.getQueryId().genPlanNodeId(),
+          Collections.singletonMap(
+              createTimeSeriesByDeviceStatement.getDevicePath(), measurementGroup));
     }
 
     @Override
     public PlanNode visitCreateMultiTimeseries(
         CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, MPPQueryContext context) {
+      int size = createMultiTimeSeriesStatement.getPaths().size();
+      List<String> versionList = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        versionList.add(TimeseriesVersionUtil.generateVersion());
+      }
       return new CreateMultiTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
           createMultiTimeSeriesStatement.getPaths(),
@@ -305,7 +354,8 @@ public class LogicalPlanner {
           createMultiTimeSeriesStatement.getPropsList(),
           createMultiTimeSeriesStatement.getAliasList(),
           createMultiTimeSeriesStatement.getTagsList(),
-          createMultiTimeSeriesStatement.getAttributesList());
+          createMultiTimeSeriesStatement.getAttributesList(),
+          versionList);
     }
 
     @Override
@@ -534,6 +584,16 @@ public class LogicalPlanner {
           .planSchemaQueryMerge(false)
           .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_NODES)
           .getRoot();
+    }
+
+    @Override
+    public PlanNode visitDeleteTimeseries(
+        DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      List<PartialPath> paths = deleteTimeSeriesStatement.getPaths();
+      List<String> storageGroups =
+          new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
+      return planBuilder.planDeleteData(paths, storageGroups).planDeleteTimeseries(paths).getRoot();
     }
   }
 }

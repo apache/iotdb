@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
@@ -35,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
@@ -54,6 +57,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
@@ -62,13 +69,27 @@ public class PartitionManager {
 
   private final Manager configManager;
   private final PartitionInfo partitionInfo;
+  private static final int REGION_CLEANER_WORK_INTERVAL = 300;
+  private static final int REGION_CLEANER_WORK_INITIAL_DELAY = 10;
 
   private SeriesPartitionExecutor executor;
+  private final ScheduledExecutorService regionCleaner;
 
   public PartitionManager(Manager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
+    this.regionCleaner =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
+    regionCleaner.scheduleAtFixedRate(
+        this::clearDeletedRegions,
+        REGION_CLEANER_WORK_INITIAL_DELAY,
+        REGION_CLEANER_WORK_INTERVAL,
+        TimeUnit.SECONDS);
     setSeriesPartitionExecutor();
+  }
+
+  public ScheduledExecutorService getRegionCleaner() {
+    return regionCleaner;
   }
 
   /**
@@ -363,6 +384,31 @@ public class PartitionManager {
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
     schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
     return schemaNodeManagementResp;
+  }
+
+  public void preDeleteStorageGroup(
+      String storageGroup, PreDeleteStorageGroupReq.PreDeleteType preDeleteType) {
+    final PreDeleteStorageGroupReq preDeleteStorageGroupReq =
+        new PreDeleteStorageGroupReq(storageGroup, preDeleteType);
+    getConsensusManager().write(preDeleteStorageGroupReq);
+  }
+
+  /**
+   * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
+   * groups periodically.
+   */
+  private void clearDeletedRegions() {
+    if (getConsensusManager().isLeader()) {
+      final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
+      if (!deletedRegionSet.isEmpty()) {
+        LOGGER.info(
+            "DELETE REGIONS {} START",
+            deletedRegionSet.stream()
+                .map(TRegionReplicaSet::getRegionId)
+                .collect(Collectors.toList()));
+        SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
+      }
+    }
   }
 
   private ConsensusManager getConsensusManager() {

@@ -19,9 +19,15 @@
 package org.apache.iotdb.tsfile.read.common.parser;
 
 import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.misc.IntervalSet;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 public class PathParseError extends BaseErrorListener {
   public static final PathParseError INSTANCE = new PathParseError();
@@ -34,6 +40,23 @@ public class PathParseError extends BaseErrorListener {
       int charPositionInLine,
       String msg,
       RecognitionException e) {
+    // make msg clearer
+    if (recognizer instanceof Parser) {
+      IntervalSet expectedTokens = ((Parser) recognizer).getExpectedTokens();
+      String expectedTokensString = expectedTokens.toString(recognizer.getVocabulary());
+      String trimmed = expectedTokensString.replace(" ", "");
+      Set<String> expectedTokenNames =
+          new HashSet<>(Arrays.asList(trimmed.substring(1, trimmed.length() - 1).split(",")));
+
+      if (expectedTokenNames.contains("ID") && expectedTokenNames.contains("QUOTED_ID")) {
+        // node name
+        if (expectedTokenNames.contains("*") && expectedTokenNames.contains("**")) {
+          msg = msg.replace(expectedTokensString, "{ID, QUOTED_ID, *, **}");
+        } else {
+          msg = msg.replace(expectedTokensString, "{ID, QUOTED_ID}");
+        }
+      }
+    }
     throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
   }
 }

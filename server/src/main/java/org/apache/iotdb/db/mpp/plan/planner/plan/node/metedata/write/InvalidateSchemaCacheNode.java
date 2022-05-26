@@ -19,22 +19,19 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class InvalidateSchemaCacheNode extends WritePlanNode {
+public class InvalidateSchemaCacheNode extends PlanNode {
 
   private final QueryId queryId;
 
@@ -113,15 +110,5 @@ public class InvalidateSchemaCacheNode extends WritePlanNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new InvalidateSchemaCacheNode(planNodeId, queryId, pathList, storageGroups);
-  }
-
-  @Override
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
-  }
-
-  @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    return null;
   }
 }

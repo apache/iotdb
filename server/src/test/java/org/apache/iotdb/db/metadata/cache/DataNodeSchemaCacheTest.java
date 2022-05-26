@@ -66,8 +66,8 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
-                            o.isUnderAlignedEntity())));
+                            o.isUnderAlignedEntity(),
+                            null)));
     Assert.assertEquals(
         TSDataType.INT32,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTsDataType());
@@ -94,8 +94,8 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
-                            o.isUnderAlignedEntity())));
+                            o.isUnderAlignedEntity(),
+                            null)));
     Assert.assertEquals(
         TSDataType.BOOLEAN,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
@@ -182,17 +182,20 @@ public class DataNodeSchemaCacheTest {
         new PartialPath("root.sg1.d1.s1"),
         new MeasurementSchema("s1", TSDataType.INT32),
         null,
-        false);
+        false,
+        null);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT),
         null,
-        false);
+        false,
+        null);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
-        false);
+        false,
+        null);
 
     return schemaTree;
   }
@@ -204,17 +207,20 @@ public class DataNodeSchemaCacheTest {
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
-        false);
+        false,
+        null);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s4"),
         new MeasurementSchema("s4", TSDataType.TEXT),
         null,
-        false);
+        false,
+        null);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s5"),
         new MeasurementSchema("s5", TSDataType.INT64),
         null,
-        false);
+        false,
+        null);
 
     return schemaTree;
   }
