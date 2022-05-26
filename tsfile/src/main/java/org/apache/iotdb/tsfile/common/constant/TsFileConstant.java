@@ -38,7 +38,7 @@ public class TsFileConstant {
   public static final byte TIME_COLUMN_MASK = (byte) 0x80;
   public static final byte VALUE_COLUMN_MASK = (byte) 0x40;
 
-  private static final String NODE_NAME_MATCHER = "([a-zA-Z0-9_:@#${}\\u2E80-\\u9FFF]+)";
+  private static final String NODE_NAME_MATCHER = "([a-zA-Z0-9_\\u2E80-\\u9FFF]+)";
   public static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
 
   private TsFileConstant() {}
