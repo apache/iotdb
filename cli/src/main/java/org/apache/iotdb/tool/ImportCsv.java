@@ -714,8 +714,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       sessionDataSet = session.executeQueryStatement(sql);
     } catch (StatementExecutionException e) {
-      System.out.println(
-          "Meet error when query the type of timeseries because the IoTDB v0.13 don't support that the path contains any purely digital path.");
+      System.out.println("Meet error when query the type of timeseries because " + e.getMessage());
       return false;
     }
     List<String> columnNames = sessionDataSet.getColumnNames();

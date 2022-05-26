@@ -155,7 +155,10 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
+import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
+import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
@@ -228,8 +231,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIB
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ERRORS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_MSG;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_PERF_INFO;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_REMOTE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ROLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
@@ -1276,9 +1281,9 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeSinkName());
     for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink()) {
-      if (showAll || plan.getPipeSinkName().equals(pipeSink.getName())) {
+      if (showAll || plan.getPipeSinkName().equals(pipeSink.getPipeSinkName())) {
         RowRecord record = new RowRecord(0);
-        record.addField(Binary.valueOf(pipeSink.getName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipeSink.getPipeSinkName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipeSink.getType().name()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipeSink.showAllAttributes()), TSDataType.TEXT);
         listDataSet.putRecord(record);
@@ -1292,9 +1297,9 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(new PartialPath(COLUMN_PIPESINK_TYPE, false)),
             Arrays.asList(TSDataType.TEXT));
-    for (PipeSink.Type type : PipeSink.Type.values()) {
+    for (PipeSink.PipeSinkType pipeSinkType : PipeSink.PipeSinkType.values()) {
       RowRecord record = new RowRecord(0);
-      record.addField(Binary.valueOf(type.name()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(pipeSinkType.name()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
     return listDataSet;
@@ -1309,8 +1314,12 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPE_ROLE, false),
                 new PartialPath(COLUMN_PIPE_REMOTE, false),
                 new PartialPath(COLUMN_PIPE_STATUS, false),
-                new PartialPath(COLUMN_PIPE_MSG, false)),
+                new PartialPath(COLUMN_PIPE_MSG, false),
+                new PartialPath(COLUMN_PIPE_ERRORS, false),
+                new PartialPath(COLUMN_PIPE_PERF_INFO, false)),
             Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
@@ -1325,10 +1334,39 @@ public class PlanExecutor implements IPlanExecutor {
             Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getPipeSink().getPipeSinkName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
         record.addField(
             Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
+
+        boolean needSetFields = true;
+        if (pipe.getPipeSink().getType()
+            == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
+          ExtPipePluginManager extPipePluginManager =
+              SenderService.getInstance().getExternalPipeManager();
+
+          if (extPipePluginManager != null) {
+            String extPipeType = ((ExternalPipeSink) pipe.getPipeSink()).getExtPipeSinkTypeName();
+            ExternalPipeStatus externalPipeStatus =
+                extPipePluginManager.getExternalPipeStatus(extPipeType);
+
+            if (externalPipeStatus != null) {
+              record.addField(
+                  Binary.valueOf(externalPipeStatus.getWriterInvocationFailures().toString()),
+                  TSDataType.TEXT);
+              record.addField(
+                  Binary.valueOf(externalPipeStatus.getWriterStatuses().toString()),
+                  TSDataType.TEXT);
+              needSetFields = false;
+            }
+          }
+        }
+
+        if (needSetFields) {
+          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+        }
+
         listDataSet.putRecord(record);
       }
     }

@@ -100,7 +100,13 @@ public interface ISchemaRegion {
   // region Interfaces for Timeseries operation
   void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
+  void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
+      throws MetadataException;
+
   void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException;
+
+  void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
+      throws MetadataException;
 
   /**
    * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern

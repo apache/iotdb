@@ -86,8 +86,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public void pause() {
-    getLifeCycle().transition(LifeCycle.State.PAUSING);
-    getLifeCycle().transition(LifeCycle.State.PAUSED);
+    if (getLifeCycleState() == LifeCycle.State.RUNNING) {
+      getLifeCycle().transition(LifeCycle.State.PAUSING);
+      getLifeCycle().transition(LifeCycle.State.PAUSED);
+    }
   }
 
   @Override
@@ -142,13 +144,22 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // require the application statemachine to take the latest snapshot
     String metadata = Utils.getMetadataFromTermIndex(lastApplied);
     File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+
+    // delete snapshotDir fully in case of last takeSnapshot() crashed
+    FileUtils.deleteFully(snapshotDir);
+
     snapshotDir.mkdir();
     if (!snapshotDir.isDirectory()) {
       logger.error("Unable to create snapshotDir at {}", snapshotDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
-    boolean success = applicationStateMachine.takeSnapshot(snapshotDir);
-    if (!success) {
+
+    boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotDir);
+    boolean addTermIndexMetafileSuccess =
+        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
+
+    if (!applicationTakeSnapshotSuccess || !addTermIndexMetafileSuccess) {
+      // this takeSnapshot failed, clean up files and directories
       // statemachine is supposed to clear snapshotDir on failure
       boolean isEmpty = snapshotDir.delete();
       if (!isEmpty) {

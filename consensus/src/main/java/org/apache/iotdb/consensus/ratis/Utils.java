@@ -141,8 +141,11 @@ public class Utils {
   }
 
   public static TermIndex getTermIndexFromDir(File snapshotDir) {
-    String ordinal = snapshotDir.getName();
-    String[] items = ordinal.split("_");
+    return getTermIndexFromMetadataString(snapshotDir.getName());
+  }
+
+  public static TermIndex getTermIndexFromMetadataString(String metadata) {
+    String[] items = metadata.split("_");
     return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
   }
 }

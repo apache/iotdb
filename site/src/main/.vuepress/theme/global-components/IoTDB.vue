@@ -18,8 +18,7 @@
 
 <template >
   <div style="background:linear-gradient(top,#A2A2A2,#fff);">
-    
-    <h2 class="h2">Apache IoTDB</h2>
+    <h2 class="h2" style="font-size:80px;">Apache IoTDB</h2>
     <p class="project-name">Database for Internet of Things</p>
     <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
       Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance
@@ -29,33 +28,31 @@
       data storage, high-speed data ingestion and complex data analysis in the IoT
       industrial fields.
     </p>
-    <el-row style="margin-top:40px;text-align: center;">
+    <div style="margin-top:40px; text-align: center">
       <el-button
         type="warning"
         round
-        style="width:220px;
-  font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
+          style="font-size: 18px;letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
         @click="addRoutes1"
       >Download</el-button>
       <el-button
         type="info"
         round
-        style="width:220px;
-  font-size: 18px;    letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
+          style="font-size: 18px;letter-spacing: 0.03em;font-family: 'Arimo', sans-serif;"
         @click="addRoutes2"
       >QuickStart</el-button>
-    </el-row>
+    </div>
 
 
 
     <p class="home-title" style="font-size: 50px;">Scenarios</p>
 
     <div class="block">
-        <el-carousel trigger="click" height="700px">
-          <el-carousel-item v-for="(item,index) in imgBlock" :key="index" style="text-align:center;">
-            <img :src="item.src" height="500px">
-            <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: 0px;">{{item.des}}</h3>
-            <p style="font-size: 18px;padding:10px;line-height: 22px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
+        <el-carousel trigger="click" height="100vh" indicator-position="none">
+          <el-carousel-item v-for="(item,index) in imgBlock" :key="index"  style="text-align:center;height: auto;">
+            <img :src="item.src" style="width: 80%; height: auto;">
+            <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: normal;">{{item.des}}</h3>
+            <p style="font-size: 18px;line-height: 22px;padding:15px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
           </el-carousel-item>
         </el-carousel>
     </div>
@@ -63,11 +60,11 @@
     <p class="home-title" style="font-size: 50px;">Main Features</p>
 
     <el-row style="margin-top:50px;" :gutter="20">
-      <el-col :span="8" style="text-align:center;">
+      <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
           <el-popover
             placement="top-start"
             title="High-throughput read and write"
-            width="350"
+            width="325"
             trigger="hover"
             content="Apache IoTDB can support high-speed write access for millions of low-power and intelligently networked devices. It also provides lightning read access for retrieving data."
             >
@@ -77,11 +74,11 @@
               </el-button>
           </el-popover>
       </el-col>
-      <el-col :span="8" style="text-align:center;">
+      <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
           <el-popover
             placement="top-start"
             title="Efficient directory structure"
-            width="350"
+            width="325"
             trigger="hover"
             content="Apache IoTDB can efficiently organize complex data structure from IoT devices and large size of timeseries data with fuzzy searching strategy for complex directory of timeseries data."
             >
@@ -90,11 +87,11 @@
              <p> Efficient directory structure</p></el-button>
           </el-popover>
       </el-col>
-      <el-col :span="8" style="text-align:center;">
+      <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
           <el-popover
             placement="top-start"
             title="Rich query semantics"
-            width="400"
+            width="325"
             trigger="hover"
             content="Apache IoTDB can support time alignment for timeseries data across devices and sensors, computation in timeseries field and abundant aggregation functions in time dimension."
             >
@@ -103,14 +100,11 @@
              <p>Rich query semantics</p></el-button>
           </el-popover>
       </el-col>
-    </el-row>
-
-    <el-row style="margin-top:100px;height:300px;" :gutter="20">
-      <el-col :span="8" style="text-align:center;">
+      <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
           <el-popover
             placement="top-start"
             title="Low cost on hardware"
-            width="400"
+            width="325"
             trigger="hover"
             content="Apache IoTDB can reach a high compression ratio of disk storage (it costs less than $0.23 to store 1GB of data on hard disk)."
             >
@@ -119,11 +113,11 @@
              <p>Low cost on hardware</p></el-button>
           </el-popover>
       </el-col>
-      <el-col :span="8" style="text-align:center;">
+      <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:10px;">
           <el-popover
             placement="top-start"
             title="Flexible deployment"
-            width="400"
+            width="325"
             trigger="hover"
             content="Apache IoTDB can provide users one-click installation on the cloud, terminal tool on desktop and the bridge tool between cloud platform and on premise machine (Data Synchronization Tool)."
             >
@@ -132,11 +126,11 @@
              <p>Flexible deployment</p></el-button>
           </el-popover>
       </el-col>
-      <el-col :span="8" style="text-align:center;">
+      <el-col :xs="24" :sm="24" :md="12" :lg="8" style="text-align:center;margin-bottom:50px;">
           <el-popover
             placement="top-start"
             title="Intense integration with Open Source Ecosystem"
-            width="400"
+            width="325"
             trigger="hover"
             content="Apache IoTDB can support analysis ecosystems, for example, Hadoop, Spark, Flink and Grafana （visualization tool）."
             >
@@ -147,7 +141,7 @@
           </el-popover>
       </el-col>
     </el-row>
-
+    <span style="margin: 10px"></span>
   </div>
 </template>
 
@@ -241,40 +235,35 @@ export default {
      background-color: #d3dce6;
   }
 
-
-@media (min-width: 200px) {
-  .carousel-inner {
-    min-height: 530px;
+@media only screen and (min-width:320px)  {
+  .block {
+    margin-bottom: -200px;
   }
 }
 
-@media (min-width: 768px) {
-  .feature-item {
-    min-height: 220px;
-  }
-  .carousel-inner {
-    min-height: 520px;
+@media only screen and (min-width:481px)  {
+  .block {
+    margin-bottom: -500px;
   }
 }
 
-@media (min-width: 992px) {
-  .feature-item {
-    min-height: 240px;
-  }
-  .carousel-inner {
-    min-height: 580px;
+@media only screen and (min-width:769px)  {
+  .block {
+    margin-bottom: -500px;
   }
 }
 
-@media (min-width: 1200px) {
-  .feature-item {
-    min-height: 210px;
-  }
-  .carousel-inner {
-    min-height: 650px;
+@media only screen and (min-width:1025px) {
+  .block {
+    margin-bottom: 0;
   }
 }
 
+@media only screen and (min-width:1201px) {
+  .block {
+    margin-bottom: 0;
+  }
+}
 
 .Scenarios {
   padding: 5px 10px;
