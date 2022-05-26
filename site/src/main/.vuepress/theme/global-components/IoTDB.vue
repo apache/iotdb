@@ -48,11 +48,11 @@
     <p class="home-title" style="font-size: 50px;">Scenarios</p>
 
     <div class="block">
-        <el-carousel trigger="click" height="1000px" indicator-position="outside">
+        <el-carousel trigger="click" :height="autoHeight" indicator-position="outside">
           <el-carousel-item v-for="(item,index) in imgBlock" :key="index"  style="text-align:center;">
             <img :src="item.src" height="500px">
-            <h3 class="carousel-title" style="font-size: 30px;color: #fcac45;text-align: center;line-height: normal;">{{item.des}}</h3>
-            <p class="carousel-text" style="font-size: 18px;line-height: 22px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
+            <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: normal;">{{item.des}}</h3>
+            <p style="font-size: 18px;line-height: 22px;padding:15px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
           </el-carousel-item>
         </el-carousel>
     </div>
@@ -171,6 +171,22 @@ export default {
       isHover: false
     };
   },
+  computed: {
+    autoHeight() {
+      let _w = document.documentElement.clientWidth || document.body.clientWidth;
+      let _h = 0;
+      if (_w >= 200 && _w < 768) {
+        _h = 925;
+      } else if (_w >= 768 && _w < 992) {
+        _h = 825;
+      } else if (_w >= 992 && _w < 1200) {
+        _h = 825;
+      } else if (_w >= 1200) {
+        _h = 750;
+      }
+      return _h + "px";
+    }
+  },
   methods: {
     addRoutes1() {
       this.$router.push("/Download/");
@@ -243,9 +259,6 @@ export default {
   .carousel-title {
     padding-top:0;
   }
-  .carousel-text {
-    padding:15px;
-  }
 }
 
 @media (min-width: 768px) {
@@ -254,12 +267,6 @@ export default {
   }
   .carousel-inner {
     min-height: 520px;
-  }
-  .carousel-title {
-    padding-top:100px;
-  }
-  .carousel-text {
-    padding:0 100px 0 100px;
   }
 }
 
@@ -270,12 +277,6 @@ export default {
   .carousel-inner {
     min-height: 580px;
   }
-  .carousel-title {
-    padding-top:100px;
-  }
-  .carousel-text {
-    padding:0 100px 0 100px;
-  }
 }
 
 @media (min-width: 1200px) {
@@ -284,12 +285,6 @@ export default {
   }
   .carousel-inner {
     min-height: 650px;
-  }
-  .carousel-title {
-    padding-top:100px;
-  }
-  .carousel-text {
-    padding:0 100px 0 100px;
   }
 }
 

@@ -251,6 +251,10 @@ public class PathPatternTree {
   }
 
   public PathPatternTree findOverlappedPattern(PartialPath pattern) {
+    return new PathPatternTree(findOverlappedPaths(pattern));
+  }
+
+  public List<PartialPath> findOverlappedPaths(PartialPath pattern) {
     if (pathList.isEmpty()) {
       pathList = splitToPathList();
     }
@@ -261,7 +265,7 @@ public class PathPatternTree {
         results.add(path);
       }
     }
-    return new PathPatternTree(results);
+    return results;
   }
 
   @TestOnly
