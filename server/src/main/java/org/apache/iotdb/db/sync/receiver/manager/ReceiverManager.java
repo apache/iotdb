@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.sync.receiver.manager;
 
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;

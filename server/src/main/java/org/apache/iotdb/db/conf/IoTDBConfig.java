@@ -230,10 +230,6 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Sync directory, including the log and hardlink tsfiles */
-  private String syncDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
-
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -978,7 +974,6 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
-    syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
     indexRootFolder = addHomeDir(indexRootFolder);
@@ -1131,14 +1126,6 @@ public class IoTDBConfig {
 
   public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
-  }
-
-  public String getSyncDir() {
-    return syncDir;
-  }
-
-  void setSyncDir(String syncDir) {
-    this.syncDir = syncDir;
   }
 
   public String getTracingDir() {

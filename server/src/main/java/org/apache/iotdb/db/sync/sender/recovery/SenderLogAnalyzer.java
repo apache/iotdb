@@ -19,13 +19,14 @@
  */
 package org.apache.iotdb.db.sync.sender.recovery;
 
+import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.MsgManager;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
@@ -46,7 +47,7 @@ public class SenderLogAnalyzer {
   private final List<Pipe> pipes;
 
   private Pipe runningPipe;
-  private Pipe.PipeStatus runningPipeStatus;
+  private PipeStatus runningPipeStatus;
   private MsgManager msgManager;
 
   public SenderLogAnalyzer() throws IOException {
@@ -101,15 +102,15 @@ public class SenderLogAnalyzer {
             msgManager.addPipe(runningPipe);
             break;
           case STOP_PIPE: // ignore status check
-            runningPipeStatus = Pipe.PipeStatus.STOP;
+            runningPipeStatus = PipeStatus.STOP;
             msgManager.recoverMsg(parseStrings);
             break;
           case START_PIPE:
-            runningPipeStatus = Pipe.PipeStatus.RUNNING;
+            runningPipeStatus = PipeStatus.RUNNING;
             msgManager.recoverMsg(parseStrings);
             break;
           case DROP_PIPE:
-            runningPipeStatus = Pipe.PipeStatus.DROP;
+            runningPipeStatus = PipeStatus.DROP;
             runningPipe.drop();
             msgManager.removeAllPipe();
             break;

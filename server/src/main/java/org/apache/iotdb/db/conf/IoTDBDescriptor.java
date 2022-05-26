@@ -254,8 +254,6 @@ public class IoTDBDescriptor {
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
-      conf.setSyncDir(properties.getProperty("sync_dir", conf.getSyncDir()));
-
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
       int mlogBufferSize =

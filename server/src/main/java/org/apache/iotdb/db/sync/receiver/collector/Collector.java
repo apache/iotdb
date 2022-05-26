@@ -21,9 +21,9 @@ package org.apache.iotdb.db.sync.receiver.collector;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueue;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;

@@ -103,10 +103,6 @@ public class ConfigNodeConf {
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
-  /** Sync directory, including the log and hardlink tsfiles */
-  private String syncDir =
-      ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
-
   /** Time partition interval in seconds */
   private long timePartitionInterval = 604800;
 
@@ -149,7 +145,6 @@ public class ConfigNodeConf {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
-    syncDir = addHomeDir(syncDir);
   }
 
   private String addHomeDir(String dir) {
@@ -307,14 +302,6 @@ public class ConfigNodeConf {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
-  }
-
-  public String getSyncDir() {
-    return syncDir;
-  }
-
-  public void setSyncDir(String syncDir) {
-    this.syncDir = syncDir;
   }
 
   public String getConfigNodeConsensusProtocolClass() {

@@ -20,16 +20,16 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
 import org.apache.iotdb.confignode.consensus.response.PipeInfoResp;
-import org.apache.iotdb.confignode.manager.sync.recovery.ReceiverLog;
-import org.apache.iotdb.confignode.manager.sync.recovery.ReceiverLogAnalyzer;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.receiver.manager.ReceiverManager;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLog;
+import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLogAnalyzer;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
@@ -52,7 +52,7 @@ public class SyncReceiverInfo {
 
   private boolean pipeServerEnable;
   // <pipeName, <remoteIp, <createTime, status>>>
-  private Map<String, Map<String, Map<Long, Pipe.PipeStatus>>> pipeInfos;
+  private Map<String, Map<String, Map<Long, PipeStatus>>> pipeInfos;
   // <pipeFolderName, pipeMsg>
   private Map<String, List<PipeMessage>> pipeMessageMap;
   private ReceiverLog log;
@@ -125,43 +125,43 @@ public class SyncReceiverInfo {
 
   private void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo == null || pipeInfo.getStatus().equals(Pipe.PipeStatus.DROP)) {
+    if (pipeInfo == null || pipeInfo.getStatus().equals(PipeStatus.DROP)) {
       LOGGER.info(
           "create Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       //            createDir(pipeName, remoteIp, createTime);
       log.createPipe(pipeName, remoteIp, createTime);
       pipeInfos.putIfAbsent(pipeName, new HashMap<>());
       pipeInfos.get(pipeName).putIfAbsent(remoteIp, new HashMap<>());
-      pipeInfos.get(pipeName).get(remoteIp).put(createTime, Pipe.PipeStatus.STOP);
+      pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.STOP);
     }
   }
 
   private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null && pipeInfo.getStatus().equals(Pipe.PipeStatus.STOP)) {
+    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
       LOGGER.info("start Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       log.startPipe(pipeName, remoteIp, createTime);
-      pipeInfos.get(pipeName).get(remoteIp).put(createTime, Pipe.PipeStatus.RUNNING);
+      pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.RUNNING);
       //            collector.startPipe(pipeName, remoteIp, createTime);
     }
   }
 
   private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null && pipeInfo.getStatus().equals(Pipe.PipeStatus.RUNNING)) {
+    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
       LOGGER.info("stop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       log.stopPipe(pipeName, remoteIp, createTime);
-      pipeInfos.get(pipeName).get(remoteIp).put(createTime, Pipe.PipeStatus.STOP);
+      pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.STOP);
       //            collector.stopPipe(pipeName, remoteIp, createTime);
     }
   }
 
   private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null && !pipeInfo.getStatus().equals(Pipe.PipeStatus.DROP)) {
+    if (pipeInfo != null && !pipeInfo.getStatus().equals(PipeStatus.DROP)) {
       LOGGER.info("drop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       log.dropPipe(pipeName, remoteIp, createTime);
-      pipeInfos.get(pipeName).get(remoteIp).put(createTime, Pipe.PipeStatus.DROP);
+      pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.DROP);
       //            collector.stopPipe(pipeName, remoteIp, createTime);
       //            PipeDataQueueFactory.removeBufferedPipeDataQueue(
       //                    SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
@@ -175,9 +175,9 @@ public class SyncReceiverInfo {
       return Collections.emptyList();
     }
     List<PipeInfo> res = new ArrayList<>();
-    for (Map.Entry<String, Map<Long, Pipe.PipeStatus>> remoteIpEntry :
+    for (Map.Entry<String, Map<Long, PipeStatus>> remoteIpEntry :
         pipeInfos.get(pipeName).entrySet()) {
-      for (Map.Entry<Long, Pipe.PipeStatus> createTimeEntry : remoteIpEntry.getValue().entrySet()) {
+      for (Map.Entry<Long, PipeStatus> createTimeEntry : remoteIpEntry.getValue().entrySet()) {
         res.add(
             new PipeInfo(
                 pipeName,

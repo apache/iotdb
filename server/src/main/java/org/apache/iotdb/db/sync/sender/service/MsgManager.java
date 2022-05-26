@@ -19,9 +19,10 @@
  */
 package org.apache.iotdb.db.sync.sender.service;
 
+import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogger;
 import org.apache.iotdb.service.transport.thrift.ResponseType;
@@ -69,7 +70,10 @@ public class MsgManager {
               pipe.getName(), runningPipe.getName()));
     }
 
-    String msg = String.format("[%s] ", type.name()) + SyncPathUtil.createMsg(inputMsg);
+    String msg =
+        String.format("[%s] ", type.name())
+            + SyncPathUtil.createMsg(
+                DatetimeUtils.convertLongToDate(DatetimeUtils.currentTime()), inputMsg);
     if (Messages.size() > SyncConstant.MESSAGE_NUMBER_LIMIT) {
       Messages.poll();
     }

@@ -77,5 +77,6 @@ public class CommonDescriptor {
     config.setDefaultTTL(
         Long.parseLong(
             properties.getProperty("default_ttl", String.valueOf(config.getDefaultTTL()))));
+    config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()));
   }
 }

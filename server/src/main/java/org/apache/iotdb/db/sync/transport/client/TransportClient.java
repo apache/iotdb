@@ -19,10 +19,10 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
+import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;

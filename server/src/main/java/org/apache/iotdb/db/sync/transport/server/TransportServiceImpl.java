@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.sync.transport.server;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
@@ -58,7 +58,7 @@ import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 
-import static org.apache.iotdb.db.sync.conf.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.CONFLICT_CODE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.ERROR_CODE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.REBASE_CODE;

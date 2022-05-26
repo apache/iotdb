@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.sync.receiver.recovery;
 
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
