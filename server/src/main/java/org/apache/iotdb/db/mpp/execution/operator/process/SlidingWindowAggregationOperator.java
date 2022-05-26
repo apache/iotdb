@@ -93,18 +93,13 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
     }
 
     // 2. Calculate aggregation result based on current time window
-    TsBlock inputTsBlock = cachedTsBlock;
-    while (!calcFromTsBlock(inputTsBlock, curTimeRange)) {
+    while (!calcFromTsBlock(cachedTsBlock, curTimeRange)) {
       if (child.hasNext()) {
-        inputTsBlock = child.next();
+        cachedTsBlock = child.next();
       } else {
+        cachedTsBlock = null;
         break;
       }
-    }
-    if (inputTsBlock != null && !satisfied(inputTsBlock, curTimeRange, ascending)) {
-      cachedTsBlock = inputTsBlock;
-    } else {
-      cachedTsBlock = null;
     }
 
     // 3. Update result using aggregators

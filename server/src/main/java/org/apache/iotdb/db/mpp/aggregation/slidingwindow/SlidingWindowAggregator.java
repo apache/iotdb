@@ -83,15 +83,15 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   protected static class PartialAggregationResult {
 
     private final TimeColumn timeColumn;
-    private final Column[] valueColumns;
+    private final Column[] partialResultColumns;
 
-    public PartialAggregationResult(TimeColumn timeColumn, Column[] valueColumns) {
+    public PartialAggregationResult(TimeColumn timeColumn, Column[] partialResultColumns) {
       this.timeColumn = timeColumn;
-      this.valueColumns = valueColumns;
+      this.partialResultColumns = partialResultColumns;
     }
 
     public boolean isNull() {
-      return valueColumns[0].isNull(0);
+      return partialResultColumns[0].isNull(0);
     }
 
     public long getTime() {
@@ -99,11 +99,11 @@ public abstract class SlidingWindowAggregator extends Aggregator {
     }
 
     public Column[] getPartialResult() {
-      return valueColumns;
+      return partialResultColumns;
     }
 
     public List<TSDataType> getDataTypes() {
-      return Arrays.stream(valueColumns)
+      return Arrays.stream(partialResultColumns)
           .sequential()
           .map(Column::getDataType)
           .collect(Collectors.toList());
@@ -113,20 +113,20 @@ public abstract class SlidingWindowAggregator extends Aggregator {
       List<TSDataType> dataTypes = getDataTypes();
       TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypes);
       ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-      Column[] results = new Column[valueColumns.length];
-      for (int i = 0; i < valueColumns.length; i++) {
+      Column[] results = new Column[partialResultColumns.length];
+      for (int i = 0; i < partialResultColumns.length; i++) {
         switch (dataTypes.get(i)) {
           case INT32:
-            columnBuilders[i].writeInt(valueColumns[i].getInt(0) * -1);
+            columnBuilders[i].writeInt(partialResultColumns[i].getInt(0) * -1);
             break;
           case INT64:
-            columnBuilders[i].writeLong(valueColumns[i].getLong(0) * -1);
+            columnBuilders[i].writeLong(partialResultColumns[i].getLong(0) * -1);
             break;
           case FLOAT:
-            columnBuilders[i].writeFloat(valueColumns[i].getFloat(0) * -1);
+            columnBuilders[i].writeFloat(partialResultColumns[i].getFloat(0) * -1);
             break;
           case DOUBLE:
-            columnBuilders[i].writeDouble(valueColumns[i].getDouble(0) * -1);
+            columnBuilders[i].writeDouble(partialResultColumns[i].getDouble(0) * -1);
             break;
           case TEXT:
           case BOOLEAN:
