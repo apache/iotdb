@@ -21,6 +21,7 @@ parser grammar IoTDBSqlParser;
 
 options { tokenVocab=SqlLexer; }
 
+import IdentifierParser;
 
 /**
  * 1. Top Level Description
@@ -114,7 +115,11 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL (USING uri (COMMA uri)*)?
+    ;
+
+uri
+    : STRING_LITERAL
     ;
 
 // Create Trigger
@@ -160,7 +165,7 @@ alterTimeseries
 alterClause
     : RENAME beforeName=attributeKey TO currentName=attributeKey
     | SET attributePair (COMMA attributePair)*
-    | DROP STRING_LITERAL (COMMA STRING_LITERAL)*
+    | DROP attributeKey (COMMA attributeKey)*
     | ADD TAGS attributePair (COMMA attributePair)*
     | ADD ATTRIBUTES attributePair (COMMA attributePair)*
     | UPSERT aliasClause? tagClause? attributeClause?
@@ -411,10 +416,10 @@ withoutNullClause
     ;
 
 oldTypeClause
-    : (dataType=DATATYPE_VALUE | ALL) LS_BRACKET linearClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET specificValueClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
+    : (ALL | dataType=attributeValue) LS_BRACKET linearClause RS_BRACKET
+    | (ALL | dataType=attributeValue) LS_BRACKET previousClause RS_BRACKET
+    | (ALL | dataType=attributeValue) LS_BRACKET specificValueClause RS_BRACKET
+    | (ALL | dataType=attributeValue) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -789,14 +794,6 @@ wildcard
     ;
 
 
-// Identifier
-
-identifier
-    : ID
-    | QUOTED_ID
-    ;
-
-
 // Constant & Literal
 
 constant
@@ -886,16 +883,12 @@ fromClause
 // Attribute Clause
 
 attributeClauses
-    : aliasNodeName? WITH DATATYPE operator_eq dataType=DATATYPE_VALUE
-    (COMMA ENCODING operator_eq encoding=ENCODING_VALUE)?
-    (COMMA (COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
+    : aliasNodeName? WITH attributeKey operator_eq dataType=attributeValue
     (COMMA attributePair)*
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | aliasNodeName? WITH? (DATATYPE operator_eq)? dataType=DATATYPE_VALUE
-    (ENCODING operator_eq encoding=ENCODING_VALUE)?
-    ((COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
+    | aliasNodeName? WITH? (attributeKey operator_eq)? dataType=attributeValue
     attributePair*
     tagClause?
     attributeClause?
@@ -914,7 +907,7 @@ attributeClause
     ;
 
 attributePair
-    : key=attributeKey (OPERATOR_SEQ | OPERATOR_DEQ) value=attributeValue
+    : key=attributeKey operator_eq value=attributeValue
     ;
 
 attributeKey

@@ -161,6 +161,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+
+  private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGCachedImpl mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -194,12 +196,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
-
-    init(storageGroupMNode);
+    this.storageGroupMNode = storageGroupMNode;
+    init();
   }
 
   @SuppressWarnings("squid:S2093")
-  public synchronized void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+  public synchronized void init() throws MetadataException {
     if (initialized) {
       return;
     }
@@ -420,6 +422,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Schema_File mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Schema_File mode currently doesn't support snapshot feature.");
+  }
+
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -520,6 +536,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
       idTable.createTimeseries(plan);
     }
+  }
+
+  @Override
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "SchemaRegion schema file mode currently doesn't support timeseries with version");
   }
 
   /**
@@ -682,6 +705,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
     }
+  }
+
+  @Override
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "SchemaRegion schema file mode currently doesn't support timeseries with version");
   }
 
   /**

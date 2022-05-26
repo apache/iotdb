@@ -35,6 +35,7 @@ public class AvgAccumulator implements Accumulator {
   private TSDataType seriesDataType;
   private long countValue;
   private double sumValue;
+  private boolean initResult = false;
 
   public AvgAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -67,17 +68,28 @@ public class AvgAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 2, "partialResult of Avg should be 2");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
+    initResult = true;
     countValue += partialResult[0].getLong(0);
     sumValue += partialResult[1].getDouble(0);
+    if (countValue == 0) {
+      initResult = false;
+    }
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
+    initResult = true;
     countValue += statistics.getCount();
     if (statistics instanceof IntegerStatistics) {
       sumValue += statistics.getSumLongValue();
     } else {
       sumValue += statistics.getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
     }
   }
 
@@ -85,6 +97,10 @@ public class AvgAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
+    if (finalResult.isNull(0)) {
+      return;
+    }
+    initResult = true;
     countValue = 1;
     sumValue = finalResult.getDouble(0);
   }
@@ -92,17 +108,27 @@ public class AvgAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 2, "partialResult of Avg should be 2");
-    columnBuilders[0].writeLong(countValue);
-    columnBuilders[1].writeDouble(sumValue);
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+      columnBuilders[1].appendNull();
+    } else {
+      columnBuilders[0].writeLong(countValue);
+      columnBuilders[1].writeDouble(sumValue);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeDouble(sumValue / countValue);
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeDouble(sumValue / countValue);
+    }
   }
 
   @Override
   public void reset() {
+    initResult = false;
     this.countValue = 0;
     this.sumValue = 0.0;
   }
@@ -126,10 +152,11 @@ public class AvgAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
         sumValue += column[1].getInt(i);
       }
@@ -140,10 +167,11 @@ public class AvgAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
         sumValue += column[1].getLong(i);
       }
@@ -154,10 +182,11 @@ public class AvgAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
         sumValue += column[1].getFloat(i);
       }
@@ -168,10 +197,11 @@ public class AvgAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
         sumValue += column[1].getDouble(i);
       }

@@ -663,7 +663,7 @@ public class SchemaFileTest {
   }
 
   private IMNode getNode(IMNode root, String path) throws MetadataException {
-    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
     IMNode cur = root;
     for (String node : pathNodes) {
       if (!node.equals("root")) {
@@ -708,7 +708,7 @@ public class SchemaFileTest {
   // region Tree Constructor
 
   private IMNode virtualTriangleMTree(int size, String sgPath) throws MetadataException {
-    String[] sgPathNodes = PathUtils.splitPathToDetachedPath(sgPath);
+    String[] sgPathNodes = PathUtils.splitPathToDetachedNodes(sgPath);
     IMNode upperNode = null;
     for (String name : sgPathNodes) {
       IMNode child = new InternalMNode(upperNode, name);

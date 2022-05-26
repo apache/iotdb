@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,9 +42,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /** This class is used to manage checkpoints of one wal node */
 public class CheckpointManager implements AutoCloseable {
-  /** use size limit to control WALEntry number in each file */
-  public static final long LOG_SIZE_LIMIT = 3 * 1024 * 1024;
-
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -77,7 +75,7 @@ public class CheckpointManager implements AutoCloseable {
     currentLogWriter =
         new CheckpointWriter(
             SystemFileFactory.INSTANCE.getFile(
-                logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion)));
+                logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion)));
     makeGlobalInfoCP();
   }
 
@@ -169,7 +167,8 @@ public class CheckpointManager implements AutoCloseable {
           currentLogWriter.force();
           File oldFile =
               SystemFileFactory.INSTANCE.getFile(
-                  logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion - 1));
+                  logDirectory,
+                  CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion - 1));
           oldFile.delete();
         }
       } catch (IOException e) {
@@ -185,14 +184,14 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   private boolean tryRollingLogWriter() throws IOException {
-    if (currentLogWriter.size() < LOG_SIZE_LIMIT) {
+    if (currentLogWriter.size() < config.getCheckpointFileSizeThresholdInByte()) {
       return false;
     }
     currentLogWriter.close();
     currentCheckPointFileVersion++;
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion));
+            logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion));
     currentLogWriter = new CheckpointWriter(nextLogFile);
     return true;
   }

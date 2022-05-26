@@ -22,11 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.execution.QueryIdGenerator;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
@@ -74,13 +77,19 @@ public class Coordinator {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+      CONFIG_NODE_CLIENT_MANAGER =
+          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
 
+  private final QueryIdGenerator queryIdGenerator = new QueryIdGenerator();
+
   private static final Coordinator INSTANCE = new Coordinator();
 
-  private final ConcurrentHashMap<QueryId, IQueryExecution> queryExecutionMap;
+  private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -96,7 +105,7 @@ public class Coordinator {
       ISchemaFetcher schemaFetcher) {
     if (statement instanceof IConfigStatement) {
       queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor);
+      return new ConfigExecution(queryContext, statement, executor, CONFIG_NODE_CLIENT_MANAGER);
     }
     return new QueryExecution(
         statement,
@@ -111,7 +120,7 @@ public class Coordinator {
 
   public ExecutionResult execute(
       Statement statement,
-      QueryId queryId,
+      long queryId,
       SessionInfo session,
       String sql,
       IPartitionFetcher partitionFetcher,
@@ -122,7 +131,7 @@ public class Coordinator {
             statement,
             new MPPQueryContext(
                 sql,
-                queryId,
+                queryIdGenerator.createNextQueryId(),
                 session,
                 LOCAL_HOST_DATA_BLOCK_ENDPOINT,
                 LOCAL_HOST_INTERNAL_ENDPOINT),
@@ -134,7 +143,7 @@ public class Coordinator {
     return execution.getStatus();
   }
 
-  public IQueryExecution getQueryExecution(QueryId queryId) {
+  public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
   }
 
@@ -153,6 +162,10 @@ public class Coordinator {
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE, COORDINATOR_SCHEDULED_EXECUTOR_NAME);
+  }
+
+  public QueryId createQueryId() {
+    return queryIdGenerator.createNextQueryId();
   }
 
   public static Coordinator getInstance() {

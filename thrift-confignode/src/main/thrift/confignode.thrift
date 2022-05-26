@@ -23,11 +23,10 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeLocation dataNodeLocation
-  2: required common.TDataNodeInfo dataNodeInfo
+  1: required common.TDataNodeInfo dataNodeInfo
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
-  3: optional map<string, TStorageGroupSchema> statusMap
+  2: optional map<string, TStorageGroupSchema> statusMap
 }
 
 struct TGlobalConfig {
@@ -44,10 +43,10 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
 }
 
-struct TDataNodeLocationResp {
+struct TDataNodeInfoResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
-  2: optional map<i32, common.TDataNodeLocation> dataNodeLocationMap
+  2: optional map<i32, common.TDataNodeInfo> dataNodeInfoMap
 }
 
 // StorageGroup
@@ -118,6 +117,25 @@ struct TSchemaPartitionResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
+// Node Management
+
+enum NodeManagementType {
+CHILD_PATHS,
+CHILD_NODES
+}
+
+struct TSchemaNodeManagementReq {
+  1: required binary pathPatternTree
+  2: required NodeManagementType type
+}
+
+struct TSchemaNodeManagementResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+  3: optional set<string> matchedNode
+}
+
 // Data
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
@@ -144,6 +162,24 @@ struct TAuthorizerReq {
 struct TAuthorizerResp {
   1: required common.TSStatus status
   2: required map<string, list<string>> authorizerInfo
+}
+
+struct TUserResp{
+  1: required string username
+  2: required string password
+  3: required list<string> privilegeList
+  4: required list<string> roleList
+}
+
+struct TRoleResp{
+  1: required string roleName
+  2: required list<string> privilegeList
+}
+
+struct TPermissionInfoResp{
+  1: required TUserResp userInfo
+  2: required map<string, TRoleResp> roleInfo
+  3: required common.TSStatus status
 }
 
 struct TLoginReq {
@@ -175,13 +211,20 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+// UDF
+struct TCreateFunctionReq {
+  1: required string udfName
+  2: required string className
+  3: required list<string> uris
+}
+
 service ConfigIService {
 
   /* DataNode */
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  TDataNodeLocationResp getDataNodeLocations(i32 dataNodeId)
+  TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
   /* StorageGroup */
 
@@ -209,6 +252,10 @@ service ConfigIService {
 
   TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
+  /* Node Management */
+
+  TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
+
   /* Data */
 
   TDataPartitionResp getDataPartition(TDataPartitionReq req)
@@ -221,13 +268,17 @@ service ConfigIService {
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
-  common.TSStatus login(TLoginReq req)
+  TPermissionInfoResp login(TLoginReq req)
 
-  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
+  TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   /* ConfigNode */
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  /* UDF */
+
+  common.TSStatus createFunction(TCreateFunctionReq req)
 }

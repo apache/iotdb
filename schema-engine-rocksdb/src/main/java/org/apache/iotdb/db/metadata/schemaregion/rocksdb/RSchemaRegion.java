@@ -165,7 +165,8 @@ public class RSchemaRegion implements ISchemaRegion {
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
     storageGroupFullPath = storageGroup.getFullPath();
-    init(storageGroupMNode);
+    this.storageGroupMNode = storageGroupMNode;
+    init();
     try {
       readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);
     } catch (RocksDBException e) {
@@ -175,8 +176,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
-    this.storageGroupMNode = storageGroupMNode;
+  public void init() throws MetadataException {
     schemaRegionDirPath =
         config.getSchemaDir()
             + File.separator
@@ -219,6 +219,20 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public boolean createSnapshot(File snapshotDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Rocksdb mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Rocksdb mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     try {
       if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
@@ -248,6 +262,13 @@ public class RSchemaRegion implements ISchemaRegion {
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
+  }
+
+  @Override
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "RSchemaRegion currently doesn't support timeseries with version");
   }
 
   @TestOnly
@@ -513,6 +534,13 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
+  @Override
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "RSchemaRegion currently doesn't support timeseries with version");
+  }
+
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {
@@ -584,7 +612,7 @@ public class RSchemaRegion implements ISchemaRegion {
               RMeasurementMNode deletedNode;
               try {
                 path = RSchemaUtils.getPathByInnerName(new String(key));
-                String[] nodes = PathUtils.splitPathToDetachedPath(path);
+                String[] nodes = PathUtils.splitPathToDetachedNodes(path);
                 deletedNode = new RMeasurementMNode(path, value, readWriteHandler);
                 atomicInteger.incrementAndGet();
                 try (WriteBatch batch = new WriteBatch()) {

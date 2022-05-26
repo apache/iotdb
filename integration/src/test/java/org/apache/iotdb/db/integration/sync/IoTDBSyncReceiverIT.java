@@ -77,7 +77,7 @@ public class IoTDBSyncReceiverIT {
   String pipeName1 = "pipe1";
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
-
+  String showPipeSql = "SHOW PIPE";
   TransportClient client;
 
   @Before
@@ -148,21 +148,24 @@ public class IoTDBSyncReceiverIT {
   @Test
   public void testPipeOperation() {
     logger.info("testPipeOperation");
-    String[] columnNames = {"create time", "name", "role", "remote", "status", "message"};
-    String showPipeSql = "SHOW PIPE";
+    String[] columnNames = {
+      "create time", "name", "role", "remote", "status", "message", "errors", "performance_info"
+    };
     try {
       // create
       client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
       String[] retArray =
           new String[] {
             String.format(
-                "%s,%s,%s,%s,%s,%s",
+                "%s,%s,%s,%s,%s,%s,%s,%s",
                 DatetimeUtils.convertLongToDate(createdTime1),
                 pipeName1,
                 "receiver",
                 remoteIp1,
                 PipeStatus.STOP.name(),
-                "")
+                "",
+                "null",
+                "null")
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // start
@@ -170,13 +173,48 @@ public class IoTDBSyncReceiverIT {
       retArray =
           new String[] {
             String.format(
-                "%s,%s,%s,%s,%s,%s",
+                "%s,%s,%s,%s,%s,%s,%s,%s",
                 DatetimeUtils.convertLongToDate(createdTime1),
                 pipeName1,
                 "receiver",
                 remoteIp1,
                 PipeStatus.RUNNING.name(),
-                "")
+                "",
+                "null",
+                "null")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
+      // restart
+      EnvironmentUtils.shutdownDaemon();
+      EnvironmentUtils.reactiveDaemon();
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.STOP.name(),
+                "",
+                "null",
+                "null")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
+      // start again
+      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.RUNNING.name(),
+                "",
+                "null",
+                "null")
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // stop
@@ -184,13 +222,15 @@ public class IoTDBSyncReceiverIT {
       retArray =
           new String[] {
             String.format(
-                "%s,%s,%s,%s,%s,%s",
+                "%s,%s,%s,%s,%s,%s,%s,%s",
                 DatetimeUtils.convertLongToDate(createdTime1),
                 pipeName1,
                 "receiver",
                 remoteIp1,
                 PipeStatus.STOP.name(),
-                "")
+                "",
+                "null",
+                "null")
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // drop
@@ -198,13 +238,15 @@ public class IoTDBSyncReceiverIT {
       retArray =
           new String[] {
             String.format(
-                "%s,%s,%s,%s,%s,%s",
+                "%s,%s,%s,%s,%s,%s,%s,%s",
                 DatetimeUtils.convertLongToDate(createdTime1),
                 pipeName1,
                 "receiver",
                 remoteIp1,
                 PipeStatus.DROP.name(),
-                "")
+                "",
+                "null",
+                "null")
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
       // create again
@@ -212,21 +254,25 @@ public class IoTDBSyncReceiverIT {
       retArray =
           new String[] {
             String.format(
-                "%s,%s,%s,%s,%s,%s",
+                "%s,%s,%s,%s,%s,%s,%s,%s",
                 DatetimeUtils.convertLongToDate(createdTime1),
                 pipeName1,
                 "receiver",
                 remoteIp1,
                 PipeStatus.DROP.name(),
-                ""),
+                "",
+                "null",
+                "null"),
             String.format(
-                "%s,%s,%s,%s,%s,%s",
+                "%s,%s,%s,%s,%s,%s,%s,%s",
                 DatetimeUtils.convertLongToDate(createdTime1 + 1),
                 pipeName1,
                 "receiver",
                 remoteIp1,
                 PipeStatus.STOP.name(),
-                "")
+                "",
+                "null",
+                "null")
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
     } catch (Exception e) {

@@ -91,7 +91,6 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       LOGGER.warn(
@@ -175,6 +174,11 @@ public class ConfigNodeDescriptor {
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+
+      conf.setUdfLibDir(properties.getProperty("udf_lib_dir", conf.getUdfLibDir()));
+
+      conf.setTemporaryLibDir(
+          properties.getProperty("temporary_lib_dir", conf.getTemporaryLibDir()));
 
       conf.setTimePartitionInterval(
           Long.parseLong(

@@ -29,9 +29,9 @@ public interface IProcedureStore {
 
   void setRunning(boolean running);
 
-  void load(List<org.apache.iotdb.confignode.procedure.Procedure> procedureList);
+  void load(List<Procedure> procedureList);
 
-  void update(org.apache.iotdb.confignode.procedure.Procedure procedure);
+  void update(Procedure procedure);
 
   void update(Procedure[] subprocs);
 

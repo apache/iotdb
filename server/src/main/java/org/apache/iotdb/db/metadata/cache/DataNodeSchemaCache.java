@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -70,8 +71,9 @@ public class DataNodeSchemaCache {
             devicePath.concatNode(
                 schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
             schemaCacheEntry.getMeasurementSchema(),
-            schemaCacheEntry.getAlias(),
-            schemaCacheEntry.isAligned());
+            null,
+            schemaCacheEntry.isAligned(),
+            schemaCacheEntry.getVersion());
       }
     }
     return schemaTree;
@@ -82,18 +84,42 @@ public class DataNodeSchemaCache {
       SchemaCacheEntry schemaCacheEntry =
           new SchemaCacheEntry(
               (MeasurementSchema) measurementPath.getMeasurementSchema(),
-              measurementPath.isMeasurementAliasExists()
-                  ? measurementPath.getMeasurementAlias()
-                  : null,
-              measurementPath.isUnderAlignedEntity());
+              measurementPath.isUnderAlignedEntity(),
+              measurementPath.getVersion());
       cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
-      if (measurementPath.isMeasurementAliasExists()) {
-        // cache alias path
-        cache.put(
-            measurementPath.getDevicePath().concatNode(measurementPath.getMeasurementAlias()),
-            schemaCacheEntry);
-      }
     }
+  }
+
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return null;
+    }
+
+    return DataNodeLastCacheManager.getLastCache(entry);
+  }
+
+  public void updateLastCache(
+      PartialPath seriesPath,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return;
+    }
+
+    DataNodeLastCacheManager.updateLastCache(
+        entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  public void resetLastCache(PartialPath seriesPath) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return;
+    }
+
+    DataNodeLastCacheManager.resetLastCache(entry);
   }
 
   /**
@@ -103,6 +129,7 @@ public class DataNodeSchemaCache {
    * @return
    */
   public void invalidate(PartialPath partialPath) {
+    resetLastCache(partialPath);
     cache.invalidate(partialPath);
   }
 

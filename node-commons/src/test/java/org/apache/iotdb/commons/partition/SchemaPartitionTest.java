@@ -23,11 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,13 +48,18 @@ public class SchemaPartitionTest extends SerializeTest {
         generateCreateSchemaPartitionMap(
             schemaPartitionFlag, generateTConsensusGroupId(schemaPartitionFlag));
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
-    ByteBuffer buffer = ByteBuffer.allocate(10 * 1024);
-    schemaPartition.serialize(buffer);
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    TIOStreamTransport tioStreamTransport = new TIOStreamTransport(byteArrayOutputStream);
+    TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+    schemaPartition.serialize(byteArrayOutputStream, protocol);
 
     SchemaPartition newSchemaPartition =
         new SchemaPartition(new HashMap<>(), seriesPartitionExecutorClass, 1);
-    buffer.flip();
-    newSchemaPartition.deserialize(buffer);
+    ByteArrayInputStream byteArrayInputStream =
+        new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+    tioStreamTransport = new TIOStreamTransport(byteArrayInputStream);
+    protocol = new TBinaryProtocol(tioStreamTransport);
+    newSchemaPartition.deserialize(byteArrayInputStream, protocol);
     Assert.assertEquals(schemaPartitionMap, newSchemaPartition.getSchemaPartitionMap());
   }
 }

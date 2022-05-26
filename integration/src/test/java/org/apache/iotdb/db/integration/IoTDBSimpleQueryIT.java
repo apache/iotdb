@@ -47,7 +47,6 @@ import java.util.Map;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -77,7 +76,7 @@ public class IoTDBSimpleQueryIT {
 
     IMeasurementMNode mNode =
         LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-    assertNull(mNode.getSchema().getProps());
+    assertEquals("PLAIN", mNode.getSchema().getEncodingType().toString().toUpperCase());
   }
 
   @Test
@@ -1164,7 +1163,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.`group-with-hyphen`");
+      statement.execute("SET STORAGE GROUP TO root.group_with_hyphen");
     } catch (SQLException e) {
       fail();
     }
@@ -1180,7 +1179,7 @@ public class IoTDBSimpleQueryIT {
             for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
               builder.append(resultSet.getString(i));
             }
-            Assert.assertEquals(builder.toString(), "root.group-with-hyphen");
+            Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
           }
         }
       }

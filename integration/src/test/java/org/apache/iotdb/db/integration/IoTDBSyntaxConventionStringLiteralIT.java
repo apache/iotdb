@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -80,8 +80,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       "\"string\"",
       "'string",
       "'string",
-      "\nstring",
-      "\rstring",
+      "\\nstring",
+      "\\rstring",
       "@#$%^&*()string",
     };
 
@@ -148,8 +148,8 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       "'string'",
       "\"string",
       "\"string",
-      "\nstring",
-      "\rstring",
+      "\\nstring",
+      "\\rstring",
       "@#$%^&*()string",
     };
 
@@ -448,7 +448,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
         }
         ++count;
       }
-      Assert.assertEquals(1 + BuiltinFunction.values().length, count);
+      Assert.assertEquals(1 + BuiltinTimeSeriesGeneratingFunction.values().length, count);
       resultSet.close();
       statement.execute("drop function udf");
 
@@ -697,7 +697,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     };
 
     String[] res = {
-      "b", "test", "test.1", "1`1", "test", "test", "\\test",
+      "b", "test", "test.1", "1`1", "test", "test", "\\\\test",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -733,7 +733,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     };
 
     String[] res = {
-      "b", "test", "test.1", "1`1", "test", "test", "\\test",
+      "b", "test", "test.1", "1`1", "test", "test", "\\\\test",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

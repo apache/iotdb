@@ -90,7 +90,7 @@ public class ProcedureManager {
     List<Long> procIdList = new ArrayList<>();
     for (TStorageGroupSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteStorageGroupProcedure deleteStorageGroupProcedure =
-          new DeleteStorageGroupProcedure(storageGroupSchema, configManager);
+          new DeleteStorageGroupProcedure(storageGroupSchema);
       long procId = this.executor.submitProcedure(deleteStorageGroupProcedure);
       procIdList.add(procId);
     }

@@ -39,8 +39,8 @@ import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceContext;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceVisitor;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
-import org.apache.iotdb.db.mpp.plan.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
+import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
@@ -296,7 +296,7 @@ public class QueryExecution implements IQueryExecution {
   /** return the result column count without the time column */
   @Override
   public int getOutputValueColumnCount() {
-    return analysis.getRespDatasetHeader().getColumnHeaders().size();
+    return analysis.getRespDatasetHeader().getOutputValueColumnCount();
   }
 
   @Override

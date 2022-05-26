@@ -26,18 +26,24 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -79,6 +85,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(createAlignedTimeSeriesStatement, context);
   }
 
+  // Create Timeseries by device
+  public R visitCreateTimeseriesByDevice(
+      CreateTimeSeriesByDeviceStatement createTimeSeriesByDeviceStatement, C context) {
+    return visitStatement(createTimeSeriesByDeviceStatement, context);
+  }
+
   // Create Multi Timeseries
   public R visitCreateMultiTimeseries(
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, C context) {
@@ -88,6 +100,10 @@ public abstract class StatementVisitor<R, C> {
   // Alter Timeseries
   public R visitAlterTimeseries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
+  }
+
+  public R visitDeleteTimeseries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
+    return visitStatement(deleteTimeSeriesStatement, context);
   }
 
   public R visitDeleteStorageGroup(
@@ -112,11 +128,20 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showTTLStatement, context);
   }
 
+  // UDF
+  public R visitCreateFunction(CreateFunctionStatement createFunctionStatement, C context) {
+    return visitStatement(createFunctionStatement, context);
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement
   public R visitQuery(QueryStatement queryStatement, C context) {
     return visitStatement(queryStatement, context);
+  }
+
+  public R visitLastPointFetch(LastPointFetchStatement lastPointFetchStatement, C context) {
+    return visitStatement(lastPointFetchStatement, context);
   }
 
   // Insert Statement
@@ -182,5 +207,13 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSchemaFetch(SchemaFetchStatement schemaFetchStatement, C context) {
     return visitStatement(schemaFetchStatement, context);
+  }
+
+  public R visitShowChildPaths(ShowChildPathsStatement showChildPathsStatement, C context) {
+    return visitStatement(showChildPathsStatement, context);
+  }
+
+  public R visitShowChildNodes(ShowChildNodesStatement showChildNodesStatement, C context) {
+    return visitStatement(showChildNodesStatement, context);
   }
 }

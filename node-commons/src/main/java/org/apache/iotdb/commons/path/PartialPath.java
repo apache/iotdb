@@ -57,19 +57,25 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
-   * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "d.1", "s.1"}
+   * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
    *
    * @param path a full String of a time series path
    * @throws IllegalPathException
    */
   public PartialPath(String path) throws IllegalPathException {
-    this.nodes = PathUtils.splitPathToDetachedPath(path);
-    this.fullPath = path;
+    this.nodes = PathUtils.splitPathToDetachedNodes(path);
+    // path is root.sg.`abc`, fullPath is root.sg.abc
+    // path is root.sg.`select`, fullPath is root.sg.select
+    // path is root.sg.`111`, fullPath is root.sg.`111`
+    // path is root.sg.`a.b`, fullPath is root.sg.`a.b`
+    // path is root.sg.`a``b`, fullPath is root.sg.`a``b`
+    this.fullPath = getFullPath();
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-    this.nodes = PathUtils.splitPathToDetachedPath(fullPath);
+    String path = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = PathUtils.splitPathToDetachedNodes(path);
+    this.fullPath = getFullPath();
   }
 
   /** @param partialNodes nodes of a time series path */
@@ -78,12 +84,20 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
+   * only use this method in following situations: 1. you are sure you do not want to split the
+   * path. 2. you are sure path is correct.
+   *
    * @param path path
-   * @param needSplit needSplit is basically false, whether need to be split to device and
-   *     measurement, doesn't support escape character yet.
+   * @param needSplit whether to split path to nodes, needSplit can only be false.
    */
   public PartialPath(String path, boolean needSplit) {
-    super(path, needSplit);
+    Validate.isTrue(!needSplit);
+    fullPath = path;
+    if ("".equals(path)) {
+      this.nodes = new String[] {};
+    } else {
+      this.nodes = new String[] {path};
+    }
   }
 
   /**
@@ -111,6 +125,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
+  /**
+   * only use this method in following situations: 1. you are sure node is allowed in syntax
+   * convention. 2. you are sure node needs not to be checked.
+   */
   public PartialPath concatNode(String node) {
     String[] newPathNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newPathNodes[newPathNodes.length - 1] = node;
@@ -336,9 +354,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      StringBuilder s = new StringBuilder(parseNodeString(nodes[0]));
+      StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR).append(parseNodeString(nodes[i]));
+        s.append(TsFileConstant.PATH_SEPARATOR).append(nodes[i]);
       }
       fullPath = s.toString();
     }
@@ -398,28 +416,14 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       if (nodes.length == 1) {
         return "";
       }
-      StringBuilder s = new StringBuilder(parseNodeString(nodes[0]));
+      StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length - 1; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(parseNodeString(nodes[i]));
+        s.append(nodes[i]);
       }
       device = s.toString();
-      return device;
     }
-  }
-
-  /**
-   * wrap node that has . or ` in it with ``
-   *
-   * @param node
-   * @return
-   */
-  protected String parseNodeString(String node) {
-    node = node.replace("`", "``");
-    if (node.contains("`") || node.contains(".")) {
-      return "`" + node + "`";
-    }
-    return node;
+    return device;
   }
 
   // todo remove measurement related interface after invoker using MeasurementPath explicitly

@@ -32,12 +32,15 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -49,6 +52,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
@@ -58,23 +62,31 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -83,7 +95,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 public class InternalServiceImpl implements InternalService.Iface {
@@ -92,6 +106,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
   private final IConsensus consensusImpl = ConsensusImpl.getInstance();
+  private final double loadBalanceThreshold = 0.1;
 
   public InternalServiceImpl() {
     super();
@@ -266,14 +281,67 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
-    // TODO: Return load balancing messages
-    return new THeartbeatResp(req.getHeartbeatTimestamp());
+    THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp());
+    Random whetherToGetMetric = new Random();
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
+        && whetherToGetMetric.nextDouble() < loadBalanceThreshold) {
+      long cpuLoad =
+          MetricsService.getInstance()
+              .getMetricManager()
+              .getOrCreateGauge(
+                  Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
+              .value();
+      if (cpuLoad != 0) {
+        resp.setCpu((short) cpuLoad);
+      }
+      long usedMemory = getMemory("jvm.memory.used.bytes");
+      long maxMemory = getMemory("jvm.memory.max.bytes");
+      if (usedMemory != 0 && maxMemory != 0) {
+        resp.setMemory((short) (usedMemory * 100 / maxMemory));
+      }
+    }
+    return resp;
+  }
+
+  private long getMemory(String gaugeName) {
+    long result = 0;
+    try {
+      //
+      List<String> heapIds = Arrays.asList("PS Eden Space", "PS Old Eden", "Ps Survivor Space");
+      List<String> noHeapIds = Arrays.asList("Code Cache", "Compressed Class Space", "Metaspace");
+
+      for (String id : heapIds) {
+        Gauge gauge =
+            MetricsService.getInstance()
+                .getMetricManager()
+                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
+        result += gauge.value();
+      }
+      for (String id : noHeapIds) {
+        Gauge gauge =
+            MetricsService.getInstance()
+                .getMetricManager()
+                .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
+        result += gauge.value();
+      }
+    } catch (Exception e) {
+      LOGGER.error("Failed to get memory from metric because {}", e.getMessage());
+      return 0;
+    }
+    return result;
+  }
+
+  @Override
+  public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) throws TException {
+    if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
   }
 
   @Override
   public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) throws TException {
-    long queryIdRaw = SessionManager.getInstance().requestQueryId(false);
-    QueryId queryId = new QueryId(String.valueOf(queryIdRaw));
+    QueryId queryId = Coordinator.getInstance().createQueryId();
     PlanNodeId planNodeId = queryId.genPlanNodeId();
     DeleteRegionNode deleteRegionNode = new DeleteRegionNode(queryId.genPlanNodeId());
     ConsensusGroupId consensusGroupId =
@@ -286,6 +354,23 @@ public class InternalServiceImpl implements InternalService.Iface {
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
     return consensusImpl.write(consensusGroupId, fragmentInstance).getStatus();
+  }
+
+  @Override
+  public TSStatus createFunction(TCreateFunctionRequest request) {
+    try {
+      UDFRegistrationService.getInstance()
+          .register(
+              request.getUdfName(),
+              request.getClassName(),
+              request.getUris(),
+              UDFExecutableManager.getInstance(),
+              true);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
   }
 
   public void handleClientExit() {}

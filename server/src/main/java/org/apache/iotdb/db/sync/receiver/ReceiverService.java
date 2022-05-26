@@ -75,14 +75,6 @@ public class ReceiverService implements IService {
       TransportServerManager.getInstance().startService();
       receiverManager.startServer();
       collector.startCollect();
-      // recover started pipe
-      List<PipeInfo> pipeInfos = receiverManager.getAllPipeInfos();
-      for (PipeInfo pipeInfo : pipeInfos) {
-        if (pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
-          collector.startPipe(
-              pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
-        }
-      }
     } catch (IOException | StartupException e) {
       throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
     }
@@ -109,12 +101,20 @@ public class ReceiverService implements IService {
     }
   }
 
+  private void checkPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
+    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
+      startPipe(pipeName, remoteIp, createTime);
+    }
+  }
+
   /** heartbeat RPC handle */
   public synchronized SyncResponse receiveMsg(SyncRequest request) {
     SyncResponse response = new SyncResponse(ResponseType.INFO, "");
     try {
       switch (request.getType()) {
         case HEARTBEAT:
+          checkPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
           PipeMessage message =
               receiverManager.getPipeMessage(
                   request.getPipeName(), request.getRemoteIp(), request.getCreateTime(), true);
