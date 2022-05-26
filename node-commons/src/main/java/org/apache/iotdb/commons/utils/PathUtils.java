@@ -81,8 +81,6 @@ public class PathUtils {
       if (measurement == null) {
         continue;
       }
-      // todo: `` blank str
-      // quoted with ` is always legal
       if (measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
           && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
         if (checkBackQuotes(measurement.substring(1, measurement.length() - 1))) {
