@@ -167,14 +167,7 @@ public interface Manager {
    *
    * @return SchemaNodeManagementPartitionDataSet
    */
-  DataSet getChildPathsPartition(PartialPath partialPath, Integer level);
-
-  /**
-   * create SchemaNodeManagementPartition for child nodes node management
-   *
-   * @return SchemaNodeManagementPartitionDataSet
-   */
-  DataSet getChildNodesPartition(PartialPath partialPath, Integer level);
+  DataSet getNodePathsPartition(PartialPath partialPath, Integer level);
 
   /**
    * Get DataPartition

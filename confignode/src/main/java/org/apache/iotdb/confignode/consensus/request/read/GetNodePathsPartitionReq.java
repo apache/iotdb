@@ -28,12 +28,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetChildNodesPartitionReq extends ConfigRequest {
+public class GetNodePathsPartitionReq extends ConfigRequest {
   private PartialPath partialPath;
   private int level = -1;
 
-  public GetChildNodesPartitionReq() {
-    super(ConfigRequestType.GetChildNodesPartition);
+  public GetNodePathsPartitionReq() {
+    super(ConfigRequestType.GetNodePathsPartition);
   }
 
   public PartialPath getPartialPath() {
@@ -72,7 +72,7 @@ public class GetChildNodesPartitionReq extends ConfigRequest {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    GetChildNodesPartitionReq that = (GetChildNodesPartitionReq) o;
+    GetNodePathsPartitionReq that = (GetNodePathsPartitionReq) o;
     return level == that.level && Objects.equals(partialPath, that.partialPath);
   }
 

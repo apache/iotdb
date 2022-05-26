@@ -29,10 +29,9 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -386,32 +385,15 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getChildPathsPartition(PartialPath partialPath, Integer level) {
+  public DataSet getNodePathsPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      GetChildPathsPartitionReq getChildPathsPartitionReq = new GetChildPathsPartitionReq();
+      GetNodePathsPartitionReq getChildPathsPartitionReq = new GetNodePathsPartitionReq();
       getChildPathsPartitionReq.setPartialPath(partialPath);
       if (null != level) {
         getChildPathsPartitionReq.setLevel(level);
       }
-      return partitionManager.getChildPathsPartition(getChildPathsPartitionReq);
-    } else {
-      SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
-      dataSet.setStatus(status);
-      return dataSet;
-    }
-  }
-
-  @Override
-  public DataSet getChildNodesPartition(PartialPath partialPath, Integer level) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      GetChildNodesPartitionReq getChildNodesPartitionReq = new GetChildNodesPartitionReq();
-      getChildNodesPartitionReq.setPartialPath(partialPath);
-      if (null != level) {
-        getChildNodesPartitionReq.setLevel(level);
-      }
-      return partitionManager.getChildNodesPartition(getChildNodesPartitionReq);
+      return partitionManager.getNodePathsPartition(getChildPathsPartitionReq);
     } else {
       SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
       dataSet.setStatus(status);

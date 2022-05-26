@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -474,8 +473,8 @@ public class LogicalPlanner {
       return planBuilder
           .planChildPathsSchemaSource(countStatement.getPartialPath(), countStatement.getLevel())
           .planSchemaQueryMerge(false)
-          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_PATHS)
-          .planCountMerge()
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
+          .planNodePathsCount()
           .getRoot();
     }
 
@@ -577,7 +576,7 @@ public class LogicalPlanner {
       return planBuilder
           .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
-          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_PATHS)
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
           .getRoot();
     }
 
@@ -588,7 +587,7 @@ public class LogicalPlanner {
       return planBuilder
           .planChildPathsSchemaSource(showChildNodesStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
-          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_NODES)
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
           .planNodePathsConvert()
           .getRoot();
     }

@@ -38,7 +38,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -1041,7 +1040,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     }
 
     ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
-    nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer, NodeManagementType.CHILD_PATHS);
+    nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer);
     nodeManagementReq.setLevel(-1);
     nodeManagementResp = processor.getSchemaNodeManagementPartition(nodeManagementReq);
     Assert.assertEquals(

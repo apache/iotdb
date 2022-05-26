@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -1231,9 +1230,7 @@ public class Analyzer {
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
           partitionFetcher.getSchemaNodeManagementPartitionWithLevel(
-              new PathPatternTree(countStatement.getPartialPath()),
-              countStatement.getLevel(),
-              NodeManagementType.CHILD_PATHS);
+              new PathPatternTree(countStatement.getPartialPath()), countStatement.getLevel());
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1257,8 +1254,7 @@ public class Analyzer {
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
           partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildPathsStatement.getPartialPath()),
-              NodeManagementType.CHILD_PATHS);
+              new PathPatternTree(showChildPathsStatement.getPartialPath()));
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1282,8 +1278,7 @@ public class Analyzer {
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
           partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildNodesStatement.getPartialPath()),
-              NodeManagementType.CHILD_NODES);
+              new PathPatternTree(showChildNodesStatement.getPartialPath()));
 
       if (schemaNodeManagementPartition == null) {
         return analysis;

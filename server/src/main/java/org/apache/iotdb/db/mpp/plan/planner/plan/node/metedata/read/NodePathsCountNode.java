@@ -24,27 +24,18 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProcessNode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-public class NodeManagementMemoryMergeNode extends ProcessNode {
-  private final Set<String> data;
+public class NodePathsCountNode extends ProcessNode {
 
   private PlanNode child;
 
-  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<String> data) {
+  public NodePathsCountNode(PlanNodeId id) {
     super(id);
-    this.data = data;
-  }
-
-  public Set<String> getData() {
-    return data;
   }
 
   public PlanNode getChild() {
@@ -63,7 +54,7 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new NodeManagementMemoryMergeNode(getPlanNodeId(), this.data);
+    return new NodePathsCountNode(getPlanNodeId());
   }
 
   @Override
@@ -78,24 +69,16 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitNodeManagementMemoryMerge(this, context);
+    return visitor.visitNodePathsCount(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE.serialize(byteBuffer);
-    int size = data.size();
-    ReadWriteIOUtils.write(size, byteBuffer);
-    data.forEach(node -> ReadWriteIOUtils.write(node, byteBuffer));
+    PlanNodeType.NODE_PATHS_COUNT.serialize(byteBuffer);
   }
 
-  public static NodeManagementMemoryMergeNode deserialize(ByteBuffer byteBuffer) {
-    Set<String> data = new HashSet<>();
-    int size = byteBuffer.getInt();
-    for (int i = 0; i < size; i++) {
-      data.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
+  public static NodePathsCountNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new NodeManagementMemoryMergeNode(planNodeId, data);
+    return new NodePathsCountNode(planNodeId);
   }
 }

@@ -85,6 +85,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperat
 import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
@@ -109,6 +110,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchem
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
@@ -485,8 +487,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               NodeManageMemoryMergeOperator.class.getSimpleName()),
           node.getData(),
-          child,
-          node.getType());
+          child);
     }
 
     @Override
@@ -494,6 +495,18 @@ public class LocalExecutionPlanner {
         NodePathsConvertNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
       return new NodePathsConvertOperator(
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              NodeManageMemoryMergeOperator.class.getSimpleName()),
+          child);
+    }
+
+    @Override
+    public Operator visitNodePathsCount(
+        NodePathsCountNode node, LocalExecutionPlanContext context) {
+      Operator child = node.getChild().accept(this, context);
+      return new NodePathsCountOperator(
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),

@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -152,13 +151,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level, NodeManagementType type) {
+      PathPatternTree patternTree, Integer level) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
-              constructSchemaNodeManagementPartitionReq(patternTree, level, type));
+              constructSchemaNodeManagementPartitionReq(patternTree, level));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (TException | IOException e) {
@@ -360,7 +359,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      PathPatternTree patternTree, Integer level, NodeManagementType type) {
+      PathPatternTree patternTree, Integer level) {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);
@@ -368,7 +367,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       serializedPatternTree.put(baos.getBuf(), 0, baos.size());
       serializedPatternTree.flip();
       TSchemaNodeManagementReq schemaNodeManagementReq =
-          new TSchemaNodeManagementReq(serializedPatternTree, type);
+          new TSchemaNodeManagementReq(serializedPatternTree);
       if (null == level) {
         schemaNodeManagementReq.setLevel(-1);
       } else {

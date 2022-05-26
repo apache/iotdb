@@ -119,15 +119,9 @@ struct TSchemaPartitionResp {
 
 // Node Management
 
-enum NodeManagementType {
-CHILD_PATHS,
-CHILD_NODES
-}
-
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
-  2: required NodeManagementType type
-  3: optional i32 level
+  2: optional i32 level
 }
 
 struct TSchemaNodeManagementResp {

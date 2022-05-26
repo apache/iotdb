@@ -23,13 +23,11 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -130,8 +128,7 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListUserRoles((AuthorReq) req);
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
-      case GetChildPathsPartition:
-      case GetChildNodesPartition:
+      case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
@@ -269,39 +266,27 @@ public class ConfigRequestExecutor {
     Set<PartialPath> needMatchedNode;
     List<String> matchedStorageGroups = new ArrayList<>();
 
-    if (req.getType() == ConfigRequestType.GetChildPathsPartition) {
-      GetChildPathsPartitionReq getChildPathsPartitionReq = (GetChildPathsPartitionReq) req;
-      partialPath = getChildPathsPartitionReq.getPartialPath();
-      level = getChildPathsPartitionReq.getLevel();
-      if (-1 == level) {
-        // get child paths
-        Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel =
-            clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
-        alreadyMatchedNode = matchedChildInNextLevel.left;
-        needMatchedNode = matchedChildInNextLevel.right;
-      } else {
-        // count nodes
-        Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
-            clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
-        alreadyMatchedNode =
-            matchedChildInNextLevel.left.stream()
-                .map(PartialPath::getFullPath)
-                .collect(Collectors.toSet());
-        needMatchedNode = matchedChildInNextLevel.right;
-      }
-    } else if (req.getType() == ConfigRequestType.GetChildNodesPartition) {
-      GetChildNodesPartitionReq getChildNodesPartitionReq = (GetChildNodesPartitionReq) req;
-      partialPath = getChildNodesPartitionReq.getPartialPath();
-      // get child nodes
+    GetNodePathsPartitionReq getChildPathsPartitionReq = (GetNodePathsPartitionReq) req;
+    partialPath = getChildPathsPartitionReq.getPartialPath();
+    level = getChildPathsPartitionReq.getLevel();
+    if (-1 == level) {
+      // get child paths
       Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getChildNodeNameInNextLevel(partialPath);
+          clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
       alreadyMatchedNode = matchedChildInNextLevel.left;
       needMatchedNode = matchedChildInNextLevel.right;
     } else {
-      throw new UnknownPhysicalPlanTypeException(req.getType());
+      // count nodes
+      Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
+          clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
+      alreadyMatchedNode =
+          matchedChildInNextLevel.left.stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toSet());
+      needMatchedNode = matchedChildInNextLevel.right;
     }
 
-    needMatchedNode.forEach(childPath -> matchedStorageGroups.add(childPath.getFullPath()));
+    needMatchedNode.forEach(nodePath -> matchedStorageGroups.add(nodePath.getFullPath()));
     SchemaNodeManagementResp schemaNodeManagementResp =
         (SchemaNodeManagementResp)
             partitionInfo.getSchemaNodeManagementPartition(matchedStorageGroups);

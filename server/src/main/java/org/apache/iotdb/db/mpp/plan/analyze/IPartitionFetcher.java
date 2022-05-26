@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.List;
@@ -35,12 +34,12 @@ public interface IPartitionFetcher {
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree, NodeManagementType type) {
-    return getSchemaNodeManagementPartitionWithLevel(patternTree, null, type);
+      PathPatternTree patternTree) {
+    return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
   }
 
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level, NodeManagementType type);
+      PathPatternTree patternTree, Integer level);
 
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 

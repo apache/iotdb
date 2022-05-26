@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchem
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
@@ -119,7 +120,8 @@ public enum PlanNodeType {
   DELETE_TIMESERIES((short) 45),
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
-  LAST_QUERY_MERGE((short) 48);
+  LAST_QUERY_MERGE((short) 48),
+  NODE_PATHS_COUNT((short) 49);
 
   private final short nodeType;
 
@@ -241,6 +243,8 @@ public enum PlanNodeType {
         return AlignedLastQueryScanNode.deserialize(buffer);
       case 48:
         return LastQueryMergeNode.deserialize(buffer);
+      case 49:
+        return NodePathsCountNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
