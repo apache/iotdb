@@ -116,7 +116,7 @@ public class LastQueryMergeNode extends MultiChildNode {
 
   public static LastQueryMergeNode deserialize(ByteBuffer byteBuffer) {
     Filter timeFilter = null;
-    if (!ReadWriteIOUtils.readIsNull(byteBuffer)) {
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
       timeFilter = FilterFactory.deserialize(byteBuffer);
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
