@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -386,6 +387,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
 
     return status;
+  }
+
+  @Override
+  public TSStatus createFunction(TCreateFunctionReq req) {
+    return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
   }
 
   public void handleClientExit() {}

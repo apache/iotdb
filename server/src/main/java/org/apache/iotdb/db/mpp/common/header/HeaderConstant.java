@@ -27,6 +27,8 @@ import java.util.Collections;
 public class HeaderConstant {
 
   // column names for query statement
+  public static final String COLUMN_TIME = "Time";
+  public static final String COLUMN_VALUE = "value";
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
@@ -70,6 +72,9 @@ public class HeaderConstant {
   public static final DatasetHeader countDevicesHeader;
   public static final DatasetHeader countTimeSeriesHeader;
   public static final DatasetHeader countLevelTimeSeriesHeader;
+
+  // dataset header for last query
+  public static final DatasetHeader LAST_QUERY_HEADER;
 
   static {
     countStorageGroupHeader =
@@ -140,9 +145,19 @@ public class HeaderConstant {
             true);
     showChildPathsHeader =
         new DatasetHeader(
-            Arrays.asList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
+            Collections.singletonList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
     showChildNodesHeader =
         new DatasetHeader(
-            Arrays.asList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+            Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+  }
+
+  static {
+    LAST_QUERY_HEADER =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT)),
+            false);
   }
 }

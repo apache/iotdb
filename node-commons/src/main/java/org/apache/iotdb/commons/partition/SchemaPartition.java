@@ -231,6 +231,19 @@ public class SchemaPartition extends Partition {
     return result;
   }
 
+  public List<RegionReplicaSetInfo> getSchemaDistributionInfo() {
+    Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
+    schemaPartitionMap.forEach(
+        (storageGroup, partition) -> {
+          for (TRegionReplicaSet regionReplicaSet : partition.values()) {
+            distributionMap
+                .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
+                .addStorageGroup(storageGroup);
+          }
+        });
+    return new ArrayList<>(distributionMap.values());
+  }
+
   private void writeMap(
       Map<TSeriesPartitionSlot, TRegionReplicaSet> valueMap,
       OutputStream outputStream,

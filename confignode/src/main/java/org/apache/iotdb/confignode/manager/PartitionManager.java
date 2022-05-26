@@ -69,17 +69,22 @@ public class PartitionManager {
 
   private final Manager configManager;
   private final PartitionInfo partitionInfo;
+  private static final int REGION_CLEANER_WORK_INTERVAL = 300;
+  private static final int REGION_CLEANER_WORK_INITIAL_DELAY = 10;
 
   private SeriesPartitionExecutor executor;
-
   private final ScheduledExecutorService regionCleaner;
 
   public PartitionManager(Manager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-StorageGroup-Cleaner");
-    regionCleaner.scheduleAtFixedRate(this::clearDeletedStorageGroup, 10, 5, TimeUnit.SECONDS);
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
+    regionCleaner.scheduleAtFixedRate(
+        this::clearDeletedRegions,
+        REGION_CLEANER_WORK_INITIAL_DELAY,
+        REGION_CLEANER_WORK_INTERVAL,
+        TimeUnit.SECONDS);
     setSeriesPartitionExecutor();
   }
 
@@ -388,7 +393,11 @@ public class PartitionManager {
     getConsensusManager().write(preDeleteStorageGroupReq);
   }
 
-  private void clearDeletedStorageGroup() {
+  /**
+   * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
+   * groups periodically.
+   */
+  private void clearDeletedRegions() {
     if (getConsensusManager().isLeader()) {
       final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
       if (!deletedRegionSet.isEmpty()) {

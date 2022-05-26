@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -63,6 +64,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
@@ -72,10 +74,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -142,9 +141,9 @@ public class Analyzer {
 
         // concat path and construct path pattern tree
         PathPatternTree patternTree = new PathPatternTree();
-        QueryStatement rewrittenStatement =
+        queryStatement =
             (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
-        analysis.setStatement(rewrittenStatement);
+        analysis.setStatement(queryStatement);
 
         // request schema fetch API
         logger.info("{} fetch query schema...", getLogHeader());
@@ -162,6 +161,34 @@ public class Analyzer {
         boolean hasValueFilter = resultPair.right;
         analysis.setGlobalTimeFilter(globalTimeFilter);
         analysis.setHasValueFilter(hasValueFilter);
+
+        if (queryStatement.isLastQuery()) {
+          if (hasValueFilter) {
+            throw new SemanticException("Only time filters are supported in LAST query");
+          }
+
+          List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
+          Set<Expression> sourceExpressions =
+              allSelectedPath.stream()
+                  .map(TimeSeriesOperand::new)
+                  .collect(Collectors.toCollection(LinkedHashSet::new));
+          sourceExpressions.forEach(
+              expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
+          analysis.setSourceExpressions(sourceExpressions);
+
+          analysis.setRespDatasetHeader(HeaderConstant.LAST_QUERY_HEADER);
+          typeProvider.setType(HeaderConstant.COLUMN_TIMESERIES, TSDataType.TEXT);
+          typeProvider.setType(HeaderConstant.COLUMN_VALUE, TSDataType.TEXT);
+          typeProvider.setType(HeaderConstant.COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT);
+
+          Set<String> deviceSet =
+              sourceExpressions.stream()
+                  .map(ExpressionAnalyzer::getDeviceNameInSourceExpression)
+                  .collect(Collectors.toSet());
+          DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree);
+          analysis.setDataPartitionInfo(dataPartition);
+          return analysis;
+        }
 
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
@@ -393,16 +420,7 @@ public class Analyzer {
             deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
           }
         }
-        Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-        for (String devicePath : deviceSet) {
-          DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-          queryParam.setDevicePath(devicePath);
-          sgNameToQueryParamsMap
-              .computeIfAbsent(
-                  schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
-              .add(queryParam);
-        }
-        DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+        DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree);
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException e) {
         logger.error("Meet error when analyzing the query statement: ", e);
@@ -775,6 +793,20 @@ public class Analyzer {
       return new DatasetHeader(columnHeaders, isIgnoreTimestamp);
     }
 
+    private DataPartition fetchDataPartitionByDevices(
+        Set<String> deviceSet, SchemaTree schemaTree) {
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (String devicePath : deviceSet) {
+        DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+        queryParam.setDevicePath(devicePath);
+        sgNameToQueryParamsMap
+            .computeIfAbsent(
+                schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+            .add(queryParam);
+      }
+      return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+    }
+
     /**
      * Check datatype consistency in ALIGN BY DEVICE.
      *
@@ -861,7 +893,6 @@ public class Analyzer {
     public Analysis visitCreateTimeseries(
         CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
-      checkProps(createTimeSeriesStatement);
       if (createTimeSeriesStatement.getTags() != null
           && !createTimeSeriesStatement.getTags().isEmpty()
           && createTimeSeriesStatement.getAttributes() != null
@@ -882,60 +913,6 @@ public class Analyzer {
               new PathPatternTree(createTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
-    }
-
-    private void checkProps(CreateTimeSeriesStatement createTimeSeriesStatement) {
-      Map<String, String> props = createTimeSeriesStatement.getProps();
-      if (!props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
-        throw new SemanticException("datatype must be declared");
-      }
-      String datatypeString =
-          props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
-      try {
-        createTimeSeriesStatement.setDataType(TSDataType.valueOf(datatypeString));
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
-      } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
-      }
-
-      final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
-      createTimeSeriesStatement.setEncoding(
-          ioTDBDescriptor.getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
-      if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
-        String encodingString =
-            props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
-        try {
-          createTimeSeriesStatement.setEncoding(TSEncoding.valueOf(encodingString));
-          props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
-        } catch (Exception e) {
-          throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
-        }
-      }
-
-      createTimeSeriesStatement.setCompressor(
-          TSFileDescriptor.getInstance().getConfig().getCompressor());
-      if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
-        String compressionString =
-            props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
-        try {
-          createTimeSeriesStatement.setCompressor(CompressionType.valueOf(compressionString));
-          props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
-        } catch (Exception e) {
-          throw new SemanticException(
-              String.format("Unsupported compression: %s", compressionString));
-        }
-      } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
-        String compressorString =
-            props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
-        try {
-          createTimeSeriesStatement.setCompressor(CompressionType.valueOf(compressorString));
-          props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
-        } catch (Exception e) {
-          throw new SemanticException(
-              String.format("Unsupported compression: %s", compressorString));
-        }
-      }
-      createTimeSeriesStatement.setProps(props);
     }
 
     @Override
@@ -959,6 +936,25 @@ public class Analyzer {
               new PathPatternTree(
                   createAlignedTimeSeriesStatement.getDevicePath(),
                   createAlignedTimeSeriesStatement.getMeasurements()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateTimeseriesByDevice(
+        CreateTimeSeriesByDeviceStatement createTimeSeriesByDeviceStatement,
+        MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createTimeSeriesByDeviceStatement);
+
+      SchemaPartition schemaPartitionInfo;
+      schemaPartitionInfo =
+          partitionFetcher.getOrCreateSchemaPartition(
+              new PathPatternTree(
+                  createTimeSeriesByDeviceStatement.getDevicePath(),
+                  createTimeSeriesByDeviceStatement.getMeasurements()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }

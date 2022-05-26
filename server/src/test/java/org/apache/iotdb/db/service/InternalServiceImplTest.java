@@ -331,6 +331,12 @@ public class InternalServiceImplTest {
                     });
                 add(null);
               }
+            },
+            new ArrayList<String>() {
+              {
+                add(TimeseriesVersionUtil.generateVersion());
+                add(TimeseriesVersionUtil.generateVersion());
+              }
             });
 
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();

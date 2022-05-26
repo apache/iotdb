@@ -31,8 +31,8 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import java.io.File;
 
 /**
- * We can use ConsensusImpl.getInstance() to obtain a consensus layer reference for reading and
- * writing
+ * We can use DataRegionConsensusImpl.getInstance() to obtain a consensus layer reference for
+ * dataRegion's reading and writing
  */
 public class DataRegionConsensusImpl {
 

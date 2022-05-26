@@ -135,7 +135,13 @@ struct TSchemaFetchResponse {
   1: required binary serializedSchemaTree
 }
 
-struct TInvalidatePermissionCacheReq{
+struct TCreateFunctionRequest {
+  1: required string udfName
+  2: required string className
+  3: required list<string> uris
+}
+
+struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
 }
@@ -215,6 +221,13 @@ service InternalService {
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
   common.THeartbeatResp getHeartBeat(common.THeartbeatReq req)
+
+  /**
+   * Config node will create a function on a list of data nodes.
+   *
+   * @param function name, function class name, and executable uris
+   **/
+  common.TSStatus createFunction(TCreateFunctionRequest req)
 
   /**
    * Config node will invalidate permission Info cache.

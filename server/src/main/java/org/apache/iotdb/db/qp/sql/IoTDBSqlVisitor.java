@@ -301,12 +301,73 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
     createTimeSeriesOperator.setProps(props);
+    checkPropsInCreateTimeSeries(createTimeSeriesOperator);
     if (ctx.tagClause() != null) {
       parseTagClause(ctx.tagClause(), createTimeSeriesOperator);
     }
     if (ctx.attributeClause() != null) {
       parseAttributeClause(ctx.attributeClause(), createTimeSeriesOperator);
     }
+  }
+
+  /** check and set datatype, encoding, compressor */
+  private void checkPropsInCreateTimeSeries(CreateTimeSeriesOperator createTimeSeriesOperator) {
+    Map<String, String> props = createTimeSeriesOperator.getProps();
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
+      String datatypeString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setDataType(TSDataType.valueOf(datatypeString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
+      }
+    }
+    if (createTimeSeriesOperator.getDataType() == null) {
+      throw new SemanticException("datatype must be declared");
+    }
+
+    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
+    createTimeSeriesOperator.setEncoding(
+        ioTDBDescriptor.getDefaultEncodingByType(createTimeSeriesOperator.getDataType()));
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encodingString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
+      }
+    }
+
+    createTimeSeriesOperator.setCompressor(
+        TSFileDescriptor.getInstance().getConfig().getCompressor());
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressionString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("Unsupported compression: %s", compressionString));
+      }
+    } else if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressorString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported compression: %s", compressorString));
+      }
+    }
+    createTimeSeriesOperator.setProps(props);
   }
 
   public void parseAttributeClauses(

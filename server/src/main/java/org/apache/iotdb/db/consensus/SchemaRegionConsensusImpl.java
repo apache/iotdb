@@ -30,6 +30,10 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
 import java.io.File;
 
+/**
+ * We can use SchemaRegionConsensusImpl.getInstance() to obtain a consensus layer reference for
+ * schemaRegion's reading and writing
+ */
 public class SchemaRegionConsensusImpl {
 
   private SchemaRegionConsensusImpl() {}

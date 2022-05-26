@@ -45,6 +45,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
@@ -52,14 +54,18 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTimeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
@@ -131,6 +137,26 @@ public class LogicalPlanBuilder {
     }
 
     this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
+    return this;
+  }
+
+  public LogicalPlanBuilder planLast(Set<Expression> sourceExpressions, Filter globalTimeFilter) {
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    for (Expression sourceExpression : sourceExpressions) {
+      MeasurementPath selectPath =
+          (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+      if (selectPath.isUnderAlignedEntity()) {
+        sourceNodeList.add(
+            new AlignedLastQueryScanNode(
+                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
+      } else {
+        sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
+      }
+    }
+
+    this.root =
+        new LastQueryMergeNode(
+            context.getQueryId().genPlanNodeId(), sourceNodeList, globalTimeFilter);
     return this;
   }
 
@@ -597,6 +623,31 @@ public class LogicalPlanBuilder {
         new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data, type);
     memorySourceNode.addChild(this.getRoot());
     this.root = memorySourceNode;
+    return this;
+  }
+
+  public LogicalPlanBuilder planInvalidateSchemaCache(
+      List<PartialPath> paths, List<String> storageGroups) {
+    this.root =
+        new InvalidateSchemaCacheNode(
+            context.getQueryId().genPlanNodeId(), context.getQueryId(), paths, storageGroups);
+    return this;
+  }
+
+  public LogicalPlanBuilder planDeleteData(List<PartialPath> paths, List<String> storageGroups) {
+    DeleteDataNode node =
+        new DeleteDataNode(
+            context.getQueryId().genPlanNodeId(), context.getQueryId(), paths, storageGroups);
+    node.addChild(this.root);
+    this.root = node;
+    return this;
+  }
+
+  public LogicalPlanBuilder planDeleteTimeseries(List<PartialPath> paths) {
+    DeleteTimeSeriesNode node =
+        new DeleteTimeSeriesNode(context.getQueryId().genPlanNodeId(), paths);
+    node.addChild(this.root);
+    this.root = node;
     return this;
   }
 }
