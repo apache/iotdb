@@ -26,17 +26,17 @@ import java.nio.ByteBuffer;
 import java.util.Queue;
 
 /**
- * This interface interacts with bytebuffer as a segment. Generic T denotes the type of its entries,
- * while R denotes the type of the return.
+ * This interface interacts with bytebuffer as a segment which is the basic unit to manage index
+ * entries or MNode records.<br>
+ * Generic T denotes the type of its input, while R denotes the type of the return.
  */
 public interface ISegment<T, R> {
-  int SEG_HEADER_SIZE = 25; // in bytes
 
   /**
    * check whether enough space, notice that pairLength including 3 parts: [var length] key string
    * itself, [int, 4 bytes] length of key string, [short, 2 bytes] key address
    *
-   * @return -1 for segment overflow, otherwise for spare space
+   * @return -1 for segment space run out, otherwise for spare space
    */
   int insertRecord(String key, T rec) throws RecordDuplicatedException;
 
@@ -76,11 +76,7 @@ public interface ISegment<T, R> {
 
   void delete();
 
-  long getPrevSegAddress();
-
   long getNextSegAddress();
-
-  void setPrevSegAddress(long prevSegAddress);
 
   void setNextSegAddress(long nextSegAddress);
 
@@ -93,18 +89,30 @@ public interface ISegment<T, R> {
   void extendsTo(ByteBuffer newBuffer) throws MetadataException;
 
   /**
-   * Split the segment into dstBuffer considering the passing in key, whether internal or leaf.
+   * Split the segment into dstBuffer considering the passing in key.
+   *
+   * <p>A better encapsulation may indicate to split the ISegment into another ISegment with same
+   * generic type, rather than splitting into a raw ByteBuffer. That approach naturally migrate
+   * records in a one-by-one manner, while not capable for bulk migrating records which could
+   * improve performance in monotonic cases.
    *
    * @param entry content of the insert key.
-   * @param inclineSplit whether to split with incline
-   * @return always the search key of the split segment
+   * @param dstBuffer destination of the split.
+   * @param inclineSplit whether to split with incline.
+   * @return always the search key of the split segment.
    */
   String splitByKey(String key, T entry, ByteBuffer dstBuffer, boolean inclineSplit)
       throws MetadataException;
 
+  /**
+   * Reset buffer content and return corresponding slice.
+   *
+   * @param ptr only works for {@link InternalPage}.
+   * @return slice of the buffer.
+   */
+  ByteBuffer resetBuffer(int ptr);
+
   String toString();
 
   String inspect();
-
-  boolean isInternalSegment();
 }

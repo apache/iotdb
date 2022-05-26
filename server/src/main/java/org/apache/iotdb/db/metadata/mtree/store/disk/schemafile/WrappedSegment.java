@@ -29,25 +29,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 
 /**
  * This class initiate a segment object with corresponding bytes. Implements add, get, remove
  * records methods. <br>
- * Act like a wrapper of a bytebuffer which reflects a segment.
+ * Act like a wrapper of a bytebuffer which reflects a segment. <br>
+ * And itself is wrapped inside a SchemaPage.
  */
-public class Segment implements ISegment<ByteBuffer, IMNode> {
-  private static final Logger logger = LoggerFactory.getLogger(Segment.class);
+public class WrappedSegment implements ISegment<ByteBuffer, IMNode> {
 
   // members load from buffer
   private final ByteBuffer buffer;
@@ -84,7 +79,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
    *     ... empty space ...
    * <li>var length: records
    */
-  public Segment(ByteBuffer buffer, boolean override) {
+  public WrappedSegment(ByteBuffer buffer, boolean override) throws RecordDuplicatedException {
     this.buffer = buffer;
     this.buffer.clear();
     if (override) {
@@ -113,8 +108,8 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
       nextSegAddress = ReadWriteIOUtils.readLong(buffer);
       delFlag = ReadWriteIOUtils.readBool(buffer);
 
-      buffer.position(Segment.SEG_HEADER_SIZE);
-      buffer.limit(Segment.SEG_HEADER_SIZE + pairLength);
+      buffer.position(SchemaPage.SEG_HEADER_SIZE);
+      buffer.limit(SchemaPage.SEG_HEADER_SIZE + pairLength);
       ByteBuffer pairBuffer = buffer.slice();
       buffer.clear(); // reconstruction finished, reset buffer position and limit
       reconstructKeyAddress(pairBuffer);
@@ -122,26 +117,28 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     }
   }
 
-  public Segment(ByteBuffer buffer) {
+  public WrappedSegment(ByteBuffer buffer) throws RecordDuplicatedException {
     this(buffer, true);
   }
 
-  public Segment(int size) {
+  public WrappedSegment(int size) throws RecordDuplicatedException {
     this(ByteBuffer.allocate(size));
   }
 
-  public static ISegment<ByteBuffer, IMNode> initAsSegment(ByteBuffer buffer) {
+  public static ISegment<ByteBuffer, IMNode> initAsSegment(ByteBuffer buffer)
+      throws RecordDuplicatedException {
     if (buffer == null) {
       return null;
     }
-    return new Segment(buffer, true);
+    return new WrappedSegment(buffer, true);
   }
 
-  public static ISegment<ByteBuffer, IMNode> loadAsSegment(ByteBuffer buffer) {
+  public static ISegment<ByteBuffer, IMNode> loadAsSegment(ByteBuffer buffer)
+      throws RecordDuplicatedException {
     if (buffer == null) {
       return null;
     }
-    return new Segment(buffer, false);
+    return new WrappedSegment(buffer, false);
   }
 
   private void reconstructKeyAddress(ByteBuffer pairBuffer) {
@@ -153,26 +150,20 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     }
   }
 
-  private void reconstructAliasAddressList() {
+  private void reconstructAliasAddressList() throws RecordDuplicatedException {
     aliasKeyList = new ArrayList<>();
     ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
     bufferR.clear();
-    try {
-      for (Pair<String, Short> p : keyAddressList) {
-        if (p.right >= 0) {
-          bufferR.position(p.right);
-          if (RecordUtils.getRecordType(bufferR) == RecordUtils.MEASUREMENT_TYPE) {
-            String alias = RecordUtils.getRecordAlias(bufferR);
-            if (alias != null && !alias.equals("")) {
-              aliasKeyList.add(
-                  binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, p.left));
-            }
+    for (Pair<String, Short> p : keyAddressList) {
+      if (p.right >= 0) {
+        bufferR.position(p.right);
+        if (RecordUtils.getRecordType(bufferR) == RecordUtils.MEASUREMENT_TYPE) {
+          String alias = RecordUtils.getRecordAlias(bufferR);
+          if (alias != null) {
+            aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, p.left));
           }
         }
       }
-    } catch (RecordDuplicatedException e) {
-      e.printStackTrace();
-      logger.error("Record corrupted.");
     }
   }
 
@@ -186,7 +177,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     int recordStartAddr = freeAddr - buf.capacity();
 
     int newPairLength = pairLength + key.getBytes().length + 4 + 2;
-    if (recordStartAddr < Segment.SEG_HEADER_SIZE + newPairLength) {
+    if (recordStartAddr < SchemaPage.SEG_HEADER_SIZE + newPairLength) {
       return -1;
     }
     pairLength = (short) newPairLength;
@@ -211,7 +202,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
 
     penuKey = lastKey;
     lastKey = key;
-    return recordStartAddr - pairLength - Segment.SEG_HEADER_SIZE;
+    return recordStartAddr - pairLength - SchemaPage.SEG_HEADER_SIZE;
   }
 
   @Override
@@ -302,7 +293,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
       dstBuffer.position(freeAddr);
       dstBuffer.put(srcBuf);
 
-      dstBuffer.position(SEG_HEADER_SIZE + pairLength);
+      dstBuffer.position(SchemaPage.SEG_HEADER_SIZE + pairLength);
       ReadWriteIOUtils.write(mKey, dstBuffer);
       ReadWriteIOUtils.write(freeAddr, dstBuffer);
 
@@ -357,22 +348,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     short len = RecordUtils.getRecordLength(roBuffer);
     roBuffer.limit(offset + len);
 
-    try {
-      return RecordUtils.buffer2Node(keyAddressList.get(index).left, roBuffer);
-    } catch (BufferUnderflowException | BufferOverflowException e) {
-      logger.error(
-          String.format(
-              "Get record[key:%s] failed, start offset:%d, end offset:%d, buffer cap:%d",
-              key, offset, offset + len, roBuffer.capacity()));
-      logger.error(
-          String.format(
-              "Buffer content: %s",
-              Arrays.toString(
-                  Arrays.copyOfRange(
-                      roBuffer.array(), offset, Math.min(offset + len, roBuffer.capacity())))));
-      logger.error(e.toString());
-      throw e;
-    }
+    return RecordUtils.buffer2Node(keyAddressList.get(index).left, roBuffer);
   }
 
   @Override
@@ -426,7 +402,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
       this.buffer.put(uBuffer);
     } else {
       // allocate new space for record, modify key-address list, freeAddr
-      if (ISegment.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
+      if (SchemaPage.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
         // not enough space
         throw new SegmentOverflowException(idx);
       }
@@ -488,7 +464,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
 
   @Override
   public void syncBuffer() {
-    ByteBuffer prefBuffer = ByteBuffer.allocate(Segment.SEG_HEADER_SIZE + pairLength);
+    ByteBuffer prefBuffer = ByteBuffer.allocate(SchemaPage.SEG_HEADER_SIZE + pairLength);
 
     ReadWriteIOUtils.write(length, prefBuffer);
     ReadWriteIOUtils.write(freeAddr, prefBuffer);
@@ -498,7 +474,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     ReadWriteIOUtils.write(nextSegAddress, prefBuffer);
     ReadWriteIOUtils.write(delFlag, prefBuffer);
 
-    prefBuffer.position(Segment.SEG_HEADER_SIZE);
+    prefBuffer.position(SchemaPage.SEG_HEADER_SIZE);
 
     for (Pair<String, Short> pair : keyAddressList) {
       ReadWriteIOUtils.write(pair.left, prefBuffer);
@@ -514,7 +490,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
   public void delete() {
     this.delFlag = true;
     this.buffer.clear();
-    this.buffer.position(SEG_HEADER_SIZE - 1);
+    this.buffer.position(SchemaPage.SEG_HEADER_SIZE - 1);
     ReadWriteIOUtils.write(true, this.buffer);
   }
 
@@ -525,7 +501,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
 
   @Override
   public short getSpareSize() {
-    return (short) (freeAddr - pairLength - SEG_HEADER_SIZE);
+    return (short) (freeAddr - pairLength - SchemaPage.SEG_HEADER_SIZE);
   }
 
   @Override
@@ -556,7 +532,7 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     ReadWriteIOUtils.write(nextSegAddress, newBuffer);
     ReadWriteIOUtils.write(delFlag, newBuffer);
 
-    newBuffer.position(ISegment.SEG_HEADER_SIZE);
+    newBuffer.position(SchemaPage.SEG_HEADER_SIZE);
     for (Pair<String, Short> pair : keyAddressList) {
       ReadWriteIOUtils.write(pair.left, newBuffer);
       ReadWriteIOUtils.write((short) (pair.right + sizeGap), newBuffer);
@@ -572,18 +548,8 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
   }
 
   @Override
-  public long getPrevSegAddress() {
-    return prevSegAddress;
-  }
-
-  @Override
   public long getNextSegAddress() {
     return nextSegAddress;
-  }
-
-  @Override
-  public void setPrevSegAddress(long prevSegAddress) {
-    this.prevSegAddress = prevSegAddress;
   }
 
   @Override
@@ -592,8 +558,16 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
   }
 
   @Override
-  public boolean isInternalSegment() {
-    return false;
+  public ByteBuffer resetBuffer(int ptr) {
+    freeAddr = (short) this.buffer.capacity();
+    recordNum = 0;
+    pairLength = 0;
+    prevSegAddress = -1;
+    nextSegAddress = -1;
+    keyAddressList.clear();
+    syncBuffer();
+    this.buffer.clear();
+    return this.buffer.slice();
   }
 
   // endregion
@@ -777,33 +751,24 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     builder.append(
         String.format(
             "[size: %d, K-AL size: %d, spare:%d,",
-            this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
+            this.length,
+            keyAddressList.size(),
+            freeAddr - pairLength - SchemaPage.SEG_HEADER_SIZE));
     bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
       bufferR.position(pair.right);
-      try {
-        if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
-          builder.append(
-              String.format(
-                  "(%s -> %s),",
-                  pair.left,
-                  RecordUtils.getRecordSegAddr(bufferR) == -1
-                      ? -1
-                      : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
-        } else if (RecordUtils.getRecordType(bufferR) == 4) {
-          builder.append(
-              String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(bufferR)));
-        } else {
-          logger.error(String.format("Record Broken at: %s", pair));
-          throw new BufferUnderflowException();
-        }
-      } catch (BufferUnderflowException | BufferOverflowException e) {
-        logger.error(String.format("Segment broken with string: %s", builder.toString()));
-        logger.error(
+      if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
+        builder.append(
             String.format(
-                "Broken record bytes: %s",
-                Arrays.toString(Arrays.copyOfRange(bufferR.array(), pair.right, pair.right + 30))));
-        throw e;
+                "(%s -> %s),",
+                pair.left,
+                RecordUtils.getRecordSegAddr(bufferR) == -1
+                    ? -1
+                    : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
+      } else if (RecordUtils.getRecordType(bufferR) == 4) {
+        builder.append(String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(bufferR)));
+      } else {
+        throw new BufferUnderflowException();
       }
     }
     builder.append("]");
@@ -823,41 +788,33 @@ public class Segment implements ISegment<ByteBuffer, IMNode> {
     builder.append(
         String.format(
             "[length: %d, total_records: %d, spare_size:%d,",
-            this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
+            this.length,
+            keyAddressList.size(),
+            freeAddr - pairLength - SchemaPage.SEG_HEADER_SIZE));
     bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
       bufferR.position(pair.right);
-      try {
-        if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
-          builder.append(
-              String.format(
-                  "(%s, %s, %s),",
-                  pair.left,
-                  RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned",
-                  RecordUtils.getRecordSegAddr(bufferR) == -1
-                      ? -1
-                      : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
-        } else if (RecordUtils.getRecordType(bufferR) == 4) {
-          byte[] schemaBytes = RecordUtils.getSchemaBytes(bufferR);
-          builder.append(
-              String.format(
-                  "(%s, %s, %s, %s, %s),",
-                  pair.left,
-                  TSDataType.values()[schemaBytes[0]],
-                  TSEncoding.values()[schemaBytes[1]],
-                  CompressionType.values()[schemaBytes[2]],
-                  RecordUtils.getRecordAlias(bufferR)));
-        } else {
-          logger.error(String.format("Record Broken at: %s", pair));
-          throw new BufferUnderflowException();
-        }
-      } catch (BufferUnderflowException | BufferOverflowException e) {
-        logger.error(String.format("Segment broken with string: %s", builder.toString()));
-        logger.error(
+      if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
+        builder.append(
             String.format(
-                "Broken record bytes: %s",
-                Arrays.toString(Arrays.copyOfRange(bufferR.array(), pair.right, pair.right + 30))));
-        throw e;
+                "(%s, %s, %s),",
+                pair.left,
+                RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned",
+                RecordUtils.getRecordSegAddr(bufferR) == -1
+                    ? -1
+                    : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
+      } else if (RecordUtils.getRecordType(bufferR) == 4) {
+        byte[] schemaBytes = RecordUtils.getSchemaBytes(bufferR);
+        builder.append(
+            String.format(
+                "(%s, %s, %s, %s, %s),",
+                pair.left,
+                TSDataType.values()[schemaBytes[0]],
+                TSEncoding.values()[schemaBytes[1]],
+                CompressionType.values()[schemaBytes[2]],
+                RecordUtils.getRecordAlias(bufferR)));
+      } else {
+        throw new BufferUnderflowException();
       }
     }
     builder.append("]");

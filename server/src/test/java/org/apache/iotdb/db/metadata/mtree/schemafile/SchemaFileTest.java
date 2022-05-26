@@ -33,8 +33,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -632,20 +631,11 @@ public class SchemaFileTest {
   // endregion
 
   // region Schema File Shortcut
-  private SchemaPage getPage(ISchemaFile sf, long addr) {
-    try {
-      return ((SchemaFile) sf).getPageOnTest(SchemaFile.getPageIndex(addr));
-    } catch (MetadataException | IOException e) {
-      e.printStackTrace();
-      return null;
-    }
-  }
-
-  private static Segment getSegment(ISchemaFile sf, long address) {
+  private static WrappedSegment getSegment(ISchemaFile sf, long address) {
     try {
       return ((SchemaFile) sf)
           .getPageOnTest(SchemaFile.getPageIndex(address))
-          .getSegmentTest(SchemaFile.getSegIndex(address));
+          .getSegmentOnTest(SchemaFile.getSegIndex(address));
     } catch (MetadataException | IOException e) {
       e.printStackTrace();
       return null;

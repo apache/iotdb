@@ -45,7 +45,7 @@ public class SegmentNotFoundException extends MetadataException {
 
   public SegmentNotFoundException(int pid) {
     super(
-        String.format("No InternalSegment found in page [%s]", pid),
+        String.format("No splittable segment found in page [%s]", pid),
         TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
         true);
   }

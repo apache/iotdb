@@ -21,8 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.InternalSegment;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -33,7 +32,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 
-public class InternalSegmentTest {
+public class InternalPageTest {
   @Before
   public void setUp() {
     IoTDBDescriptor.getInstance()
@@ -54,7 +53,8 @@ public class InternalSegmentTest {
   public void initTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(1000);
 
-    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg =
+        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test =
         new String[] {"abc", "key3", "key4", "key9", "key5", "key6", "key112", "key888"};
 
@@ -63,7 +63,7 @@ public class InternalSegmentTest {
     }
     seg.syncBuffer();
     buffer.clear();
-    ISegment<Integer, Integer> seg2 = InternalSegment.loadInternalSegment(buffer);
+    ISegment<Integer, Integer> seg2 = SchemaPage.loadSchemaPage(buffer).getAsInternalPage();
     Assert.assertEquals(seg.inspect(), seg2.inspect());
 
     Assert.assertTrue(seg2.hasRecordKey("key5"));
@@ -75,21 +75,22 @@ public class InternalSegmentTest {
 
   @Test
   public void evenSplitTest() throws MetadataException {
-    ByteBuffer buffer = ByteBuffer.allocate(150);
+    ByteBuffer buffer = ByteBuffer.allocate(170);
 
-    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg =
+        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = 0; i < test.length; i++) {
       seg.insertRecord(test[i], i);
     }
 
-    ByteBuffer buf2 = ByteBuffer.allocate(150);
-    String sk = seg.splitByKey("a8", 666, buf2, SchemaFile.INCLINED_SPLIT);
+    ByteBuffer buf2 = ByteBuffer.allocate(170);
+    String sk = seg.splitByKey("a8", 666, buf2, SchemaPage.INCLINED_SPLIT);
 
     Assert.assertEquals("a5", sk);
     buf2.clear();
-    ISegment<Integer, Integer> seg2 = InternalSegment.loadInternalSegment(buf2);
+    ISegment<Integer, Integer> seg2 = SchemaPage.loadSchemaPage(buf2).getAsInternalPage();
     Assert.assertEquals(4, seg2.getRecordByKey("a5").intValue());
     Assert.assertEquals(5, seg2.getRecordByKey("a6").intValue());
     Assert.assertEquals(999, seg.getRecordByKey("a").intValue());
@@ -99,7 +100,8 @@ public class InternalSegmentTest {
   public void increasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
-    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg =
+        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = 0; i < test.length; i++) {
@@ -113,14 +115,15 @@ public class InternalSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split when insert the biggest key
-    String sk = seg.splitByKey("a99", 666, buf2, SchemaFile.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a99", 666, buf2, SchemaPage.INCLINED_SPLIT);
 
     Assert.assertEquals("a9", sk);
     buf2.clear();
     Assert.assertEquals(
-        Integer.valueOf(7), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a91"));
+        Integer.valueOf(7),
+        SchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a91"));
 
-    Assert.assertEquals(124, seg.insertRecord("a1", 0));
+    Assert.assertEquals(117, seg.insertRecord("a1", 0));
 
     buf2.clear();
     seg.insertRecord("a21", 20);
@@ -128,30 +131,33 @@ public class InternalSegmentTest {
     seg.insertRecord("a23", 22);
 
     // split when insert the second-biggest key
-    sk = seg.splitByKey("a64", 6464, buf2, SchemaFile.INCLINED_SPLIT);
+    sk = seg.splitByKey("a64", 6464, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a63", sk);
 
     seg.insertRecord("a11", 11);
     seg.insertRecord("a12", 12);
 
     buf2.clear();
-    sk = seg.splitByKey("a24", 24, buf2, SchemaFile.INCLINED_SPLIT);
+    sk = seg.splitByKey("a24", 24, buf2, SchemaPage.INCLINED_SPLIT);
 
     Assert.assertEquals("a23", sk);
     buf2.clear();
     Assert.assertEquals(
-        Integer.valueOf(24), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a24"));
+        Integer.valueOf(24),
+        SchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a24"));
 
-    Assert.assertEquals(179, seg.insertRecord("a1", 0));
+    Assert.assertEquals(172, seg.insertRecord("a1", 0));
     buf2.clear();
-    Assert.assertEquals(166, InternalSegment.loadInternalSegment(buf2).insertRecord("a24", 0));
+    Assert.assertEquals(
+        159, SchemaPage.loadSchemaPage(buf2).getAsInternalPage().insertRecord("a24", 0));
   }
 
   @Test
   public void decreasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
-    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg =
+        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = test.length - 1; i >= 0; i--) {
@@ -161,30 +167,33 @@ public class InternalSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split with the smallest key
-    String sk = ((InternalSegment) seg).splitByKey("a0", 90, buf2, SchemaFile.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a0", 90, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a1", sk);
 
-    Assert.assertEquals(253, seg.insertRecord("a0", 9));
+    Assert.assertEquals(246, seg.insertRecord("a0", 9));
     buf2.clear();
-    Assert.assertEquals(169, InternalSegment.loadInternalSegment(buf2).insertRecord("a2", 0));
+    Assert.assertEquals(
+        162, SchemaPage.loadSchemaPage(buf2).getAsInternalPage().insertRecord("a2", 0));
 
     seg.insertRecord("a13", 12);
     seg.insertRecord("a12", 11);
 
     // split with the second-smallest key
-    sk = ((InternalSegment) seg).splitByKey("a11", 110, buf2, SchemaFile.INCLINED_SPLIT);
+    sk = seg.splitByKey("a11", 110, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a11", sk);
-    Assert.assertEquals(253, seg.insertRecord("a0", 1));
+    Assert.assertEquals(246, seg.insertRecord("a0", 1));
     buf2.clear();
     Assert.assertEquals(
-        Integer.valueOf(110), InternalSegment.loadInternalSegment(buf2).getRecordByKey("a11"));
+        Integer.valueOf(110),
+        SchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a11"));
   }
 
   @Test
   public void increasingOnLowIndex() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
-    ISegment<Integer, Integer> seg = InternalSegment.initInternalSegment(buffer, 999);
+    ISegment<Integer, Integer> seg =
+        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"};
 
     for (int i = 0; i < test.length; i++) {
@@ -197,22 +206,13 @@ public class InternalSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split when insert the biggest key
-    String sk = seg.splitByKey("a04", 30, buf2, SchemaFile.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a04", 30, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a3", sk);
     Assert.assertEquals(6, seg.getAllRecords().size());
   }
 
-  @Test
-  public void allTestsWithSwitchedBulkSplit() throws MetadataException {
-    SchemaFile.BULK_SPLIT = !SchemaFile.BULK_SPLIT;
-    decreasingSplitTest();
-    increasingSplitTest();
-    evenSplitTest();
-    initTest();
-  }
-
-  public void print(ByteBuffer buf) {
-    System.out.println(InternalSegment.loadInternalSegment(buf).inspect());
+  public void print(ByteBuffer buf) throws MetadataException {
+    System.out.println(SchemaPage.loadSchemaPage(buf).getAsInternalPage().inspect());
   }
 
   public void print(Object s) {

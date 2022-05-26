@@ -27,8 +27,8 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,7 +42,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 
-public class SegmentTest {
+public class WrappedSegmentTest {
 
   @Before
   public void setUp() {
@@ -62,7 +62,7 @@ public class SegmentTest {
 
   @Test
   public void flatTreeInsert() throws MetadataException {
-    Segment sf = new Segment(500);
+    WrappedSegment sf = new WrappedSegment(500);
     IMNode rNode = virtualFlatMTree(10);
     for (IMNode node : rNode.getChildren().values()) {
       int res = sf.insertRecord(node.getName(), RecordUtils.node2Buffer(node));
@@ -83,7 +83,7 @@ public class SegmentTest {
         "[entityNode, not aligned, not using template.]",
         RecordUtils.buffer2String(sf.getRecord("vRoot1")));
 
-    Segment nsf = new Segment(sf.getBufferCopy(), false);
+    WrappedSegment nsf = new WrappedSegment(sf.getBufferCopy(), false);
     System.out.println(nsf);
     printBuffer(nsf.getBufferCopy());
     ByteBuffer nrec = nsf.getRecord("mid1");
@@ -96,11 +96,11 @@ public class SegmentTest {
 
     ByteBuffer newBuffer = ByteBuffer.allocate(1500);
     sf.extendsTo(newBuffer);
-    ISegment newSeg = Segment.loadAsSegment(newBuffer);
+    ISegment newSeg = WrappedSegment.loadAsSegment(newBuffer);
     System.out.println(newSeg);
     Assert.assertEquals(
         RecordUtils.buffer2String(sf.getRecord("mid4")),
-        RecordUtils.buffer2String(((Segment) newSeg).getRecord("mid4")));
+        RecordUtils.buffer2String(((WrappedSegment) newSeg).getRecord("mid4")));
     Assert.assertEquals(sf.getRecord("aaa"), nsf.getRecord("aaa"));
   }
 
@@ -121,7 +121,7 @@ public class SegmentTest {
   @Test
   public void evenSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
-    ISegment<ByteBuffer, IMNode> seg = Segment.initAsSegment(buffer);
+    ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"};
     IMNode mNode = getMeasurementNode(null, "m", null);
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
@@ -131,14 +131,14 @@ public class SegmentTest {
     }
 
     ByteBuffer buf2 = ByteBuffer.allocate(500);
-    String sk = seg.splitByKey("a55", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a55", buf, buf2, SchemaPage.INCLINED_SPLIT);
 
     Assert.assertEquals("a5", sk);
     Assert.assertEquals(4, seg.getAllRecords().size());
-    Assert.assertEquals(6, Segment.loadAsSegment(buf2).getAllRecords().size());
+    Assert.assertEquals(6, WrappedSegment.loadAsSegment(buf2).getAllRecords().size());
 
     seg.syncBuffer();
-    ISegment seg3 = Segment.loadAsSegment(buffer);
+    ISegment seg3 = WrappedSegment.loadAsSegment(buffer);
     Assert.assertEquals(seg.getAllRecords().size(), seg3.getAllRecords().size());
 
     buf2.clear();
@@ -158,7 +158,7 @@ public class SegmentTest {
   public void increasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
     ByteBuffer buf2 = ByteBuffer.allocate(500);
-    ISegment<ByteBuffer, IMNode> seg = Segment.initAsSegment(buffer);
+    ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
     IMNode mNode = new InternalMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
@@ -167,23 +167,23 @@ public class SegmentTest {
       seg.insertRecord(test[i], buf);
     }
     // at largest
-    String sk = seg.splitByKey("a9", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a9", buf, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a9", sk);
-    Assert.assertEquals(1, Segment.loadAsSegment(buf2).getAllRecords().size());
+    Assert.assertEquals(1, WrappedSegment.loadAsSegment(buf2).getAllRecords().size());
 
     // at second-largest
     seg.insertRecord("a71", buf);
     seg.insertRecord("a72", buf);
     buf2.clear();
-    sk = seg.splitByKey("a73", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    sk = seg.splitByKey("a73", buf, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a73", sk);
-    Assert.assertEquals(2, Segment.loadAsSegment(buf2).getAllRecords().size());
+    Assert.assertEquals(2, WrappedSegment.loadAsSegment(buf2).getAllRecords().size());
 
     // at lower half
     seg.insertRecord("a00", buf);
     seg.insertRecord("a01", buf);
     buf2.clear();
-    sk = seg.splitByKey("a02", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    sk = seg.splitByKey("a02", buf, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a3", sk);
     Assert.assertEquals(5, seg.getAllRecords().size());
   }
@@ -192,7 +192,7 @@ public class SegmentTest {
   public void decreasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
     ByteBuffer buf2 = ByteBuffer.allocate(500);
-    ISegment<ByteBuffer, IMNode> seg = Segment.initAsSegment(buffer);
+    ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
     IMNode mNode = new InternalMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
@@ -204,10 +204,10 @@ public class SegmentTest {
     seg.insertRecord("a12", buf);
     seg.insertRecord("a11", buf);
 
-    String sk = seg.splitByKey("a10", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a10", buf, buf2, SchemaPage.INCLINED_SPLIT);
     Assert.assertEquals("a11", sk);
     Assert.assertEquals(2, seg.getAllRecords().size());
-    Assert.assertEquals(9, Segment.loadAsSegment(buf2).getAllRecords().size());
+    Assert.assertEquals(9, WrappedSegment.loadAsSegment(buf2).getAllRecords().size());
 
     // at higher half
     test = new String[] {"a5", "a6", "a7", "a8"};
@@ -217,7 +217,7 @@ public class SegmentTest {
     seg.insertRecord("a84", buf);
     seg.insertRecord("a83", buf);
     buf2.clear();
-    sk = seg.splitByKey("a82", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    sk = seg.splitByKey("a82", buf, buf2, SchemaPage.INCLINED_SPLIT);
 
     Assert.assertEquals("a7", sk);
     Assert.assertEquals(4, seg.getAllRecords().size());
@@ -227,14 +227,14 @@ public class SegmentTest {
     seg.insertRecord("a42", buf);
 
     buf2.clear();
-    sk = seg.splitByKey("a41", buf, buf2, SchemaFile.INCLINED_SPLIT);
+    sk = seg.splitByKey("a41", buf, buf2, SchemaPage.INCLINED_SPLIT);
 
     Assert.assertEquals("a42", sk);
     Assert.assertEquals(3, seg.getAllRecords().size());
   }
 
-  public void print(ByteBuffer buf) {
-    System.out.println(Segment.loadAsSegment(buf).inspect());
+  public void print(ByteBuffer buf) throws MetadataException {
+    System.out.println(WrappedSegment.loadAsSegment(buf).inspect());
   }
 
   public void print(Object s) {
