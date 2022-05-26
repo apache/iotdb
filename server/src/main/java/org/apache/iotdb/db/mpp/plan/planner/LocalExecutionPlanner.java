@@ -353,7 +353,7 @@ public class LocalExecutionPlanner {
       } else if (node instanceof LevelTimeSeriesCountNode) {
         return visitLevelTimeSeriesCount((LevelTimeSeriesCountNode) node, context);
       } else if (node instanceof NodePathsSchemaScanNode) {
-        return visitChildPathsSchemaScan((NodePathsSchemaScanNode) node, context);
+        return visitNodePathsSchemaScan((NodePathsSchemaScanNode) node, context);
       }
       return visitPlan(node, context);
     }
@@ -466,7 +466,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitChildPathsSchemaScan(
+    public Operator visitNodePathsSchemaScan(
         NodePathsSchemaScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(

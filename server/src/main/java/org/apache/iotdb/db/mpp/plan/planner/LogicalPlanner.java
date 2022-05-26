@@ -477,7 +477,7 @@ public class LogicalPlanner {
     public PlanNode visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildPathsSchemaSource(countStatement.getPartialPath(), countStatement.getLevel())
+          .planNodePathsSchemaSource(countStatement.getPartialPath(), countStatement.getLevel())
           .planSchemaQueryMerge(false)
           .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
           .planNodePathsCount()
@@ -580,7 +580,7 @@ public class LogicalPlanner {
         ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath(), -1)
+          .planNodePathsSchemaSource(showChildPathsStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
           .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
           .getRoot();
@@ -591,7 +591,7 @@ public class LogicalPlanner {
         ShowChildNodesStatement showChildNodesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildPathsSchemaSource(showChildNodesStatement.getPartialPath(), -1)
+          .planNodePathsSchemaSource(showChildNodesStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
           .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
           .planNodePathsConvert()

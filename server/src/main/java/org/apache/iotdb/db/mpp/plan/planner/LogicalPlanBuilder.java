@@ -607,7 +607,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planChildPathsSchemaSource(PartialPath partialPath, Integer level) {
+  public LogicalPlanBuilder planNodePathsSchemaSource(PartialPath partialPath, Integer level) {
     this.root =
         new NodePathsSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath, level);
     return this;

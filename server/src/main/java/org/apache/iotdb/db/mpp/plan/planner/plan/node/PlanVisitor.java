@@ -235,7 +235,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitChildPathsSchemaScan(NodePathsSchemaScanNode node, C context) {
+  public R visitNodePathsSchemaScan(NodePathsSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 
