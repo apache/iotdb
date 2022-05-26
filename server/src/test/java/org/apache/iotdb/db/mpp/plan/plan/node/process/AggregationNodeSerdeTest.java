@@ -75,7 +75,8 @@ public class AggregationNodeSerdeTest {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-            groupByTimeParameter);
+            groupByTimeParameter,
+            OrderBy.TIMESTAMP_ASC);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     aggregationNode.serialize(byteBuffer);

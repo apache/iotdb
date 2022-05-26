@@ -74,6 +74,9 @@ public class AvgAccumulator implements Accumulator {
     initResult = true;
     countValue += partialResult[0].getLong(0);
     sumValue += partialResult[1].getDouble(0);
+    if (countValue == 0) {
+      initResult = false;
+    }
   }
 
   @Override
@@ -84,6 +87,9 @@ public class AvgAccumulator implements Accumulator {
       sumValue += statistics.getSumLongValue();
     } else {
       sumValue += statistics.getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
     }
   }
 
