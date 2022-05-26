@@ -42,13 +42,8 @@ public class LastPointFetchStatement extends Statement {
     return selectedPaths;
   }
 
-  public String getBelongedStorageGroup(String pathName) {
-    for (String storageGroup : storageGroups) {
-      if (pathName.startsWith(storageGroup + ".")) {
-        return storageGroup;
-      }
-    }
-    throw new RuntimeException("No matched storage group. Please check the path " + pathName);
+  public List<String> getStorageGroups() {
+    return storageGroups;
   }
 
   @Override
