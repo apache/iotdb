@@ -390,7 +390,10 @@ public class TsFileValidationTool {
         }
       } catch (Throwable e) {
         logger.error("Meet errors in reading file {} , skip it.", tsFile.getAbsolutePath(), e);
-        printBoth("-- Meet errors in reading file " + tsFile.getAbsolutePath());
+        printBoth(
+            "-- Meet errors in reading file "
+                + tsFile.getAbsolutePath()
+                + ", tsfile may be corrupted.");
       }
     }
   }
