@@ -52,7 +52,7 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 
-public class BasicTest {
+public class DistributionPlannerBasicTest {
 
   @Test
   public void testSingleSeriesScan() throws IllegalPathException {

@@ -19,12 +19,14 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
 
@@ -34,7 +36,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
-public class AlignedLastQueryScanNode extends SourceNode {
+public class AlignedLastQueryScanNode extends SeriesSourceNode {
   // The path of the target series which will be scanned.
   private final AlignedPath seriesPath;
 
@@ -135,5 +137,15 @@ public class AlignedLastQueryScanNode extends SourceNode {
 
   public AlignedPath getSeriesPath() {
     return seriesPath;
+  }
+
+  @Override
+  public PartialPath getPartitionPath() {
+    return seriesPath;
+  }
+
+  @Override
+  public Filter getPartitionTimeFilter() {
+    return null;
   }
 }

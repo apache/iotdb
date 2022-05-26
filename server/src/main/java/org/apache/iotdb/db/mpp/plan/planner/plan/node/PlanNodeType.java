@@ -45,11 +45,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
@@ -103,7 +103,7 @@ public enum PlanNodeType {
   TIME_SERIES_COUNT((short) 28),
   LEVEL_TIME_SERIES_COUNT((short) 29),
   COUNT_MERGE((short) 30),
-  GROUP_BY_TIME((short) 31),
+  SLIDING_WINDOW_AGGREGATION((short) 31),
   PROJECT((short) 32),
   ALIGNED_SERIES_SCAN((short) 33),
   ALIGNED_SERIES_AGGREGATE_SCAN((short) 34),
@@ -210,7 +210,7 @@ public enum PlanNodeType {
       case 30:
         return CountSchemaMergeNode.deserialize(buffer);
       case 31:
-        return GroupByTimeNode.deserialize(buffer);
+        return SlidingWindowAggregationNode.deserialize(buffer);
       case 32:
         return ProjectNode.deserialize(buffer);
       case 33:

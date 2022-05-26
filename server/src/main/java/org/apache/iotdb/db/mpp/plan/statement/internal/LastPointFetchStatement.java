@@ -17,48 +17,42 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.metadata;
+package org.apache.iotdb.db.mpp.plan.statement.internal;
 
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
 
-public class SchemaFetchStatement extends Statement {
+public class LastPointFetchStatement extends Statement {
 
-  private PathPatternTree patternTree;
+  private final List<MeasurementPath> selectedPaths;
 
-  private SchemaPartition schemaPartition;
+  // used for fetch data partition
+  private final List<String> storageGroups;
 
-  public SchemaFetchStatement(PathPatternTree patternTree) {
-    super();
-    this.patternTree = patternTree;
-    setType(StatementType.FETCH_SCHEMA);
+  public LastPointFetchStatement(List<MeasurementPath> selectedPaths, List<String> storageGroups) {
+    this.selectedPaths = selectedPaths;
+    this.storageGroups = storageGroups;
   }
 
-  public PathPatternTree getPatternTree() {
-    return patternTree;
+  public List<MeasurementPath> getSelectedPaths() {
+    return selectedPaths;
   }
 
-  public SchemaPartition getSchemaPartition() {
-    return schemaPartition;
+  public List<String> getStorageGroups() {
+    return storageGroups;
   }
 
-  public void setSchemaPartition(SchemaPartition schemaPartition) {
-    this.schemaPartition = schemaPartition;
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return selectedPaths;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetch(this, context);
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return patternTree.splitToPathList();
+    return visitor.visitLastPointFetch(this, context);
   }
 }

@@ -53,10 +53,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -175,6 +175,7 @@ public class LogicalPlanBuilder {
             : AggregationStep.SINGLE;
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
+    boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
     for (Expression sourceExpression : sourceExpressions) {
@@ -189,7 +190,8 @@ public class LogicalPlanBuilder {
       }
       PartialPath selectPath =
           ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
-      if (SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
+      if (!needCheckAscending
+          || SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
         ascendingAggregations
             .computeIfAbsent(selectPath, key -> new ArrayList<>())
             .add(aggregationDescriptor);
@@ -202,8 +204,6 @@ public class LogicalPlanBuilder {
 
     Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
         MetaUtils.groupAlignedAggregations(ascendingAggregations);
-    Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
-        MetaUtils.groupAlignedAggregations(descendingAggregations);
     for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
         groupedAscendingAggregations.entrySet()) {
       sourceNodeList.add(
@@ -214,29 +214,38 @@ public class LogicalPlanBuilder {
               groupByTimeParameter,
               timeFilter));
     }
-    for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
-        groupedDescendingAggregations.entrySet()) {
-      sourceNodeList.add(
-          createAggregationScanNode(
-              pathAggregationsEntry.getKey(),
-              pathAggregationsEntry.getValue(),
-              scanOrder,
-              groupByTimeParameter,
-              timeFilter));
+
+    if (needCheckAscending) {
+      Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
+          MetaUtils.groupAlignedAggregations(descendingAggregations);
+      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+          groupedDescendingAggregations.entrySet()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                pathAggregationsEntry.getKey(),
+                pathAggregationsEntry.getValue(),
+                scanOrder,
+                groupByTimeParameter,
+                timeFilter));
+      }
     }
 
     if (curStep.isOutputPartial()) {
       if (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()) {
         curStep =
             groupByLevelExpressions != null ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
+
+        this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
+
         this.root =
-            createGroupByTimeNode(
-                sourceNodeList, aggregationExpressions, groupByTimeParameter, curStep);
+            createSlidingWindowAggregationNode(
+                this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
 
         if (groupByLevelExpressions != null) {
           curStep = AggregationStep.FINAL;
           this.root =
-              createGroupByTLevelNode(this.root.getChildren(), groupByLevelExpressions, curStep);
+              createGroupByTLevelNode(
+                  Collections.singletonList(this.getRoot()), groupByLevelExpressions, curStep);
         }
       } else {
         if (groupByLevelExpressions != null) {
@@ -311,7 +320,8 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      OrderBy scanOrder) {
     if (aggregationExpressions == null) {
       return this;
     }
@@ -329,39 +339,40 @@ public class LogicalPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             Collections.singletonList(this.getRoot()),
             aggregationDescriptorList,
-            groupByTimeParameter);
+            groupByTimeParameter,
+            scanOrder);
     return this;
   }
 
-  public LogicalPlanBuilder planGroupByTime(
+  public LogicalPlanBuilder planSlidingWindowAggregation(
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
-      AggregationStep curStep) {
+      AggregationStep curStep,
+      OrderBy scanOrder) {
     if (aggregationExpressions == null) {
       return this;
     }
 
     this.root =
-        createGroupByTimeNode(
-            Collections.singletonList(this.getRoot()),
-            aggregationExpressions,
-            groupByTimeParameter,
-            curStep);
+        createSlidingWindowAggregationNode(
+            this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
     return this;
   }
 
-  private PlanNode createGroupByTimeNode(
-      List<PlanNode> children,
+  private PlanNode createSlidingWindowAggregationNode(
+      PlanNode child,
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
-      AggregationStep curStep) {
+      AggregationStep curStep,
+      OrderBy scanOrder) {
     List<AggregationDescriptor> aggregationDescriptorList =
         constructAggregationDescriptorList(aggregationExpressions, curStep);
-    return new GroupByTimeNode(
+    return new SlidingWindowAggregationNode(
         context.getQueryId().genPlanNodeId(),
-        children,
+        child,
         aggregationDescriptorList,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        scanOrder);
   }
 
   private PlanNode createGroupByTLevelNode(
