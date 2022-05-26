@@ -1981,6 +1981,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return new BetweenExpression(
             firstExpression, secondExpression, thirdExpression, context.OPERATOR_NOT() != null);
       }
+      throw new UnsupportedOperationException();
     }
 
     if (context.unaryBeforeInExpression != null) {

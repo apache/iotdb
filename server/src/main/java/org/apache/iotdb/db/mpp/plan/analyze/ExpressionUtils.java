@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
@@ -172,6 +173,23 @@ public class ExpressionUtils {
             throw new IllegalArgumentException("unsupported expression type: " + expressionType);
         }
       }
+    }
+    return resultExpressions;
+  }
+
+  public static List<Expression> reconstructTernaryExpressions(ExpressionType expressionType, List<Expression> firstExpressions, List<Expression> secondExpressions, List<Expression> thirdExpressions) {
+    List<Expression> resultExpressions = new ArrayList<>();
+    for (Expression fe : firstExpressions) {
+      for (Expression se : secondExpressions)
+        for (Expression te : thirdExpressions) {
+          switch (expressionType) {
+            case BETWEEN:
+              resultExpressions.add(new BetweenExpression(fe, se, te));
+              break;
+            default:
+              throw new UnsupportedOperationException();
+          }
+        }
     }
     return resultExpressions;
   }
