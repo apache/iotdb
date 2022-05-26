@@ -22,8 +22,6 @@ package org.apache.iotdb.db.mpp.plan.parser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
-import org.apache.iotdb.db.mpp.plan.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -76,8 +74,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -139,13 +135,11 @@ public class StatementGenerator {
         new ResultColumn(new TimeSeriesOperand(new PartialPath("")), ResultColumn.ColumnType.RAW));
 
     // set query filter
-    PartialPath timePath = new PartialPath(TIME, false);
-    BasicFunctionFilter basicFunctionFilter =
-        new BasicFunctionFilter(
-            FilterConstant.FilterType.GREATERTHANOREQUALTO,
-            timePath,
-            Long.toString(lastDataQueryReq.getTime()));
-    //    whereCondition.setQueryFilter(basicFunctionFilter);
+    GreaterEqualExpression predicate =
+        new GreaterEqualExpression(
+            new TimestampOperand(),
+            new ConstantOperand(TSDataType.INT64, Long.toString(lastDataQueryReq.getTime())));
+    whereCondition.setPredicate(predicate);
 
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
