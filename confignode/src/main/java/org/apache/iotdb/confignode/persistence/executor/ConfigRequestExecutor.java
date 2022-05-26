@@ -266,9 +266,9 @@ public class ConfigRequestExecutor {
     Set<PartialPath> needMatchedNode;
     List<String> matchedStorageGroups = new ArrayList<>();
 
-    GetNodePathsPartitionReq getChildPathsPartitionReq = (GetNodePathsPartitionReq) req;
-    partialPath = getChildPathsPartitionReq.getPartialPath();
-    level = getChildPathsPartitionReq.getLevel();
+    GetNodePathsPartitionReq getNodePathsPartitionReq = (GetNodePathsPartitionReq) req;
+    partialPath = getNodePathsPartitionReq.getPartialPath();
+    level = getNodePathsPartitionReq.getLevel();
     if (-1 == level) {
       // get child paths
       Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel =

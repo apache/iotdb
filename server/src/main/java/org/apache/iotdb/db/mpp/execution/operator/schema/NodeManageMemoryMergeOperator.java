@@ -64,12 +64,12 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
     TsBlock block = child.next();
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-    Set<String> childPaths = new TreeSet<>(data);
+    Set<String> nodePaths = new TreeSet<>(data);
     for (int i = 0; i < block.getPositionCount(); i++) {
-      childPaths.add(block.getColumn(0).getBinary(i).toString());
+      nodePaths.add(block.getColumn(0).getBinary(i).toString());
     }
 
-    childPaths.forEach(
+    nodePaths.forEach(
         path -> {
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
           tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));

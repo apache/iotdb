@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -63,6 +64,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.mpp.plan.plan.QueryLogicalPlanUtil.querySQLs;
 import static org.apache.iotdb.db.mpp.plan.plan.QueryLogicalPlanUtil.sqlToPlanMap;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
@@ -554,11 +556,11 @@ public class LogicalPlannerTest {
           (NodeManagementMemoryMergeNode) countSchemaMergeNode.getChildren().get(0);
       SchemaQueryMergeNode schemaQueryMergeNode =
           (SchemaQueryMergeNode) nodeManagementMemoryMergeNode.getChildren().get(0);
-      NodePathsSchemaScanNode childPathsSchemaScanNode =
+      NodePathsSchemaScanNode nodePathsSchemaScanNode =
           (NodePathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
-      Assert.assertNotNull(childPathsSchemaScanNode);
-      Assert.assertEquals(new PartialPath("root.ln"), childPathsSchemaScanNode.getPrefixPath());
-      Assert.assertEquals(1, childPathsSchemaScanNode.getLevel());
+      Assert.assertNotNull(nodePathsSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), nodePathsSchemaScanNode.getPrefixPath());
+      Assert.assertEquals(1, nodePathsSchemaScanNode.getLevel());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -573,10 +575,10 @@ public class LogicalPlannerTest {
           (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
       SchemaQueryMergeNode schemaQueryMergeNode =
           (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
-      NodePathsSchemaScanNode childPathsSchemaScanNode =
+      NodePathsSchemaScanNode nodePathsSchemaScanNode =
           (NodePathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
-      Assert.assertNotNull(childPathsSchemaScanNode);
-      Assert.assertEquals(new PartialPath("root.ln"), childPathsSchemaScanNode.getPrefixPath());
+      Assert.assertNotNull(nodePathsSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), nodePathsSchemaScanNode.getPrefixPath());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -587,16 +589,15 @@ public class LogicalPlannerTest {
   public void testShowChildNodes() {
     String sql = "SHOW CHILD NODES root.ln";
     try {
-      // TODO
-      //      NodeManagementMemoryMergeNode memorySourceNode =
-      //          (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
-      //      SchemaQueryMergeNode schemaQueryMergeNode =
-      //          (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
-      //      ChildNodesSchemaScanNode childNodesSchemaScanNode =
-      //          (ChildNodesSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
-      //      Assert.assertNotNull(childNodesSchemaScanNode);
-      //      Assert.assertEquals(new PartialPath("root.ln"),
-      // childNodesSchemaScanNode.getPrefixPath());
+      NodePathsConvertNode nodePathsConvertNode = (NodePathsConvertNode) parseSQLToPlanNode(sql);
+      NodeManagementMemoryMergeNode memorySourceNode =
+          (NodeManagementMemoryMergeNode) nodePathsConvertNode.getChildren().get(0);
+      SchemaQueryMergeNode schemaQueryMergeNode =
+          (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
+      NodePathsSchemaScanNode nodePathsSchemaScanNode =
+          (NodePathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      assertNotNull(nodePathsConvertNode);
+      Assert.assertEquals(new PartialPath("root.ln"), nodePathsSchemaScanNode.getPrefixPath());
     } catch (Exception e) {
       e.printStackTrace();
       fail();

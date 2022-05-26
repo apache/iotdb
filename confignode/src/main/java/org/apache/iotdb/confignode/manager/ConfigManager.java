@@ -388,12 +388,12 @@ public class ConfigManager implements Manager {
   public DataSet getNodePathsPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      GetNodePathsPartitionReq getChildPathsPartitionReq = new GetNodePathsPartitionReq();
-      getChildPathsPartitionReq.setPartialPath(partialPath);
+      GetNodePathsPartitionReq getNodePathsPartitionReq = new GetNodePathsPartitionReq();
+      getNodePathsPartitionReq.setPartialPath(partialPath);
       if (null != level) {
-        getChildPathsPartitionReq.setLevel(level);
+        getNodePathsPartitionReq.setLevel(level);
       }
-      return partitionManager.getNodePathsPartition(getChildPathsPartitionReq);
+      return partitionManager.getNodePathsPartition(getNodePathsPartitionReq);
     } else {
       SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
       dataSet.setStatus(status);

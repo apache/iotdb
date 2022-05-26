@@ -60,41 +60,35 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder;
-    Set<String> childPaths;
-    if (-1 == level) {
-      // show child paths
-      tsBlockBuilder = new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-      try {
-        childPaths =
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
+    Set<String> nodePaths;
+
+    try {
+      if (-1 == level) {
+        // show child paths
+        nodePaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion()
                 .getChildNodePathInNextLevel(partialPath);
-      } catch (MetadataException e) {
-        throw new RuntimeException(e.getMessage(), e);
-      }
-      childPaths.forEach(
-          (path) -> {
-            tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-            tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
-            tsBlockBuilder.declarePosition();
-          });
-    } else {
-      // count nodes
-      tsBlockBuilder = new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
-      try {
-        childPaths =
+      } else {
+        nodePaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, true, null).stream()
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet());
-      } catch (MetadataException e) {
-        throw new RuntimeException(e.getMessage(), e);
       }
-      tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-      tsBlockBuilder.getColumnBuilder(0).writeInt(childPaths.size());
-      tsBlockBuilder.declarePosition();
+
+    } catch (MetadataException e) {
+      throw new RuntimeException(e.getMessage(), e);
     }
+
+    nodePaths.forEach(
+        (path) -> {
+          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
+          tsBlockBuilder.declarePosition();
+        });
     return tsBlockBuilder.build();
   }
 
