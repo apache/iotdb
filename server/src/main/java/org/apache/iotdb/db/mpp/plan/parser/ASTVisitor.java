@@ -1273,6 +1273,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeString(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
@@ -1282,7 +1286,31 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       return unWrapped;
     }
+    checkSpecialCharacters(nodeName);
     return nodeName;
+  }
+
+  private void checkSpecialCharacters(String src) {
+    // node name could starts with * and ends with *
+    if (src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        && src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      checkWithPattern(src.substring(1, src.length() - 1));
+    } else if (src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      checkWithPattern(src.substring(1));
+    } else if (src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      checkWithPattern(src.substring(0, src.length() - 1));
+    } else {
+      checkWithPattern(src);
+    }
+  }
+
+  private void checkWithPattern(String src) {
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              src));
+    }
   }
 
   // Literals ========================================================================

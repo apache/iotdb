@@ -197,7 +197,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // ${} are allowed
   private static final Pattern NODE_NAME_IN_SELECT_INTO_PATTERN =
-      Pattern.compile("([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)");
+      Pattern.compile("([a-zA-Z0-9_${}*\\u2E80-\\u9FFF]+)");
 
   private ZoneId zoneId;
   private QueryOperator queryOp;
@@ -2601,6 +2601,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseNodeNameWithoutWildCardInSelectInto(
       IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
     String nodeName = ctx.getText();
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
@@ -2612,12 +2616,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     if (!NODE_NAME_IN_SELECT_INTO_PATTERN.matcher(nodeName).matches()) {
       throw new SQLParserException(
-          "unquoted node name in select into clause can only consist of digits, characters, $, { and }");
+          String.format(
+              "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",
+              nodeName));
     }
     return nodeName;
   }
 
   private String parseNodeString(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
@@ -2632,9 +2642,26 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void checkSpecialCharacters(String src) {
+    // node name could starts with * and ends with *
+    // todo: check double star?
+    if ((src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
+        && src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      checkWithPattern(src.substring(1, src.length() - 1));
+    } else if (src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      checkWithPattern(src.substring(1));
+    } else if (src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      checkWithPattern(src.substring(0, src.length() - 1));
+    } else {
+      checkWithPattern(src);
+    }
+  }
+
+  private void checkWithPattern(String src) {
     if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
       throw new SQLParserException(
-          "unquoted identifier can only consist of digits, characters and underscore");
+          String.format(
+              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              src));
     }
   }
 
