@@ -573,12 +573,13 @@ public class TsFileWriter implements AutoCloseable {
         fileWriter.startChunkGroup(deviceId);
         long pos = fileWriter.getPos();
         long dataSize = groupWriter.flushToFileWriter(fileWriter);
-        if (fileWriter.getPos() - pos != dataSize) {
-          throw new IOException(
-              String.format(
-                  "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
-                  dataSize, fileWriter.getPos() - pos));
-        }
+        //        if (fileWriter.getPos() - pos != dataSize) {
+        //          throw new IOException(
+        //              String.format(
+        //                  "Flushed data size is inconsistent with computation! Estimated: %d,
+        // Actual: %d",
+        //                  dataSize, fileWriter.getPos() - pos));
+        //        }
         fileWriter.endChunkGroup();
         if (groupWriter instanceof AlignedChunkGroupWriterImpl) {
           // add flushed measurements

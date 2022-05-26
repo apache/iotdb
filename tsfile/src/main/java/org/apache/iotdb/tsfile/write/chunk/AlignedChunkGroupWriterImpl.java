@@ -104,7 +104,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public int write(long time, List<DataPoint> data) throws WriteProcessException, IOException {
-    checkIsHistoryData("", time);
+    // checkIsHistoryData("", time);
 
     for (DataPoint point : data) {
       writenMeasurementSet.add(point.getMeasurementId());
@@ -148,7 +148,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     // write time
     for (int row = 0; row < tablet.rowSize; row++) {
       long time = tablet.timestamps[row];
-      checkIsHistoryData("", time);
+      // checkIsHistoryData("", time);
       timeChunkWriter.write(time);
       lastTime = time;
       if (timeChunkWriter.needANewPage()) {

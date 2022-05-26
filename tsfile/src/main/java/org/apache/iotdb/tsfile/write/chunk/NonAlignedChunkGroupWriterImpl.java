@@ -75,7 +75,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   public int write(long time, List<DataPoint> data) throws IOException, WriteProcessException {
     int pointCount = 0;
     for (DataPoint point : data) {
-      checkIsHistoryData(point.getMeasurementId(), time);
+      // checkIsHistoryData(point.getMeasurementId(), time);
 
       if (pointCount == 0) {
         pointCount++;
@@ -103,7 +103,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
           continue;
         }
         long time = tablet.timestamps[row];
-        checkIsHistoryData(measurementId, time);
+        // checkIsHistoryData(measurementId, time);
         pointCount++;
         switch (tsDataType) {
           case INT32:
