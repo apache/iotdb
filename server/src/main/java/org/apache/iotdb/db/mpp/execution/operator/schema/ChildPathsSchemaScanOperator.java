@@ -59,34 +59,42 @@ public class ChildPathsSchemaScanOperator implements SourceOperator {
 
   @Override
   public TsBlock next() {
-    // TODO check
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder;
     Set<String> childPaths;
-
-    try {
-      if (-1 == level) {
+    if (-1 == level) {
+      // show child paths
+      tsBlockBuilder = new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
+      try {
         childPaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion()
                 .getChildNodePathInNextLevel(partialPath);
-      } else {
+      } catch (MetadataException e) {
+        throw new RuntimeException(e.getMessage(), e);
+      }
+      childPaths.forEach(
+          (path) -> {
+            tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+            tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
+            tsBlockBuilder.declarePosition();
+          });
+    } else {
+      // count nodes
+      tsBlockBuilder = new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
+      try {
         childPaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, true, null).stream()
-                    .map(PartialPath::getFullPath)
-                    .collect(Collectors.toSet());
+                .map(PartialPath::getFullPath)
+                .collect(Collectors.toSet());
+      } catch (MetadataException e) {
+        throw new RuntimeException(e.getMessage(), e);
       }
-    } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+      tsBlockBuilder.getColumnBuilder(0).writeInt(childPaths.size());
+      tsBlockBuilder.declarePosition();
     }
-    childPaths.forEach(
-        (path) -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
-          tsBlockBuilder.declarePosition();
-        });
     return tsBlockBuilder.build();
   }
 
