@@ -252,6 +252,10 @@ public class ValueChunkWriter {
     return false;
   }
 
+  public boolean needANewPage() {
+    return pageWriter.getSize() >= maxNumberOfPointsInPage;
+  }
+
   public void sealCurrentPage() {
     // if the page contains no points, we still need to serialize it
     if (pageWriter != null && pageWriter.getSize() != 0) {

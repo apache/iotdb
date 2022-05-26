@@ -136,6 +136,10 @@ public class TimeChunkWriter {
     return false;
   }
 
+  public boolean needANewPage() {
+    return pageWriter.getPointNumber() >= maxNumberOfPointsInPage;
+  }
+
   public void writePageToPageBuffer() {
     try {
       if (numOfPages == 0) { // record the firstPageStatistics
