@@ -48,7 +48,7 @@ public class DisableWALTest {
   @Test
   public void testDisableWAL() {
     WALManager walManager = WALManager.getInstance();
-    IWALNode walNode = walManager.applyForWALNode();
+    IWALNode walNode = walManager.applyForWALNode("");
     assertEquals(WALFakeNode.getSuccessInstance(), walNode);
   }
 }

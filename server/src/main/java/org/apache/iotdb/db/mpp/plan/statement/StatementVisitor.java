@@ -32,7 +32,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesState
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
@@ -82,6 +84,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(createAlignedTimeSeriesStatement, context);
   }
 
+  // Create Timeseries by device
+  public R visitCreateTimeseriesByDevice(
+      CreateTimeSeriesByDeviceStatement createTimeSeriesByDeviceStatement, C context) {
+    return visitStatement(createTimeSeriesByDeviceStatement, context);
+  }
+
   // Create Multi Timeseries
   public R visitCreateMultiTimeseries(
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, C context) {
@@ -117,6 +125,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTTL(ShowTTLStatement showTTLStatement, C context) {
     return visitStatement(showTTLStatement, context);
+  }
+
+  // UDF
+  public R visitCreateFunction(CreateFunctionStatement createFunctionStatement, C context) {
+    return visitStatement(createFunctionStatement, context);
   }
 
   /** Data Manipulation Language (DML) */
