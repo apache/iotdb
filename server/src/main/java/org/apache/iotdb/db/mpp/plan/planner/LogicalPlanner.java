@@ -281,9 +281,7 @@ public class LogicalPlanner {
     public PlanNode visitLastPointFetch(
         LastPointFetchStatement lastPointFetchStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      return planBuilder
-          .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())
-          .getRoot();
+      return planBuilder.planLast(analysis.getSourceExpressions(), null).getRoot();
     }
 
     @Override
