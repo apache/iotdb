@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -31,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -604,11 +604,8 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitDeleteTimeseries(
         DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
-      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      List<PartialPath> paths = deleteTimeSeriesStatement.getPaths();
-      List<String> storageGroups =
-          new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
-      return planBuilder.planDeleteData(paths, storageGroups).planDeleteTimeseries(paths).getRoot();
+      return new DeleteTimeSeriesNode(
+          context.getQueryId().genPlanNodeId(), deleteTimeSeriesStatement.getPaths());
     }
 
     @Override

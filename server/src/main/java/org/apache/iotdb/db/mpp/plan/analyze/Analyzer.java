@@ -1028,8 +1028,14 @@ public class Analyzer {
 
       Pair<SchemaPartition, DataPartition> pair =
           getPartitionForDeletion(deleteTimeSeriesStatement.getPaths());
+
+      DeleteTimeseriesDriver.processSchemaCacheAndData(
+          transformToRegionRequestList(pair.right, deleteTimeSeriesStatement.getPaths()),
+          pair.right);
+
       analysis.setSchemaPartitionInfo(pair.left);
-      analysis.setDataPartitionInfo(pair.right);
+      analysis.setRegionRequestList(
+          transformToRegionRequestList(pair.left, deleteTimeSeriesStatement.getPaths()));
 
       return analysis;
     }

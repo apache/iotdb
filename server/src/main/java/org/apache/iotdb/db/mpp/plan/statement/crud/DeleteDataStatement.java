@@ -71,8 +71,17 @@ public class DeleteDataStatement extends Statement {
     return regionRequestList;
   }
 
+  public void setRegionRequestList(
+      List<Pair<RegionReplicaSetInfo, List<PartialPath>>> regionRequestList) {
+    this.regionRequestList = regionRequestList;
+  }
+
   public DataPartition getDataPartition() {
     return dataPartition;
+  }
+
+  public void setDataPartition(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
   @Override
