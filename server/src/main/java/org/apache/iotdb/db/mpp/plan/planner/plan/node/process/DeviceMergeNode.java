@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class DeviceMergeNode extends ProcessNode {
+public class DeviceMergeNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first OrderBy in this list has higher priority.
