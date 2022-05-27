@@ -246,7 +246,11 @@ public class LogicalPlanner {
             if (queryStatement.isGroupByLevel()) {
               curStep = AggregationStep.FINAL;
               planBuilder =
-                  planBuilder.planGroupByLevel(analysis.getGroupByLevelExpressions(), curStep);
+                  planBuilder.planGroupByLevel(
+                      analysis.getGroupByLevelExpressions(),
+                      curStep,
+                      analysis.getGroupByTimeParameter(),
+                      queryStatement.getResultOrder());
             }
           }
 

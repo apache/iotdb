@@ -219,4 +219,9 @@ public class MeasurementPath extends PartialPath {
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
   }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    return getDevicePath().concatNode(getTailNode());
+  }
 }

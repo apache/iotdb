@@ -242,12 +242,22 @@ public class LogicalPlanBuilder {
           curStep = AggregationStep.FINAL;
           this.root =
               createGroupByTLevelNode(
-                  Collections.singletonList(this.getRoot()), groupByLevelExpressions, curStep);
+                  Collections.singletonList(this.getRoot()),
+                  groupByLevelExpressions,
+                  curStep,
+                  groupByTimeParameter,
+                  scanOrder);
         }
       } else {
         if (groupByLevelExpressions != null) {
           curStep = AggregationStep.FINAL;
-          this.root = createGroupByTLevelNode(sourceNodeList, groupByLevelExpressions, curStep);
+          this.root =
+              createGroupByTLevelNode(
+                  sourceNodeList,
+                  groupByLevelExpressions,
+                  curStep,
+                  groupByTimeParameter,
+                  scanOrder);
         }
       }
     } else {
@@ -302,14 +312,21 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planGroupByLevel(
-      Map<Expression, Set<Expression>> groupByLevelExpressions, AggregationStep curStep) {
+      Map<Expression, Set<Expression>> groupByLevelExpressions,
+      AggregationStep curStep,
+      GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
     if (groupByLevelExpressions == null) {
       return this;
     }
 
     this.root =
         createGroupByTLevelNode(
-            Collections.singletonList(this.getRoot()), groupByLevelExpressions, curStep);
+            Collections.singletonList(this.getRoot()),
+            groupByLevelExpressions,
+            curStep,
+            groupByTimeParameter,
+            scanOrder);
     return this;
   }
 
@@ -375,7 +392,9 @@ public class LogicalPlanBuilder {
   private PlanNode createGroupByTLevelNode(
       List<PlanNode> children,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
-      AggregationStep curStep) {
+      AggregationStep curStep,
+      GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
     List<GroupByLevelDescriptor> groupByLevelDescriptors = new ArrayList<>();
     for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
       AggregationType aggregationFunction =
@@ -392,7 +411,11 @@ public class LogicalPlanBuilder {
               groupedExpression.getExpressions().get(0)));
     }
     return new GroupByLevelNode(
-        context.getQueryId().genPlanNodeId(), children, groupByLevelDescriptors);
+        context.getQueryId().genPlanNodeId(),
+        children,
+        groupByLevelDescriptors,
+        groupByTimeParameter,
+        scanOrder);
   }
 
   private PlanNode createAggregationScanNode(
