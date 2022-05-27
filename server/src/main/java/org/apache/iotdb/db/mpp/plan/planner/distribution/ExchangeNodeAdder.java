@@ -275,7 +275,13 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         children.stream()
             .collect(
                 Collectors.groupingBy(
-                    child -> context.getNodeDistribution(child.getPlanNodeId()).region,
+                    child -> {
+                      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
+                      if (region == null && context.getNodeDistribution(child.getPlanNodeId()).type == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
+                        return calculateSchemaRegionByChildren(child.getChildren(), context);
+                      }
+                      return region;
+                    },
                     Collectors.counting()));
     // Step 2: return the RegionReplicaSet with max count
     return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();

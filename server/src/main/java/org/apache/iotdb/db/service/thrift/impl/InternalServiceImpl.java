@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -105,7 +104,6 @@ public class InternalServiceImpl implements InternalService.Iface {
   private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
-  private final IConsensus consensusImpl = ConsensusImpl.getInstance();
   private final double loadBalanceThreshold = 0.1;
 
   public InternalServiceImpl() {
@@ -203,7 +201,7 @@ public class InternalServiceImpl implements InternalService.Iface {
         peers.add(new Peer(schemaRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(schemaRegionId, peers);
+          ConsensusImpl.getInstance().addConsensusGroup(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -241,7 +239,7 @@ public class InternalServiceImpl implements InternalService.Iface {
         peers.add(new Peer(dataRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(dataRegionId, peers);
+          ConsensusImpl.getInstance().addConsensusGroup(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -353,7 +351,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     PlanFragment planFragment = new PlanFragment(planFragmentId, deleteRegionNode);
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
-    return consensusImpl.write(consensusGroupId, fragmentInstance).getStatus();
+    return ConsensusImpl.getInstance().write(consensusGroupId, fragmentInstance).getStatus();
   }
 
   @Override
