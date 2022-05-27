@@ -88,6 +88,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
             <FormField
               value={jsonData.password || ''}
               label="password"
+              type="password"
               placeholder="please input password"
               labelWidth={6}
               inputWidth={20}

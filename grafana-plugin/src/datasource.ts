@@ -32,7 +32,7 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
     this.username = instanceSettings.jsonData.username;
   }
   applyTemplateVariables(query: IoTDBQuery, scopedVars: ScopedVars) {
-    if (query.aggregated === 'Raw') {
+    if (query.aggregated === 'SQL: Full Customized') {
       query.expression.map(
         (_, index) => (query.expression[index] = getTemplateSrv().replace(query.expression[index], scopedVars))
       );

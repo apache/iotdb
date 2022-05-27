@@ -64,7 +64,7 @@ const selectElement = [
 
 const paths = [''];
 const expressions = [''];
-const selectRaw = ['Raw', 'Aggregation'];
+const selectRaw = ['SQL: Full Customized', 'SQL: Drop-down List'];
 const commonOption: SelectableValue<string> = { label: '*', value: '*' };
 const commonOptionDou: SelectableValue<string> = { label: '**', value: '**' };
 type Props = QueryEditorProps<DataSource, IoTDBQuery, IoTDBOptions>;
@@ -253,7 +253,7 @@ export class QueryEditor extends PureComponent<Props, State> {
                 }}
                 options={selectRaw.map(toOption)}
                 value={aggregated ? aggregated : this.state.aggregated}
-                className="query-keyword width-6"
+                className="query-keyword width-10"
               />
             </div>
             {!this.state.isAggregated && (

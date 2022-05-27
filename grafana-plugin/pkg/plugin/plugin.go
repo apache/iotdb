@@ -163,7 +163,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	qp.EndTime = query.TimeRange.To.UnixNano() / 1000000
 
 	client := &http.Client{}
-	if qp.Aggregated == "Aggregation" {
+	if qp.Aggregated == "SQL: Drop-down List" {
 		qp.Control = ""
 		var expressions []string = qp.Paths[len(qp.Paths)-1:]
 		var paths []string = qp.Paths[0 : len(qp.Paths)-1]
