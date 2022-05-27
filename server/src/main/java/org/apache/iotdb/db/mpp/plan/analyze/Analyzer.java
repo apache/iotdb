@@ -56,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InvalidateSchemaCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
@@ -1332,6 +1333,16 @@ public class Analyzer {
       analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
       analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
       analysis.setRespDatasetHeader(HeaderConstant.showChildNodesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInvalidateSchemaCache(
+        InvalidateSchemaCacheStatement invalidateSchemaCacheStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+      Analysis analysis = new Analysis();
+      analysis.setRegionRequestList(invalidateSchemaCacheStatement.getRegionRequestList());
+      analysis.setDataPartitionInfo(invalidateSchemaCacheStatement.getDataPartition());
       return analysis;
     }
   }

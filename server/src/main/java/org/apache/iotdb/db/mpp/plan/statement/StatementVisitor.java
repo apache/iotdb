@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InvalidateSchemaCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -215,5 +216,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowChildNodes(ShowChildNodesStatement showChildNodesStatement, C context) {
     return visitStatement(showChildNodesStatement, context);
+  }
+
+  public R visitInvalidateSchemaCache(
+      InvalidateSchemaCacheStatement invalidateSchemaCacheStatement, C context) {
+    return visitStatement(invalidateSchemaCacheStatement, context);
   }
 }

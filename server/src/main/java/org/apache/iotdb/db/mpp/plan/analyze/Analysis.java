@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.RegionReplicaSetInfo;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -142,6 +144,9 @@ public class Analysis {
 
   // extra mesaage from config node, used for node management
   private Set<String> matchedNodes;
+
+  // extracted from partition, used for delete data, invalidate cache and delete timeseries
+  private List<Pair<RegionReplicaSetInfo, List<PartialPath>>> regionRequestList;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -398,5 +403,14 @@ public class Analysis {
 
   public void setMatchedNodes(Set<String> matchedNodes) {
     this.matchedNodes = matchedNodes;
+  }
+
+  public List<Pair<RegionReplicaSetInfo, List<PartialPath>>> getRegionRequestList() {
+    return regionRequestList;
+  }
+
+  public void setRegionRequestList(
+      List<Pair<RegionReplicaSetInfo, List<PartialPath>>> regionRequestList) {
+    this.regionRequestList = regionRequestList;
   }
 }

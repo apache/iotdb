@@ -20,15 +20,20 @@ package org.apache.iotdb.db.consensus.statemachine.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.metadata.cache.DataNodeSchemaBlacklist;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -111,6 +116,22 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitDeleteRegion(DeleteRegionNode node, DataRegion dataRegion) {
     dataRegion.syncDeleteDataFiles();
     StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) node.getConsensusGroupId());
+    return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus visiInvalidateSchemaCache(InvalidateSchemaCacheNode node, DataRegion dataRegion) {
+    String storageGroup = dataRegion.getStorageGroupPath();
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath path : node.getPathList()) {
+      try {
+        patternTree.appendPaths(path.alterPrefixPath(new PartialPath(storageGroup)));
+      } catch (IllegalPathException e) {
+        // this definitely won't happen
+        throw new RuntimeException(e);
+      }
+    }
+    DataNodeSchemaBlacklist.getInstance().appendToBlacklist(patternTree);
     return StatusUtils.OK;
   }
 }

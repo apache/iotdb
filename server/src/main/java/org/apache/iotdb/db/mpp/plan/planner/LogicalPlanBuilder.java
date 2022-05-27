@@ -46,7 +46,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
@@ -634,14 +633,6 @@ public class LogicalPlanBuilder {
         new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data, type);
     memorySourceNode.addChild(this.getRoot());
     this.root = memorySourceNode;
-    return this;
-  }
-
-  public LogicalPlanBuilder planInvalidateSchemaCache(
-      List<PartialPath> paths, List<String> storageGroups) {
-    this.root =
-        new InvalidateSchemaCacheNode(
-            context.getQueryId().genPlanNodeId(), context.getQueryId(), paths, storageGroups);
     return this;
   }
 
