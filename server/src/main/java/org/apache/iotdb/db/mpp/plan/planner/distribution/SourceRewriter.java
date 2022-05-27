@@ -321,7 +321,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     AggregationNode aggregationNode =
         new AggregationNode(
-            context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            rootAggDescriptorList,
+            node.getGroupByTimeParameter(),
+            node.getScanOrder());
     for (TRegionReplicaSet dataRegion : dataDistribution) {
       SeriesAggregationScanNode split = (SeriesAggregationScanNode) node.clone();
       split.setAggregationDescriptorList(leafAggDescriptorList);
@@ -470,9 +473,15 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                         descriptor.getInputExpressions()));
               });
     }
+    checkArgument(
+        sources.size() > 0, "Aggregation sources should not be empty when distribution planning");
+    SeriesAggregationSourceNode seed = sources.get(0);
     AggregationNode aggregationNode =
         new AggregationNode(
-            context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            rootAggDescriptorList,
+            seed.getGroupByTimeParameter(),
+            seed.getScanOrder());
 
     final boolean[] addParent = {false};
     sourceGroup.forEach(
