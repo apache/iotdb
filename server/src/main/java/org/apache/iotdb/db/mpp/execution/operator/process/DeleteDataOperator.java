@@ -29,10 +29,8 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,13 +80,8 @@ public class DeleteDataOperator implements SourceOperator {
           new BooleanColumn(1, Optional.of(new boolean[] {false}), new boolean[] {true}));
     } catch (IOException e) {
       LOGGER.error("Error occurred when deleting data. {}", planNodeId, e);
-      return new TsBlock(
-          new TimeColumn(1, new long[] {0}),
-          new BooleanColumn(1, Optional.of(new boolean[] {false}), new boolean[] {true}),
-          new BinaryColumn(
-              1,
-              Optional.of(new boolean[] {false}),
-              new Binary[] {new Binary(e.getMessage().getBytes())}));
+      // todo handle exception
+      throw new RuntimeException(e);
     }
   }
 
