@@ -314,7 +314,7 @@ public class DataPartition extends Partition {
     }
   }
 
-  public List<RegionReplicaSetInfo> getDataDistributionInfo() {
+  public List<RegionReplicaSetInfo> getDistributionInfo() {
     Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
 
     dataPartitionMap.forEach(

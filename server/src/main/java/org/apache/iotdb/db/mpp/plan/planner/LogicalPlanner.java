@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMulti
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -613,6 +615,16 @@ public class LogicalPlanner {
     public PlanNode visitInvalidateSchemaCache(
         InvalidateSchemaCacheStatement invalidateSchemaCacheStatement, MPPQueryContext context) {
       return new InvalidateSchemaCacheNode(context.getQueryId().genPlanNodeId(), null);
+    }
+
+    @Override
+    public PlanNode visitDeleteData(
+        DeleteDataStatement deleteDataStatement, MPPQueryContext context) {
+      return new DeleteDataNode(
+          context.getQueryId().genPlanNodeId(),
+          deleteDataStatement.getPathList(),
+          deleteDataStatement.getDeleteStartTime(),
+          deleteDataStatement.getDeleteEndTime());
     }
   }
 }

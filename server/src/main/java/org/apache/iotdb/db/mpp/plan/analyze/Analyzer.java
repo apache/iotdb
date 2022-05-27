@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.Partition;
+import org.apache.iotdb.commons.partition.RegionReplicaSetInfo;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -1023,35 +1026,10 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(deleteTimeSeriesStatement);
 
-      // fetch partition information
-
-      PathPatternTree patternTree = new PathPatternTree(deleteTimeSeriesStatement.getPaths());
-
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String storageGroup : schemaPartitionInfo.getSchemaPartitionMap().keySet()) {
-        try {
-          for (String devicePath :
-              patternTree
-                  .findOverlappedPattern(
-                      new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD))
-                  .findAllDevicePaths()) {
-            DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-            queryParam.setDevicePath(devicePath);
-            sgNameToQueryParamsMap
-                .computeIfAbsent(storageGroup, key -> new ArrayList<>())
-                .add(queryParam);
-          }
-        } catch (IllegalPathException e) {
-          // definitely won't happen
-          throw new RuntimeException(e);
-        }
-      }
-
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      analysis.setDataPartitionInfo(dataPartition);
+      Pair<SchemaPartition, DataPartition> pair =
+          getPartitionForDeletion(deleteTimeSeriesStatement.getPaths());
+      analysis.setSchemaPartitionInfo(pair.left);
+      analysis.setDataPartitionInfo(pair.right);
 
       return analysis;
     }
@@ -1341,9 +1319,89 @@ public class Analyzer {
         InvalidateSchemaCacheStatement invalidateSchemaCacheStatement, MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
+      analysis.setStatement(invalidateSchemaCacheStatement);
       analysis.setRegionRequestList(invalidateSchemaCacheStatement.getRegionRequestList());
       analysis.setDataPartitionInfo(invalidateSchemaCacheStatement.getDataPartition());
       return analysis;
+    }
+
+    @Override
+    public Analysis visitDeleteData(
+        DeleteDataStatement deleteDataStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+      Analysis analysis = new Analysis();
+      analysis.setStatement(deleteDataStatement);
+
+      List<PartialPath> pathList = deleteDataStatement.getPathList();
+      List<Pair<RegionReplicaSetInfo, List<PartialPath>>> regionRequestList =
+          deleteDataStatement.getRegionRequestList();
+      DataPartition dataPartition = deleteDataStatement.getDataPartition();
+      if (regionRequestList == null) {
+        // user request
+        dataPartition = getPartitionForDeletion(pathList).right;
+        regionRequestList = transformToRegionRequestList(dataPartition, pathList);
+      }
+
+      analysis.setRegionRequestList(regionRequestList);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    private Pair<SchemaPartition, DataPartition> getPartitionForDeletion(
+        List<PartialPath> pathList) {
+      // fetch partition information
+
+      PathPatternTree patternTree = new PathPatternTree(pathList);
+
+      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (String storageGroup : schemaPartitionInfo.getSchemaPartitionMap().keySet()) {
+        try {
+          for (String devicePath :
+              patternTree
+                  .findOverlappedPattern(
+                      new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD))
+                  .findAllDevicePaths()) {
+            DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+            queryParam.setDevicePath(devicePath);
+            sgNameToQueryParamsMap
+                .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                .add(queryParam);
+          }
+        } catch (IllegalPathException e) {
+          // definitely won't happen
+          throw new RuntimeException(e);
+        }
+      }
+
+      DataPartition dataPartitionInfo = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+
+      return new Pair<>(schemaPartitionInfo, dataPartitionInfo);
+    }
+
+    private List<Pair<RegionReplicaSetInfo, List<PartialPath>>> transformToRegionRequestList(
+        Partition partition, List<PartialPath> pathList) {
+      return partition.getDistributionInfo().stream()
+          .map(
+              regionReplicaSetInfo ->
+                  new Pair<>(
+                      regionReplicaSetInfo,
+                      getRelatedPaths(pathList, regionReplicaSetInfo.getStorageGroup())))
+          .collect(Collectors.toList());
+    }
+
+    private List<PartialPath> getRelatedPaths(List<PartialPath> paths, String storageGroup) {
+      PathPatternTree patternTree = new PathPatternTree(paths);
+      try {
+        return new ArrayList<>(
+            patternTree.findOverlappedPaths(
+                new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+      } catch (IllegalPathException e) {
+        // The IllegalPathException is definitely not threw here
+        throw new RuntimeException(e);
+      }
     }
   }
 }

@@ -109,7 +109,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     List<DeleteTimeSeriesNode> ret = new ArrayList<>();
     List<PartialPath> rawPaths = node.getPathList();
     List<RegionReplicaSetInfo> relatedRegions =
-        analysis.getSchemaPartitionInfo().getSchemaDistributionInfo();
+        analysis.getSchemaPartitionInfo().getDistributionInfo();
     for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
       List<PartialPath> newPaths =
           getRelatedPaths(rawPaths, regionReplicaSetInfo.getStorageGroup());
@@ -126,7 +126,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     List<DeleteDataNode> ret = new ArrayList<>();
     List<PartialPath> rawPaths = node.getPathList();
     List<RegionReplicaSetInfo> relatedRegions =
-        analysis.getDataPartitionInfo().getDataDistributionInfo();
+        analysis.getDataPartitionInfo().getDistributionInfo();
     for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
       List<PartialPath> newPaths =
           getRelatedPaths(rawPaths, regionReplicaSetInfo.getStorageGroup());

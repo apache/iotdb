@@ -231,7 +231,8 @@ public class SchemaPartition extends Partition {
     return result;
   }
 
-  public List<RegionReplicaSetInfo> getSchemaDistributionInfo() {
+  @Override
+  public List<RegionReplicaSetInfo> getDistributionInfo() {
     Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
     schemaPartitionMap.forEach(
         (storageGroup, partition) -> {

@@ -267,7 +267,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visiInvalidateSchemaCache(InvalidateSchemaCacheNode node, C context) {
+  public R visitInvalidateSchemaCache(InvalidateSchemaCacheNode node, C context) {
     return visitPlan(node, context);
   }
 }

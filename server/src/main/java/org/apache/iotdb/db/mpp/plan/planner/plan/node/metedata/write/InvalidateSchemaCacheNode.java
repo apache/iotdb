@@ -117,6 +117,6 @@ public class InvalidateSchemaCacheNode extends WritePlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return super.accept(visitor, context);
+    return visitor.visitInvalidateSchemaCache(this, context);
   }
 }

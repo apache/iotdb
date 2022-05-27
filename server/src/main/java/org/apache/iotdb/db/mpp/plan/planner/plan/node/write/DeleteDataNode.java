@@ -23,22 +23,27 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
+import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
+public class DeleteDataNode extends WritePlanNode {
 
-  private final QueryId queryId;
   private final List<PartialPath> pathList;
-  private final String storageGroup;
+  private long deleteStartTime;
+  private long deleteEndTime;
+
+  private QueryId queryId;
+  private String storageGroup;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -50,8 +55,37 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
     this.storageGroup = storageGroup;
   }
 
+  public DeleteDataNode(
+      PlanNodeId id, List<PartialPath> pathList, long deleteStartTime, long deleteEndTime) {
+    super(id);
+    this.pathList = pathList;
+    this.deleteStartTime = deleteStartTime;
+    this.deleteEndTime = deleteEndTime;
+  }
+
+  public DeleteDataNode(
+      PlanNodeId id,
+      List<PartialPath> pathList,
+      long deleteStartTime,
+      long deleteEndTime,
+      TRegionReplicaSet regionReplicaSet) {
+    super(id);
+    this.pathList = pathList;
+    this.deleteStartTime = deleteStartTime;
+    this.deleteEndTime = deleteEndTime;
+    this.regionReplicaSet = regionReplicaSet;
+  }
+
   public List<PartialPath> getPathList() {
     return pathList;
+  }
+
+  public long getDeleteStartTime() {
+    return deleteStartTime;
+  }
+
+  public long getDeleteEndTime() {
+    return deleteEndTime;
   }
 
   @Override
@@ -129,5 +163,19 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
         pathList,
         storageGroup,
         regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    return analysis.getRegionRequestList().stream()
+        .map(
+            pair ->
+                new DeleteDataNode(
+                    getPlanNodeId(),
+                    pair.right,
+                    deleteStartTime,
+                    deleteEndTime,
+                    pair.left.getRegionReplicaSet()))
+        .collect(Collectors.toList());
   }
 }
