@@ -109,7 +109,7 @@ public class IoTDB implements IoTDBMBean {
 
     // set recover config, avoid creating deleted time series when recovering wal
     boolean prevIsAutoCreateSchemaEnabled = config.isAutoCreateSchemaEnabled();
-    config.setAutoCreateSchemaEnabled(false);
+    config.setAutoCreateSchemaEnabled(true);
     boolean prevIsEnablePartialInsert = config.isEnablePartialInsert();
     config.setEnablePartialInsert(true);
 
