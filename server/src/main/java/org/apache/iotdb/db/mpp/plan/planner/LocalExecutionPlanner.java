@@ -43,7 +43,6 @@ import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.DeleteDataOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
@@ -86,7 +85,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.ChildNodesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.ChildPathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.DeleteTimeseriesOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
@@ -121,7 +119,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -144,7 +141,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -1228,33 +1224,6 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               LastQueryMergeOperator.class.getSimpleName()),
           operatorList);
-    }
-
-    @Override
-    public Operator visitDeleteTimeseries(
-        DeleteTimeSeriesNode node, LocalExecutionPlanContext context) {
-      List<Operator> children =
-          node.getChildren().stream()
-              .map(n -> n.accept(this, context))
-              .collect(Collectors.toList());
-      OperatorContext operatorContext =
-          context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(),
-              node.getPlanNodeId(),
-              DeleteTimeseriesOperator.class.getSimpleName());
-      return new DeleteTimeseriesOperator(
-          node.getPlanNodeId(), operatorContext, node.getPathList(), children);
-    }
-
-    @Override
-    public Operator visitDeleteData(DeleteDataNode node, LocalExecutionPlanContext context) {
-      OperatorContext operatorContext =
-          context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(),
-              node.getPlanNodeId(),
-              DeleteDataOperator.class.getSimpleName());
-      return new DeleteDataOperator(
-          node.getPlanNodeId(), operatorContext, node.getPathList(), node.getStorageGroup());
     }
 
     private Map<String, List<InputLocation>> makeLayout(PlanNode node) {

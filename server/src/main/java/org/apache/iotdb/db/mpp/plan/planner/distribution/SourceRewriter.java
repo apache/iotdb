@@ -20,10 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.partition.RegionReplicaSetInfo;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -33,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
@@ -48,7 +44,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
@@ -63,9 +58,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
   private Analysis analysis;
@@ -77,81 +69,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   // TODO: (xingtanzjr) implement the method visitDeviceMergeNode()
   public PlanNode visitDeviceMerge(TimeJoinNode node, DistributionPlanContext context) {
     return null;
-  }
-
-  public PlanNode visitDeleteTimeseries(
-      DeleteTimeSeriesNode node, DistributionPlanContext context) {
-    // Step 1: split DeleteDataNode by partition
-    checkArgument(node.getChildren().size() == 1, "DeleteTimeSeriesNode should have 1 child");
-    checkArgument(
-        node.getChildren().get(0) instanceof DeleteDataNode,
-        "Child of DeleteTimeSeriesNode should be DeleteDataNode");
-
-    DeleteDataNode deleteDataNode = (DeleteDataNode) node.getChildren().get(0);
-    List<DeleteDataNode> deleteDataNodes = splitDeleteDataNode(deleteDataNode, context);
-
-    // Step 2: split DeleteTimeseriesNode by partition
-    List<DeleteTimeSeriesNode> deleteTimeSeriesNodes = splitDeleteTimeseries(node, context);
-
-    // Step 3: construct them as a Tree
-    checkArgument(
-        deleteTimeSeriesNodes.size() > 0,
-        "Size of DeleteTimeseriesNode splits should be larger than 0");
-    deleteDataNodes.forEach(split -> deleteTimeSeriesNodes.get(0).addChild(split));
-    for (int i = 1; i < deleteTimeSeriesNodes.size(); i++) {
-      deleteTimeSeriesNodes.get(i).addChild(deleteTimeSeriesNodes.get(i - 1));
-    }
-    return deleteTimeSeriesNodes.get(deleteTimeSeriesNodes.size() - 1);
-  }
-
-  private List<DeleteTimeSeriesNode> splitDeleteTimeseries(
-      DeleteTimeSeriesNode node, DistributionPlanContext context) {
-    List<DeleteTimeSeriesNode> ret = new ArrayList<>();
-    List<PartialPath> rawPaths = node.getPathList();
-    List<RegionReplicaSetInfo> relatedRegions =
-        analysis.getSchemaPartitionInfo().getDistributionInfo();
-    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
-      List<PartialPath> newPaths =
-          getRelatedPaths(rawPaths, regionReplicaSetInfo.getStorageGroup());
-      DeleteTimeSeriesNode split =
-          new DeleteTimeSeriesNode(context.queryContext.getQueryId().genPlanNodeId(), newPaths);
-      split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
-      ret.add(split);
-    }
-    return ret;
-  }
-
-  private List<DeleteDataNode> splitDeleteDataNode(
-      DeleteDataNode node, DistributionPlanContext context) {
-    List<DeleteDataNode> ret = new ArrayList<>();
-    List<PartialPath> rawPaths = node.getPathList();
-    List<RegionReplicaSetInfo> relatedRegions =
-        analysis.getDataPartitionInfo().getDistributionInfo();
-    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
-      List<PartialPath> newPaths =
-          getRelatedPaths(rawPaths, regionReplicaSetInfo.getStorageGroup());
-      DeleteDataNode split =
-          new DeleteDataNode(
-              context.queryContext.getQueryId().genPlanNodeId(),
-              context.queryContext.getQueryId(),
-              newPaths,
-              regionReplicaSetInfo.getStorageGroup());
-      split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
-      ret.add(split);
-    }
-    return ret;
-  }
-
-  private List<PartialPath> getRelatedPaths(List<PartialPath> paths, String storageGroup) {
-    PathPatternTree patternTree = new PathPatternTree(paths);
-    try {
-      return new ArrayList<>(
-          patternTree.findOverlappedPaths(
-              new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
-    } catch (IllegalPathException e) {
-      // The IllegalPathException is definitely not threw here
-      throw new RuntimeException(e);
-    }
   }
 
   @Override
