@@ -168,7 +168,9 @@ public class AggregationDistributionTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
-                    new TimeSeriesOperand(new PartialPath(groupedPath)))));
+                    new TimeSeriesOperand(new PartialPath(groupedPath)))),
+            null,
+            OrderBy.TIMESTAMP_ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -203,7 +205,9 @@ public class AggregationDistributionTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
-                    new TimeSeriesOperand(new PartialPath(groupedPath)))));
+                    new TimeSeriesOperand(new PartialPath(groupedPath)))),
+            null,
+            OrderBy.TIMESTAMP_ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -254,7 +258,9 @@ public class AggregationDistributionTest {
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS2)))));
+                    new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
+            null,
+            OrderBy.TIMESTAMP_ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -311,7 +317,9 @@ public class AggregationDistributionTest {
                     AggregationType.COUNT,
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS2)))));
+                    new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
+            null,
+            OrderBy.TIMESTAMP_ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
