@@ -139,7 +139,7 @@ public class RewriteBadFileTool {
     }
     bufferedReader.close();
     session.close();
-    printBoth("Finish moving all bad files to backup dir.");
+    printBoth("Finish rewriting all bad files.");
   }
 
   public static void rewriteWrongTsFile(String filename, Session session)
