@@ -35,7 +35,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
-public class LastQueryMergeNode extends ProcessNode {
+public class LastQueryMergeNode extends MultiChildNode {
 
   // make sure child in list has been ordered by their sensor name
   private List<PlanNode> children;
@@ -116,7 +116,7 @@ public class LastQueryMergeNode extends ProcessNode {
 
   public static LastQueryMergeNode deserialize(ByteBuffer byteBuffer) {
     Filter timeFilter = null;
-    if (!ReadWriteIOUtils.readIsNull(byteBuffer)) {
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
       timeFilter = FilterFactory.deserialize(byteBuffer);
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);

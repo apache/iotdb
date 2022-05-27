@@ -56,6 +56,8 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -67,7 +69,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
@@ -167,27 +168,7 @@ public class Analyzer {
             throw new SemanticException("Only time filters are supported in LAST query");
           }
 
-          List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
-          Set<Expression> sourceExpressions =
-              allSelectedPath.stream()
-                  .map(TimeSeriesOperand::new)
-                  .collect(Collectors.toCollection(LinkedHashSet::new));
-          sourceExpressions.forEach(
-              expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
-          analysis.setSourceExpressions(sourceExpressions);
-
-          analysis.setRespDatasetHeader(HeaderConstant.LAST_QUERY_HEADER);
-          typeProvider.setType(HeaderConstant.COLUMN_TIMESERIES, TSDataType.TEXT);
-          typeProvider.setType(HeaderConstant.COLUMN_VALUE, TSDataType.TEXT);
-          typeProvider.setType(HeaderConstant.COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT);
-
-          Set<String> deviceSet =
-              sourceExpressions.stream()
-                  .map(ExpressionAnalyzer::getDeviceNameInSourceExpression)
-                  .collect(Collectors.toSet());
-          DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree);
-          analysis.setDataPartitionInfo(dataPartition);
-          return analysis;
+          return analyzeLast(analysis, schemaTree.getAllMeasurement(), schemaTree);
         }
 
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
@@ -376,7 +357,7 @@ public class Analyzer {
           FilterNullParameter filterNullParameter = new FilterNullParameter();
           filterNullParameter.setFilterNullPolicy(
               queryStatement.getFilterNullComponent().getWithoutPolicyType());
-          List<Expression> resultFilterNullColumns = new ArrayList<>();
+          List<Expression> resultFilterNullColumns;
           if (queryStatement.isAlignByDevice()) {
             resultFilterNullColumns =
                 analyzeWithoutNullAlignByDevice(
@@ -793,6 +774,38 @@ public class Analyzer {
       return new DatasetHeader(columnHeaders, isIgnoreTimestamp);
     }
 
+    private Analysis analyzeLast(
+        Analysis analysis, List<MeasurementPath> allSelectedPath, SchemaTree schemaTree) {
+      Set<Expression> sourceExpressions =
+          allSelectedPath.stream()
+              .map(TimeSeriesOperand::new)
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+      sourceExpressions.forEach(
+          expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
+      analysis.setSourceExpressions(sourceExpressions);
+
+      analysis.setRespDatasetHeader(HeaderConstant.LAST_QUERY_HEADER);
+      typeProvider.setType(HeaderConstant.COLUMN_TIMESERIES, TSDataType.TEXT);
+      typeProvider.setType(HeaderConstant.COLUMN_VALUE, TSDataType.TEXT);
+      typeProvider.setType(HeaderConstant.COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT);
+
+      Set<String> deviceSet =
+          allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (String devicePath : deviceSet) {
+        DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+        queryParam.setDevicePath(devicePath);
+        sgNameToQueryParamsMap
+            .computeIfAbsent(
+                schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+            .add(queryParam);
+      }
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
     private DataPartition fetchDataPartitionByDevices(
         Set<String> deviceSet, SchemaTree schemaTree) {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
@@ -843,6 +856,20 @@ public class Analyzer {
         throw new SemanticException(
             "FILL: the data type of the fill value should be the same as the output column");
       }
+    }
+
+    @Override
+    public Analysis visitLastPointFetch(
+        LastPointFetchStatement statement, MPPQueryContext context) {
+      context.setQueryType(QueryType.READ);
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(statement);
+
+      SchemaTree schemaTree = new SchemaTree();
+      schemaTree.setStorageGroups(schemaTree.getStorageGroups());
+
+      return analyzeLast(analysis, statement.getSelectedPaths(), schemaTree);
     }
 
     @Override

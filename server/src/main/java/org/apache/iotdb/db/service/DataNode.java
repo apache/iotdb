@@ -119,6 +119,7 @@ public class DataNode implements DataNodeMBean {
   protected void doAddNode(String[] args) {
     try {
       // TODO : contact with config node to join into the cluster
+      prepareJoinCluster();
       joinCluster();
       active();
     } catch (StartupException e) {
@@ -135,6 +136,22 @@ public class DataNode implements DataNodeMBean {
   public boolean initLocalEngines() {
     IoTDB.setClusterMode();
     return true;
+  }
+
+  public void prepareJoinCluster() throws StartupException {
+    // check iotdb server first
+    StartupChecks checks = new StartupChecks().withDefaultTest();
+    checks.verify();
+
+    // Register services
+    JMXService.registerMBean(getInstance(), mbeanName);
+    // set the mpp mode to true
+    IoTDBDescriptor.getInstance().getConfig().setMppMode(true);
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
+
+    // start InternalService first so that it can respond to configNode's heartbeat before joining
+    // cluster
+    registerManager.register(InternalService.getInstance());
   }
 
   public void joinCluster() throws StartupException {
@@ -215,18 +232,6 @@ public class DataNode implements DataNodeMBean {
   }
 
   public void active() throws StartupException {
-    // set the mpp mode to true
-    IoTDBDescriptor.getInstance().getConfig().setMppMode(true);
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
-    // start iotdb server first
-    StartupChecks checks = new StartupChecks().withDefaultTest();
-    try {
-      checks.verify();
-    } catch (StartupException e) {
-      // TODO: what are some checks
-      logger.error("IoTDB DataNode: failed to start because some checks failed. ", e);
-      return;
-    }
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
@@ -244,8 +249,6 @@ public class DataNode implements DataNodeMBean {
       throw new StartupException(e);
     }
 
-    /** Register services */
-    JMXService.registerMBean(getInstance(), mbeanName);
     // TODO: move rpc service initialization from iotdb instance here
     // init influxDB MManager
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
@@ -272,7 +275,6 @@ public class DataNode implements DataNodeMBean {
     // in mpp mode we need to start some other services
     registerManager.register(StorageEngineV2.getInstance());
     registerManager.register(DataBlockService.getInstance());
-    registerManager.register(InternalService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
     IoTDBDescriptor.getInstance()
         .getConfig()

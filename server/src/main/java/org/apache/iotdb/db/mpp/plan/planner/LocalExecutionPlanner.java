@@ -27,6 +27,8 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
+import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
@@ -51,6 +53,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.UpdateLastCacheOperator;
@@ -127,6 +130,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
@@ -785,6 +789,38 @@ public class LocalExecutionPlanner {
     }
 
     @Override
+    public Operator visitSlidingWindowAggregation(
+        SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
+      checkArgument(
+          node.getAggregationDescriptorList().size() >= 1,
+          "Aggregation descriptorList cannot be empty");
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SlidingWindowAggregationOperator.class.getSimpleName());
+      Operator child = node.getChild().accept(this, context);
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      List<SlidingWindowAggregator> aggregators = new ArrayList<>();
+      Map<String, List<InputLocation>> layout = makeLayout(node);
+      for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+        aggregators.add(
+            SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
+                descriptor.getAggregationType(),
+                context
+                    .getTypeProvider()
+                    // get the type of first inputExpression
+                    .getType(descriptor.getInputExpressions().get(0).toString()),
+                ascending,
+                inputLocationList,
+                descriptor.getStep()));
+      }
+      return new SlidingWindowAggregationOperator(
+          operatorContext, aggregators, child, ascending, node.getGroupByTimeParameter());
+    }
+
+    @Override
     public Operator visitLimit(LimitNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
       return new LimitOperator(
@@ -822,23 +858,7 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
-        List<String> inputColumnNames = descriptor.getInputColumnNames();
-        // it may include double parts
-        List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
-        inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
-
-        List<InputLocation[]> inputLocationList = new ArrayList<>();
-        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-          if (inputColumnNames.size() == 1) {
-            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
-          } else {
-            inputLocationList.add(
-                new InputLocation[] {
-                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
-                });
-          }
-        }
-
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
@@ -874,6 +894,27 @@ public class LocalExecutionPlanner {
         return new AggregationOperator(
             operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
       }
+    }
+
+    private List<InputLocation[]> calcInputLocationList(
+        AggregationDescriptor descriptor, Map<String, List<InputLocation>> layout) {
+      List<String> inputColumnNames = descriptor.getInputColumnNames();
+      // it may include double parts
+      List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
+      inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
+
+      List<InputLocation[]> inputLocationList = new ArrayList<>();
+      for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+        if (inputColumnNames.size() == 1) {
+          inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+        } else {
+          inputLocationList.add(
+              new InputLocation[] {
+                inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+              });
+        }
+      }
+      return inputLocationList;
     }
 
     @Override
@@ -1005,9 +1046,10 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
-      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(node.getSeriesPath());
+      PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
+      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context);
+        return createUpdateLastCacheOperator(node, context, seriesPath);
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1016,7 +1058,7 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context);
+          return createUpdateLastCacheOperator(node, context, seriesPath);
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1028,7 +1070,7 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        LastQueryScanNode node, LocalExecutionPlanContext context) {
+        LastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
       SeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
 
       return new UpdateLastCacheOperator(
@@ -1037,7 +1079,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               UpdateLastCacheOperator.class.getSimpleName()),
           lastQueryScan,
-          node.getSeriesPath(),
+          fullPath,
           node.getSeriesPath().getSeriesType(),
           DATA_NODE_SCHEMA_CACHE,
           context.needUpdateLastCache);
@@ -1073,9 +1115,10 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitAlignedLastQueryScan(
         AlignedLastQueryScanNode node, LocalExecutionPlanContext context) {
-      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(node.getSeriesPath());
+      PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
+      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context);
+        return createUpdateLastCacheOperator(node, context, seriesPath);
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1084,7 +1127,7 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context);
+          return createUpdateLastCacheOperator(node, context, seriesPath);
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1096,7 +1139,7 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        AlignedLastQueryScanNode node, LocalExecutionPlanContext context) {
+        AlignedLastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
       AlignedSeriesAggregationScanOperator lastQueryScan =
           createLastQueryScanOperator(node, context);
 
@@ -1106,8 +1149,8 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               UpdateLastCacheOperator.class.getSimpleName()),
           lastQueryScan,
-          node.getSeriesPath(),
-          node.getSeriesPath().getSeriesType(),
+          fullPath,
+          node.getSeriesPath().getSchemaList().get(0).getType(),
           DATA_NODE_SCHEMA_CACHE,
           context.needUpdateLastCache);
     }
@@ -1122,7 +1165,8 @@ public class LocalExecutionPlanner {
               AlignedSeriesAggregationScanOperator.class.getSimpleName());
 
       // last_time, last_value
-      List<Aggregator> aggregators = LastQueryUtil.createAggregators(seriesPath.getSeriesType());
+      List<Aggregator> aggregators =
+          LastQueryUtil.createAggregators(seriesPath.getSchemaList().get(0).getType());
       AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
           new AlignedSeriesAggregationScanOperator(
               node.getPlanNodeId(),
