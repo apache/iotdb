@@ -1046,9 +1046,10 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
-      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(node.getSeriesPath());
+      PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
+      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context);
+        return createUpdateLastCacheOperator(node, context, seriesPath);
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1057,7 +1058,7 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context);
+          return createUpdateLastCacheOperator(node, context, seriesPath);
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1069,7 +1070,7 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        LastQueryScanNode node, LocalExecutionPlanContext context) {
+        LastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
       SeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
 
       return new UpdateLastCacheOperator(
@@ -1078,7 +1079,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               UpdateLastCacheOperator.class.getSimpleName()),
           lastQueryScan,
-          node.getSeriesPath(),
+          fullPath,
           node.getSeriesPath().getSeriesType(),
           DATA_NODE_SCHEMA_CACHE,
           context.needUpdateLastCache);
@@ -1114,9 +1115,10 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitAlignedLastQueryScan(
         AlignedLastQueryScanNode node, LocalExecutionPlanContext context) {
-      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(node.getSeriesPath());
+      PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
+      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context);
+        return createUpdateLastCacheOperator(node, context, seriesPath);
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1125,7 +1127,7 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context);
+          return createUpdateLastCacheOperator(node, context, seriesPath);
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1137,7 +1139,7 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        AlignedLastQueryScanNode node, LocalExecutionPlanContext context) {
+        AlignedLastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
       AlignedSeriesAggregationScanOperator lastQueryScan =
           createLastQueryScanOperator(node, context);
 
@@ -1147,7 +1149,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               UpdateLastCacheOperator.class.getSimpleName()),
           lastQueryScan,
-          node.getSeriesPath(),
+          fullPath,
           node.getSeriesPath().getSchemaList().get(0).getType(),
           DATA_NODE_SCHEMA_CACHE,
           context.needUpdateLastCache);
