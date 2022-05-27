@@ -113,11 +113,6 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
-  public boolean hasRecordKeyInSegment(String key, short segId) throws SegmentNotFoundException {
-    return getSegment(segId).hasRecordKey(key) || getSegment(segId).hasRecordAlias(key);
-  }
-
-  @Override
   public Queue<IMNode> getChildren(short segId) throws MetadataException {
     return getSegment(segId).getAllRecords();
   }
@@ -148,11 +143,6 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   public void getPageBuffer(ByteBuffer dst) {
     this.pageBuffer.clear();
     dst.put(this.pageBuffer);
-  }
-
-  @Override
-  public boolean isSegmentCapableFor(short segId, short size) throws SegmentNotFoundException {
-    return getSegment(segId).getSpareSize() >= size;
   }
 
   @Override

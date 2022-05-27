@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -615,6 +616,103 @@ public class SchemaFileTest {
     }
     Assert.assertTrue(checkSet.isEmpty());
     sf.close();
+  }
+
+  @Test
+  public void basicSplitTest() throws MetadataException, IOException {
+    SchemaFile.INTERNAL_SPLIT_VALVE = 16230;
+    SchemaFile.DETAIL_SKETCH = true;
+    int i = 999;
+    IMNode sgNode = new StorageGroupEntityMNode(null, "sgRoot", 11111111L);
+    Set<String> checkSet = new HashSet<>();
+    // write with empty entitiy
+    while (i >= 0) {
+      String name = Integer.toString(i);
+      if (i < 10) {
+        name = "00" + name;
+      } else if (i < 100) {
+        name = "0" + name;
+      }
+      IMNode aMeas = getMeasurementNode(sgNode, "s_" + name, null);
+      checkSet.add(aMeas.getName());
+      sgNode.addChild(aMeas);
+      i--;
+    }
+
+    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
+    sf.writeMNode(sgNode);
+
+    Iterator<IMNode> res = sf.getChildren(sgNode);
+
+    while (res.hasNext()) {
+      checkSet.remove(res.next().getName());
+    }
+    Assert.assertTrue(checkSet.isEmpty());
+
+    sgNode.getChildren().clear();
+
+    for (int j = 50; j >= 0; j--) {
+      String name = Integer.toString(j);
+      if (j < 10) {
+        name = "00" + name;
+      } else if (j < 100) {
+        name = "0" + name;
+      }
+      IMNode aMeas = new InternalMNode(sgNode, "d_" + name);
+      sgNode.addChild(aMeas);
+    }
+
+    for (int j = 560; j >= 0; j--) {
+      String name = Integer.toString(j);
+      if (j < 10) {
+        name = "00" + name;
+      } else if (j < 100) {
+        name = "0" + name;
+      }
+      IMNode aMeas = new InternalMNode(sgNode, "dd2_" + name);
+      checkSet.add(aMeas.getName());
+      sgNode.getChildren().get("d_010").addChild(aMeas);
+    }
+
+    IMNode d010 = sgNode.getChildren().get("d_010");
+    d010 = MNodeUtils.setToEntity(d010);
+    IMNode ano = getMeasurementNode(d010, "splitover", "aliaslasialsai");
+
+    d010.addChild(ano);
+    sgNode.addChild(d010);
+
+    sf.writeMNode(sgNode);
+    sf.writeMNode(sgNode.getChildren().get("d_010"));
+
+    ano.getAsMeasurementMNode().setAlias("aliaslasialsaialiaslasialsai");
+    d010.getChildren().clear();
+    d010.addChild(ano);
+
+    moveToUpdateBuffer(d010, "splitover");
+    sf.writeMNode(d010);
+
+    int d010cs = 0;
+    Iterator<IMNode> res2 = sf.getChildren(d010);
+    while (res2.hasNext()) {
+      checkSet.add(res2.next().getName());
+      d010cs++;
+    }
+
+    sf.close();
+
+    ISchemaFile sf2 = SchemaFile.loadSchemaFile("sgRoot", TEST_SCHEMA_REGION_ID);
+    res2 = sf2.getChildren(d010);
+    while (res2.hasNext()) {
+      checkSet.remove(res2.next().getName());
+      d010cs--;
+    }
+
+    Assert.assertEquals(
+        "aliaslasialsaialiaslasialsai",
+        sf2.getChildNode(d010, "splitover").getAsMeasurementMNode().getAlias());
+    Assert.assertEquals(0, d010cs);
+    Assert.assertTrue(checkSet.isEmpty());
+    sf2.close();
   }
 
   // endregion

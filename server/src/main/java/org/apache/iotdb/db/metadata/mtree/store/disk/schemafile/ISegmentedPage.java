@@ -50,14 +50,6 @@ public interface ISegmentedPage {
    */
   void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
-  /**
-   * Check if record exists with name or alias.
-   *
-   * @param key name or alias of target child
-   * @param segId target segment index
-   */
-  boolean hasRecordKeyInSegment(String key, short segId) throws SegmentNotFoundException;
-
   Queue<IMNode> getChildren(short segId) throws MetadataException;
 
   void removeRecord(short segId, String key) throws SegmentNotFoundException;
@@ -67,12 +59,6 @@ public interface ISegmentedPage {
   short getSpareSize();
 
   short getSegmentSize(short segId) throws SegmentNotFoundException;
-
-  void getPageBuffer(ByteBuffer dst);
-
-  boolean isCapableForSize(short size);
-
-  boolean isSegmentCapableFor(short segId, short size) throws SegmentNotFoundException;
 
   /**
    * Allocate space for a new segment inside this page
