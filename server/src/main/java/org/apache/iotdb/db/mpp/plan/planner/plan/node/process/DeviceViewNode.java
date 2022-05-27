@@ -49,9 +49,6 @@ public class DeviceViewNode extends MultiChildNode {
   // The size devices and children should be the same.
   private final List<String> devices = new ArrayList<>();
 
-  // each child node whose output TsBlock contains the data belonged to one device.
-  private final List<PlanNode> children = new ArrayList<>();
-
   // Device column and measurement columns in result output
   private final List<String> outputColumnNames;
 
@@ -216,5 +213,10 @@ public class DeviceViewNode extends MultiChildNode {
         children,
         outputColumnNames,
         deviceToMeasurementIndexesMap);
+  }
+
+  @Override
+  public String toString() {
+    return "DeviceView-" + this.getPlanNodeId();
   }
 }

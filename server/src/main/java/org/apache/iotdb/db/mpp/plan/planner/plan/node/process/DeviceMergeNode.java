@@ -41,8 +41,6 @@ public class DeviceMergeNode extends MultiChildNode {
   // the list of selected devices
   private final List<String> devices;
 
-  private final List<PlanNode> children;
-
   public DeviceMergeNode(
       PlanNodeId id, List<PlanNode> children, List<OrderBy> mergeOrders, List<String> devices) {
     super(id);
@@ -145,5 +143,10 @@ public class DeviceMergeNode extends MultiChildNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), mergeOrders, devices, children);
+  }
+
+  @Override
+  public String toString() {
+    return "DeviceMerge-" + this.getPlanNodeId();
   }
 }

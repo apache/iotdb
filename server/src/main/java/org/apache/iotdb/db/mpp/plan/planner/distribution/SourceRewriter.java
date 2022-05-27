@@ -153,11 +153,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     private PlanNode buildPlanNodeInRegion(
         PlanNode root, TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
       List<PlanNode> children =
-          root.getChildren().stream().map(PlanNodeUtil::deepCopy).collect(Collectors.toList());
+          root.getChildren().stream().map(child -> buildPlanNodeInRegion(child, regionReplicaSet, context)).collect(Collectors.toList());
       PlanNode newRoot = root.cloneWithChildren(children);
       newRoot.setPlanNodeId(context.getQueryId().genPlanNodeId());
       if (newRoot instanceof SourceNode) {
-        ((SourceNode) root).setRegionReplicaSet(regionReplicaSet);
+        ((SourceNode) newRoot).setRegionReplicaSet(regionReplicaSet);
       }
       return newRoot;
     }
