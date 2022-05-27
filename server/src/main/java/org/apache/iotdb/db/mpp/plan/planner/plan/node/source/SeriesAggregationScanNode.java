@@ -64,18 +64,6 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
   // The path of the target series which will be aggregated.
   private final MeasurementPath seriesPath;
 
-  // The order to traverse the data.
-  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
-  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
-
-  // time filter for current series, could be null if doesn't exist
-  @Nullable private Filter timeFilter;
-
-  // The parameter of `group by time`
-  // Its value will be null if there is no `group by time` clause,
-  @Nullable private GroupByTimeParameter groupByTimeParameter;
-
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
