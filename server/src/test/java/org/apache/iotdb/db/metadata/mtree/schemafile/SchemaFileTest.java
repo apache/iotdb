@@ -614,6 +614,7 @@ public class SchemaFileTest {
       checkSet.remove(res.next().getName());
     }
     Assert.assertTrue(checkSet.isEmpty());
+    sf.close();
   }
 
   // endregion
