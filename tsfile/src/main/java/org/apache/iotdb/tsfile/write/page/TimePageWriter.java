@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This writer is used to write time into a page. It consists of a time encoder and respective
@@ -40,6 +41,9 @@ import java.nio.channels.WritableByteChannel;
 public class TimePageWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(TimePageWriter.class);
+  public static final AtomicLong timeRawSize = new AtomicLong();
+  public static final AtomicLong timeEncodedSize = new AtomicLong();
+  public static final AtomicLong timeCompressedSize = new AtomicLong();
 
   private final ICompressor compressor;
 
@@ -71,6 +75,7 @@ public class TimePageWriter {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
     }
+    timeRawSize.addAndGet(batchSize * Long.BYTES);
     statistics.update(timestamps, batchSize);
   }
 
@@ -90,6 +95,7 @@ public class TimePageWriter {
     ByteBuffer buffer = ByteBuffer.allocate(timeOut.size());
     buffer.put(timeOut.getBuf(), 0, timeOut.size());
     buffer.flip();
+    timeEncodedSize.addAndGet(timeOut.size());
     return buffer;
   }
 
@@ -118,6 +124,7 @@ public class TimePageWriter {
           compressor.compress(
               pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
     }
+    timeCompressedSize.addAndGet(compressedSize);
 
     // write the page header to IOWriter
     int sizeWithoutStatistic = 0;
