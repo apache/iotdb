@@ -112,7 +112,7 @@ public class RewriteBadFileTool {
       printBoth(String.format("Start moving %s to backup dir.", badFilePath));
       session.executeNonQueryStatement(String.format("move '%s' '%s'", badFilePath, backUpDirPath));
       String[] dirs = badFilePath.split("/");
-      String targetFilePath = backUpDirPath + dirs[dirs.length - 1];
+      String targetFilePath = backUpDirPath + File.separator + dirs[dirs.length - 1];
       File targetFile = new File(targetFilePath);
       // move mods file
       File modsFile = new File(badFilePath + ModificationFile.FILE_SUFFIX);
