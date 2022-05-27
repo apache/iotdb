@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
@@ -565,7 +566,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
       TSExecuteStatementResp resp;
-      if (queryExecution.isQuery()) {
+      if (queryExecution.isQuery() && !s.getType().equals(StatementType.DELETE_TIMESERIES)) {
         resp = createResponse(queryExecution.getDatasetHeader(), queryId);
         resp.setStatus(result.status);
         resp.setQueryDataSet(

@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,7 @@ public class DeleteTimeseriesOperator implements ProcessOperator, SourceOperator
   private final OperatorContext operatorContext;
   private final List<Operator> children;
 
-  private final boolean[] childrenFinishStatus;
+  private final boolean[] isChildFinished;
 
   private final List<PartialPath> pathList;
   private boolean isFinished = false;
@@ -62,7 +63,7 @@ public class DeleteTimeseriesOperator implements ProcessOperator, SourceOperator
     this.planNodeId = planNodeId;
     this.operatorContext = operatorContext;
     this.children = children;
-    this.childrenFinishStatus = new boolean[children.size()];
+    this.isChildFinished = new boolean[children.size()];
     this.pathList = pathList;
   }
 
@@ -77,10 +78,10 @@ public class DeleteTimeseriesOperator implements ProcessOperator, SourceOperator
       throw new NoSuchElementException();
     }
     for (int i = 0; i < children.size(); i++) {
-      if (!childrenFinishStatus[i]) {
+      if (!isChildFinished[i]) {
         TsBlock tsBlock = children.get(i).next();
         if (!children.get(i).hasNext()) {
-          childrenFinishStatus[i] = true;
+          isChildFinished[i] = true;
         }
         return tsBlock;
       }
@@ -107,7 +108,7 @@ public class DeleteTimeseriesOperator implements ProcessOperator, SourceOperator
   @Override
   public boolean hasNext() {
     for (int i = 0; i < children.size(); i++) {
-      if (!childrenFinishStatus[i] && children.get(i).hasNext()) {
+      if (!isChildFinished[i] && children.get(i).hasNext()) {
         return true;
       }
     }
@@ -117,6 +118,19 @@ public class DeleteTimeseriesOperator implements ProcessOperator, SourceOperator
   @Override
   public boolean isFinished() {
     return !hasNext();
+  }
+
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    for (int i = 0; i < children.size(); i++) {
+      if (!isChildFinished[i]) {
+        ListenableFuture<Void> blocked = children.get(i).isBlocked();
+        if (!blocked.isDone()) {
+          return blocked;
+        }
+      }
+    }
+    return NOT_BLOCKED;
   }
 
   @Override

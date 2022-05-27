@@ -97,6 +97,9 @@ public class PathPatternTree {
 
   /** @return all device path patterns in the path pattern tree. */
   public List<String> findAllDevicePaths() {
+    if (root.getChildren().isEmpty()) {
+      constructTree();
+    }
     List<String> nodes = new ArrayList<>();
     List<String> pathPatternList = new ArrayList<>();
     findAllDevicePaths(root, nodes, pathPatternList);
