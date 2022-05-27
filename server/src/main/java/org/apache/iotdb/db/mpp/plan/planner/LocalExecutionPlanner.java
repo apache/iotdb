@@ -231,9 +231,7 @@ public class LocalExecutionPlanner {
     return new SchemaDriver(root, context.getSinkHandle(), schemaDriverContext);
   }
 
-  /**
-   * This Visitor is responsible for transferring PlanNode Tree to Operator Tree
-   */
+  /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
   private static class Visitor extends PlanVisitor<Operator, LocalExecutionPlanContext> {
 
     @Override
@@ -325,7 +323,7 @@ public class LocalExecutionPlanner {
                     descriptor.getAggregationType(), seriesDataType, ascending),
                 descriptor.getStep(),
                 Collections.singletonList(
-                    new InputLocation[]{new InputLocation(0, seriesIndex)})));
+                    new InputLocation[] {new InputLocation(0, seriesIndex)})));
       }
 
       AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
@@ -826,7 +824,6 @@ public class LocalExecutionPlanner {
           operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
     }
 
-
     @Override
     public Operator visitSlidingWindowAggregation(
         SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
@@ -945,11 +942,11 @@ public class LocalExecutionPlanner {
       List<InputLocation[]> inputLocationList = new ArrayList<>();
       for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
         if (inputColumnNames.size() == 1) {
-          inputLocationList.add(new InputLocation[]{inputLocationParts.get(0).get(i)});
+          inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
         } else {
           inputLocationList.add(
-              new InputLocation[]{
-                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+              new InputLocation[] {
+                inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
               });
         }
       }
@@ -1309,8 +1306,7 @@ public class LocalExecutionPlanner {
 
   private static class InstanceHolder {
 
-    private InstanceHolder() {
-    }
+    private InstanceHolder() {}
 
     private static final LocalExecutionPlanner INSTANCE = new LocalExecutionPlanner();
   }

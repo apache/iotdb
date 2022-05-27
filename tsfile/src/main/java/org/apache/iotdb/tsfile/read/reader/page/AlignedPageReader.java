@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
@@ -46,6 +45,8 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private final int valueCount;
   private Filter filter;
   private boolean isModified;
+
+  private final TsBlockBuilder builder;
 
   public AlignedPageReader(
       PageHeader timePageHeader,
@@ -75,6 +76,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     }
     this.filter = filter;
     this.valueCount = valuePageReaderList.size();
+    this.builder = new TsBlockBuilder(valueDataTypeList);
   }
 
   @Override
@@ -108,11 +110,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
     // TODO change from the row-based style to column-based style
-    TsBlockBuilder builder =
-        new TsBlockBuilder(
-            valuePageReaderList.stream()
-                .map(ValuePageReader::getDataType)
-                .collect(Collectors.toList()));
+    builder.reset();
     int timeIndex = -1;
     while (timePageReader.hasNextTime()) {
       long timestamp = timePageReader.nextTime();

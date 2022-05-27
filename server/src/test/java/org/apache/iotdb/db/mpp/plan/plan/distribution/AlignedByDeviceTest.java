@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.plan.distribution;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
+
 import org.junit.Test;
 
 import java.util.List;
@@ -27,9 +28,7 @@ import java.util.List;
 public class AlignedByDeviceTest {
 
   @Test
-  public void test1Device1Region() {
-
-  }
+  public void test1Device1Region() {}
 
   private LogicalQueryPlan constructLogicalPlan(List<String> series) {
     return null;

@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
@@ -153,7 +152,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     private PlanNode buildPlanNodeInRegion(
         PlanNode root, TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
       List<PlanNode> children =
-          root.getChildren().stream().map(child -> buildPlanNodeInRegion(child, regionReplicaSet, context)).collect(Collectors.toList());
+          root.getChildren().stream()
+              .map(child -> buildPlanNodeInRegion(child, regionReplicaSet, context))
+              .collect(Collectors.toList());
       PlanNode newRoot = root.cloneWithChildren(children);
       newRoot.setPlanNodeId(context.getQueryId().genPlanNodeId());
       if (newRoot instanceof SourceNode) {
