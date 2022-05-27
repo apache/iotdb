@@ -117,6 +117,10 @@ public class DeviceViewNode extends ProcessNode {
         getPlanNodeId(), mergeOrders, outputColumnNames, devices, deviceToMeasurementIndexesMap);
   }
 
+  public List<OrderBy> getMergeOrders() {
+    return mergeOrders;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
     return outputColumnNames;
