@@ -36,8 +36,9 @@ import java.math.BigDecimal;
 public class PlainEncoder extends Encoder {
 
   private static final Logger logger = LoggerFactory.getLogger(PlainEncoder.class);
-  private TSDataType dataType;
-  private int maxStringLength;
+  private final TSDataType dataType;
+  private final int maxStringLength;
+  private final byte[] writeBufferForLong = new byte[8];
 
   public PlainEncoder(TSDataType dataType, int maxStringLength) {
     super(TSEncoding.PLAIN);
@@ -67,9 +68,20 @@ public class PlainEncoder extends Encoder {
 
   @Override
   public void encode(long value, ByteArrayOutputStream out) {
-    for (int i = 7; i >= 0; i--) {
-      out.write((byte) (((value) >> (i * 8)) & 0xFF));
-    }
+    final int first = (int) (value);
+    final int second = (int) ((value >>> 32));
+    // Implementation taken from Apache Avro (org.apache.avro.io.BinaryData)
+    // the compiler seems to execute this order the best, likely due to
+    // register allocation -- the lifetime of constants is minimized.
+    writeBufferForLong[0] = (byte) (first);
+    writeBufferForLong[4] = (byte) (second);
+    writeBufferForLong[5] = (byte) (second >>> 8);
+    writeBufferForLong[1] = (byte) (first >>> 8);
+    writeBufferForLong[2] = (byte) (first >>> 16);
+    writeBufferForLong[6] = (byte) (second >>> 16);
+    writeBufferForLong[7] = (byte) (second >>> 24);
+    writeBufferForLong[3] = (byte) (first >>> 24);
+    out.write(writeBufferForLong, 0, 8);
   }
 
   @Override
