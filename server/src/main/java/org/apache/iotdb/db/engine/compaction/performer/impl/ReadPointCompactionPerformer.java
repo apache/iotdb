@@ -248,6 +248,7 @@ public class ReadPointCompactionPerformer
         }
         MeasurementSchema schema =
             getMeasurementSchemaFromReader(
+                tsFileResource,
                 readerCacheMap.computeIfAbsent(
                     tsFileResource,
                     x -> {
@@ -272,11 +273,12 @@ public class ReadPointCompactionPerformer
   }
 
   private MeasurementSchema getMeasurementSchemaFromReader(
-      TsFileSequenceReader reader, String device, String measurement)
+      TsFileResource resource, TsFileSequenceReader reader, String device, String measurement)
       throws IllegalPathException, IOException {
     List<ChunkMetadata> chunkMetadata =
         reader.getChunkMetadataList(new PartialPath(device, measurement));
     if (chunkMetadata.size() > 0) {
+      chunkMetadata.get(0).setFilePath(resource.getTsFilePath());
       Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(0));
       ChunkHeader header = chunk.getHeader();
       return new MeasurementSchema(
