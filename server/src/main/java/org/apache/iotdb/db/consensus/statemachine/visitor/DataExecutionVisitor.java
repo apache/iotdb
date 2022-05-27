@@ -124,7 +124,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitInvalidateSchemaCache(
       InvalidateSchemaCacheNode node, DataRegion dataRegion) {
-    String storageGroup = dataRegion.getStorageGroupPath();
+    String storageGroup = dataRegion.getLogicalStorageGroupName();
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : node.getPathList()) {
       try {

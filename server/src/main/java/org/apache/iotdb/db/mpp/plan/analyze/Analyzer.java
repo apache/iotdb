@@ -1022,7 +1022,7 @@ public class Analyzer {
     @Override
     public Analysis visitDeleteTimeseries(
         DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.READ);
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(deleteTimeSeriesStatement);
 
