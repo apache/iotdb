@@ -65,8 +65,6 @@ public class RewriteBadFileTool {
   private static String validationFilePath = "TsFile_validation_view.txt";
   // output file path
   private static String outputLogFilePath = "TsFile_rewrite_view.txt";
-  // whether moving the data files
-  private static boolean moveFile = true;
 
   private static final String HostIP = "localhost";
   private static final String rpcPort = "6667";
@@ -87,11 +85,7 @@ public class RewriteBadFileTool {
     }
     pw = new PrintWriter(new FileWriter(outputLogFilePath));
     try {
-      if (moveFile) {
-        moveBadFileToBackUp();
-      } else {
-        rewriteAllBadFiles();
-      }
+      moveAndRewriteBadFile();
     } catch (IoTDBConnectionException | IOException e) {
       e.printStackTrace();
     } finally {
@@ -99,8 +93,10 @@ public class RewriteBadFileTool {
     }
   }
 
-  public static void moveBadFileToBackUp() throws IOException {
-    printBoth("Start moving bad files to backup dir.");
+  public static void moveAndRewriteBadFile() throws IOException, IoTDBConnectionException {
+    Session session = new Session(HostIP, rpcPort, user, password);
+    session.open(false);
+
     BufferedReader bufferedReader = new BufferedReader(new FileReader(validationFilePath));
     String line;
     while ((line = bufferedReader.readLine()) != null) {
@@ -108,6 +104,7 @@ public class RewriteBadFileTool {
         continue;
       }
       String badFilePath = line.replace("-- Find the bad file ", "");
+      printBoth(String.format("Start moving %s to backup dir.", badFilePath));
       String targetFilePath =
           backUpDirPath + File.separator + "sequence" + badFilePath.split("sequence")[1];
       File targetFile = new File(targetFilePath);
@@ -125,26 +122,10 @@ public class RewriteBadFileTool {
       if (modsFile.exists()) {
         fsFactory.moveFile(modsFile, new File(targetFilePath + ModificationFile.FILE_SUFFIX));
       }
-    }
-    bufferedReader.close();
-    printBoth("Finish moving all bad files to backup dir.");
-  }
-
-  private static void rewriteAllBadFiles() throws IOException, IoTDBConnectionException {
-    printBoth("Start rewriting bad files to iotdb.");
-    Session session = new Session(HostIP, rpcPort, user, password);
-    session.open(false);
-    BufferedReader bufferedReader = new BufferedReader(new FileReader(validationFilePath));
-    String line;
-    while ((line = bufferedReader.readLine()) != null) {
-      if (!line.startsWith("-- Find the bad file ")) {
-        continue;
-      }
-      String badFilePath = line.replace("-- Find the bad file ", "");
-      String targetFilePath =
-          backUpDirPath + File.separator + "sequence" + badFilePath.split("sequence")[1];
+      printBoth("Finish moving.");
+      // rewriteFile
       try {
-        File targetFile = new File(targetFilePath);
+        printBoth(String.format("Start rewriting %s to iotdb.", badFilePath));
         if (targetFile.exists()) {
           rewriteWrongTsFile(targetFilePath, session);
           targetFile.renameTo(new File(targetFilePath + "." + "finish"));
@@ -156,8 +137,9 @@ public class RewriteBadFileTool {
         printBoth("---- Meet error in rewriting " + targetFilePath + ", " + e.getMessage());
       }
     }
+    bufferedReader.close();
     session.close();
-    printBoth("Finish rewriting all bad files to iotdb.");
+    printBoth("Finish moving all bad files to backup dir.");
   }
 
   public static void rewriteWrongTsFile(String filename, Session session)
@@ -256,9 +238,9 @@ public class RewriteBadFileTool {
   }
 
   private static boolean checkArgs(String[] args) {
-    if (args.length != 4) {
+    if (args.length != 3) {
       System.out.println(
-          "Param incorrect, -m=[need moving data file or not] -b=[path of backUp directory] -v=[path of validation file] -o=[path of output file].");
+          "Param incorrect, -b=[path of backUp directory] -v=[path of validation file] -o=[path of output file].");
       return false;
     }
     for (String arg : args) {
@@ -268,11 +250,9 @@ public class RewriteBadFileTool {
         validationFilePath = arg.split("=")[1];
       } else if (arg.startsWith("-o")) {
         outputLogFilePath = arg.split("=")[1];
-      } else if (arg.startsWith("-m")) {
-        moveFile = Boolean.parseBoolean(arg.split("=")[1]);
       } else {
         System.out.println(
-            "Param incorrect, -m=[need moving data file or not] -b=[path of backUp directory] -v=[path of validation file] -o=[path of output file].");
+            "Param incorrect, -b=[path of backUp directory] -v=[path of validation file] -o=[path of output file].");
         return false;
       }
     }
