@@ -217,7 +217,7 @@ public class LogDispatcher {
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
         endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
-        if (logBatches.size() > MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+        if (logBatches.size() == MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
           batch = new PendingBatch(startIndex, endIndex, logBatches);
           logger.debug("accumulated a {} from wal", batch);
           return batch;
@@ -233,7 +233,7 @@ public class LogDispatcher {
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
             endIndex =
                 constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
-            if (logBatches.size() > MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+            if (logBatches.size() == MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
               batch = new PendingBatch(startIndex, endIndex, logBatches);
               logger.debug("accumulated a {} from queue and wal", batch);
               return batch;
@@ -271,7 +271,7 @@ public class LogDispatcher {
     private long constructBatchFromWAL(
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
       while (currentIndex < maxIndex
-          && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+          && logBatches.size() < MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
         // TODO iterator
         IConsensusRequest data = reader.getReq(currentIndex++);
         if (data != null) {
