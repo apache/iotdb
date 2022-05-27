@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -33,12 +34,21 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -48,8 +58,11 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
@@ -371,5 +384,74 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     assertEquals(count, 1);
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
+  }
+
+  @Test
+  public void testCompactLargeChunk() throws IOException, WriteProcessException, MetadataException {
+    Random random = new Random();
+    List<TsFileResource> resources = new ArrayList<>();
+    for (int i = 0; i < seqResources.size(); ++i) {
+      TsFileResource resource = seqResources.get(i);
+      resource.remove();
+      resource = new TsFileResource(resource.getTsFile());
+      try (TsFileWriter writer = new TsFileWriter(resource.getTsFile())) {
+        MeasurementSchema schema = new MeasurementSchema("s1", TSDataType.TEXT);
+        writer.registerTimeseries(new Path("root.test.d.s1"), schema);
+        for (int time = 1024 * i; time < 1024 * (i + 1); ++time) {
+          TSRecord record = new TSRecord(i, "root.test.d");
+          StringBuilder sb = new StringBuilder();
+          for (int j = 0; j < 40000; ++j) {
+            sb.append(random.nextInt(1024));
+          }
+          record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "s1", sb.toString()));
+          writer.write(record);
+          resource.updateStartTime("root.test.d", time);
+          resource.updateEndTime("root.test.d", time);
+        }
+      }
+      resources.add(resource);
+    }
+    for (int i = 7; i < 25; ++i) {
+      TsFileResource resource =
+          new TsFileResource(
+              new File(
+                  resources.get(0).getTsFile().getParentFile(),
+                  String.format("%d-%d-0-0.tsfile", i, i)));
+      try (TsFileWriter writer = new TsFileWriter(resource.getTsFile())) {
+        MeasurementSchema schema = new MeasurementSchema("s1", TSDataType.TEXT);
+        writer.registerTimeseries(new Path("root.test.d.s1"), schema);
+        for (int time = 1024 * i; time < 1024 * (i + 1); ++time) {
+          TSRecord record = new TSRecord(i, "root.test.d");
+          StringBuilder sb = new StringBuilder();
+          for (int j = 0; j < 40000; ++j) {
+            sb.append(random.nextInt(1024));
+          }
+          record.addTuple(DataPoint.getDataPoint(TSDataType.TEXT, "s1", sb.toString()));
+          writer.write(record);
+          resource.updateStartTime("root.test.d", time);
+          resource.updateEndTime("root.test.d", time);
+        }
+      }
+      resources.add(resource);
+    }
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.test.d.s1"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        Collections.emptyMap());
+    IoTDBDescriptor.getInstance().getConfig().setMergeWriteThroughputMbPerSec(1024);
+    TsFileResource targetResource =
+        new TsFileResource(
+            new File(resources.get(0).getTsFile().getParentFile(), "0-0-1-0.tsfile"));
+    CompactionUtils.merge(
+        targetResource,
+        resources,
+        "root.test",
+        null,
+        new HashSet<>(),
+        true,
+        Collections.EMPTY_LIST,
+        null);
   }
 }
