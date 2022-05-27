@@ -626,7 +626,9 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))));
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -830,7 +832,7 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            OrderBy.TIMESTAMP_DESC);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -857,7 +859,9 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))));
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
