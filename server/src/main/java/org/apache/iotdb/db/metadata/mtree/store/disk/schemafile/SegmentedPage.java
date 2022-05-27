@@ -196,7 +196,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
   @Override
   public String splitWrappedSegment(
-      String key, ByteBuffer recBuf, SchemaPage dstPage, boolean inclineSplit)
+      String key, ByteBuffer recBuf, ISchemaPage dstPage, boolean inclineSplit)
       throws MetadataException {
     // only full page leaf segment can be split
     if (segOffsetLst.size() != 1
@@ -259,7 +259,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
-  protected ByteBuffer getEntireSegmentSlice() throws MetadataException {
+  public ByteBuffer getEntireSegmentSlice() throws MetadataException {
     if (segOffsetLst.size() != 1
         || segOffsetLst.get(0) != PAGE_HEADER_SIZE
         || spareSize != 0

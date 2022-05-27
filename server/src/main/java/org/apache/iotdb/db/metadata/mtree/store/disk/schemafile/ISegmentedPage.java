@@ -86,6 +86,6 @@ public interface ISegmentedPage {
   long getNextSegAddress(short segId) throws SegmentNotFoundException;
 
   String splitWrappedSegment(
-      String key, ByteBuffer recBuf, SchemaPage dstPage, boolean inclineSplit)
+      String key, ByteBuffer recBuf, ISchemaPage dstPage, boolean inclineSplit)
       throws MetadataException;
 }

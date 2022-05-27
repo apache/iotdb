@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -54,7 +55,7 @@ public class InternalPageTest {
     ByteBuffer buffer = ByteBuffer.allocate(1000);
 
     ISegment<Integer, Integer> seg =
-        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
+        ISchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test =
         new String[] {"abc", "key3", "key4", "key9", "key5", "key6", "key112", "key888"};
 
@@ -63,7 +64,7 @@ public class InternalPageTest {
     }
     seg.syncBuffer();
     buffer.clear();
-    ISegment<Integer, Integer> seg2 = SchemaPage.loadSchemaPage(buffer).getAsInternalPage();
+    ISegment<Integer, Integer> seg2 = ISchemaPage.loadSchemaPage(buffer).getAsInternalPage();
     Assert.assertEquals(seg.inspect(), seg2.inspect());
 
     Assert.assertTrue(seg2.hasRecordKey("key5"));
@@ -78,7 +79,7 @@ public class InternalPageTest {
     ByteBuffer buffer = ByteBuffer.allocate(170);
 
     ISegment<Integer, Integer> seg =
-        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
+        ISchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = 0; i < test.length; i++) {
@@ -90,7 +91,7 @@ public class InternalPageTest {
 
     Assert.assertEquals("a5", sk);
     buf2.clear();
-    ISegment<Integer, Integer> seg2 = SchemaPage.loadSchemaPage(buf2).getAsInternalPage();
+    ISegment<Integer, Integer> seg2 = ISchemaPage.loadSchemaPage(buf2).getAsInternalPage();
     Assert.assertEquals(4, seg2.getRecordByKey("a5").intValue());
     Assert.assertEquals(5, seg2.getRecordByKey("a6").intValue());
     Assert.assertEquals(999, seg.getRecordByKey("a").intValue());
@@ -101,7 +102,7 @@ public class InternalPageTest {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
     ISegment<Integer, Integer> seg =
-        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
+        ISchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = 0; i < test.length; i++) {
@@ -121,7 +122,7 @@ public class InternalPageTest {
     buf2.clear();
     Assert.assertEquals(
         Integer.valueOf(7),
-        SchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a91"));
+        ISchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a91"));
 
     Assert.assertEquals(117, seg.insertRecord("a1", 0));
 
@@ -144,12 +145,12 @@ public class InternalPageTest {
     buf2.clear();
     Assert.assertEquals(
         Integer.valueOf(24),
-        SchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a24"));
+        ISchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a24"));
 
     Assert.assertEquals(172, seg.insertRecord("a1", 0));
     buf2.clear();
     Assert.assertEquals(
-        159, SchemaPage.loadSchemaPage(buf2).getAsInternalPage().insertRecord("a24", 0));
+        159, ISchemaPage.loadSchemaPage(buf2).getAsInternalPage().insertRecord("a24", 0));
   }
 
   @Test
@@ -157,7 +158,7 @@ public class InternalPageTest {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
     ISegment<Integer, Integer> seg =
-        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
+        ISchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a9"};
 
     for (int i = test.length - 1; i >= 0; i--) {
@@ -173,7 +174,7 @@ public class InternalPageTest {
     Assert.assertEquals(246, seg.insertRecord("a0", 9));
     buf2.clear();
     Assert.assertEquals(
-        162, SchemaPage.loadSchemaPage(buf2).getAsInternalPage().insertRecord("a2", 0));
+        162, ISchemaPage.loadSchemaPage(buf2).getAsInternalPage().insertRecord("a2", 0));
 
     seg.insertRecord("a13", 12);
     seg.insertRecord("a12", 11);
@@ -185,7 +186,7 @@ public class InternalPageTest {
     buf2.clear();
     Assert.assertEquals(
         Integer.valueOf(110),
-        SchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a11"));
+        ISchemaPage.loadSchemaPage(buf2).getAsInternalPage().getRecordByKey("a11"));
   }
 
   @Test
@@ -193,7 +194,7 @@ public class InternalPageTest {
     ByteBuffer buffer = ByteBuffer.allocate(300);
 
     ISegment<Integer, Integer> seg =
-        SchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
+        ISchemaPage.initInternalPage(buffer, 0, 999).getAsInternalPage();
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"};
 
     for (int i = 0; i < test.length; i++) {
@@ -212,7 +213,7 @@ public class InternalPageTest {
   }
 
   public void print(ByteBuffer buf) throws MetadataException {
-    System.out.println(SchemaPage.loadSchemaPage(buf).getAsInternalPage().inspect());
+    System.out.println(ISchemaPage.loadSchemaPage(buf).getAsInternalPage().inspect());
   }
 
   public void print(Object s) {

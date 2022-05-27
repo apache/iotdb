@@ -32,7 +32,7 @@ import java.nio.channels.FileChannel;
  * {@link SchemaFile} manages a collection of SchemaPages, which acts like a segment of index entry
  * {@link ISegment} or a collection of wrapped segments.
  */
-public abstract class SchemaPage {
+public abstract class SchemaPage implements ISchemaPage {
   // region Configuration of Page and Segment
   // TODO: may be better to move to extra Config class
 
@@ -92,70 +92,12 @@ public abstract class SchemaPage {
     memberNum = ReadWriteIOUtils.readShort(this.pageBuffer);
   }
 
-  /**
-   * <b>Page Header Structure: (19 bytes used, 13 bytes reserved)</b>
-   *
-   * <ul>
-   *   <li>1 byte: page type indicator
-   *   <li>1 int (4 bytes): pageIndex, a non-negative number
-   *   <li>1 short (2 bytes): spareOffset, bound of the variable length part in a slotted structure
-   *   <li>1 short (2 bytes): spareSize, space left to use
-   *   <li>1 short (2 bytes): memberNum, amount of the member whose type depends on implementation
-   *   <li>1 long (8 bytes): firstLeaf, points to first segmented page, only exists in {@link
-   *       InternalPage}
-   * </ul>
-   *
-   * While header of a page is partly fixed, the body is dependent on implementation.
-   */
-  public static SchemaPage loadSchemaPage(ByteBuffer buffer) throws MetadataException {
-    buffer.clear();
-    byte pageType = ReadWriteIOUtils.readByte(buffer);
-
-    if (pageType == SEGMENTED_PAGE) {
-      return new SegmentedPage(buffer);
-    } else if (pageType == INTERNAL_PAGE) {
-      return new InternalPage(buffer);
-    } else {
-      throw new MetadataException(
-          "ByteBuffer is corrupted or set to a wrong position to load as a SchemaPage.");
-    }
-  }
-
-  /** InternalPage should be initiated with a pointer which points to the minimal child of it. */
-  public static SchemaPage initInternalPage(ByteBuffer buffer, int pageIndex, int ptr) {
-    buffer.clear();
-
-    buffer.position(PAGE_HEADER_SIZE);
-    ReadWriteIOUtils.write(((PAGE_INDEX_MASK & ptr) << OFFSET_DIGIT), buffer);
-
-    buffer.position(0);
-    ReadWriteIOUtils.write(INTERNAL_PAGE, buffer);
-    ReadWriteIOUtils.write(pageIndex, buffer);
-    ReadWriteIOUtils.write((short) buffer.capacity(), buffer);
-    ReadWriteIOUtils.write(
-        (short) (buffer.capacity() - PAGE_HEADER_SIZE - InternalPage.COMPOUND_POINT_LENGTH),
-        buffer);
-    ReadWriteIOUtils.write((short) 1, buffer);
-    ReadWriteIOUtils.write(-1L, buffer);
-
-    return new InternalPage(buffer);
-  }
-
-  public static SchemaPage initSegmentedPage(ByteBuffer buffer, int pageIndex) {
-    buffer.clear();
-    ReadWriteIOUtils.write(SEGMENTED_PAGE, buffer);
-    ReadWriteIOUtils.write(pageIndex, buffer);
-    ReadWriteIOUtils.write(PAGE_HEADER_SIZE, buffer);
-    ReadWriteIOUtils.write((short) (buffer.capacity() - PAGE_HEADER_SIZE), buffer);
-    ReadWriteIOUtils.write((short) 0, buffer);
-    ReadWriteIOUtils.write(-1L, buffer);
-    return new SegmentedPage(buffer);
-  }
-
+  @Override
   public boolean isCapableForSize(short size) {
     return spareSize >= size;
   }
 
+  @Override
   public void syncPageBuffer() {
     this.pageBuffer.limit(this.pageBuffer.capacity());
     this.pageBuffer.position(INDEX_OFFSET);
@@ -165,18 +107,19 @@ public abstract class SchemaPage {
     ReadWriteIOUtils.write(memberNum, pageBuffer);
   };
 
+  @Override
   public void flushPageToChannel(FileChannel channel) throws IOException {
     this.syncPageBuffer();
     this.pageBuffer.clear();
     channel.write(pageBuffer, SchemaFile.getPageAddress(pageIndex));
   }
 
-  public abstract String inspect() throws SegmentNotFoundException;
-
+  @Override
   public int getPageIndex() {
     return pageIndex;
   }
 
+  @Override
   public void setPageIndex(int pid) {
     pageIndex = pid;
     this.pageBuffer.clear();
@@ -185,20 +128,19 @@ public abstract class SchemaPage {
     this.pageBuffer.clear();
   }
 
-  public abstract ISegment<Integer, Integer> getAsInternalPage();
-
-  public abstract ISegmentedPage getAsSegmentedPage();
-
   // for better performance when split
-  protected ByteBuffer getEntireSegmentSlice() throws MetadataException {
+  @Override
+  public ByteBuffer getEntireSegmentSlice() throws MetadataException {
     return null;
   }
 
+  @Override
   @TestOnly
   public WrappedSegment getSegmentOnTest(short idx) throws SegmentNotFoundException {
     return null;
   };
 
+  @Override
   @TestOnly
   public void getPageBuffer(ByteBuffer dstBuffer) {
     syncPageBuffer();
