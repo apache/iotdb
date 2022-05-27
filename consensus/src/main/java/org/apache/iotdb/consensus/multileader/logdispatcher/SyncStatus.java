@@ -51,8 +51,8 @@ public class SyncStatus {
    * object with equal data, so we do not inherit method equals for PendingBatch
    */
   public void removeBatch(PendingBatch batch) {
-    batch.setSynced(true);
     synchronized (this) {
+      batch.setSynced(true);
       if (pendingBatches.size() > 0 && pendingBatches.get(0).equals(batch)) {
         Iterator<PendingBatch> iterator = pendingBatches.iterator();
         PendingBatch current = iterator.next();

@@ -163,6 +163,10 @@ public class LogDispatcher {
       stopped = true;
     }
 
+    public boolean isStopped() {
+      return stopped;
+    }
+
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
@@ -179,7 +183,7 @@ public class LogDispatcher {
           }
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
-          // sends batch asynchronously and migrates the retry logic into the callback function
+          // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
       } catch (InterruptedException e) {
@@ -212,7 +216,12 @@ public class LogDispatcher {
         IndexedConsensusRequest prev = iterator.next();
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
-        constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
+        endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
+        if (logBatches.size() > MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+          batch = new PendingBatch(startIndex, endIndex, logBatches);
+          logger.debug("accumulated a {} from wal", batch);
+          return batch;
+        }
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
         endIndex = prev.getSearchIndex();
         iterator.remove();
@@ -222,7 +231,13 @@ public class LogDispatcher {
           // Prevents gap between logs. For example, some logs are not written into the queue when
           // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
-            constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
+            endIndex =
+                constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
+            if (logBatches.size() > MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+              batch = new PendingBatch(startIndex, endIndex, logBatches);
+              logger.debug("accumulated a {} from queue and wal", batch);
+              return batch;
+            }
           }
           constructBatchIndexedFromConsensusRequest(current, logBatches);
           endIndex = current.getSearchIndex();
@@ -239,15 +254,13 @@ public class LogDispatcher {
     }
 
     public void sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {
-      if (!stopped) {
-        try {
-          AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
-          TSyncLogReq req =
-              new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
-          client.syncLog(req, handler);
-        } catch (IOException | TException e) {
-          logger.error("Can not sync logs to peer {} because", peer, e);
-        }
+      try {
+        AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
+        TSyncLogReq req =
+            new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+        client.syncLog(req, handler);
+      } catch (IOException | TException e) {
+        logger.error("Can not sync logs to peer {} because", peer, e);
       }
     }
 
@@ -262,6 +275,7 @@ public class LogDispatcher {
         // TODO iterator
         IConsensusRequest data = reader.getReq(currentIndex++);
         if (data != null) {
+          // TODO fix byteBuffer overflow
           ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
           data.serializeRequest(buffer);
           buffer.flip();
@@ -275,6 +289,7 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, List<TLogBatch> logBatches) {
+      // TODO fix byteBuffer overflow
       ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
       request.serializeRequest(buffer);
       buffer.flip();

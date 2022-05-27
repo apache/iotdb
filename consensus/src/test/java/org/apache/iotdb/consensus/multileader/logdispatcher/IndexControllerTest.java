@@ -43,6 +43,7 @@ public class IndexControllerTest {
     FileUtils.deleteFully(storageDir);
   }
 
+  /** test indexController when incrementIntervalAfterRestart == true */
   @Test
   public void testTrueIncrementIntervalAfterRestart() {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
@@ -70,6 +71,7 @@ public class IndexControllerTest {
     Assert.assertEquals(IndexController.FLUSH_INTERVAL * 3, controller.getLastFlushedIndex());
   }
 
+  /** test indexController when incrementIntervalAfterRestart == false */
   @Test
   public void testFalseIncrementIntervalAfterRestart() {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, false);

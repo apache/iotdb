@@ -86,7 +86,15 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
             Thread.currentThread().interrupt();
             logger.warn("Unexpected interruption during retry pending batch");
           }
-          thread.sendBatchAsync(batch, this);
+          if (thread.isStopped()) {
+            logger.debug(
+                "LogDispatcherThread {} has been stopped, we will ignore the retry PendingBatch {} after {} times",
+                thread.getPeer(),
+                batch,
+                retryCount);
+          } else {
+            thread.sendBatchAsync(batch, this);
+          }
         });
   }
 }

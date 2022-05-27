@@ -50,6 +50,7 @@ public class SyncStatusTest {
     FileUtils.deleteFully(storageDir);
   }
 
+  /** Confirm success from front to back */
   @Test
   public void sequenceTest() throws InterruptedException {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
@@ -74,6 +75,7 @@ public class SyncStatusTest {
     }
   }
 
+  /** Confirm success from back to front */
   @Test
   public void reverseTest() throws InterruptedException {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
@@ -105,6 +107,7 @@ public class SyncStatusTest {
     Assert.assertEquals(MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
   }
 
+  /** Confirm success first from front to back, then back to front */
   @Test
   public void mixedTest() throws InterruptedException {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
@@ -146,6 +149,7 @@ public class SyncStatusTest {
     Assert.assertEquals(MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
   }
 
+  /** Test Blocking while addNextBatch */
   @Test
   public void waitTest() throws InterruptedException, ExecutionException {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);

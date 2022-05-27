@@ -118,6 +118,9 @@ public class MultiLeaderConsensusTest {
     servers.clear();
   }
 
+  /**
+   * The three nodes use the requests in the queue to replicate the requests to the other two nodes
+   */
   @Test
   public void ReplicateUsingQueueTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingQueueTest");
@@ -218,6 +221,11 @@ public class MultiLeaderConsensusTest {
         servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
   }
 
+  /**
+   * First, suspend one node to test that the request replication between the two alive nodes is ok,
+   * then restart all nodes to lose state in the queue, and test using WAL replication to make all
+   * nodes finally consistent
+   */
   @Test
   public void ReplicateUsingWALTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingWALTest");

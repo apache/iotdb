@@ -82,8 +82,8 @@ public class MultiLeaderServerImpl {
   }
 
   public void stop() {
-    stateMachine.stop();
     logDispatcher.stop();
+    stateMachine.stop();
   }
 
   /**
