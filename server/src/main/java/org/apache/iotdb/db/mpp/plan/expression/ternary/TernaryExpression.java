@@ -53,6 +53,7 @@ public abstract class TernaryExpression extends Expression {
   protected final Expression firstExpression;
   protected final Expression secondExpression;
   protected final Expression thirdExpression;
+  // protected final boolean isNot = false;
 
   public Expression getFirstExpression() {
     return firstExpression;

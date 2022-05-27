@@ -21,6 +21,8 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.ternary;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -31,6 +33,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BetweenExpression extends TernaryExpression {
   private final boolean isNotBetween;
@@ -60,11 +64,64 @@ public class BetweenExpression extends TernaryExpression {
   }
 
   @Override
+  public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    List<Expression> firstExpressions = new ArrayList<>();
+    firstExpression.concat(prefixPaths, firstExpressions);
+
+    List<Expression> secondExpressions = new ArrayList<>();
+    secondExpression.concat(prefixPaths, secondExpressions);
+
+    List<Expression> thirdExpressions = new ArrayList<>();
+    secondExpression.concat(prefixPaths, thirdExpressions);
+
+    reconstruct(firstExpressions, secondExpressions, thirdExpressions, resultExpressions);
+  }
+
+  @Override
+  public final void removeWildcards(
+      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
+      List<Expression> resultExpressions)
+      throws LogicalOptimizeException {
+    List<Expression> firstExpressions = new ArrayList<>();
+    firstExpression.removeWildcards(wildcardsRemover, firstExpressions);
+
+    List<Expression> secondExpressions = new ArrayList<>();
+    secondExpression.removeWildcards(wildcardsRemover, secondExpressions);
+
+    List<Expression> thirdExpressions = new ArrayList<>();
+    thirdExpression.removeWildcards(wildcardsRemover, secondExpressions);
+    reconstruct(firstExpressions, secondExpressions, thirdExpressions, resultExpressions);
+  }
+
+  private void reconstruct(
+      List<Expression> firstExpressions,
+      List<Expression> secondExpressions,
+      List<Expression> thirdExpressions,
+      List<Expression> resultExpressions) {
+    for (Expression fe : firstExpressions) {
+      for (Expression se : secondExpressions)
+        for (Expression te : thirdExpressions) {
+          switch (operator()) {
+            case "between":
+              resultExpressions.add(new BetweenExpression(fe, se, te, isNotBetween));
+              break;
+            default:
+              throw new UnsupportedOperationException();
+          }
+        }
+    }
+  }
+
+  @Override
   protected TernaryTransformer constructTransformer(
       LayerPointReader firstParentLayerPointReader,
       LayerPointReader secondParentLayerPointReader,
       LayerPointReader thirdParentLayerPointReader) {
     return new BetweenTransformer(
+        firstParentLayerPointReader,
+        secondParentLayerPointReader,
+        thirdParentLayerPointReader,
+        isNotBetween);
         firstParentLayerPointReader, secondParentLayerPointReader, thirdParentLayerPointReader);
   }
 

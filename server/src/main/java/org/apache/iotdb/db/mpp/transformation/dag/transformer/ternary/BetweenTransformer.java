@@ -21,37 +21,46 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.IOException;
+public class BetweenTransformer extends CompareTernaryTransformer {
 
-public class BetweenTransformer extends TernaryTransformer {
+  boolean isNotBetween;
 
   public BetweenTransformer(
       LayerPointReader firstPointReader,
       LayerPointReader secondPointReader,
-      LayerPointReader thirdPointReader) {
+      LayerPointReader thirdPointReader,
+      boolean isNotBetween) {
     super(firstPointReader, secondPointReader, thirdPointReader);
-  }
-
-  protected boolean evaluate(double firstOperand, double secondOperand, double thirdOperand) {
-    return Double.compare(firstOperand, secondOperand) >= 0
-        && Double.compare(firstOperand, thirdOperand) <= 0;
+    this.isNotBetween = isNotBetween;
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.BOOLEAN;
+  protected Evaluator constructNumberEvaluator() {
+    return () ->
+        (Double.compare(
+                    castCurrentValueToDoubleOperand(firstPointReader, firstPointReaderDataType),
+                    castCurrentValueToDoubleOperand(secondPointReader, secondPointReaderDataType))
+                >= 0)
+            && (Double.compare(
+                        castCurrentValueToDoubleOperand(firstPointReader, firstPointReaderDataType),
+                        castCurrentValueToDoubleOperand(thirdPointReader, thirdPointReaderDataType))
+                    <= 0)
+                ^ isNotBetween;
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    cachedBoolean =
-        evaluate(
-            castCurrentValueToDoubleOperand(firstPointReader),
-            castCurrentValueToDoubleOperand(secondPointReader),
-            castCurrentValueToDoubleOperand(thirdPointReader));
+  protected Evaluator constructTextEvaluator() {
+    return () ->
+        (compare(
+                    firstPointReader.currentBinary().getStringValue(),
+                    secondPointReader.currentBinary().getStringValue())
+                >= 0)
+            && (compare(
+                        firstPointReader.currentBinary().getStringValue(),
+                        thirdPointReader.currentBinary().getStringValue())
+                    <= 0)
+                ^ isNotBetween;
   }
 }

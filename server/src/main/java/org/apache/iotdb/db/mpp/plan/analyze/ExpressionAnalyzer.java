@@ -1,5 +1,20 @@
 /*
- *   * Licensed to the Apache Software Foundation (ASF) under one  * or more contributor license agreements.  See the NOTICE file  * distributed with this work for additional information  * regarding copyright ownership.  The ASF licenses this file  * to you under the Apache License, Version 2.0 (the  * "License"); you may not use this file except in compliance  * with the License.  You may obtain a copy of the License at  *  *     http://www.apache.org/licenses/LICENSE-2.0  *  * Unless required by applicable law or agreed to in writing,  * software distributed under the License is distributed on an  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY  * KIND, either express or implied.  See the License for the  * specific language governing permissions and limitations  * under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.mpp.plan.analyze;
@@ -302,13 +317,16 @@ public class ExpressionAnalyzer {
       Expression expression, SchemaTree schemaTree) {
     if (expression instanceof TernaryExpression) {
       List<Expression> firstExpressions =
-          removeWildcardInExpression(((TernaryExpression) expression).getFirstExpression(), schemaTree);
+          removeWildcardInExpression(
+              ((TernaryExpression) expression).getFirstExpression(), schemaTree);
       List<Expression> secondExpressions =
-              removeWildcardInExpression(((TernaryExpression) expression).getSecondExpression(), schemaTree);
+          removeWildcardInExpression(
+              ((TernaryExpression) expression).getSecondExpression(), schemaTree);
       List<Expression> thirdExpressions =
-              removeWildcardInExpression(((TernaryExpression) expression).getThirdExpression(), schemaTree);
+          removeWildcardInExpression(
+              ((TernaryExpression) expression).getThirdExpression(), schemaTree);
       return reconstructTernaryExpressions(
-              expression.getExpressionType(), firstExpressions, secondExpressions, thirdExpressions);
+          expression, firstExpressions, secondExpressions, thirdExpressions);
     } else if (expression instanceof BinaryExpression) {
       List<Expression> leftExpressions =
           removeWildcardInExpression(
@@ -477,23 +495,23 @@ public class ExpressionAnalyzer {
       TypeProvider typeProvider) {
     if (expression instanceof TernaryExpression) {
       List<Expression> firstExpressions =
-              concatDeviceAndRemoveWildcard(
-                      ((TernaryExpression) expression).getFirstExpression(),
-                      devicePath,
-                      schemaTree,
-                      typeProvider);
+          concatDeviceAndRemoveWildcard(
+              ((TernaryExpression) expression).getFirstExpression(),
+              devicePath,
+              schemaTree,
+              typeProvider);
       List<Expression> secondExpressions =
-              concatDeviceAndRemoveWildcard(
-                      ((TernaryExpression) expression).getSecondExpression(),
-                      devicePath,
-                      schemaTree,
-                      typeProvider);
+          concatDeviceAndRemoveWildcard(
+              ((TernaryExpression) expression).getSecondExpression(),
+              devicePath,
+              schemaTree,
+              typeProvider);
       List<Expression> thirdExpressions =
-              concatDeviceAndRemoveWildcard(
-                      ((TernaryExpression) expression).getThirdExpression(),
-                      devicePath,
-                      schemaTree,
-                      typeProvider);
+          concatDeviceAndRemoveWildcard(
+              ((TernaryExpression) expression).getThirdExpression(),
+              devicePath,
+              schemaTree,
+              typeProvider);
       return reconstructTernaryExpressions(
               expression.getExpressionType(), firstExpressions, secondExpressions, thirdExpressions);
     } else if (expression instanceof BinaryExpression) {
@@ -584,11 +602,11 @@ public class ExpressionAnalyzer {
               predicate.getExpressionType(), firstExpressions, secondExpressions, thirdExpressions);
     } else if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
-          removeWildcardInQueryFilterByDevice(
-              ((BinaryExpression) predicate).getLeftExpression(),
-              devicePath,
-              schemaTree,
-              typeProvider);
+              removeWildcardInQueryFilterByDevice(
+                      ((BinaryExpression) predicate).getLeftExpression(),
+                      devicePath,
+                      schemaTree,
+                      typeProvider);
       List<Expression> rightExpressions =
           removeWildcardInQueryFilterByDevice(
               ((BinaryExpression) predicate).getRightExpression(),
@@ -626,9 +644,9 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (noStarPaths.size() == 0) {
-        throw new MeasurementNotExistException(
+        throw new SemanticException(
             String.format(
-                "ALIGN BY DEVICE: Measurement '%s' does not exist in device '%s'",
+                "ALIGN BY DEVICE: measurement '%s' does not exist in device '%s'",
                 measurement, devicePath));
       }
 
@@ -705,20 +723,6 @@ public class ExpressionAnalyzer {
         return new Pair<>(timeInRightFilter, false);
       }
       return new Pair<>(null, true);
-    } else if (predicate instanceof BetweenExpression) {
-      Expression timeExpression = ((BetweenExpression) predicate).getExpression();
-      if (timeExpression instanceof TimestampOperand) {
-        return new Pair<>(
-                TimeFilter.in(
-                        ((InExpression) predicate)
-                                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
-                        ((InExpression) predicate).isNotIn()),
-                false);
-      }
-      return new Pair<>(null, true);
-    } 
-    else if (predicate instanceof IsNullExpression) {
-      return new Pair<>(null, true);
     } else if (predicate instanceof InExpression) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
       if (timeExpression instanceof TimestampOperand) {
@@ -728,6 +732,17 @@ public class ExpressionAnalyzer {
                     .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
                 ((InExpression) predicate).isNotIn()),
             false);
+      }
+      return new Pair<>(null, true);
+    } else if (predicate instanceof BetweenExpression) {
+      Expression timeExpression = ((BetweenExpression) predicate).getExpression();
+      if (timeExpression instanceof TimestampOperand) {
+        return new Pair<>(
+                TimeFilter.in(
+                        ((InExpression) predicate)
+                                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
+                        ((InExpression) predicate).isNotIn()),
+                false);
       }
       return new Pair<>(null, true);
     }
@@ -900,17 +915,13 @@ public class ExpressionAnalyzer {
               (UnaryExpression) expression, Collections.singletonList(childExpression))
           .get(0);
     } else if (expression instanceof FunctionExpression) {
-      FunctionExpression functionExpression = (FunctionExpression) expression;
       List<Expression> childExpressions = new ArrayList<>();
       for (Expression suffixExpression : expression.getExpressions()) {
         childExpressions.add(removeAliasFromExpression(suffixExpression));
       }
-      // Reconstruct the function name to lower case to finish the calculation afterwards while the
-      // origin name will be only as output name
-      return new FunctionExpression(
-          functionExpression.getFunctionName().toLowerCase(),
-          functionExpression.getFunctionAttributes(),
-          childExpressions);
+      return reconstructFunctionExpressions(
+              (FunctionExpression) expression, Collections.singletonList(childExpressions))
+          .get(0);
     } else if (expression instanceof TimeSeriesOperand) {
       MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
       if (rawPath.isMeasurementAliasExists()) {
