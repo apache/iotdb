@@ -238,7 +238,7 @@ public class SchemaPartition extends Partition {
           for (TRegionReplicaSet regionReplicaSet : partition.values()) {
             distributionMap
                 .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
-                .addStorageGroup(storageGroup);
+                .setStorageGroup(storageGroup);
           }
         });
     return new ArrayList<>(distributionMap.values());

@@ -327,7 +327,7 @@ public class DataPartition extends Partition {
           for (TRegionReplicaSet regionReplicaSet : ret) {
             distributionMap
                 .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
-                .addStorageGroup(storageGroup);
+                .setStorageGroup(storageGroup);
           }
         });
     return new ArrayList<>(distributionMap.values());

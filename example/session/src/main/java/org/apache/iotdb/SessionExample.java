@@ -134,95 +134,95 @@ public class SessionExample {
   private static void createTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
 
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
-      session.createTimeseries(
-          ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    }
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S2)) {
-      session.createTimeseries(
-          ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    }
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S3)) {
-      session.createTimeseries(
-          ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    }
+    //    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
+    session.createTimeseries(
+        ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    //    }
+    //    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S2)) {
+    session.createTimeseries(
+        ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    //    }
+    //    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S3)) {
+    session.createTimeseries(
+        ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    //    }
 
     // create timeseries with tags and attributes
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S4)) {
-      Map<String, String> tags = new HashMap<>();
-      tags.put("tag1", "v1");
-      Map<String, String> attributes = new HashMap<>();
-      attributes.put("description", "v1");
-      session.createTimeseries(
-          ROOT_SG1_D1_S4,
-          TSDataType.INT64,
-          TSEncoding.RLE,
-          CompressionType.SNAPPY,
-          null,
-          tags,
-          attributes,
-          "temperature");
-    }
+    //    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S4)) {
+    Map<String, String> tags = new HashMap<>();
+    tags.put("tag1", "v1");
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("description", "v1");
+    session.createTimeseries(
+        ROOT_SG1_D1_S4,
+        TSDataType.INT64,
+        TSEncoding.RLE,
+        CompressionType.SNAPPY,
+        null,
+        tags,
+        attributes,
+        "temperature");
+    //    }
 
     // create timeseries with SDT property, SDT will take place when flushing
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
-      // COMPDEV is required
-      // COMPMAXTIME and COMPMINTIME are optional and their unit is ms
-      Map<String, String> props = new HashMap<>();
-      props.put("LOSS", "sdt");
-      props.put("COMPDEV", "0.01");
-      props.put("COMPMINTIME", "2");
-      props.put("COMPMAXTIME", "10");
-      session.createTimeseries(
-          ROOT_SG1_D1_S5,
-          TSDataType.INT64,
-          TSEncoding.RLE,
-          CompressionType.SNAPPY,
-          props,
-          null,
-          null,
-          null);
-    }
+    //    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
+    // COMPDEV is required
+    // COMPMAXTIME and COMPMINTIME are optional and their unit is ms
+    Map<String, String> props = new HashMap<>();
+    props.put("LOSS", "sdt");
+    props.put("COMPDEV", "0.01");
+    props.put("COMPMINTIME", "2");
+    props.put("COMPMAXTIME", "10");
+    session.createTimeseries(
+        ROOT_SG1_D1_S5,
+        TSDataType.INT64,
+        TSEncoding.RLE,
+        CompressionType.SNAPPY,
+        props,
+        null,
+        null,
+        null);
+    //    }
   }
 
   private static void createMultiTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
 
-    if (!session.checkTimeseriesExists("root.sg1.d2.s1")
-        && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
-      List<String> paths = new ArrayList<>();
-      paths.add("root.sg1.d2.s1");
-      paths.add("root.sg1.d2.s2");
-      List<TSDataType> tsDataTypes = new ArrayList<>();
-      tsDataTypes.add(TSDataType.INT64);
-      tsDataTypes.add(TSDataType.INT64);
-      List<TSEncoding> tsEncodings = new ArrayList<>();
-      tsEncodings.add(TSEncoding.RLE);
-      tsEncodings.add(TSEncoding.RLE);
-      List<CompressionType> compressionTypes = new ArrayList<>();
-      compressionTypes.add(CompressionType.SNAPPY);
-      compressionTypes.add(CompressionType.SNAPPY);
+    //    if (!session.checkTimeseriesExists("root.sg1.d2.s1")
+    //        && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d2.s1");
+    paths.add("root.sg1.d2.s2");
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    tsDataTypes.add(TSDataType.INT64);
+    tsDataTypes.add(TSDataType.INT64);
+    List<TSEncoding> tsEncodings = new ArrayList<>();
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
 
-      List<Map<String, String>> tagsList = new ArrayList<>();
-      Map<String, String> tags = new HashMap<>();
-      tags.put("unit", "kg");
-      tagsList.add(tags);
-      tagsList.add(tags);
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("unit", "kg");
+    tagsList.add(tags);
+    tagsList.add(tags);
 
-      List<Map<String, String>> attributesList = new ArrayList<>();
-      Map<String, String> attributes = new HashMap<>();
-      attributes.put("minValue", "1");
-      attributes.put("maxValue", "100");
-      attributesList.add(attributes);
-      attributesList.add(attributes);
+    List<Map<String, String>> attributesList = new ArrayList<>();
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("minValue", "1");
+    attributes.put("maxValue", "100");
+    attributesList.add(attributes);
+    attributesList.add(attributes);
 
-      List<String> alias = new ArrayList<>();
-      alias.add("weight1");
-      alias.add("weight2");
+    List<String> alias = new ArrayList<>();
+    alias.add("weight1");
+    alias.add("weight2");
 
-      session.createMultiTimeseries(
-          paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList, attributesList, alias);
-    }
+    session.createMultiTimeseries(
+        paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList, attributesList, alias);
+    //    }
   }
 
   private static void createTemplate()

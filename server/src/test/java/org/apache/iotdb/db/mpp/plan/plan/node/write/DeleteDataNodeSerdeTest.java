@@ -38,16 +38,13 @@ public class DeleteDataNodeSerdeTest {
 
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
-    PlanNodeId planNodeId = new PlanNodeId("InvalidateSchemaCacheNode");
+    PlanNodeId planNodeId = new PlanNodeId("DeleteDataNode");
     QueryId queryId = new QueryId("query");
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(new PartialPath("root.sg.d1.s1"));
     pathList.add(new PartialPath("root.sg.d2.*"));
-    List<String> storageGroups = new ArrayList<>();
-    storageGroups.add("root.sg1");
-    storageGroups.add("root.sg2");
-    DeleteDataNode deleteDataNode =
-        new DeleteDataNode(planNodeId, queryId, pathList, storageGroups);
+    String storageGroup = "root.sg";
+    DeleteDataNode deleteDataNode = new DeleteDataNode(planNodeId, queryId, pathList, storageGroup);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     deleteDataNode.serialize(byteBuffer);
@@ -67,10 +64,7 @@ public class DeleteDataNodeSerdeTest {
       Assert.assertEquals(pathList.get(i), deserializedPathList.get(i));
     }
 
-    List<String> deserializedStorageGroups = deleteDataNode.getStorageGroups();
-    Assert.assertEquals(storageGroups.size(), deserializedStorageGroups.size());
-    for (int i = 0; i < storageGroups.size(); i++) {
-      Assert.assertEquals(storageGroups.get(i), deserializedStorageGroups.get(i));
-    }
+    String deserializedStorageGroup = deleteDataNode.getStorageGroup();
+    Assert.assertEquals(storageGroup, deserializedStorageGroup);
   }
 }

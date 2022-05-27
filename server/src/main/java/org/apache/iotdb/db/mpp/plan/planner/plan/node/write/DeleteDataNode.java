@@ -38,16 +38,16 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
 
   private final QueryId queryId;
   private final List<PartialPath> pathList;
-  private final List<String> storageGroups;
+  private final String storageGroup;
 
   private TRegionReplicaSet regionReplicaSet;
 
   public DeleteDataNode(
-      PlanNodeId id, QueryId queryId, List<PartialPath> pathList, List<String> storageGroups) {
+      PlanNodeId id, QueryId queryId, List<PartialPath> pathList, String storageGroup) {
     super(id);
     this.pathList = pathList;
     this.queryId = queryId;
-    this.storageGroups = storageGroups;
+    this.storageGroup = storageGroup;
   }
 
   public List<PartialPath> getPathList() {
@@ -64,7 +64,7 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
 
   @Override
   public PlanNode clone() {
-    return new DeleteDataNode(getPlanNodeId(), queryId, pathList, storageGroups);
+    return new DeleteDataNode(getPlanNodeId(), queryId, pathList, storageGroup);
   }
 
   @Override
@@ -85,10 +85,7 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
     for (PartialPath path : pathList) {
       path.serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(storageGroups.size(), byteBuffer);
-    for (String storageGroup : storageGroups) {
-      ReadWriteIOUtils.write(storageGroup, byteBuffer);
-    }
+    ReadWriteIOUtils.write(storageGroup, byteBuffer);
   }
 
   public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
@@ -98,13 +95,9 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
     for (int i = 0; i < size; i++) {
       pathList.add((PartialPath) PathDeserializeUtil.deserialize(byteBuffer));
     }
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> storageGroups = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      storageGroups.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
+    String storageGroup = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeleteDataNode(planNodeId, queryId, pathList, storageGroups);
+    return new DeleteDataNode(planNodeId, queryId, pathList, storageGroup);
   }
 
   @Override
@@ -125,8 +118,8 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
     return queryId;
   }
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
   public String toString() {
@@ -134,7 +127,7 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
         "DeleteDataNode-%s[ Paths: %s, StorageGroups: %s, Region: %s ]",
         getPlanNodeId(),
         pathList,
-        storageGroups,
+        storageGroup,
         regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
   }
 }

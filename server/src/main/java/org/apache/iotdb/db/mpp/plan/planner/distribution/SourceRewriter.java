@@ -112,7 +112,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         analysis.getSchemaPartitionInfo().getSchemaDistributionInfo();
     for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
       List<PartialPath> newPaths =
-          getRelatedPaths(rawPaths, regionReplicaSetInfo.getOwnedStorageGroups());
+          getRelatedPaths(rawPaths, regionReplicaSetInfo.getStorageGroup());
       DeleteTimeSeriesNode split =
           new DeleteTimeSeriesNode(context.queryContext.getQueryId().genPlanNodeId(), newPaths);
       split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
@@ -129,33 +129,29 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         analysis.getDataPartitionInfo().getDataDistributionInfo();
     for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
       List<PartialPath> newPaths =
-          getRelatedPaths(rawPaths, regionReplicaSetInfo.getOwnedStorageGroups());
+          getRelatedPaths(rawPaths, regionReplicaSetInfo.getStorageGroup());
       DeleteDataNode split =
           new DeleteDataNode(
               context.queryContext.getQueryId().genPlanNodeId(),
               context.queryContext.getQueryId(),
               newPaths,
-              regionReplicaSetInfo.getOwnedStorageGroups());
+              regionReplicaSetInfo.getStorageGroup());
       split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
       ret.add(split);
     }
     return ret;
   }
 
-  private List<PartialPath> getRelatedPaths(List<PartialPath> paths, List<String> storageGroups) {
-    List<PartialPath> ret = new ArrayList<>();
+  private List<PartialPath> getRelatedPaths(List<PartialPath> paths, String storageGroup) {
     PathPatternTree patternTree = new PathPatternTree(paths);
-    for (String storageGroup : storageGroups) {
-      try {
-        ret.addAll(
-            patternTree.findOverlappedPaths(
-                new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
-      } catch (IllegalPathException e) {
-        // The IllegalPathException is definitely not threw here
-        throw new RuntimeException(e);
-      }
+    try {
+      return new ArrayList<>(
+          patternTree.findOverlappedPaths(
+              new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+    } catch (IllegalPathException e) {
+      // The IllegalPathException is definitely not threw here
+      throw new RuntimeException(e);
     }
-    return ret;
   }
 
   @Override

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -153,13 +152,15 @@ public class PathPatternTree {
     }
   }
 
+  public void appendPaths(List<PartialPath> paths) {
+    for (PartialPath path : paths) {
+      appendPath(path);
+    }
+  }
+
   public void appendPaths(PartialPath device, List<String> measurementNameList) {
-    try {
-      for (String measurementName : measurementNameList) {
-        appendPath(new PartialPath(device.getFullPath(), measurementName));
-      }
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
+    for (String measurementName : measurementNameList) {
+      appendPath(device.concatNode(measurementName));
     }
   }
 

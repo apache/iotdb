@@ -20,21 +20,16 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.cache.DataNodeSchemaBlacklist;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 
 public class SchemaValidator {
 
   private static final ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
 
-  private static final Set<MeasurementPath> BLACKLIST =
-      Collections.synchronizedSet(new HashSet<>());
+  private static final DataNodeSchemaBlacklist BLACKLIST = DataNodeSchemaBlacklist.getInstance();
 
   public static SchemaTree validate(InsertNode insertNode) {
 
@@ -56,13 +51,7 @@ public class SchemaValidator {
               insertNode.isAligned());
     }
 
-    if (!BLACKLIST.isEmpty()) {
-      for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
-        if (BLACKLIST.contains(measurementPath)) {
-          schemaTree.pruneSingleMeasurement(measurementPath);
-        }
-      }
-    }
+    schemaTree = BLACKLIST.filterTimeseriesInBlacklist(schemaTree);
 
     if (!insertNode.validateAndSetSchema(schemaTree)) {
       throw new SemanticException("Data type mismatch");

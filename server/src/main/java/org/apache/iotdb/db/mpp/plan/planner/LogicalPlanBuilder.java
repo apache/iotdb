@@ -646,11 +646,27 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeleteData(List<PartialPath> paths, List<String> storageGroups) {
-    DeleteDataNode node =
-        new DeleteDataNode(
-            context.getQueryId().genPlanNodeId(), context.getQueryId(), paths, storageGroups);
-    node.addChild(this.root);
-    this.root = node;
+    PartialPath storageGroupPath;
+    PathPatternTree patternTree = new PathPatternTree(paths);
+    DeleteDataNode node;
+    for (String storageGroup : storageGroups) {
+      try {
+        storageGroupPath = new PartialPath(storageGroup);
+      } catch (IllegalPathException e) {
+        // definitely won't happen
+        throw new RuntimeException(e);
+      }
+      node =
+          new DeleteDataNode(
+              context.getQueryId().genPlanNodeId(),
+              context.getQueryId(),
+              patternTree.findOverlappedPaths(
+                  storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)),
+              storageGroup);
+      node.addChild(this.root);
+      this.root = node;
+    }
+
     return this;
   }
 
