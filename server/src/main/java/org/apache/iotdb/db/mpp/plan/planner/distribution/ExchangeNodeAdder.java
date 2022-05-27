@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
@@ -175,25 +174,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     context.putNodeDistribution(
         node.getPlanNodeId(),
         new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
-    return node;
-  }
-
-  public PlanNode visitDeleteTimeseries(DeleteTimeSeriesNode node, NodeGroupContext context) {
-    List<PlanNode> visitedChildren = new ArrayList<>();
-    node.getChildren()
-        .forEach(
-            child -> {
-              visitedChildren.add(visit(child, context));
-            });
-    node.getChildren().clear();
-    visitedChildren.forEach(
-        child -> {
-          ExchangeNode exchangeNode =
-              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-          exchangeNode.setChild(child);
-          exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-          node.addChild(exchangeNode);
-        });
     return node;
   }
 

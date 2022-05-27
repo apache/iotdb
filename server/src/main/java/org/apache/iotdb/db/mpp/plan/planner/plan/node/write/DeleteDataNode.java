@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -39,21 +38,10 @@ import java.util.stream.Collectors;
 public class DeleteDataNode extends WritePlanNode {
 
   private final List<PartialPath> pathList;
-  private long deleteStartTime;
-  private long deleteEndTime;
-
-  private QueryId queryId;
-  private String storageGroup;
+  private final long deleteStartTime;
+  private final long deleteEndTime;
 
   private TRegionReplicaSet regionReplicaSet;
-
-  public DeleteDataNode(
-      PlanNodeId id, QueryId queryId, List<PartialPath> pathList, String storageGroup) {
-    super(id);
-    this.pathList = pathList;
-    this.queryId = queryId;
-    this.storageGroup = storageGroup;
-  }
 
   public DeleteDataNode(
       PlanNodeId id, List<PartialPath> pathList, long deleteStartTime, long deleteEndTime) {
@@ -98,7 +86,7 @@ public class DeleteDataNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    return new DeleteDataNode(getPlanNodeId(), queryId, pathList, storageGroup);
+    return new DeleteDataNode(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
   }
 
   @Override
@@ -114,24 +102,27 @@ public class DeleteDataNode extends WritePlanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DELETE_DATA.serialize(byteBuffer);
-    queryId.serialize(byteBuffer);
+
+    ReadWriteIOUtils.write(deleteStartTime, byteBuffer);
+    ReadWriteIOUtils.write(deleteEndTime, byteBuffer);
+
     ReadWriteIOUtils.write(pathList.size(), byteBuffer);
     for (PartialPath path : pathList) {
       path.serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(storageGroup, byteBuffer);
   }
 
   public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
-    QueryId queryId = QueryId.deserialize(byteBuffer);
+    long deleteStartTime = ReadWriteIOUtils.readLong(byteBuffer);
+    long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
+
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<PartialPath> pathList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       pathList.add((PartialPath) PathDeserializeUtil.deserialize(byteBuffer));
     }
-    String storageGroup = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeleteDataNode(planNodeId, queryId, pathList, storageGroup);
+    return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
   }
 
   @Override
@@ -148,20 +139,11 @@ public class DeleteDataNode extends WritePlanNode {
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public QueryId getQueryId() {
-    return queryId;
-  }
-
-  public String getStorageGroup() {
-    return storageGroup;
-  }
-
   public String toString() {
     return String.format(
-        "DeleteDataNode-%s[ Paths: %s, StorageGroups: %s, Region: %s ]",
+        "DeleteDataNode-%s[ Paths: %s, Region: %s ]",
         getPlanNodeId(),
         pathList,
-        storageGroup,
         regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
   }
 

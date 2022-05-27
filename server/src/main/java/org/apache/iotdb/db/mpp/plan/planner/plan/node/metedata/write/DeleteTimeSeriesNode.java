@@ -40,12 +40,10 @@ public class DeleteTimeSeriesNode extends WritePlanNode {
   private final List<PartialPath> pathList;
 
   private TRegionReplicaSet regionReplicaSet;
-  private List<PlanNode> children;
 
   public DeleteTimeSeriesNode(PlanNodeId id, List<PartialPath> pathList) {
     super(id);
     this.pathList = pathList;
-    this.children = new ArrayList<>();
   }
 
   private DeleteTimeSeriesNode(
@@ -61,13 +59,11 @@ public class DeleteTimeSeriesNode extends WritePlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return children;
+    return null;
   }
 
   @Override
-  public void addChild(PlanNode child) {
-    children.add(child);
-  }
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
