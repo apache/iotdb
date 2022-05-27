@@ -121,8 +121,12 @@ public class TsFileValidationTool {
             continue;
           }
           // get time partition dirs and sort them
-          List<File> timePartitionDirs =
-              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles()));
+          List<File> timePartitionDirs = new ArrayList<>();
+          for (File file : Objects.requireNonNull(dataRegionDir.listFiles())) {
+            if (file != null && !file.getName().endsWith(".DS_Store")) {
+              timePartitionDirs.add(file);
+            }
+          }
           timePartitionDirs.sort(
               (f1, f2) ->
                   Long.compareUnsigned(Long.parseLong(f1.getName()), Long.parseLong(f2.getName())));

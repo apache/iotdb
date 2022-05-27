@@ -22,7 +22,6 @@ package org.apache.iotdb;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -86,14 +85,19 @@ public class RewriteBadFileTool {
     pw = new PrintWriter(new FileWriter(outputLogFilePath));
     try {
       moveAndRewriteBadFile();
-    } catch (IoTDBConnectionException | IOException e) {
+    } catch (IoTDBConnectionException
+        | IOException
+        | StatementExecutionException
+        | InterruptedException e) {
       e.printStackTrace();
     } finally {
       pw.close();
     }
   }
 
-  public static void moveAndRewriteBadFile() throws IOException, IoTDBConnectionException {
+  public static void moveAndRewriteBadFile()
+      throws IOException, IoTDBConnectionException, StatementExecutionException,
+          InterruptedException {
     Session session = new Session(HostIP, rpcPort, user, password);
     session.open(false);
 
@@ -104,25 +108,18 @@ public class RewriteBadFileTool {
         continue;
       }
       String badFilePath = line.replace("-- Find the bad file ", "");
+
       printBoth(String.format("Start moving %s to backup dir.", badFilePath));
-      String targetFilePath =
-          backUpDirPath + File.separator + "sequence" + badFilePath.split("sequence")[1];
+      session.executeNonQueryStatement(String.format("move '%s' '%s'", badFilePath, backUpDirPath));
+      String[] dirs = badFilePath.split("/");
+      String targetFilePath = backUpDirPath + dirs[dirs.length - 1];
       File targetFile = new File(targetFilePath);
-      if (!targetFile.getParentFile().exists()) {
-        targetFile.getParentFile().mkdir();
-      }
-      // move tsfile
-      fsFactory.moveFile(new File(badFilePath), targetFile);
-      // move resource file
-      fsFactory.moveFile(
-          new File(badFilePath + TsFileResource.RESOURCE_SUFFIX),
-          new File(targetFilePath + TsFileResource.RESOURCE_SUFFIX));
       // move mods file
       File modsFile = new File(badFilePath + ModificationFile.FILE_SUFFIX);
       if (modsFile.exists()) {
         fsFactory.moveFile(modsFile, new File(targetFilePath + ModificationFile.FILE_SUFFIX));
       }
-      printBoth("Finish moving.");
+      printBoth(String.format("Finish unloading %s.", badFilePath));
       // rewriteFile
       try {
         printBoth(String.format("Start rewriting %s to iotdb.", badFilePath));
