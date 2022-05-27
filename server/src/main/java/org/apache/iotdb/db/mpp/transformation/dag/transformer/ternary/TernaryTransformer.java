@@ -1,22 +1,5 @@
 /*
- *
- *  * Licensed to the Apache Software Foundation (ASF) under one
- *  * or more contributor license agreements.  See the NOTICE file
- *  * distributed with this work for additional information
- *  * regarding copyright ownership.  The ASF licenses this file
- *  * to you under the Apache License, Version 2.0 (the
- *  * "License"); you may not use this file except in compliance
- *  * with the License.  You may obtain a copy of the License at
- *  *
- *  *     http://www.apache.org/licenses/LICENSE-2.0
- *  *
- *  * Unless required by applicable law or agreed to in writing,
- *  * software distributed under the License is distributed on an
- *  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  * KIND, either express or implied.  See the License for the
- *  * specific language governing permissions and limitations
- *  * under the License.
- *
+ *   * Licensed to the Apache Software Foundation (ASF) under one  * or more contributor license agreements.  See the NOTICE file  * distributed with this work for additional information  * regarding copyright ownership.  The ASF licenses this file  * to you under the Apache License, Version 2.0 (the  * "License"); you may not use this file except in compliance  * with the License.  You may obtain a copy of the License at  *  *     http://www.apache.org/licenses/LICENSE-2.0  *  * Unless required by applicable law or agreed to in writing,  * software distributed under the License is distributed on an  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY  * KIND, either express or implied.  See the License for the  * specific language governing permissions and limitations  * under the License.
  */
 
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary;
@@ -24,6 +7,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
@@ -32,13 +16,32 @@ public abstract class TernaryTransformer extends Transformer {
   protected final LayerPointReader secondPointReader;
   protected final LayerPointReader thirdPointReader;
 
-  public TernaryTransformer(
+  protected final TSDataType firstPointReaderDataType;
+  protected final TSDataType secondPointReaderDataType;
+  protected final TSDataType thirdPointReaderDataType;
+
+  protected final boolean isFirstPointReaderConstant;
+  protected final boolean isSecondPointReaderConstant;
+  protected final boolean isThirdPointReaderConstant;
+
+  protected final boolean isCurrentConstant;
+
+  protected TernaryTransformer(
       LayerPointReader firstPointReader,
       LayerPointReader secondPointReader,
       LayerPointReader thirdPointReader) {
     this.firstPointReader = firstPointReader;
     this.secondPointReader = secondPointReader;
     this.thirdPointReader = thirdPointReader;
+    this.firstPointReaderDataType = firstPointReader.getDataType();
+    this.secondPointReaderDataType = secondPointReader.getDataType();
+    this.thirdPointReaderDataType = thirdPointReader.getDataType();
+    this.isFirstPointReaderConstant = firstPointReader.isConstantPointReader();
+    this.isSecondPointReaderConstant = secondPointReader.isConstantPointReader();
+    this.isThirdPointReaderConstant = thirdPointReader.isConstantPointReader();
+    this.isCurrentConstant =
+        isFirstPointReaderConstant && isSecondPointReaderConstant && isThirdPointReaderConstant;
+    checkType();
   }
 
   @Override
@@ -50,7 +53,7 @@ public abstract class TernaryTransformer extends Transformer {
 
   @Override
   protected boolean cacheValue() throws QueryProcessException, IOException {
-    if (!firstPointReader.next() || !secondPointReader.next() || thirdPointReader.next()) {
+    if (!firstPointReader.next() || !secondPointReader.next() || !thirdPointReader.next()) {
       return false;
     }
 
@@ -74,6 +77,8 @@ public abstract class TernaryTransformer extends Transformer {
 
   protected abstract void transformAndCache() throws QueryProcessException, IOException;
 
+  protected abstract void checkType();
+
   /**
    * finds the smallest, unconsumed, same timestamp that exists in {@code firstPointReader}, {@code
    * rightPointReader} and {@code thirdPointReader}and then caches the timestamp in {@code
@@ -85,10 +90,11 @@ public abstract class TernaryTransformer extends Transformer {
     boolean isFirstConstant = firstPointReader.isConstantPointReader();
     boolean isSecondConstant = secondPointReader.isConstantPointReader();
     boolean isThirdConstant = thirdPointReader.isConstantPointReader();
-    long firstTime = isFirstConstant ? 0 : firstPointReader.currentTime();
-    long secondTime = isSecondConstant ? 0 : secondPointReader.currentTime();
-    long thirdTime = isThirdConstant ? 0 : secondPointReader.currentTime();
-
+    long firstTime = isFirstConstant ? Long.MIN_VALUE : firstPointReader.currentTime();
+    long secondTime = isSecondConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
+    long thirdTime = isThirdConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
+    // Long.MIN_VALUE is used to determine whether  isFirstConstant && isSecondConstant &&
+    // isThirdConstant = true
     while (firstTime != secondTime || firstTime != thirdTime) { // the logic is similar to MergeSort
       if (firstTime < secondTime) {
         if (isFirstConstant) {
@@ -112,7 +118,7 @@ public abstract class TernaryTransformer extends Transformer {
         }
       } else {
         if (isThirdConstant) {
-          firstTime = secondTime;
+          thirdTime = firstTime;
         } else {
           thirdPointReader.readyForNext();
           if (!thirdPointReader.next()) {
@@ -123,13 +129,16 @@ public abstract class TernaryTransformer extends Transformer {
       }
     }
 
-    if (firstTime != 0) cachedTime = firstTime;
+    if (firstTime != Long.MIN_VALUE) {
+      cachedTime = firstTime;
+    }
     return true;
   }
 
-  protected static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
+  protected static double castCurrentValueToDoubleOperand(
+      LayerPointReader layerPointReader, TSDataType layerPointReaderDataType)
       throws IOException, QueryProcessException {
-    switch (layerPointReader.getDataType()) {
+    switch (layerPointReaderDataType) {
       case INT32:
         return layerPointReader.currentInt();
       case INT64:
@@ -138,6 +147,8 @@ public abstract class TernaryTransformer extends Transformer {
         return layerPointReader.currentFloat();
       case DOUBLE:
         return layerPointReader.currentDouble();
+      case BOOLEAN:
+        return layerPointReader.currentBoolean() ? 1.0d : 0.0d;
       default:
         throw new QueryProcessException(
             "Unsupported data type: " + layerPointReader.getDataType().toString());

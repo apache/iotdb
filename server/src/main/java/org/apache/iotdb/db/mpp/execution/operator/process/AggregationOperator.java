@@ -74,7 +74,7 @@ public class AggregationOperator implements ProcessOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
   @Override
@@ -128,7 +128,7 @@ public class AggregationOperator implements ProcessOperator {
 
   public static TsBlock updateResultTsBlockFromAggregators(
       TsBlockBuilder tsBlockBuilder,
-      List<Aggregator> aggregators,
+      List<? extends Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator) {
     tsBlockBuilder.reset();
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();

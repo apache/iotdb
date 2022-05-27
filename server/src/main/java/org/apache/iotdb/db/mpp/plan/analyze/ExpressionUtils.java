@@ -157,14 +157,20 @@ public class ExpressionUtils {
     return resultExpressions;
   }
 
-  public static List<Expression> reconstructTernaryExpressions(ExpressionType expressionType, List<Expression> firstExpressions, List<Expression> secondExpressions, List<Expression> thirdExpressions) {
+  public static List<Expression> reconstructTernaryExpressions(
+      Expression expression,
+      List<Expression> firstExpressions,
+      List<Expression> secondExpressions,
+      List<Expression> thirdExpressions) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression fe : firstExpressions) {
       for (Expression se : secondExpressions)
         for (Expression te : thirdExpressions) {
-          switch (expressionType) {
+          switch (expression.getExpressionType()) {
             case BETWEEN:
-              resultExpressions.add(new BetweenExpression(fe, se, te));
+              resultExpressions.add(
+                  new BetweenExpression(
+                      fe, se, te, ((BetweenExpression) expression).isNotBetween()));
               break;
             default:
               throw new UnsupportedOperationException();
