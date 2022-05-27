@@ -514,6 +514,9 @@ public class SeriesScanUtil {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
 
+    // init TsBlockBuilder for each page reader
+    pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
+
     if (chunkMetaData.isSeq()) {
       if (orderUtils.getAscending()) {
         for (IPageReader iPageReader : pageReaderList) {
