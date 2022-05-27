@@ -68,7 +68,7 @@ public class AggregationOperatorTest {
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
   private ExecutorService instanceNotificationExecutor =
-      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");;
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {

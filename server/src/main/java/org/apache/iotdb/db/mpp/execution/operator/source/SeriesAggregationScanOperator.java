@@ -101,7 +101,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
   /**
@@ -110,7 +110,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
    * timestamp, so it doesn't matter what the time range returns.
    */
   public static ITimeRangeIterator initTimeRangeIterator(
-      GroupByTimeParameter groupByTimeParameter, boolean ascending) {
+      GroupByTimeParameter groupByTimeParameter, boolean ascending, boolean isPreAggr) {
     if (groupByTimeParameter == null) {
       return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
     } else {
@@ -123,7 +123,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           groupByTimeParameter.isIntervalByMonth(),
           groupByTimeParameter.isSlidingStepByMonth(),
           groupByTimeParameter.isLeftCRightO(),
-          groupByTimeParameter.getInterval() > groupByTimeParameter.getSlidingStep());
+          isPreAggr);
     }
   }
 
@@ -155,7 +155,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       // 1. Clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
         aggregator.reset();
-        aggregator.setTimeRange(curTimeRange);
+        aggregator.updateTimeRange(curTimeRange);
       }
 
       // 2. Calculate aggregation result based on current time window
@@ -335,11 +335,9 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       calcFromBatch(tsBlock, curTimeRange);
 
       // judge whether the calculation finished
-      if (isEndCalc(aggregators)
-          || (tsBlockIterator.hasNext()
-              && (ascending
-                  ? tsBlockIterator.currentTime() > curTimeRange.getMax()
-                  : tsBlockIterator.currentTime() < curTimeRange.getMin()))) {
+      if (isEndCalc(aggregators) || ascending
+          ? tsBlock.getEndTime() > curTimeRange.getMax()
+          : tsBlock.getEndTime() < curTimeRange.getMin()) {
         return true;
       }
     }

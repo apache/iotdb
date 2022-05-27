@@ -29,11 +29,13 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -158,6 +160,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case UpdateProcedure:
           req = new UpdateProcedureReq();
           break;
+        case PreDeleteStorageGroup:
+          req = new PreDeleteStorageGroupReq();
+          break;
         case DeleteStorageGroup:
           req = new DeleteStorageGroupReq();
           break;
@@ -182,6 +187,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();
+          break;
+        case CreateFunction:
+          req = new CreateFunctionReq();
           break;
         case GetChildPathsPartition:
           req = new GetChildPathsPartitionReq();

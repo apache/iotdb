@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,7 +36,6 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -42,7 +43,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -255,6 +255,10 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete extPipe
+    cleanDir(config.getExtPipeDir());
+    // delete ext
+    cleanDir(config.getExtDir());
     // delete mqtt dir
     cleanDir(config.getMqttDir());
     // delete wal
@@ -288,6 +292,7 @@ public class EnvironmentUtils {
     try {
       EnvironmentUtils.daemon.active();
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 

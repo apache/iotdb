@@ -175,6 +175,11 @@ public class ConfigNodeDescriptor {
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
+      conf.setUdfLibDir(properties.getProperty("udf_lib_dir", conf.getUdfLibDir()));
+
+      conf.setTemporaryLibDir(
+          properties.getProperty("temporary_lib_dir", conf.getTemporaryLibDir()));
+
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(

@@ -127,7 +127,7 @@ public class DatabaseConnectController {
       logger.info("query finished");
       return result.toString();
     } catch (Exception e) {
-      logger.error("/query failed, request body is {}", json, e);
+      logger.error("/query failed, request body is {}", json.replaceAll("[\n\r\t]", "_"), e);
     }
     return null;
   }

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -59,14 +59,10 @@ import java.util.stream.Collectors;
  * represent the whole aggregation result of this series. And the timestamp will be 0, which is
  * meaningless.
  */
-public class SeriesAggregationScanNode extends SourceNode {
+public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
   // The path of the target series which will be aggregated.
   private final MeasurementPath seriesPath;
-
-  // The list of aggregate functions, each AggregateDescriptor will be output as one column in
-  // result TsBlock
-  private List<AggregationDescriptor> aggregationDescriptorList;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -87,10 +83,8 @@ public class SeriesAggregationScanNode extends SourceNode {
       PlanNodeId id,
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList) {
-    super(id);
+    super(id, AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList));
     this.seriesPath = seriesPath;
-    this.aggregationDescriptorList =
-        AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList);
   }
 
   public SeriesAggregationScanNode(
@@ -139,10 +133,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     return seriesPath;
   }
 
-  public List<AggregationDescriptor> getAggregationDescriptorList() {
-    return aggregationDescriptorList;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of();
@@ -176,10 +166,6 @@ public class SeriesAggregationScanNode extends SourceNode {
         .map(AggregationDescriptor::getOutputColumnNames)
         .flatMap(List::stream)
         .collect(Collectors.toList());
-  }
-
-  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
-    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   @Override
@@ -224,7 +210,6 @@ public class SeriesAggregationScanNode extends SourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
-    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
@@ -245,8 +230,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    TRegionReplicaSet regionReplicaSet =
-        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesAggregationScanNode(
         planNodeId,
@@ -255,7 +238,7 @@ public class SeriesAggregationScanNode extends SourceNode {
         scanOrder,
         timeFilter,
         groupByTimeParameter,
-        regionReplicaSet);
+        null);
   }
 
   @Override
@@ -288,5 +271,24 @@ public class SeriesAggregationScanNode extends SourceNode {
         timeFilter,
         groupByTimeParameter,
         regionReplicaSet);
+  }
+
+  @Override
+  public PartialPath getPartitionPath() {
+    return seriesPath;
+  }
+
+  @Override
+  public Filter getPartitionTimeFilter() {
+    return timeFilter;
+  }
+
+  public String toString() {
+    return String.format(
+        "SeriesAggregationScanNode-%s:[SeriesPath: %s, Descriptor: %s, DataRegion: %s]",
+        this.getPlanNodeId(),
+        this.getSeriesPath(),
+        this.getAggregationDescriptorList(),
+        this.getRegionReplicaSet());
   }
 }

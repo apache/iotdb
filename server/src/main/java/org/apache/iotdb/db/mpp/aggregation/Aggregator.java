@@ -34,12 +34,12 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class Aggregator {
 
-  private final Accumulator accumulator;
+  protected final Accumulator accumulator;
   // In some intermediate result input, inputLocation[] should include two columns
-  private List<InputLocation[]> inputLocationList;
-  private final AggregationStep step;
+  protected List<InputLocation[]> inputLocationList;
+  protected final AggregationStep step;
 
-  private TimeRange timeRange = new TimeRange(0, Long.MAX_VALUE);
+  protected TimeRange curTimeRange = new TimeRange(0, Long.MAX_VALUE);
 
   // Used for SeriesAggregateScanOperator
   public Aggregator(Accumulator accumulator, AggregationStep step) {
@@ -61,7 +61,7 @@ public class Aggregator {
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
     if (inputLocationList == null) {
-      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
+      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
     } else {
       for (InputLocation[] inputLocations : inputLocationList) {
         checkArgument(
@@ -70,7 +70,7 @@ public class Aggregator {
         Column[] timeValueColumn = new Column[2];
         timeValueColumn[0] = tsBlock.getTimeColumn();
         timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        accumulator.addInput(timeValueColumn, timeRange);
+        accumulator.addInput(timeValueColumn, curTimeRange);
       }
     }
   }
@@ -129,7 +129,7 @@ public class Aggregator {
   }
 
   public void reset() {
-    timeRange = new TimeRange(0, Long.MAX_VALUE);
+    curTimeRange = new TimeRange(0, Long.MAX_VALUE);
     accumulator.reset();
   }
 
@@ -137,11 +137,11 @@ public class Aggregator {
     return accumulator.hasFinalResult();
   }
 
-  public void setTimeRange(TimeRange timeRange) {
-    this.timeRange = timeRange;
+  public void updateTimeRange(TimeRange curTimeRange) {
+    this.curTimeRange = curTimeRange;
   }
 
-  public TimeRange getTimeRange() {
-    return timeRange;
+  public TimeRange getCurTimeRange() {
+    return curTimeRange;
   }
 }

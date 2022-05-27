@@ -32,12 +32,15 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -49,6 +52,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
@@ -58,7 +62,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -71,16 +74,19 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -326,9 +332,16 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
+  public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) throws TException {
+    if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
+  }
+
+  @Override
   public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) throws TException {
-    long queryIdRaw = SessionManager.getInstance().requestQueryId(false);
-    QueryId queryId = new QueryId(String.valueOf(queryIdRaw));
+    QueryId queryId = Coordinator.getInstance().createQueryId();
     PlanNodeId planNodeId = queryId.genPlanNodeId();
     DeleteRegionNode deleteRegionNode = new DeleteRegionNode(queryId.genPlanNodeId());
     ConsensusGroupId consensusGroupId =
@@ -341,6 +354,23 @@ public class InternalServiceImpl implements InternalService.Iface {
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
     return consensusImpl.write(consensusGroupId, fragmentInstance).getStatus();
+  }
+
+  @Override
+  public TSStatus createFunction(TCreateFunctionRequest request) {
+    try {
+      UDFRegistrationService.getInstance()
+          .register(
+              request.getUdfName(),
+              request.getClassName(),
+              request.getUris(),
+              UDFExecutableManager.getInstance(),
+              true);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
   }
 
   public void handleClientExit() {}

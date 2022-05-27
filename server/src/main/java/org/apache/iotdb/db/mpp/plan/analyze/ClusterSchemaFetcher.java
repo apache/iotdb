@@ -19,22 +19,22 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -50,7 +50,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,8 +96,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
 
-    QueryId queryId =
-        new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
     // TODO: (xingtanzjr) throw exception
@@ -113,10 +111,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       // The query will be transited to FINISHED when invoking getBatchResult() at the last time
       // So we don't need to clean up it manually
       Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-      if (!tsBlock.isPresent()) {
+      if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
         break;
       }
-
       Binary binary;
       SchemaTree fetchedSchemaTree;
       Column column = tsBlock.get().getColumn(0);
@@ -321,24 +318,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       executeCreateStatement(createAlignedTimeSeriesStatement);
     } else {
-      // todo @zyk implement batch create
-      for (int i = 0; i < measurements.size(); i++) {
-        CreateTimeSeriesStatement createTimeSeriesStatement = new CreateTimeSeriesStatement();
-        createTimeSeriesStatement.setPath(devicePath.concatNode(measurements.get(i)));
-        createTimeSeriesStatement.setDataType(tsDataTypes.get(i));
-        createTimeSeriesStatement.setEncoding(getDefaultEncoding(tsDataTypes.get(i)));
-        createTimeSeriesStatement.setCompressor(
-            TSFileDescriptor.getInstance().getConfig().getCompressor());
-        createTimeSeriesStatement.setProps(Collections.emptyMap());
 
-        executeCreateStatement(createTimeSeriesStatement);
-      }
+      executeCreateTimeseriesByDeviceStatement(
+          new CreateTimeSeriesByDeviceStatement(devicePath, measurements, tsDataTypes));
     }
   }
 
   private void executeCreateStatement(Statement statement) {
-    QueryId queryId =
-        new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
+    long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
@@ -348,6 +335,29 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           && statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
         throw new RuntimeException(
             "cannot auto create schema, status is: " + executionResult.status);
+      }
+    } finally {
+      coordinator.getQueryExecution(queryId).stopAndCleanup();
+    }
+  }
+
+  private void executeCreateTimeseriesByDeviceStatement(
+      CreateTimeSeriesByDeviceStatement statement) {
+    long queryId = SessionManager.getInstance().requestQueryId(false);
+    ExecutionResult executionResult =
+        coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
+    // TODO: throw exception
+    try {
+      int statusCode = executionResult.status.getCode();
+      if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      }
+
+      for (TSStatus subStatus : executionResult.status.subStatus) {
+        if (subStatus.code != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+          throw new RuntimeException(
+              "cannot auto create schema, status is: " + executionResult.status);
+        }
       }
     } finally {
       coordinator.getQueryExecution(queryId).stopAndCleanup();
