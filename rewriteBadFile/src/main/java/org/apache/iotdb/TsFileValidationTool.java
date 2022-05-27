@@ -120,9 +120,13 @@ public class TsFileValidationTool {
           if (!checkIsDirectory(dataRegionDir)) {
             continue;
           }
-          // get time partition dir
-          File[] timePartitionDirs = dataRegionDir.listFiles();
-          for (File timePartitionDir : Objects.requireNonNull(timePartitionDirs)) {
+          // get time partition dirs and sort them
+          List<File> timePartitionDirs =
+              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles()));
+          timePartitionDirs.sort(
+              (f1, f2) ->
+                  Long.compareUnsigned(Long.parseLong(f1.getName()), Long.parseLong(f2.getName())));
+          for (File timePartitionDir : timePartitionDirs) {
             if (!checkIsDirectory(timePartitionDir)) {
               continue;
             }
