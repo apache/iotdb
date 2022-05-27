@@ -197,7 +197,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // ${} are allowed
   private static final Pattern NODE_NAME_IN_SELECT_INTO_PATTERN =
-      Pattern.compile("([a-zA-Z0-9_${}*\\u2E80-\\u9FFF]+)");
+      Pattern.compile("([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)");
 
   private ZoneId zoneId;
   private QueryOperator queryOp;
@@ -2609,7 +2609,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
       if (StringUtils.isNumeric(unWrapped)
-          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
@@ -2632,7 +2632,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
       if (StringUtils.isNumeric(unWrapped)
-          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
@@ -2642,22 +2642,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void checkNodeName(String src) {
-    // node name could starts with * and ends with *
-    // todo: check double star?
-    if ((src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
-        && src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      checkIdentifier(src.substring(1, src.length() - 1));
-    } else if (src.startsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      checkIdentifier(src.substring(1));
-    } else if (src.endsWith(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      checkIdentifier(src.substring(0, src.length() - 1));
-    } else {
-      checkIdentifier(src);
+    // node name could start with * and end with *
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
     }
   }
 
   private void checkIdentifier(String src) {
-    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
       throw new SQLParserException(
           String.format(
               "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
