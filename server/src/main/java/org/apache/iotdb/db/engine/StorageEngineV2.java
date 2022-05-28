@@ -105,7 +105,7 @@ public class StorageEngineV2 implements IService {
       FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
   /** DataRegionId -> DataRegion */
-  private final ConcurrentHashMap<ConsensusGroupId, DataRegion> dataRegionMap =
+  private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
       new ConcurrentHashMap<>();
 
   /** number of ready data region */
@@ -599,6 +599,10 @@ public class StorageEngineV2 implements IService {
 
   public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
+  }
+
+  public List<DataRegionId> getAllDataRegionIds() {
+    return new ArrayList<>(dataRegionMap.keySet());
   }
 
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
