@@ -473,7 +473,6 @@ class RatisConsensus implements IConsensus {
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
-
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     } finally {

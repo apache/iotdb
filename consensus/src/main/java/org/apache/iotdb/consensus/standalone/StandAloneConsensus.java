@@ -45,7 +45,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -132,9 +131,9 @@ class StandAloneConsensus implements IConsensus {
           .setException(new IllegalPeerNumException(consensusGroupSize))
           .build();
     }
-    if (!Objects.equals(thisNode, peers.get(0).getEndpoint())) {
+    if (!peers.contains(new Peer(groupId, thisNode))) {
       return ConsensusGenericResponse.newBuilder()
-          .setException(new IllegalPeerEndpointException(thisNode, peers.get(0).getEndpoint()))
+          .setException(new IllegalPeerEndpointException(thisNode, peers))
           .build();
     }
     AtomicBoolean exist = new AtomicBoolean(true);

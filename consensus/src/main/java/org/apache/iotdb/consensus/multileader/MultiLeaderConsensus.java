@@ -33,6 +33,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
@@ -141,6 +142,11 @@ public class MultiLeaderConsensus implements IConsensus {
     if (consensusGroupSize == 0) {
       return ConsensusGenericResponse.newBuilder()
           .setException(new IllegalPeerNumException(consensusGroupSize))
+          .build();
+    }
+    if (!peers.contains(new Peer(groupId, thisNode))) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new IllegalPeerEndpointException(thisNode, peers))
           .build();
     }
     AtomicBoolean exist = new AtomicBoolean(true);
