@@ -85,6 +85,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -1518,6 +1519,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
     showTTLStatement.setAll(true);
     return showTTLStatement;
+  }
+
+  @Override
+  public Statement visitShowCluster(IoTDBSqlParser.ShowClusterContext ctx) {
+    ShowClusterStatement showClusterStatement = new ShowClusterStatement();
+    return showClusterStatement;
   }
 
   @Override

@@ -193,6 +193,13 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+// Show cluster
+struct TClusterNodeInfos {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -200,6 +207,9 @@ service ConfigIService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+
+  /* Show Cluster */
+  TClusterNodeInfos getAllClusterNodeInfos()
 
   /* StorageGroup */
 

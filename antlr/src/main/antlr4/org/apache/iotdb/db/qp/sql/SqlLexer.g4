@@ -117,6 +117,10 @@ CLEAR
     : C L E A R
     ;
 
+CLUSTER
+    : C L U S T E R
+    ;
+
 COMPRESSION
     : C O M P R E S S I O N
     ;
