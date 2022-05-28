@@ -754,6 +754,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return queryStatement;
   }
 
+  @Override
+  public Statement visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
+    // parse group by time clause & fill clause
+    parseGroupByTimeClause(ctx.groupByFillClause());
+
+    // parse order by time
+    if (ctx.orderByTimeClause() != null) {
+      parseOrderByTimeClause(ctx.orderByTimeClause());
+    }
+
+    // parse limit & offset
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+    return queryStatement;
+  }
+
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
     GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
 
@@ -789,6 +806,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       groupByLevelComponent.setLevels(levels);
       queryStatement.setGroupByLevelComponent(groupByLevelComponent);
+    }
+
+    // parse fill clause
+    if (ctx.fillClause() != null) {
+      parseFillClause(ctx.fillClause());
+    }
+
+    // set groupByTimeComponent
+    queryStatement.setGroupByTimeComponent(groupByTimeComponent);
+  }
+
+  private void parseGroupByTimeClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
+    GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
+
+    // parse time range
+    parseTimeRange(ctx.timeRange(), groupByTimeComponent);
+    groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+
+    // parse time interval
+    groupByTimeComponent.setInterval(
+        parseTimeIntervalOrSlidingStep(
+            ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
+    if (groupByTimeComponent.getInterval() <= 0) {
+      throw new SemanticException(
+          "The second parameter time interval should be a positive integer.");
+    }
+
+    // parse sliding step
+    if (ctx.DURATION_LITERAL().size() == 2) {
+      groupByTimeComponent.setSlidingStep(
+          parseTimeIntervalOrSlidingStep(
+              ctx.DURATION_LITERAL(1).getText(), false, groupByTimeComponent));
+    } else {
+      groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
+      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
     }
 
     // parse fill clause
