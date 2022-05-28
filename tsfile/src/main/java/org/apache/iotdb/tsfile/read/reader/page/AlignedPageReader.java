@@ -47,8 +47,6 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private boolean isModified;
   private TsBlockBuilder builder;
 
-  private final TsBlockBuilder builder;
-
   public AlignedPageReader(
       PageHeader timePageHeader,
       ByteBuffer timePageData,
@@ -77,7 +75,6 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     }
     this.filter = filter;
     this.valueCount = valuePageReaderList.size();
-    this.builder = new TsBlockBuilder(valueDataTypeList);
   }
 
   @Override

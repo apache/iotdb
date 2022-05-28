@@ -41,7 +41,6 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
   private Filter valueFilter;
-
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter) {
