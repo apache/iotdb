@@ -57,6 +57,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -1078,8 +1079,7 @@ public class DataRegion {
       }
       long globalLatestFlushedTime =
           lastFlushTimeManager.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
-      // TODO:LAST CACHE
-      //      tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
+      tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1253,6 +1253,24 @@ public class DataRegion {
     }
   }
 
+  private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
+    for (int i = 0; i < node.getColumns().length; i++) {
+      if (node.getColumns()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      DataNodeSchemaCache.getInstance()
+          .updateLastCache(
+              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+    }
+  }
+
   private void insertToTsFileProcessor(
       InsertRowPlan insertRowPlan, boolean sequence, long timePartitionId)
       throws WriteProcessException {
@@ -1295,7 +1313,7 @@ public class DataRegion {
     long globalLatestFlushTime =
         lastFlushTimeManager.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
 
-    // tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
+    tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -1325,6 +1343,24 @@ public class DataRegion {
         IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
+    }
+  }
+
+  private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
+    for (int i = 0; i < node.getValues().length; i++) {
+      if (node.getValues()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      DataNodeSchemaCache.getInstance()
+          .updateLastCache(
+              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
     }
   }
 

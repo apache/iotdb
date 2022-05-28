@@ -45,6 +45,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private final int valueCount;
   private Filter filter;
   private boolean isModified;
+  private TsBlockBuilder builder;
 
   private final TsBlockBuilder builder;
 
@@ -182,5 +183,10 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public boolean isModified() {
     return isModified;
+  }
+
+  @Override
+  public void initTsBlockBuilder(List<TSDataType> dataTypes) {
+    builder = new TsBlockBuilder(dataTypes);
   }
 }

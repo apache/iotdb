@@ -275,7 +275,11 @@ public class QueryExecution implements IQueryExecution {
       }
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
-      return Optional.of(resultHandle.receive());
+      if (!resultHandle.isFinished()) {
+        return Optional.of(resultHandle.receive());
+      } else {
+        return Optional.empty();
+      }
     } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());
