@@ -536,11 +536,22 @@ public class ConfigManager implements Manager {
     ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
-    if (!req.getDataNodeConsensusProtocolClass().equals(conf.getDataNodeConsensusProtocolClass())) {
+    if (!req.getDataRegionConsensusProtocolClass()
+        .equals(conf.getDataRegionConsensusProtocolClass())) {
       errorResp
           .getStatus()
           .setMessage(
-              "Reject register, please ensure that the data_node_consensus_protocol_class are consistent.");
+              "Reject register, please ensure that the data_region_consensus_protocol_class "
+                  + "are consistent.");
+      return errorResp;
+    }
+    if (!req.getSchemaRegionConsensusProtocolClass()
+        .equals(conf.getSchemaRegionConsensusProtocolClass())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the schema_region_consensus_protocol_class "
+                  + "are consistent.");
       return errorResp;
     }
     if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {

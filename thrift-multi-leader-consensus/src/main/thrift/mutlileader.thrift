@@ -17,37 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus;
+include "common.thrift"
+namespace java org.apache.iotdb.consensus.multileader.thrift
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+enum TLogType {
+   FragmentInstance,
+   InsertNode
+}
 
-import java.io.File;
+struct TLogBatch {
+  1: required TLogType type
+  2: required binary data
+}
 
-public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi {
+struct TSyncLogReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required list<TLogBatch> batches
+}
 
-  @Override
-  public void start() {}
+struct TSyncLogRes {
+  1: required list<common.TSStatus> status
+}
 
-  @Override
-  public void stop() {}
-
-  @Override
-  public TSStatus write(IConsensusRequest IConsensusRequest) {
-    return new TSStatus(0);
-  }
-
-  @Override
-  public DataSet read(IConsensusRequest IConsensusRequest) {
-    return null;
-  }
-
-  @Override
-  public boolean takeSnapshot(File snapshotDir) {
-    return false;
-  }
-
-  @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
+service MultiLeaderConsensusIService {
+  TSyncLogRes syncLog(TSyncLogReq req)
 }

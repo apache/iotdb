@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.wal;
+
+package org.apache.iotdb.consensus.multileader.wal;
 
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
@@ -27,6 +28,9 @@ import java.util.concurrent.TimeoutException;
 
 /** This interface provides search interface for consensus requests via index. */
 public interface ConsensusReqReader {
+
+  long DEFAULT_SEARCH_INDEX = -1;
+
   /**
    * Gets the consensus request at the specified position.
    *
