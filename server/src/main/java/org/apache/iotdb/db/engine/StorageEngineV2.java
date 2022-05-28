@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -500,7 +499,7 @@ public class StorageEngineV2 implements IService {
    * @param insertRowNode
    */
   // TODO:(New insert)
-  public void insert(ConsensusGroupId dataRegionId, InsertRowNode insertRowNode)
+  public void insert(DataRegionId dataRegionId, InsertRowNode insertRowNode)
       throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
@@ -521,7 +520,7 @@ public class StorageEngineV2 implements IService {
 
   /** insert an InsertTabletNode to a storage group */
   // TODO:(New insert)
-  public void insertTablet(ConsensusGroupId dataRegionId, InsertTabletNode insertTabletNode)
+  public void insertTablet(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
       throws StorageEngineException, BatchProcessException {
     if (enableMemControl) {
       try {
