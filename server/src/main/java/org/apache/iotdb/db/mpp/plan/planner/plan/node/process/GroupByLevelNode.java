@@ -161,6 +161,15 @@ public class GroupByLevelNode extends MultiChildNode {
         planNodeId, groupByLevelDescriptors, groupByTimeParameter, scanOrder);
   }
 
+  @Nullable
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;

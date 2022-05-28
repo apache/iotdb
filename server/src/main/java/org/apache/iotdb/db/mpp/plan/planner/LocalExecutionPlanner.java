@@ -143,6 +143,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
@@ -785,7 +786,42 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
-      return super.visitGroupByLevel(node, context);
+      checkArgument(
+          node.getGroupByLevelDescriptors().size() >= 1,
+          "GroupByLevel descriptorList cannot be empty");
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(child -> child.accept(this, context))
+              .collect(Collectors.toList());
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      List<Aggregator> aggregators = new ArrayList<>();
+      Map<String, List<InputLocation>> layout = makeLayout(node);
+      for (GroupByLevelDescriptor descriptor : node.getGroupByLevelDescriptors()) {
+        List<String> inputColumnNames = descriptor.getInputColumnNames();
+        List<InputLocation[]> inputLocationList = new ArrayList<>(inputColumnNames.size());
+        inputColumnNames.forEach(
+            inputColumnName ->
+                inputLocationList.add(layout.get(inputColumnName).toArray(new InputLocation[0])));
+
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationType(),
+                    context
+                        .getTypeProvider()
+                        // get the type of first inputExpression
+                        .getType(descriptor.getInputExpressions().get(0).toString()),
+                    ascending),
+                descriptor.getStep(),
+                inputLocationList));
+      }
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              AggregationOperator.class.getSimpleName());
+      return new AggregationOperator(
+          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
     }
 
     @Override

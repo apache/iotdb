@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class DeviceMergeNode extends ProcessNode {
+public class DeviceMergeNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first OrderBy in this list has higher priority.
@@ -40,8 +40,6 @@ public class DeviceMergeNode extends ProcessNode {
 
   // the list of selected devices
   private final List<String> devices;
-
-  private final List<PlanNode> children;
 
   public DeviceMergeNode(
       PlanNodeId id, List<PlanNode> children, List<OrderBy> mergeOrders, List<String> devices) {
@@ -145,5 +143,10 @@ public class DeviceMergeNode extends ProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), mergeOrders, devices, children);
+  }
+
+  @Override
+  public String toString() {
+    return "DeviceMerge-" + this.getPlanNodeId();
   }
 }

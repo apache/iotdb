@@ -31,6 +31,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
@@ -198,6 +200,16 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
+  public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitDeviceMerge(DeviceMergeNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+
+  @Override
   public PlanNode visitLastQueryMerge(LastQueryMergeNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
@@ -263,7 +275,16 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         children.stream()
             .collect(
                 Collectors.groupingBy(
-                    child -> context.getNodeDistribution(child.getPlanNodeId()).region,
+                    child -> {
+                      TRegionReplicaSet region =
+                          context.getNodeDistribution(child.getPlanNodeId()).region;
+                      if (region == null
+                          && context.getNodeDistribution(child.getPlanNodeId()).type
+                              == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
+                        return calculateSchemaRegionByChildren(child.getChildren(), context);
+                      }
+                      return region;
+                    },
                     Collectors.counting()));
     // Step 2: return the RegionReplicaSet with max count
     return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();
