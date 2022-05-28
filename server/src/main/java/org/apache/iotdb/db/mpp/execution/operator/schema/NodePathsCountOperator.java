@@ -25,25 +25,19 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.Set;
-import java.util.TreeSet;
-
 import static java.util.Objects.requireNonNull;
 
-public class NodeManageMemoryMergeOperator implements ProcessOperator {
+public class NodePathsCountOperator implements ProcessOperator {
+
   private final OperatorContext operatorContext;
-  private Set<String> data;
   private final Operator child;
   private boolean isFinished;
 
-  public NodeManageMemoryMergeOperator(
-      OperatorContext operatorContext, Set<String> data, Operator child) {
+  public NodePathsCountOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.data = data;
     this.child = requireNonNull(child, "child operator is null");
     isFinished = false;
   }
@@ -63,18 +57,11 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
     isFinished = true;
     TsBlock block = child.next();
     TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-    Set<String> nodePaths = new TreeSet<>(data);
-    for (int i = 0; i < block.getPositionCount(); i++) {
-      nodePaths.add(block.getColumn(0).getBinary(i).toString());
-    }
+        new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
 
-    nodePaths.forEach(
-        path -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
-          tsBlockBuilder.declarePosition();
-        });
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeInt(block.getPositionCount());
+    tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
   }
 

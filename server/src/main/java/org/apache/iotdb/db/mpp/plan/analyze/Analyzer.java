@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -62,6 +61,7 @@ import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
@@ -1286,6 +1286,29 @@ public class Analyzer {
     }
 
     @Override
+    public Analysis visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countStatement);
+
+      SchemaNodeManagementPartition schemaNodeManagementPartition =
+          partitionFetcher.getSchemaNodeManagementPartitionWithLevel(
+              new PathPatternTree(countStatement.getPartialPath()), countStatement.getLevel());
+
+      if (schemaNodeManagementPartition == null) {
+        return analysis;
+      }
+      if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
+          && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size()
+              == 0) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+      analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
+      analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
+      analysis.setRespDatasetHeader(HeaderConstant.countNodesHeader);
+      return analysis;
+    }
+
+    @Override
     public Analysis visitShowChildPaths(
         ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
@@ -1293,8 +1316,7 @@ public class Analyzer {
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
           partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildPathsStatement.getPartialPath()),
-              NodeManagementType.CHILD_PATHS);
+              new PathPatternTree(showChildPathsStatement.getPartialPath()));
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1318,8 +1340,7 @@ public class Analyzer {
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
           partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildNodesStatement.getPartialPath()),
-              NodeManagementType.CHILD_NODES);
+              new PathPatternTree(showChildNodesStatement.getPartialPath()));
 
       if (schemaNodeManagementPartition == null) {
         return analysis;

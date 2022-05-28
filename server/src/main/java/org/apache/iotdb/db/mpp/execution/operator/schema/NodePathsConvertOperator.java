@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -28,22 +30,21 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
-
-import java.util.Set;
-import java.util.TreeSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.util.Objects.requireNonNull;
 
-public class NodeManageMemoryMergeOperator implements ProcessOperator {
+public class NodePathsConvertOperator implements ProcessOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(NodePathsConvertOperator.class);
+
   private final OperatorContext operatorContext;
-  private Set<String> data;
   private final Operator child;
   private boolean isFinished;
 
-  public NodeManageMemoryMergeOperator(
-      OperatorContext operatorContext, Set<String> data, Operator child) {
+  public NodePathsConvertOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.data = data;
     this.child = requireNonNull(child, "child operator is null");
     isFinished = false;
   }
@@ -63,18 +64,22 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
     isFinished = true;
     TsBlock block = child.next();
     TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-    Set<String> nodePaths = new TreeSet<>(data);
+        new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
+
     for (int i = 0; i < block.getPositionCount(); i++) {
-      nodePaths.add(block.getColumn(0).getBinary(i).toString());
+      String path = block.getColumn(0).getBinary(i).toString();
+      PartialPath partialPath;
+      try {
+        partialPath = new PartialPath(path);
+      } catch (IllegalPathException e) {
+        LOGGER.warn("Failed to convert node path to PartialPath {}", path);
+        continue;
+      }
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+      tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(partialPath.getTailNode()));
+      tsBlockBuilder.declarePosition();
     }
 
-    nodePaths.forEach(
-        path -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
-          tsBlockBuilder.declarePosition();
-        });
     return tsBlockBuilder.build();
   }
 

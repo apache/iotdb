@@ -30,39 +30,47 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class ChildNodesSchemaScanNode extends SchemaQueryScanNode {
+public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   // the path could be a prefix path with wildcard
   private PartialPath prefixPath;
+  private int level = -1;
 
-  public ChildNodesSchemaScanNode(PlanNodeId id, PartialPath prefixPath) {
+  public NodePathsSchemaScanNode(PlanNodeId id, PartialPath prefixPath, int level) {
     super(id);
     this.prefixPath = prefixPath;
+    this.level = level;
   }
 
   public PartialPath getPrefixPath() {
     return prefixPath;
   }
 
+  public int getLevel() {
+    return level;
+  }
+
   @Override
   public PlanNode clone() {
-    return new ChildNodesSchemaScanNode(getPlanNodeId(), prefixPath);
+    return new NodePathsSchemaScanNode(getPlanNodeId(), prefixPath, level);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return HeaderConstant.showChildNodesHeader.getRespColumns();
+    return HeaderConstant.showChildPathsHeader.getRespColumns();
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.CHILD_NODES_SCAN.serialize(byteBuffer);
+    PlanNodeType.NODE_PATHS_SCAN.serialize(byteBuffer);
     prefixPath.serialize(byteBuffer);
+    byteBuffer.putInt(level);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    int level = buffer.getInt();
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new ChildNodesSchemaScanNode(planNodeId, path);
+    return new NodePathsSchemaScanNode(planNodeId, path, level);
   }
 
   @Override
@@ -76,12 +84,12 @@ public class ChildNodesSchemaScanNode extends SchemaQueryScanNode {
     if (!super.equals(o)) {
       return false;
     }
-    ChildNodesSchemaScanNode that = (ChildNodesSchemaScanNode) o;
-    return prefixPath == that.prefixPath;
+    NodePathsSchemaScanNode that = (NodePathsSchemaScanNode) o;
+    return level == that.level && Objects.equals(prefixPath, that.prefixPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), prefixPath);
+    return Objects.hash(super.hashCode(), prefixPath, level);
   }
 }
