@@ -256,6 +256,8 @@ public class CompactionTaskManager implements IService {
           submitTask(task);
           CompactionMetricsManager.recordTaskInfo(
               task, CompactionTaskStatus.READY_TO_EXECUTE, currentTaskNum.get());
+        } else {
+          logger.warn("A task {} is not submitted", task);
         }
       }
     } catch (InterruptedException e) {

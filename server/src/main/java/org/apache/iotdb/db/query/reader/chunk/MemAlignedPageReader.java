@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -35,13 +34,14 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
-import java.util.stream.Collectors;
+import java.util.List;
 
 public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
   private Filter valueFilter;
+  private TsBlockBuilder builder;
 
   public MemAlignedPageReader(TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter) {
     this.tsBlock = tsBlock;
@@ -87,11 +87,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(
-            chunkMetadata.getValueChunkMetadataList().stream()
-                .map(IChunkMetadata::getDataType)
-                .collect(Collectors.toList()));
+    builder.reset();
 
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
 
@@ -157,5 +153,10 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public boolean isModified() {
     return false;
+  }
+
+  @Override
+  public void initTsBlockBuilder(List<TSDataType> dataTypes) {
+    builder = new TsBlockBuilder(dataTypes);
   }
 }

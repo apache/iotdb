@@ -45,6 +45,8 @@ public class UpdateLastCacheOperator implements ProcessOperator {
   private final Operator child;
 
   // fullPath for queried time series
+  // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
+  // accept PartialPath
   private final PartialPath fullPath;
 
   // dataType for queried time series;

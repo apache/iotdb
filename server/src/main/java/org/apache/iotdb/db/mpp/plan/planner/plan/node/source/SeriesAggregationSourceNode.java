@@ -21,6 +21,11 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import javax.annotation.Nullable;
 
 import java.util.List;
 
@@ -29,6 +34,18 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   // The list of aggregate functions, each AggregateDescriptor will be output as one column in
   // result TsBlock
   protected List<AggregationDescriptor> aggregationDescriptorList;
+
+  // The order to traverse the data.
+  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
+  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
+  protected OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
+
+  // time filter for current series, could be null if doesn't exist
+  @Nullable protected Filter timeFilter;
+
+  // The parameter of `group by time`
+  // Its value will be null if there is no `group by time` clause,
+  @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
   public SeriesAggregationSourceNode(
       PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
@@ -42,5 +59,19 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
 
   public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
     this.aggregationDescriptorList = aggregationDescriptorList;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
+  }
+
+  @Nullable
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  @Nullable
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
   }
 }

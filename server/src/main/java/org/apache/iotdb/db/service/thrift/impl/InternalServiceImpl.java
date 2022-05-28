@@ -52,6 +52,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
@@ -61,7 +62,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -358,8 +358,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) throws TException {
-    long queryIdRaw = SessionManager.getInstance().requestQueryId(false);
-    QueryId queryId = new QueryId(String.valueOf(queryIdRaw));
+    QueryId queryId = Coordinator.getInstance().createQueryId();
     PlanNodeId planNodeId = queryId.genPlanNodeId();
     DeleteRegionNode deleteRegionNode = new DeleteRegionNode(queryId.genPlanNodeId());
     ConsensusGroupId consensusGroupId =

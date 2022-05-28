@@ -306,7 +306,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(sessionId),
               "",
               PARTITION_FETCHER,
@@ -348,7 +348,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -409,7 +409,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -457,7 +457,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -507,7 +507,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(sessionId),
               "",
               PARTITION_FETCHER,
@@ -548,12 +548,11 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
     try {
       long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
-      QueryId id = new QueryId(String.valueOf(queryId));
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
-              id,
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               statement,
               PARTITION_FETCHER,
@@ -563,7 +562,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         throw new RuntimeException("error code: " + result.status);
       }
 
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(id);
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
       TSExecuteStatementResp resp;
       if (queryExecution.isQuery()) {
@@ -615,8 +614,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
       TSQueryDataSet result =
           QueryDataSetUtils.convertTsBlockByFetchSize(
-              COORDINATOR.getQueryExecution(new QueryId(String.valueOf(req.queryId))),
-              req.fetchSize);
+              COORDINATOR.getQueryExecution(req.queryId), req.fetchSize);
       boolean hasResultSet = result.bufferForTime().limit() != 0;
 
       resp.setHasResultSet(hasResultSet);
@@ -664,7 +662,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -715,7 +713,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -766,7 +764,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -815,7 +813,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -857,7 +855,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -899,7 +897,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -947,7 +945,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              genQueryId(queryId),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -1028,14 +1026,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Row Data Query: {}", req.sessionId, req);
+      AUDIT_LOGGER.debug("Session {} execute Raw Data Query: {}", req.sessionId, req);
       long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
-      QueryId id = new QueryId(String.valueOf(queryId));
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
-              id,
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -1045,7 +1042,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         throw new RuntimeException("error code: " + result.status);
       }
 
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(id);
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
       TSExecuteStatementResp resp;
       if (queryExecution.isQuery()) {
@@ -1073,7 +1070,61 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
-    throw new UnsupportedOperationException();
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+    long startTime = System.currentTimeMillis();
+    try {
+      Statement s =
+          StatementGenerator.createStatement(req, SESSION_MANAGER.getZoneId(req.getSessionId()));
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+      AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
+      long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException("error code: " + result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      TSExecuteStatementResp resp;
+      if (queryExecution.isQuery()) {
+        resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+        resp.setStatus(result.status);
+        resp.setQueryDataSet(
+            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
+      } else {
+        resp = RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      return resp;
+    } catch (Exception e) {
+      // TODO call the coordinator to release query resource
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
+    } finally {
+      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
+      }
+    }
   }
 
   @Override
@@ -1148,7 +1199,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              queryId,
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -1212,7 +1263,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   }
 
   private void cleanupQueryExecution(Long queryId) {
-    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(genQueryId(queryId));
+    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
     if (queryExecution != null) {
       queryExecution.stopAndCleanup();
     }

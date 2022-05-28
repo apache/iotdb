@@ -303,4 +303,12 @@ public class AlignedPath extends PartialPath {
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
   }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    if (measurementList.size() != 1) {
+      throw new UnsupportedOperationException();
+    }
+    return getDevicePath().concatNode(measurementList.get(0));
+  }
 }
