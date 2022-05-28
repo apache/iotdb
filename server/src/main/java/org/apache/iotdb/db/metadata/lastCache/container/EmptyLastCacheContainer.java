@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.db.metadata.lastCache.container;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.lastCache.container.value.ILastCacheValue;
+import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 public class EmptyLastCacheContainer implements ILastCacheContainer {
 
-    ILastCacheValue lastCacheValue = null;
+    private EmptyLastCacheContainer() {}
 
+    public static EmptyLastCacheContainer getInstance() {
+        return InstanceHolder.INSTANCE;
+    }
     @Override
     public TimeValuePair getCachedLast(){
         return null;
@@ -39,7 +44,7 @@ public class EmptyLastCacheContainer implements ILastCacheContainer {
 
     @Override
     public synchronized void resetLastCache() {
-        lastCacheValue = null;
+        return;
     }
 
     @Override
@@ -48,6 +53,15 @@ public class EmptyLastCacheContainer implements ILastCacheContainer {
     };
 
     @Override
-    public boolean isEmptyContainer() {return false;}
+    public boolean isEmptyContainer() {return true;}
+
+    static class InstanceHolder {
+
+        private static final EmptyLastCacheContainer INSTANCE = new EmptyLastCacheContainer();
+
+        private InstanceHolder() {
+            // forbidding instantiation
+        }
+    }
 
 }

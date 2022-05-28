@@ -221,15 +221,16 @@ public class LastQueryExecutor {
         resultContainer.get(i).right = readerList.get(index++).readLastPoint();
         if (resultContainer.get(i).right.getValue() != null) {
           resultContainer.get(i).left = true;
-          if (CACHE_ENABLED) {
-            cacheAccessors.get(i).write(resultContainer.get(i).right);
-            if (context.isDebug()) {
-              DEBUG_LOGGER.info(
-                  "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
-                  seriesPaths,
-                  resultContainer.get(i).right.getTimestamp());
-            }
+          cacheAccessors.get(i).write(resultContainer.get(i).right);
+          if (context.isDebug()) {
+            DEBUG_LOGGER.info(
+                "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                seriesPaths,
+                resultContainer.get(i).right.getTimestamp());
           }
+        } else {
+          resultContainer.get(i).left = true;
+          cacheAccessors.get(i).markEmpty();
         }
       }
     }
@@ -245,24 +246,21 @@ public class LastQueryExecutor {
       List<TSDataType> restDataType,
       boolean debugOn) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
-    if (CACHE_ENABLED) {
-      for (PartialPath path : seriesPaths) {
-        if (ID_TABLE_ENABLED) {
-          cacheAccessors.add(new IDTableLastCacheAccessor(path));
-        } else {
-          cacheAccessors.add(new MManagerLastCacheAccessor(path));
-        }
-      }
-    } else {
-      for (int i = 0; i < seriesPaths.size(); i++) {
-        resultContainer.add(new Pair<>(false, null));
-        PartialPath p = ((MeasurementPath) seriesPaths.get(i)).transformToExactPath();
-        restPaths.add(p);
-        restDataType.add(dataTypes.get(i));
+
+    for (PartialPath path : seriesPaths) {
+      if (ID_TABLE_ENABLED) {
+        cacheAccessors.add(new IDTableLastCacheAccessor(path));
+
+      } else {
+        cacheAccessors.add(new MManagerLastCacheAccessor(path));
       }
     }
+
     for (int i = 0; i < cacheAccessors.size(); i++) {
-      if(cacheAccessors.get(i).checkEmptyContainer()){ continue; }
+      if(cacheAccessors.get(i).checkEmptyContainer()){
+        resultContainer.add(new Pair<>(true, null));
+        continue;
+      }
       TimeValuePair tvPair = cacheAccessors.get(i).read();
       if (tvPair == null) {
         resultContainer.add(new Pair<>(false, null));
@@ -291,11 +289,13 @@ public class LastQueryExecutor {
   }
 
   private interface LastCacheAccessor {
-    public TimeValuePair read();
+    TimeValuePair read();
 
-    public void write(TimeValuePair pair);
+    void write(TimeValuePair pair);
 
-    public boolean checkEmptyContainer();
+    boolean checkEmptyContainer();
+
+    void markEmpty();
 
 
   }
@@ -343,6 +343,14 @@ public class LastQueryExecutor {
         return node.getLastCacheContainer().isEmptyContainer();
       }
     }
+
+    public void markEmpty(){
+      if (node == null){
+        return;
+      } else {
+        node.setLastCacheContainer(EmptyLastCacheContainer.getInstance());;
+      }
+    }
   }
 
   private static class IDTableLastCacheAccessor implements LastCacheAccessor {
@@ -379,6 +387,10 @@ public class LastQueryExecutor {
 
     public boolean checkEmptyContainer(){
       return false;
+    }
+
+    public void markEmpty(){
+      return;
     }
   }
 

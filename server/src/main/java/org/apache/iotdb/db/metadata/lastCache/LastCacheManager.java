@@ -109,7 +109,8 @@ public class LastCacheManager {
 
 //    ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
 //    lastCacheContainer.resetLastCache();
-    node.setLastCacheContainer(new EmptyLastCacheContainer());
+    // 单例模式
+    node.setLastCacheContainer(EmptyLastCacheContainer.getInstance());
 
   }
 
