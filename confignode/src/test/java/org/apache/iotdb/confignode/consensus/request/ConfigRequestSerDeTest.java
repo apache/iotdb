@@ -86,7 +86,8 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 7777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
     dataNodeInfo.setLocation(dataNodeLocation);
@@ -211,7 +212,8 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     CreateRegionsReq req0 = new CreateRegionsReq();
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
@@ -249,7 +251,8 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
@@ -310,7 +313,8 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);

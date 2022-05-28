@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -83,8 +84,7 @@ public class ConfigNodeStartupCheck {
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_configNode needs to point to itself
-    if (conf.getConfigNodeConsensusProtocolClass()
-            .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")
+    if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
             || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
@@ -93,22 +93,35 @@ public class ConfigNodeStartupCheck {
           conf.getRpcAddress() + ":" + conf.getRpcPort());
     }
 
-    // When the DataNode consensus protocol is set to StandAlone,
-    // the replication factor must be 1
-    if (conf.getDataNodeConsensusProtocolClass()
-        .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")) {
-      if (conf.getSchemaReplicationFactor() != 1) {
-        throw new ConfigurationException(
-            "schema_replication_factor",
-            String.valueOf(conf.getSchemaReplicationFactor()),
-            String.valueOf(1));
-      }
-      if (conf.getDataReplicationFactor() != 1) {
-        throw new ConfigurationException(
-            "data_replication_factor",
-            String.valueOf(conf.getDataReplicationFactor()),
-            String.valueOf(1));
-      }
+    // When the data region consensus protocol is set to StandAlone,
+    // the data replication factor must be 1
+    if (conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && conf.getDataReplicationFactor() != 1) {
+      throw new ConfigurationException(
+          "data_replication_factor",
+          String.valueOf(conf.getDataReplicationFactor()),
+          String.valueOf(1));
+    }
+
+    // When the schema region consensus protocol is set to StandAlone,
+    // the schema replication factor must be 1
+    if (conf.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && conf.getSchemaReplicationFactor() != 1) {
+      throw new ConfigurationException(
+          "schema_replication_factor",
+          String.valueOf(conf.getSchemaReplicationFactor()),
+          String.valueOf(1));
+    }
+
+    // When the schema region consensus protocol is set to MultiLeaderConsensus,
+    // we should report an error
+    if (conf.getSchemaRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          String.valueOf(conf.getSchemaRegionConsensusProtocolClass()),
+          String.format(
+              "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
   }
 
@@ -183,7 +196,8 @@ public class ConfigNodeStartupCheck {
             new TConfigNodeLocation(
                 new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
-            conf.getDataNodeConsensusProtocolClass(),
+            conf.getDataRegionConsensusProtocolClass(),
+            conf.getSchemaRegionConsensusProtocolClass(),
             conf.getSeriesPartitionSlotNum(),
             conf.getSeriesPartitionExecutorClass(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
@@ -215,7 +229,9 @@ public class ConfigNodeStartupCheck {
     systemProperties.setProperty(
         "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass());
     systemProperties.setProperty(
-        "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass());
+        "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass());
+    systemProperties.setProperty(
+        "schema_region_consensus_protocol_class", conf.getSchemaRegionConsensusProtocolClass());
 
     // PartitionSlot configuration
     systemProperties.setProperty(
@@ -282,15 +298,28 @@ public class ConfigNodeStartupCheck {
           configNodeConsensusProtocolClass);
     }
 
-    String dataNodeConsensusProtocolClass =
-        systemProperties.getProperty("data_node_consensus_protocol_class", null);
-    if (dataNodeConsensusProtocolClass == null) {
+    String dataRegionConsensusProtocolClass =
+        systemProperties.getProperty("data_region_consensus_protocol_class", null);
+    if (dataRegionConsensusProtocolClass == null) {
       needReWrite = true;
-    } else if (!dataNodeConsensusProtocolClass.equals(conf.getDataNodeConsensusProtocolClass())) {
+    } else if (!dataRegionConsensusProtocolClass.equals(
+        conf.getDataRegionConsensusProtocolClass())) {
       throw new ConfigurationException(
-          "data_node_consensus_protocol_class",
-          conf.getDataNodeConsensusProtocolClass(),
-          dataNodeConsensusProtocolClass);
+          "data_region_consensus_protocol_class",
+          conf.getDataRegionConsensusProtocolClass(),
+          dataRegionConsensusProtocolClass);
+    }
+
+    String schemaRegionConsensusProtocolClass =
+        systemProperties.getProperty("schema_region_consensus_protocol_class", null);
+    if (schemaRegionConsensusProtocolClass == null) {
+      needReWrite = true;
+    } else if (!schemaRegionConsensusProtocolClass.equals(
+        conf.getSchemaRegionConsensusProtocolClass())) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          conf.getSchemaRegionConsensusProtocolClass(),
+          schemaRegionConsensusProtocolClass);
     }
 
     // PartitionSlot configuration

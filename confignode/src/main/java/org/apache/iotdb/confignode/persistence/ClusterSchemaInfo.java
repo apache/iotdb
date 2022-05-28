@@ -497,6 +497,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
+      PartialPath partialPath, int level) {
+    Pair<List<PartialPath>, Set<PartialPath>> matchedPathsInNextLevel =
+        new Pair(new HashSet<>(), new HashSet<>());
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, true, null);
+    } catch (MetadataException e) {
+      LOGGER.error("Error get matched paths in given level.", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return matchedPathsInNextLevel;
+  }
+
   public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath partialPath) {
     Pair<Set<String>, Set<PartialPath>> matchedPathsInNextLevel =
         new Pair(new HashSet<>(), new HashSet<>());

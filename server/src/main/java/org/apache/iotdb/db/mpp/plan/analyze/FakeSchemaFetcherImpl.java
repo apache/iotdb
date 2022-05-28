@@ -61,13 +61,13 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
     root.addChild("sg", sg);
 
     SchemaMeasurementNode s1 =
-        new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
+        new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32), null);
     SchemaMeasurementNode s2 =
-        new SchemaMeasurementNode("s2", new MeasurementSchema("s2", TSDataType.DOUBLE));
+        new SchemaMeasurementNode("s2", new MeasurementSchema("s2", TSDataType.DOUBLE), null);
     SchemaMeasurementNode s3 =
-        new SchemaMeasurementNode("s3", new MeasurementSchema("s3", TSDataType.BOOLEAN));
+        new SchemaMeasurementNode("s3", new MeasurementSchema("s3", TSDataType.BOOLEAN), null);
     SchemaMeasurementNode s4 =
-        new SchemaMeasurementNode("s4", new MeasurementSchema("s4", TSDataType.TEXT));
+        new SchemaMeasurementNode("s4", new MeasurementSchema("s4", TSDataType.TEXT), null);
     s2.setAlias("status");
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");

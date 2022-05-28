@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -39,24 +38,13 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
 
   private PlanNode child;
 
-  private NodeManagementType type;
-
-  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<String> data, NodeManagementType type) {
+  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<String> data) {
     super(id);
     this.data = data;
-    this.type = type;
   }
 
   public Set<String> getData() {
     return data;
-  }
-
-  public NodeManagementType getType() {
-    return type;
-  }
-
-  public void setType(NodeManagementType type) {
-    this.type = type;
   }
 
   public PlanNode getChild() {
@@ -75,7 +63,7 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new NodeManagementMemoryMergeNode(getPlanNodeId(), this.data, this.type);
+    return new NodeManagementMemoryMergeNode(getPlanNodeId(), this.data);
   }
 
   @Override
@@ -99,7 +87,6 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     int size = data.size();
     ReadWriteIOUtils.write(size, byteBuffer);
     data.forEach(node -> ReadWriteIOUtils.write(node, byteBuffer));
-    byteBuffer.put((byte) type.ordinal());
   }
 
   public static NodeManagementMemoryMergeNode deserialize(ByteBuffer byteBuffer) {
@@ -108,8 +95,7 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     for (int i = 0; i < size; i++) {
       data.add(ReadWriteIOUtils.readString(byteBuffer));
     }
-    NodeManagementType type = NodeManagementType.findByValue(byteBuffer.get());
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new NodeManagementMemoryMergeNode(planNodeId, data, type);
+    return new NodeManagementMemoryMergeNode(planNodeId, data);
   }
 }

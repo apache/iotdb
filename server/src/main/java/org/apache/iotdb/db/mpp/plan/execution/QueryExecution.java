@@ -39,8 +39,8 @@ import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceContext;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceVisitor;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
-import org.apache.iotdb.db.mpp.plan.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
+import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
@@ -275,7 +275,11 @@ public class QueryExecution implements IQueryExecution {
       }
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
-      return Optional.of(resultHandle.receive());
+      if (!resultHandle.isFinished()) {
+        return Optional.of(resultHandle.receive());
+      } else {
+        return Optional.empty();
+      }
     } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());

@@ -117,14 +117,6 @@ CLEAR
     : C L E A R
     ;
 
-COMPRESSION
-    : C O M P R E S S I O N
-    ;
-
-COMPRESSOR
-    : C O M P R E S S O R
-    ;
-
 CONCAT
     : C O N C A T
     ;
@@ -157,10 +149,6 @@ CREATE
     : C R E A T E
     ;
 
-DATATYPE
-    : D A T A T Y P E
-    ;
-
 DEBUG
     : D E B U G
     ;
@@ -191,10 +179,6 @@ DISABLE
 
 DROP
     : D R O P
-    ;
-
-ENCODING
-    : E N C O D I N G
     ;
 
 END
@@ -619,103 +603,6 @@ WRITABLE
     ;
 
 
-// Data Type Keywords
-
-DATATYPE_VALUE
-    : BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
-    ;
-
-BOOLEAN
-    : B O O L E A N
-    ;
-
-DOUBLE
-    : D O U B L E
-    ;
-
-FLOAT
-    : F L O A T
-    ;
-
-INT32
-    : I N T '3' '2'
-    ;
-
-INT64
-    : I N T '6' '4'
-    ;
-
-TEXT
-    : T E X T
-    ;
-
-
-// Encoding Type Keywords
-
-ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | ZIGZAG | FREQ
-    ;
-
-DICTIONARY
-    : D I C T I O N A R Y
-    ;
-
-DIFF
-    : D I F F
-    ;
-
-GORILLA
-    : G O R I L L A
-    ;
-
-PLAIN
-    : P L A I N
-    ;
-
-REGULAR
-    : R E G U L A R
-    ;
-
-RLE
-    : R L E
-    ;
-
-TS_2DIFF
-    : T S '_' '2' D I F F
-    ;
-
-ZIGZAG
-    : Z I G Z A G
-    ;
-
-FREQ
-    : F R E Q
-    ;
-
-
-// Compressor Type Keywords
-
-COMPRESSOR_VALUE
-    : GZIP | LZ4 | SNAPPY | UNCOMPRESSED
-    ;
-
-GZIP
-    : G Z I P
-    ;
-
-LZ4
-    : L Z '4'
-    ;
-
-SNAPPY
-    : S N A P P Y
-    ;
-
-UNCOMPRESSED
-    : U N C O M P R E S S E D
-    ;
-
-
 // Privileges Keywords
 
 PRIVILEGE_VALUE
@@ -1005,15 +892,15 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
+    : '"' ( '\\'. | '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\''| '\\') )* '\''
+    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`'| '\\') )* '`'
+    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
     ;
 
 
