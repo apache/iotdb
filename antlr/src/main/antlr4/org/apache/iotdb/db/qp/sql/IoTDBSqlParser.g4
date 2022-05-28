@@ -76,15 +76,19 @@ syncStatement
 
 // Create Storage Group
 setStorageGroup
-    : SET STORAGE GROUP TO prefixPath (WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*)?
+    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
+    ;
+
+createStorageGroup
+    : CREATE STORAGE GROUP prefixPath storageGroupAttributesClause?
+    ;
+
+storageGroupAttributesClause
+    : WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*
     ;
 
 storageGroupAttributeClause
     : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL) '=' INTEGER_LITERAL
-    ;
-
-createStorageGroup
-    : CREATE STORAGE GROUP prefixPath
     ;
 
 // Create Timeseries
