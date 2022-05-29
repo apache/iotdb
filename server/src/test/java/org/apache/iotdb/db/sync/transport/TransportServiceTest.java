@@ -71,7 +71,7 @@ public class TransportServiceTest {
 
   @Before
   public void setUp() throws Exception {
-    remoteIp1 = InetAddress.getLocalHost().getHostAddress();
+    remoteIp1 = "127.0.0.1";
     fileDir = new File(SyncPathUtil.getReceiverFileDataDir(pipeName1, remoteIp1, createdTime1));
     pipeDataQueue =
         PipeDataQueueFactory.getBufferedPipeDataQueue(
