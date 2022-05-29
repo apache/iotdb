@@ -35,7 +35,6 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
@@ -114,7 +113,7 @@ public class SchemaQueryAddLastPointOperator implements ProcessOperator {
                 "cannot fetch last point, status is: %s, msg is: %s",
                 executionResult.status.getCode(), executionResult.status.getMessage()));
       }
-      Map<String, String> timeseriesToLastPoint = new HashMap<>();
+      Map<String, Long> timeseriesToLastPoint = new HashMap<>();
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         // The query will be transited to FINISHED when invoking getBatchResult() at the last time
         // So we don't need to clean up it manually
@@ -124,8 +123,8 @@ public class SchemaQueryAddLastPointOperator implements ProcessOperator {
         }
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           String timeseries = tsBlock.get().getColumn(0).getBinary(i).toString();
-          String value = tsBlock.get().getColumn(1).getBinary(i).toString();
-          timeseriesToLastPoint.put(timeseries, value);
+          long time = tsBlock.get().getTimeByIndex(i);
+          timeseriesToLastPoint.put(timeseries, time);
         }
       }
       // Step 3: generate result
@@ -135,11 +134,11 @@ public class SchemaQueryAddLastPointOperator implements ProcessOperator {
         for (int j = 0; j < block.getValueColumnCount(); j++) {
           builder.getColumnBuilder(j).writeBinary(block.getColumn(j).getBinary(i));
         }
-        Binary binary = new Binary("0");
+        long time = 0;
         if (timeseriesToLastPoint.containsKey(timeseries)) {
-          binary = new Binary(timeseriesToLastPoint.get(timeseries));
+          time = timeseriesToLastPoint.get(timeseries);
         }
-        builder.getColumnBuilder(8).writeBinary(binary);
+        builder.getColumnBuilder(8).writeLong(time);
         builder.declarePosition();
       }
     }

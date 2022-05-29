@@ -127,7 +127,7 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TAGS, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_ATTRIBUTES, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT)),
+                new ColumnHeader(COLUMN_TIME, TSDataType.INT64)),
             true);
     showDevicesHeader =
         new DatasetHeader(

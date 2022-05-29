@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,47 +70,26 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
       TsBlockBuilder tsBlockBuilder =
           new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
       // Step 1: load all rows
-      Map<String, List<Object[]>> valueToLines = new HashMap<>();
+      Map<Long, List<Object[]>> valueToLines = new HashMap<>();
       for (int i = 0; i < children.size(); i++) {
         while (children.get(i).hasNext()) {
           TsBlock tsBlock = children.get(i).next();
           TsBlock.TsBlockRowIterator tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
           while (tsBlockRowIterator.hasNext()) {
             Object[] row = tsBlockRowIterator.next();
-            String value = row[row.length - 2].toString();
-            if (!valueToLines.containsKey(value)) {
-              valueToLines.put(value, new ArrayList<>());
+            long time = Long.parseLong(row[row.length - 2].toString());
+            if (!valueToLines.containsKey(time)) {
+              valueToLines.put(time, new ArrayList<>());
             }
-            valueToLines.get(value).add(row);
+            valueToLines.get(time).add(row);
           }
         }
       }
       // Step 2: sort and rewrite
-      List<String> values = new ArrayList<>(valueToLines.keySet());
-      values.sort(
-          (o1, o2) -> {
-            long value1;
-            long value2;
-            try {
-              value1 = Long.parseLong(o1);
-            } catch (Exception e) {
-              return -1;
-            }
-            try {
-              value2 = Long.parseLong(o2);
-            } catch (Exception e) {
-              return 1;
-            }
-            if (value1 > value2) {
-              return 1;
-            } else if (value1 == value2) {
-              return 0;
-            } else {
-              return -1;
-            }
-          });
-      for (String value : values) {
-        List<Object[]> rows = valueToLines.get(value);
+      List<Long> times = new ArrayList<>(valueToLines.keySet());
+      times.sort(Comparator.reverseOrder());
+      for (Long time : times) {
+        List<Object[]> rows = valueToLines.get(time);
         for (Object[] row : rows) {
           tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(row[0].toString()));
           tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(row[1].toString()));
