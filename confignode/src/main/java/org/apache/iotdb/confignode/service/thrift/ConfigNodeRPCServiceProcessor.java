@@ -53,13 +53,13 @@ import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TOperateReceiverPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -276,13 +277,8 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     PartialPath partialPath = patternTree.splitToPathList().get(0);
     SchemaNodeManagementResp schemaNodeManagementResp;
-    if (req.getType() == NodeManagementType.CHILD_PATHS) {
-      schemaNodeManagementResp =
-          (SchemaNodeManagementResp) configManager.getChildPathsPartition(partialPath);
-    } else {
-      schemaNodeManagementResp =
-          (SchemaNodeManagementResp) configManager.getChildNodesPartition(partialPath);
-    }
+    schemaNodeManagementResp =
+        (SchemaNodeManagementResp) configManager.getNodePathsPartition(partialPath, req.getLevel());
     TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
     schemaNodeManagementResp.convertToRpcSchemaNodeManagementPartitionResp(resp);
     return resp;
@@ -362,12 +358,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus login(TLoginReq req) throws TException {
+  public TPermissionInfoResp login(TLoginReq req) throws TException {
     return configManager.login(req.getUserrname(), req.getPassword());
   }
 
   @Override
-  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+  public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     return configManager.checkUserPrivileges(
         req.getUsername(), req.getPaths(), req.getPermission());
   }
@@ -394,9 +390,14 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
+  public TSStatus createFunction(TCreateFunctionReq req) {
+    return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
+  }
+
+  @Override
   public TSStatus operateReceiverPipe(TOperateReceiverPipeReq req) throws TException {
     OperateReceiverPipeReq operateReceiverPipeReq = new OperateReceiverPipeReq(req);
-    TSStatus status = configManager.operatePipe(operateReceiverPipeReq);
+    TSStatus status = configManager.operateReceiverPipe(operateReceiverPipeReq);
 
     // Print log to record the ConfigNode that performs the OperatePipeRequest
     LOGGER.info("Execute OperatePipeRequest {} with result {}", req, status);

@@ -30,10 +30,11 @@ struct TDataNodeRegisterReq {
 }
 
 struct TGlobalConfig {
-  1: required string dataNodeConsensusProtocolClass
-  2: required i32 seriesPartitionSlotNum
-  3: required string seriesPartitionExecutorClass
-  4: required i64 timePartitionInterval
+  1: required string dataRegionConsensusProtocolClass
+  2: required string schemaRegionConsensusProtocolClass
+  3: required i32 seriesPartitionSlotNum
+  4: required string seriesPartitionExecutorClass
+  5: required i64 timePartitionInterval
 }
 
 struct TDataNodeRegisterResp {
@@ -119,14 +120,9 @@ struct TSchemaPartitionResp {
 
 // Node Management
 
-enum NodeManagementType {
-CHILD_PATHS,
-CHILD_NODES
-}
-
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
-  2: required NodeManagementType type
+  2: optional i32 level
 }
 
 struct TSchemaNodeManagementResp {
@@ -164,6 +160,24 @@ struct TAuthorizerResp {
   2: required map<string, list<string>> authorizerInfo
 }
 
+struct TUserResp{
+  1: required string username
+  2: required string password
+  3: required list<string> privilegeList
+  4: required list<string> roleList
+}
+
+struct TRoleResp{
+  1: required string roleName
+  2: required list<string> privilegeList
+}
+
+struct TPermissionInfoResp{
+  1: required TUserResp userInfo
+  2: required map<string, TRoleResp> roleInfo
+  3: required common.TSStatus status
+}
+
 struct TLoginReq {
   1: required string userrname
   2: required string password
@@ -178,19 +192,27 @@ struct TCheckUserPrivilegesReq{
 // ConfigNode
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
-  2: required string dataNodeConsensusProtocolClass
-  3: required i32 seriesPartitionSlotNum
-  4: required string seriesPartitionExecutorClass
-  5: required i64 defaultTTL
-  6: required i64 timePartitionInterval
-  7: required i32 schemaReplicationFactor
-  8: required i32 dataReplicationFactor
+  2: required string dataRegionConsensusProtocolClass
+  3: required string schemaRegionConsensusProtocolClass
+  4: required i32 seriesPartitionSlotNum
+  5: required string seriesPartitionExecutorClass
+  6: required i64 defaultTTL
+  7: required i64 timePartitionInterval
+  8: required i32 schemaReplicationFactor
+  9: required i32 dataReplicationFactor
 }
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: optional common.TConsensusGroupId partitionRegionId
   3: optional list<common.TConfigNodeLocation> configNodeList
+}
+
+// UDF
+struct TCreateFunctionReq {
+  1: required string udfName
+  2: required string className
+  3: required list<string> uris
 }
 
 // Sync
@@ -271,15 +293,19 @@ service ConfigIService {
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
-  common.TSStatus login(TLoginReq req)
+  TPermissionInfoResp login(TLoginReq req)
 
-  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
+  TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   /* ConfigNode */
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  /* UDF */
+
+  common.TSStatus createFunction(TCreateFunctionReq req)
 
   /* Sync */
   common.TSStatus operateReceiverPipe(TOperateReceiverPipeReq req)

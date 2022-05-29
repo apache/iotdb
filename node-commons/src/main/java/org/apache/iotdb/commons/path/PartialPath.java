@@ -84,6 +84,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
+   * only use this method in following situations: 1. you are sure you do not want to split the
+   * path. 2. you are sure path is correct.
+   *
    * @param path path
    * @param needSplit whether to split path to nodes, needSplit can only be false.
    */
@@ -122,6 +125,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
+  /**
+   * only use this method in following situations: 1. you are sure node is allowed in syntax
+   * convention. 2. you are sure node needs not to be checked.
+   */
   public PartialPath concatNode(String node) {
     String[] newPathNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newPathNodes[newPathNodes.length - 1] = node;
@@ -539,5 +546,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     partialPath.device = path.getDevice();
     partialPath.fullPath = path.getFullPath();
     return partialPath;
+  }
+
+  public PartialPath transformToPartialPath() {
+    return this;
   }
 }

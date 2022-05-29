@@ -20,9 +20,9 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -30,12 +30,14 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -160,6 +162,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case UpdateProcedure:
           req = new UpdateProcedureReq();
           break;
+        case PreDeleteStorageGroup:
+          req = new PreDeleteStorageGroupReq();
+          break;
         case DeleteStorageGroup:
           req = new DeleteStorageGroupReq();
           break;
@@ -185,8 +190,11 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();
           break;
-        case GetChildPathsPartition:
-          req = new GetChildPathsPartitionReq();
+        case CreateFunction:
+          req = new CreateFunctionReq();
+          break;
+        case GetNodePathsPartition:
+          req = new GetNodePathsPartitionReq();
           break;
         case OperatePipe:
           req = new OperateReceiverPipeReq();

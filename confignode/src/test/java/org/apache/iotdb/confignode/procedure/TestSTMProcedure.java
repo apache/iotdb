@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.entity.SimpleSTMProcedure;
+import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 
 import org.junit.Assert;

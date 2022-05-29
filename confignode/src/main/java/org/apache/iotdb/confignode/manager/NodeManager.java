@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -63,8 +62,10 @@ public class NodeManager {
   private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
     // Set TGlobalConfig
     TGlobalConfig globalConfig = new TGlobalConfig();
-    globalConfig.setDataNodeConsensusProtocolClass(
-        ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass());
+    globalConfig.setDataRegionConsensusProtocolClass(
+        ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
+    globalConfig.setSchemaRegionConsensusProtocolClass(
+        ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionConsensusProtocolClass());
     globalConfig.setSeriesPartitionSlotNum(
         ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
@@ -140,7 +141,7 @@ public class NodeManager {
 
     // Return PartitionRegionId
     resp.setPartitionRegionId(
-        ConsensusGroupId.convertToTConsensusGroupId(getConsensusManager().getConsensusGroupId()));
+        getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
     // Return online ConfigNodes
     resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());

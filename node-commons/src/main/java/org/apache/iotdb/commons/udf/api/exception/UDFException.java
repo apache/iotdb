@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.udf.api.exception;
 
-public class UDFException extends Exception {
+public class UDFException extends RuntimeException {
 
   public UDFException(String message) {
     super(message);

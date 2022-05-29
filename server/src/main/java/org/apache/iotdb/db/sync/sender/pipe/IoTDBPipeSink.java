@@ -22,11 +22,13 @@ package org.apache.iotdb.db.sync.sender.pipe;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.List;
 import java.util.Objects;
 
 public class IoTDBPipeSink implements PipeSink {
-  private final PipeSink.Type type;
+  private final PipeSinkType pipeSinkType;
 
   private String name;
   private String ip;
@@ -36,23 +38,28 @@ public class IoTDBPipeSink implements PipeSink {
     ip = SyncConstant.DEFAULT_PIPE_SINK_IP;
     port = SyncConstant.DEFAULT_PIPE_SINK_PORT;
     this.name = name;
-    type = Type.IoTDB;
+    pipeSinkType = PipeSinkType.IoTDB;
   }
 
   @Override
-  public void setAttribute(String attr, String value) throws PipeSinkException {
-    attr = attr.toLowerCase();
-    if (attr.equals("ip")) {
-      ip = value;
-    } else if (attr.equals("port")) {
-      try {
-        port = Integer.parseInt(value);
-      } catch (NumberFormatException e) {
-        throw new PipeSinkException(attr, value, TSDataType.INT32.name());
+  public void setAttribute(List<Pair<String, String>> params) throws PipeSinkException {
+    for (Pair<String, String> pair : params) {
+      String attr = pair.left;
+      String value = pair.right;
+
+      attr = attr.toLowerCase();
+      if (attr.equals("ip")) {
+        ip = value;
+      } else if (attr.equals("port")) {
+        try {
+          port = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+          throw new PipeSinkException(attr, value, TSDataType.INT32.name());
+        }
+      } else {
+        throw new PipeSinkException(
+            "There is No attribute " + attr + " in " + PipeSinkType.IoTDB + " pipeSink.");
       }
-    } else {
-      throw new PipeSinkException(
-          "There is No attribute " + attr + " in " + Type.IoTDB + " pipeSink.");
     }
   }
 
@@ -65,13 +72,13 @@ public class IoTDBPipeSink implements PipeSink {
   }
 
   @Override
-  public String getName() {
+  public String getPipeSinkName() {
     return name;
   }
 
   @Override
-  public Type getType() {
-    return type;
+  public PipeSinkType getType() {
+    return pipeSinkType;
   }
 
   @Override
@@ -82,8 +89,8 @@ public class IoTDBPipeSink implements PipeSink {
   @Override
   public String toString() {
     return "IoTDBPipeSink{"
-        + "type="
-        + type
+        + "pipeSinkType="
+        + pipeSinkType
         + ", name='"
         + name
         + '\''
@@ -101,13 +108,13 @@ public class IoTDBPipeSink implements PipeSink {
     if (o == null || getClass() != o.getClass()) return false;
     IoTDBPipeSink pipeSink = (IoTDBPipeSink) o;
     return port == pipeSink.port
-        && type == pipeSink.type
+        && pipeSinkType == pipeSink.pipeSinkType
         && Objects.equals(name, pipeSink.name)
         && Objects.equals(ip, pipeSink.ip);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, name, ip, port);
+    return Objects.hash(pipeSinkType, name, ip, port);
   }
 }

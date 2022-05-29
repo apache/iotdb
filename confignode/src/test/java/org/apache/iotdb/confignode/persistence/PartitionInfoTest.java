@@ -129,6 +129,8 @@ public class PartitionInfoTest {
     int nextId = partitionInfo.getNextRegionGroupId();
 
     Map<TConsensusGroupId, Long> counter_before = partitionInfo.getRegionSlotsCounter();
+    partitionInfo.getDeletedRegionSet().add(dataRegionReplicaSet);
+    partitionInfo.getDeletedRegionSet().add(schemaRegionReplicaSet);
     partitionInfo.processTakeSnapshot(snapshotDir);
     partitionInfo.clear();
     partitionInfo.processLoadSnapshot(snapshotDir);
@@ -161,6 +163,9 @@ public class PartitionInfoTest {
     Assert.assertEquals(counter_before, partitionInfo.getRegionSlotsCounter());
 
     Assert.assertEquals(dataMap_before, partitionInfo.getDataPartition().getDataPartitionMap());
+    Assert.assertEquals(2, partitionInfo.getDeletedRegionSet().size());
+    Assert.assertTrue(partitionInfo.getDeletedRegionSet().contains(dataRegionReplicaSet));
+    Assert.assertTrue(partitionInfo.getDeletedRegionSet().contains(schemaRegionReplicaSet));
   }
 
   private TRegionReplicaSet generateTRegionReplicaSet(
@@ -175,7 +180,8 @@ public class PartitionInfoTest {
       tDataNodeLocation.setExternalEndPoint(new TEndPoint("127.0.0.1", 6000 + i));
       tDataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 7000 + i));
       tDataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("127.0.0.1", 8000 + i));
-      tDataNodeLocation.setConsensusEndPoint(new TEndPoint("127.0.0.1", 9000 + i));
+      tDataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 9000 + i));
+      tDataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 10000 + i));
       dataNodeLocations.add(tDataNodeLocation);
     }
     tRegionReplicaSet.setDataNodeLocations(dataNodeLocations);
