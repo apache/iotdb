@@ -73,9 +73,7 @@ public class ShowClusterTask implements IConfigTask {
         future.setException(e);
       }
     } else {
-      // TODO how to get property in localConfigNode
-      LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-      config.getDataNodeId();
+      future.setException(new TException("SHOW CLUSTER not support local mode"));
     }
 
     // build TSBlock
