@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -124,9 +123,9 @@ public class ShowTTLTask implements IConfigTask {
       builder.getTimeColumnBuilder().writeLong(0);
       builder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
       if (Long.MAX_VALUE == entry.getValue()) {
-        builder.getColumnBuilder(1).writeBinary(new Binary(IoTDBConstant.TLL_NOT_SET));
+        builder.getColumnBuilder(1).appendNull();
       } else {
-        builder.getColumnBuilder(1).writeBinary(new Binary(entry.getValue().toString()));
+        builder.getColumnBuilder(1).writeLong(entry.getValue());
       }
       builder.declarePosition();
     }
