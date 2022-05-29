@@ -37,11 +37,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
@@ -101,6 +104,46 @@ public class QueryLogicalPlanUtil {
     } catch (IllegalPathException e) {
       e.printStackTrace();
     }
+  }
+
+  /* Last Query */
+  static {
+    String sql = "SELECT last * FROM root.sg.** WHERE time > 100";
+
+    QueryId queryId = new QueryId("test");
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
+    sourceNodeList.add(
+        new AlignedLastQueryScanNode(
+            queryId.genPlanNodeId(),
+            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1"))));
+    sourceNodeList.add(
+        new AlignedLastQueryScanNode(
+            queryId.genPlanNodeId(),
+            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s2"))));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
+
+    LastQueryMergeNode lastQueryMergeNode =
+        new LastQueryMergeNode(queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100));
+
+    querySQLs.add(sql);
+    sqlToPlanMap.put(sql, lastQueryMergeNode);
   }
 
   /* Simple Query */
@@ -583,7 +626,9 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))));
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -785,7 +830,9 @@ public class QueryLogicalPlanUtil {
                     AggregationType.LAST_VALUE,
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))));
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -812,7 +859,9 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))));
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -887,7 +936,9 @@ public class QueryLogicalPlanUtil {
                     AggregationType.LAST_VALUE,
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))));
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
@@ -943,7 +994,9 @@ public class QueryLogicalPlanUtil {
                     AggregationType.LAST_VALUE,
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))));
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));

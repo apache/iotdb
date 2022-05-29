@@ -48,8 +48,6 @@ import java.util.concurrent.TimeUnit;
 
 public class RatisConsensusTest {
 
-  private static final String RATIS_CLASS_NAME = "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
   private ConsensusGroupId gid;
   private List<Peer> peers;
   private List<File> peersStorage;
@@ -64,14 +62,16 @@ public class RatisConsensusTest {
       int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
-                  RATIS_CLASS_NAME,
+                  ConsensusFactory.RatisConsensus,
                   peers.get(i).getEndpoint(),
                   peersStorage.get(i),
                   groupId -> stateMachines.get(finalI))
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              ConsensusFactory.RatisConsensus))));
       servers.get(i).start();
     }
   }
@@ -84,9 +84,9 @@ public class RatisConsensusTest {
     peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6001)));
     peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
     peersStorage = new ArrayList<>();
-    peersStorage.add(new File("./target/1/"));
-    peersStorage.add(new File("./target/2/"));
-    peersStorage.add(new File("./target/3/"));
+    peersStorage.add(new File("target" + java.io.File.separator + "1"));
+    peersStorage.add(new File("target" + java.io.File.separator + "2"));
+    peersStorage.add(new File("target" + java.io.File.separator + "3"));
     for (File dir : peersStorage) {
       dir.mkdirs();
     }
@@ -121,13 +121,14 @@ public class RatisConsensusTest {
     // 2. Do Consensus 10
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    int leader = getLeaderOrdinal();
+    // pick a random leader
+    int leader = 1;
     int follower1 = (leader + 1) % 3;
     int follower2 = (leader + 2) % 3;
 
     // 3. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
-    // servers.get(0).transferLeader(gid, peers.get(1));
+    servers.get(follower1).transferLeader(gid, peers.get(leader));
     // Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(leader).removePeer(gid, peers.get(follower1));
@@ -157,11 +158,12 @@ public class RatisConsensusTest {
     // 6. try consensus with all 3 peers
     doConsensus(servers.get(2), gid, 10, 30);
 
-    leader = getLeaderOrdinal();
+    // pick a random leader
+    leader = 0;
     follower1 = (leader + 1) % 3;
     follower2 = (leader + 2) % 3;
     // 7. again, group contains only peer0
-    // servers.get(0).transferLeader(group.getGroupId(), peers.get(0));
+    servers.get(0).transferLeader(group.getGroupId(), peers.get(leader));
     servers
         .get(leader)
         .changePeer(group.getGroupId(), Collections.singletonList(peers.get(leader)));
@@ -227,7 +229,7 @@ public class RatisConsensusTest {
     IConsensus leader = null;
     while (leader == null) {
       long current = System.currentTimeMillis();
-      if ((current - start) > 60 * 1000 * 1000) {
+      if ((current - start) > 60 * 1000) {
         break;
       }
       for (int i = 0; i < 3; i++) {

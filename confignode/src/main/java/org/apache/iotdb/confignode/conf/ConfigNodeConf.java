@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
@@ -55,11 +56,13 @@ public class ConfigNodeConf {
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNodeGroup consensus protocol */
-  private final String configNodeConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private final String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
-  /** DataNode Regions consensus protocol */
-  private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  /** DataNode data region consensus protocol */
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+
+  /** DataNode schema region consensus protocol */
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -103,9 +106,16 @@ public class ConfigNodeConf {
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
-  /** UDF directory, storage udf metadata and jars */
-  private String udfDir =
-      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.UDF_FOLDER;
+  /** External lib directory, stores user-uploaded JAR files */
+  private String extLibDir = IoTDBConstant.EXT_FOLDER_NAME;
+
+  /** External lib directory for UDF, stores user-uploaded JAR files */
+  private String udfLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded JAR files */
+  private String temporaryLibDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Time partition interval in seconds */
   private long timePartitionInterval = 604800;
@@ -149,6 +159,9 @@ public class ConfigNodeConf {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
+    extLibDir = addHomeDir(extLibDir);
+    udfLibDir = addHomeDir(udfLibDir);
+    temporaryLibDir = addHomeDir(temporaryLibDir);
   }
 
   private String addHomeDir(String dir) {
@@ -312,12 +325,20 @@ public class ConfigNodeConf {
     return configNodeConsensusProtocolClass;
   }
 
-  public String getDataNodeConsensusProtocolClass() {
-    return dataNodeConsensusProtocolClass;
+  public String getDataRegionConsensusProtocolClass() {
+    return dataRegionConsensusProtocolClass;
   }
 
-  public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
-    this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
+  public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public String getSchemaRegionConsensusProtocolClass() {
+    return schemaRegionConsensusProtocolClass;
+  }
+
+  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
+    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
@@ -336,12 +357,24 @@ public class ConfigNodeConf {
     this.systemDir = systemDir;
   }
 
-  public String getUdfDir() {
-    return udfDir;
+  public String getSystemUdfDir() {
+    return getSystemDir() + File.separator + "udf" + File.separator;
   }
 
-  public void setUdfDir(String udfDir) {
-    this.udfDir = udfDir;
+  public String getUdfLibDir() {
+    return udfLibDir;
+  }
+
+  public void setUdfLibDir(String udfLibDir) {
+    this.udfLibDir = udfLibDir;
+  }
+
+  public String getTemporaryLibDir() {
+    return temporaryLibDir;
+  }
+
+  public void setTemporaryLibDir(String temporaryLibDir) {
+    this.temporaryLibDir = temporaryLibDir;
   }
 
   public int getSchemaReplicationFactor() {

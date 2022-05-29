@@ -27,6 +27,8 @@ import java.util.Collections;
 public class HeaderConstant {
 
   // column names for query statement
+  public static final String COLUMN_TIME = "Time";
+  public static final String COLUMN_VALUE = "value";
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
@@ -78,8 +80,12 @@ public class HeaderConstant {
   public static final DatasetHeader countTimeSeriesHeader;
   public static final DatasetHeader countLevelTimeSeriesHeader;
 
+
   // dataset header for show cluster statement
   public static final DatasetHeader showClusterHeader;
+
+  // dataset header for last query
+  public static final DatasetHeader LAST_QUERY_HEADER;
 
   static {
     countStorageGroupHeader =
@@ -137,7 +143,7 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
+                new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
                 new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
                 new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64)),
@@ -146,14 +152,24 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
+                new ColumnHeader(COLUMN_TTL, TSDataType.TEXT)),
             true);
     showChildPathsHeader =
         new DatasetHeader(
-            Arrays.asList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
+            Collections.singletonList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
     showChildNodesHeader =
         new DatasetHeader(
-            Arrays.asList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+            Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+  }
+
+  static {
+    LAST_QUERY_HEADER =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT)),
+            false);
   }
 
   static {

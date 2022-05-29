@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -41,22 +40,20 @@ import java.util.Collections;
 public class RecoveryTest {
   private final ConsensusGroupId schemaRegionId = new SchemaRegionId(1);
   private IConsensus consensusImpl;
-  private static final String STANDALONE_CONSENSUS_CLASS_NAME =
-      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
 
   public void constructConsensus() throws IOException {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                STANDALONE_CONSENSUS_CLASS_NAME,
+                ConsensusFactory.StandAloneConsensus,
                 new TEndPoint("0.0.0.0", 9000),
-                new File("./target/recovery"),
+                new File("target" + java.io.File.separator + "recovery"),
                 gid -> new EmptyStateMachine())
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            STANDALONE_CONSENSUS_CLASS_NAME)));
+                            ConsensusFactory.StandAloneConsensus)));
     consensusImpl.start();
   }
 

@@ -22,19 +22,26 @@ package org.apache.iotdb.commons.udf.service;
 import org.apache.iotdb.commons.udf.api.UDTF;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 public class UDFRegistrationInformation {
 
   private final String functionName;
   private final String className;
+  private final List<String> uris;
   private final boolean isBuiltin;
 
   private Class<?> functionClass;
 
   public UDFRegistrationInformation(
-      String functionName, String className, boolean isBuiltin, Class<?> functionClass) {
+      String functionName,
+      String className,
+      List<String> uris,
+      boolean isBuiltin,
+      Class<?> functionClass) {
     this.functionName = functionName;
     this.className = className;
+    this.uris = uris;
     this.isBuiltin = isBuiltin;
     this.functionClass = functionClass;
   }
@@ -45,6 +52,10 @@ public class UDFRegistrationInformation {
 
   public String getClassName() {
     return className;
+  }
+
+  public List<String> getUris() {
+    return uris;
   }
 
   public boolean isBuiltin() {

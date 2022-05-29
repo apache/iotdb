@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class IoTDBConstant {
 
   private IoTDBConstant() {}
@@ -63,6 +66,14 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
+  public static final Set<String> reservedWords =
+      new HashSet<String>() {
+        {
+          add("TIME");
+          add("TIMESTAMP");
+          add("ROOT");
+        }
+      };
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
@@ -73,6 +84,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
   public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
   public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
+  public static final String COLUMN_TIMESERIES_COMPRESSOR = "compressor";
   public static final String COLUMN_CHILD_PATHS = "child paths";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
@@ -83,6 +95,7 @@ public class IoTDBConstant {
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
+  public static final String TLL_NOT_SET = "not set";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
@@ -138,6 +151,8 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_REMOTE = "remote";
   public static final String COLUMN_PIPE_STATUS = "status";
   public static final String COLUMN_PIPE_MSG = "message";
+  public static final String COLUMN_PIPE_ERRORS = "errors";
+  public static final String COLUMN_PIPE_PERF_INFO = "performance_info";
 
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
@@ -172,9 +187,11 @@ public class IoTDBConstant {
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
+  public static final String TMP_FOLDER_NAME = "temporary";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
+  public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -210,8 +227,11 @@ public class IoTDBConstant {
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
 
   // write ahead log
+  public static final String WAL_FILE_PREFIX = "_";
   public static final String WAL_FILE_SUFFIX = ".wal";
   public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
+  public static final String WAL_VERSION_ID = "versionId";
+  public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
 
   // client version number
   public enum ClientVersion {

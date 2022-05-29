@@ -22,27 +22,36 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_COLUMN_HEADERS;
+import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
-public class LastQueryMergeNode extends ProcessNode {
+public class LastQueryMergeNode extends MultiChildNode {
 
   // make sure child in list has been ordered by their sensor name
   private List<PlanNode> children;
 
-  public LastQueryMergeNode(PlanNodeId id) {
+  private final Filter timeFilter;
+
+  public LastQueryMergeNode(PlanNodeId id, Filter timeFilter) {
     super(id);
     this.children = new ArrayList<>();
+    this.timeFilter = timeFilter;
   }
 
-  public LastQueryMergeNode(PlanNodeId id, List<PlanNode> children) {
+  public LastQueryMergeNode(PlanNodeId id, List<PlanNode> children, Filter timeFilter) {
     super(id);
     this.children = children;
+    this.timeFilter = timeFilter;
   }
 
   @Override
@@ -57,7 +66,7 @@ public class LastQueryMergeNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryMergeNode(getPlanNodeId());
+    return new LastQueryMergeNode(getPlanNodeId(), timeFilter);
   }
 
   @Override
@@ -67,7 +76,7 @@ public class LastQueryMergeNode extends ProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return LAST_QUERY_COLUMN_HEADERS;
+    return LAST_QUERY_HEADER_COLUMNS;
   }
 
   @Override
@@ -97,14 +106,29 @@ public class LastQueryMergeNode extends ProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY_MERGE.serialize(byteBuffer);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      timeFilter.serialize(byteBuffer);
+    }
   }
 
   public static LastQueryMergeNode deserialize(ByteBuffer byteBuffer) {
+    Filter timeFilter = null;
+    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
+      timeFilter = FilterFactory.deserialize(byteBuffer);
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryMergeNode(planNodeId);
+    return new LastQueryMergeNode(planNodeId, timeFilter);
   }
 
   public void setChildren(List<PlanNode> children) {
     this.children = children;
+  }
+
+  @Nullable
+  public Filter getTimeFilter() {
+    return timeFilter;
   }
 }
