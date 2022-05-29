@@ -92,6 +92,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryAddLastPointOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCou
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryAddLastPointNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
@@ -342,6 +344,18 @@ public class LocalExecutionPlanner {
       context.addPath(seriesPath);
 
       return seriesAggregationScanOperator;
+    }
+
+    @Override
+    public Operator visitSchemaQueryAddLastPoint(
+        SchemaQueryAddLastPointNode node, LocalExecutionPlanContext context) {
+      Operator child = node.getChild().accept(this, context);
+      return new SchemaQueryAddLastPointOperator(
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              NodeManageMemoryMergeOperator.class.getSimpleName()),
+          child);
     }
 
     @Override

@@ -42,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCou
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryAddLastPointNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -586,6 +587,14 @@ public class LogicalPlanBuilder {
         new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
     schemaMergeNode.addChild(this.getRoot());
     this.root = schemaMergeNode;
+    return this;
+  }
+
+  public LogicalPlanBuilder planSchemaQueryAddLastPoint() {
+    SchemaQueryAddLastPointNode node =
+        new SchemaQueryAddLastPointNode(context.getQueryId().genPlanNodeId());
+    node.addChild(this.getRoot());
+    this.root = node;
     return this;
   }
 

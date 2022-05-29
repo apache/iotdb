@@ -421,8 +421,8 @@ public class LogicalPlanner {
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       // TODO spricoder
-      return planBuilder
-          .planTimeSeriesSchemaSource(
+      planBuilder =
+          planBuilder.planTimeSeriesSchemaSource(
               showTimeSeriesStatement.getPathPattern(),
               showTimeSeriesStatement.getKey(),
               showTimeSeriesStatement.getValue(),
@@ -430,7 +430,11 @@ public class LogicalPlanner {
               showTimeSeriesStatement.getOffset(),
               showTimeSeriesStatement.isOrderByHeat(),
               showTimeSeriesStatement.isContains(),
-              showTimeSeriesStatement.isPrefixPath())
+              showTimeSeriesStatement.isPrefixPath());
+      if (showTimeSeriesStatement.isOrderByHeat()) {
+        planBuilder = planBuilder.planSchemaQueryAddLastPoint();
+      }
+      return planBuilder
           .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat())
           .planOffset(showTimeSeriesStatement.getOffset())
           .planLimit(showTimeSeriesStatement.getLimit())

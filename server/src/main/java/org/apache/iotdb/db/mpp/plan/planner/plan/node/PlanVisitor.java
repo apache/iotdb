@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCou
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryAddLastPointNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
@@ -152,6 +153,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitSchemaQueryScan(SchemaQueryScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSchemaQueryAddLastPoint(SchemaQueryAddLastPointNode node, C context) {
     return visitPlan(node, context);
   }
 

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCou
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryAddLastPointNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -121,7 +122,8 @@ public enum PlanNodeType {
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY_MERGE((short) 48),
-  NODE_PATHS_COUNT((short) 49);
+  NODE_PATHS_COUNT((short) 49),
+  SCHEMA_QUERY_ADD_LAST_POINT((short) 50);
 
   private final short nodeType;
 
@@ -245,6 +247,8 @@ public enum PlanNodeType {
         return LastQueryMergeNode.deserialize(buffer);
       case 49:
         return NodePathsCountNode.deserialize(buffer);
+      case 50:
+        return SchemaQueryAddLastPointNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
