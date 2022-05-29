@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
@@ -186,6 +187,10 @@ public abstract class StatementVisitor<R, C> {
   }
 
   public R visitCountLevelTimeSeries(CountLevelTimeSeriesStatement countStatement, C context) {
+    return visitStatement(countStatement, context);
+  }
+
+  public R visitCountNodes(CountNodesStatement countStatement, C context) {
     return visitStatement(countStatement, context);
   }
 

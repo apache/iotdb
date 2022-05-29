@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -33,13 +32,14 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -638,20 +638,31 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planChildPathsSchemaSource(PartialPath partialPath) {
-    this.root = new ChildPathsSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath);
+  public LogicalPlanBuilder planNodePathsSchemaSource(PartialPath partialPath, Integer level) {
+    this.root =
+        new NodePathsSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath, level);
     return this;
   }
 
-  public LogicalPlanBuilder planChildNodesSchemaSource(PartialPath partialPath) {
-    this.root = new ChildNodesSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath);
+  public LogicalPlanBuilder planNodePathsConvert() {
+    NodePathsConvertNode nodePathsConvertNode =
+        new NodePathsConvertNode(context.getQueryId().genPlanNodeId());
+    nodePathsConvertNode.addChild(this.getRoot());
+    this.root = nodePathsConvertNode;
     return this;
   }
 
-  public LogicalPlanBuilder planNodeManagementMemoryMerge(
-      Set<String> data, NodeManagementType type) {
+  public LogicalPlanBuilder planNodePathsCount() {
+    NodePathsCountNode nodePathsCountNode =
+        new NodePathsCountNode(context.getQueryId().genPlanNodeId());
+    nodePathsCountNode.addChild(this.getRoot());
+    this.root = nodePathsCountNode;
+    return this;
+  }
+
+  public LogicalPlanBuilder planNodeManagementMemoryMerge(Set<String> data) {
     NodeManagementMemoryMergeNode memorySourceNode =
-        new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data, type);
+        new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data);
     memorySourceNode.addChild(this.getRoot());
     this.root = memorySourceNode;
     return this;

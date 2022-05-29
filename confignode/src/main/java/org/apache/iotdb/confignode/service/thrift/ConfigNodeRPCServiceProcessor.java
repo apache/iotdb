@@ -50,7 +50,6 @@ import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -272,13 +271,8 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     PartialPath partialPath = patternTree.splitToPathList().get(0);
     SchemaNodeManagementResp schemaNodeManagementResp;
-    if (req.getType() == NodeManagementType.CHILD_PATHS) {
-      schemaNodeManagementResp =
-          (SchemaNodeManagementResp) configManager.getChildPathsPartition(partialPath);
-    } else {
-      schemaNodeManagementResp =
-          (SchemaNodeManagementResp) configManager.getChildNodesPartition(partialPath);
-    }
+    schemaNodeManagementResp =
+        (SchemaNodeManagementResp) configManager.getNodePathsPartition(partialPath, req.getLevel());
     TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
     schemaNodeManagementResp.convertToRpcSchemaNodeManagementPartitionResp(resp);
     return resp;

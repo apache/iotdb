@@ -22,6 +22,11 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.multileader.thrift.TLogType;
+import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -30,6 +35,9 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,13 +100,53 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  protected TSStatus write(FragmentInstance fragmentInstance) {
-    PlanNode planNode = fragmentInstance.getFragment().getRoot();
+  public TSStatus write(IConsensusRequest request) {
+    PlanNode planNode;
+    try {
+      if (request instanceof IndexedConsensusRequest) {
+        IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
+        if (indexedConsensusRequest.getType() == TLogType.InsertNode) {
+          planNode =
+              PlanNodeType.deserialize(
+                  ((ByteBufferConsensusRequest) indexedConsensusRequest.getRequest()).getContent());
+        } else {
+          planNode =
+              getFragmentInstance(indexedConsensusRequest.getRequest()).getFragment().getRoot();
+        }
+        if (planNode instanceof InsertNode) {
+          ((InsertNode) planNode)
+              .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
+          ((InsertNode) planNode)
+              .setSafelyDeletedSearchIndex(
+                  ((IndexedConsensusRequest) request).getSafelyDeletedSearchIndex());
+        }
+      } else {
+        planNode = getFragmentInstance(request).getFragment().getRoot();
+      }
+      return write(planNode);
+    } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage(), e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+  }
+
+  protected TSStatus write(PlanNode planNode) {
     return planNode.accept(new DataExecutionVisitor(), region);
   }
 
   @Override
-  protected DataSet read(FragmentInstance fragmentInstance) {
-    return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+  public DataSet read(IConsensusRequest request) {
+    if (request instanceof GetConsensusReqReaderPlan) {
+      return region.getWALNode();
+    } else {
+      FragmentInstance fragmentInstance;
+      try {
+        fragmentInstance = getFragmentInstance(request);
+      } catch (IllegalArgumentException e) {
+        logger.error(e.getMessage());
+        return null;
+      }
+      return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+    }
   }
 }

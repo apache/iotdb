@@ -411,7 +411,9 @@ public class WALNode implements IWALNode {
       return null;
     }
     if (size == 1) {
-      return insertNodes.get(0);
+      InsertNode insertNode = insertNodes.get(0);
+      insertNode.setPlanNodeId(new PlanNodeId(""));
+      return insertNode;
     }
 
     InsertNode result;
@@ -445,7 +447,7 @@ public class WALNode implements IWALNode {
               : new InsertRowsNode(new PlanNodeId(""), index, insertRowNodes);
     }
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
-
+    result.setDevicePath(insertNodes.get(0).getDevicePath());
     return result;
   }
 

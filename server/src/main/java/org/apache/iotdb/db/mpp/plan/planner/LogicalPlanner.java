@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
@@ -493,6 +494,17 @@ public class LogicalPlanner {
     }
 
     @Override
+    public PlanNode visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      return planBuilder
+          .planNodePathsSchemaSource(countStatement.getPartialPath(), countStatement.getLevel())
+          .planSchemaQueryMerge(false)
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
+          .planNodePathsCount()
+          .getRoot();
+    }
+
+    @Override
     public PlanNode visitInsertRows(
         InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
       // convert insert statement to insert node
@@ -588,9 +600,9 @@ public class LogicalPlanner {
         ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath())
+          .planNodePathsSchemaSource(showChildPathsStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
-          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_PATHS)
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
           .getRoot();
     }
 
@@ -599,9 +611,10 @@ public class LogicalPlanner {
         ShowChildNodesStatement showChildNodesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildNodesSchemaSource(showChildNodesStatement.getPartialPath())
+          .planNodePathsSchemaSource(showChildNodesStatement.getPartialPath(), -1)
           .planSchemaQueryMerge(false)
-          .planNodeManagementMemoryMerge(analysis.getMatchedNodes(), NodeManagementType.CHILD_NODES)
+          .planNodeManagementMemoryMerge(analysis.getMatchedNodes())
+          .planNodePathsConvert()
           .getRoot();
     }
 
