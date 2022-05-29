@@ -867,7 +867,7 @@ public class Analyzer {
       analysis.setStatement(statement);
 
       SchemaTree schemaTree = new SchemaTree();
-      schemaTree.setStorageGroups(schemaTree.getStorageGroups());
+      schemaTree.setStorageGroups(statement.getStorageGroups());
 
       return analyzeLast(analysis, statement.getSelectedPaths(), schemaTree);
     }

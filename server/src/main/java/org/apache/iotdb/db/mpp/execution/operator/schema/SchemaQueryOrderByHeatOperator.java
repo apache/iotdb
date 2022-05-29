@@ -44,10 +44,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
@@ -95,7 +97,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
       if (null != block) {
         // Step 1: get paths and storage groups
         List<MeasurementPath> measurementPaths = new LinkedList<>();
-        List<String> storageGroups = new LinkedList<>();
+        Set<String> storageGroups = new HashSet<>();
         for (int i = 0; i < block.getPositionCount(); i++) {
           String path = block.getColumn(0).getBinary(i).toString();
           String storageGroup = block.getColumn(2).getBinary(i).toString();
@@ -113,7 +115,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
         // Step 2: fetch last point
         LastPointFetchStatement lastPointFetchStatement =
-            new LastPointFetchStatement(measurementPaths, storageGroups);
+            new LastPointFetchStatement(measurementPaths, new ArrayList<>(storageGroups));
         ExecutionResult executionResult =
             coordinator.execute(
                 lastPointFetchStatement, queryId, null, "", partitionFetcher, schemaFetcher);
@@ -140,17 +142,15 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         }
 
         // Step 3: merge according to result
-        for (int i = 0; i < block.getPositionCount(); i++) {
-          TsBlock.TsBlockRowIterator tsBlockRowIterator = block.getTsBlockRowIterator();
-          while (tsBlockRowIterator.hasNext()) {
-            Object[] line = tsBlockRowIterator.next();
-            String timeseries = line[0].toString();
-            long time = timeseriesToLastStamp.getOrDefault(timeseries, 0L);
-            if (!lastTimeToTimeseries.containsKey(time)) {
-              lastTimeToTimeseries.put(time, new ArrayList<>());
-            }
-            lastTimeToTimeseries.get(time).add(line);
+        TsBlock.TsBlockRowIterator tsBlockRowIterator = block.getTsBlockRowIterator();
+        while (tsBlockRowIterator.hasNext()) {
+          Object[] line = tsBlockRowIterator.next();
+          String timeseries = line[0].toString();
+          long time = timeseriesToLastStamp.getOrDefault(timeseries, 0L);
+          if (!lastTimeToTimeseries.containsKey(time)) {
+            lastTimeToTimeseries.put(time, new ArrayList<>());
           }
+          lastTimeToTimeseries.get(time).add(line);
         }
       }
     }
@@ -160,9 +160,9 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
     times.sort(
         (l1, l2) -> {
           if (l1 > l2) {
-            return 1;
-          } else if (l1 < l2) {
             return -1;
+          } else if (l1 < l2) {
+            return 1;
           } else {
             return 0;
           }
@@ -170,14 +170,15 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
     for (Long time : times) {
       List<Object[]> rows = lastTimeToTimeseries.get(time);
       for (Object[] row : rows) {
-        tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(row[0].toString()));
-        tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(row[1].toString()));
-        tsBlockBuilder.getColumnBuilder(2).writeBinary(new Binary(row[2].toString()));
-        tsBlockBuilder.getColumnBuilder(3).writeBinary(new Binary(row[3].toString()));
-        tsBlockBuilder.getColumnBuilder(4).writeBinary(new Binary(row[4].toString()));
-        tsBlockBuilder.getColumnBuilder(5).writeBinary(new Binary(row[5].toString()));
-        tsBlockBuilder.getColumnBuilder(6).writeBinary(new Binary(row[6].toString()));
-        tsBlockBuilder.getColumnBuilder(7).writeBinary(new Binary(row[7].toString()));
+        tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+        for (int i = 0; i < HeaderConstant.showTimeSeriesHeader.getRespDataTypes().size(); i++) {
+          Object value = row[i];
+          if (null == value) {
+            tsBlockBuilder.getColumnBuilder(i).appendNull();
+          } else {
+            tsBlockBuilder.getColumnBuilder(i).writeBinary(new Binary(value.toString()));
+          }
+        }
         tsBlockBuilder.declarePosition();
       }
     }
