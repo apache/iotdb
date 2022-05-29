@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.RegionReplicaSetInfo;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
@@ -65,6 +66,11 @@ public class DeleteDataStatement extends Statement {
 
   public void setDeleteEndTime(long deleteEndTime) {
     this.deleteEndTime = deleteEndTime;
+  }
+
+  public void setTimeRange(TimeRange timeRange) {
+    this.deleteStartTime = timeRange.getMin();
+    this.deleteEndTime = timeRange.getMax();
   }
 
   public List<Pair<RegionReplicaSetInfo, List<PartialPath>>> getRegionRequestList() {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
