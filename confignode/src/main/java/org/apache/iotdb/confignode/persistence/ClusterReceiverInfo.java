@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.response.PipeInfoResp;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,13 +80,19 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
   }
 
   @Override
-  protected void afterStartPipe(String pipeName, String remoteIp, long createTime) {}
+  protected void afterStartPipe(String pipeName, String remoteIp, long createTime) {
+    // TODO：start collector on datanode
+  }
 
   @Override
-  protected void afterStopPipe(String pipeName, String remoteIp, long createTime) {}
+  protected void afterStopPipe(String pipeName, String remoteIp, long createTime) {
+    // TODO：stop collector on datanode
+  }
 
   @Override
-  protected void afterDropPipe(String pipeName, String remoteIp, long createTime) {}
+  protected void afterDropPipe(String pipeName, String remoteIp, long createTime) {
+    // TODO：drop collector on datanode and clean all info about this pipe
+  }
 
   public synchronized TSStatus operatePipe(OperateReceiverPipeReq req) {
     receiverInfoReadWriteLock.writeLock().lock();
@@ -139,7 +145,7 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
   }
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -170,7 +176,7 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
@@ -185,5 +191,13 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
     } finally {
       receiverInfoReadWriteLock.writeLock().unlock();
     }
+  }
+
+  @TestOnly
+  public void clear() {
+    pipeInfos = new ConcurrentHashMap<>();
+    pipeMessageMap = new ConcurrentHashMap<>();
+    pipeServerEnable = false;
+    // TODO: clean log
   }
 }

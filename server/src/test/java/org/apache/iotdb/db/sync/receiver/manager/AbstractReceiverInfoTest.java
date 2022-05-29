@@ -39,7 +39,7 @@ import java.util.List;
 import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
 
 // TODO: rename and add test in mock
-public class ReceiverManagerTest {
+public class AbstractReceiverInfoTest {
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
   private static final String ip1 = "192.168.1.11";

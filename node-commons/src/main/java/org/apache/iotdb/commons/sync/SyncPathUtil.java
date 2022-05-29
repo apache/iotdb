@@ -39,9 +39,10 @@ public class SyncPathUtil {
   // |             |----realtime pipe log dir
   // |             |----file data dir
   // |----receiver dir
-  //        |-----receiver pipe dir
-  //                |----receiver pipe log dir
-  //                |----file data dir
+  // |      |-----receiver pipe dir
+  // |              |----receiver pipe log dir
+  // |              |----file data dir
+  // |----sys dir
 
   /** sender */
   public static String getSenderDir() {
