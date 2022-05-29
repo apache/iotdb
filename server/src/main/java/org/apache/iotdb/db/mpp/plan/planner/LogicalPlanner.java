@@ -420,6 +420,7 @@ public class LogicalPlanner {
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      // TODO spricoder
       return planBuilder
           .planTimeSeriesSchemaSource(
               showTimeSeriesStatement.getPathPattern(),

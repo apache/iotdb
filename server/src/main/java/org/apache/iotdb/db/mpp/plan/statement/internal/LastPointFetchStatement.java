@@ -28,6 +28,7 @@ import java.util.List;
 
 public class LastPointFetchStatement extends Statement {
 
+  // TODO spricoder coordinator
   private final List<MeasurementPath> selectedPaths;
 
   // used for fetch data partition

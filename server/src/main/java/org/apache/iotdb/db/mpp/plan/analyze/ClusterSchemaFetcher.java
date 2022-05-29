@@ -95,7 +95,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
-
+    // TODO spricoder view
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
