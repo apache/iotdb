@@ -141,7 +141,7 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TTL, TSDataType.TEXT)),
+                new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
             true);
     showChildPathsHeader =
         new DatasetHeader(
