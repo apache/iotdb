@@ -1514,6 +1514,37 @@ public class IoTDBDescriptor {
     if (tlogBufferSize > 0) {
       conf.setTlogBufferSize(tlogBufferSize);
     }
+
+    conf.setTriggerForwardMaxQueueNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_queue_number",
+                Integer.toString(conf.getTriggerForwardMaxQueueNumber()))));
+    conf.setTriggerForwardMaxSizePerQueue(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_size_per_queue",
+                Integer.toString(conf.getTriggerForwardMaxSizePerQueue()))));
+    conf.setTriggerForwardBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_batch_size",
+                Integer.toString(conf.getTriggerForwardBatchSize()))));
+    conf.setTriggerForwardHTTPPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_http_pool_size",
+                Integer.toString(conf.getTriggerForwardHTTPPoolSize()))));
+    conf.setTriggerForwardHTTPPOOLMaxPerRoute(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_http_pool_max_per_route",
+                Integer.toString(conf.getTriggerForwardHTTPPOOLMaxPerRoute()))));
+    conf.setTriggerForwardMQTTPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_mqtt_pool_size",
+                Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
   }
 
   private void loadCQProps(Properties properties) {

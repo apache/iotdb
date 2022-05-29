@@ -17,21 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.api;
+package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
-import java.util.List;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.trigger.sink.forward.ForwardEvent;
 
-public interface Handler<C extends Configuration, E extends Event> {
+public class MQTTForwardEvent extends ForwardEvent {
 
-  @SuppressWarnings("squid:S112")
-  default void open(C configuration) throws Exception {}
-
-  @SuppressWarnings("squid:S112")
-  default void close() throws Exception {}
-
-  @SuppressWarnings("squid:S112")
-  void onEvent(E event) throws Exception;
-
-  @SuppressWarnings("squid:S112")
-  default void onEvent(List<E> events) throws Exception {}
+  public MQTTForwardEvent(long timestamp, Object value, PartialPath fullPath) {
+    super(timestamp, value, fullPath);
+  }
 }

@@ -17,21 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.api;
+package org.apache.iotdb.db.engine.trigger.sink.http;
 
-import java.util.List;
+import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
-public interface Handler<C extends Configuration, E extends Event> {
+public class HTTPForwardConfiguration implements Configuration {
+  private final String endpoint;
+  private final boolean stopIfException;
 
-  @SuppressWarnings("squid:S112")
-  default void open(C configuration) throws Exception {}
+  public HTTPForwardConfiguration(String endpoint, boolean stopIfException) {
+    this.endpoint = endpoint;
+    this.stopIfException = stopIfException;
+  }
 
-  @SuppressWarnings("squid:S112")
-  default void close() throws Exception {}
+  public void checkConfig() throws SinkException {
+    if (endpoint == null || endpoint.isEmpty()) {
+      throw new SinkException("HTTP config item error");
+    }
+  }
 
-  @SuppressWarnings("squid:S112")
-  void onEvent(E event) throws Exception;
+  public boolean isStopIfException() {
+    return stopIfException;
+  }
 
-  @SuppressWarnings("squid:S112")
-  default void onEvent(List<E> events) throws Exception {}
+  public String getEndpoint() {
+    return endpoint;
+  }
 }
