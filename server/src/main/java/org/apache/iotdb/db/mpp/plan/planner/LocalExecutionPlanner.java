@@ -428,7 +428,8 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaQueryMergeOperator.class.getSimpleName());
-      return new SchemaQueryMergeOperator(node.getPlanNodeId(), operatorContext, children);
+      return new SchemaQueryMergeOperator(
+          node.getPlanNodeId(), node.isOrderByHeat(), operatorContext, children);
     }
 
     @Override

@@ -18,29 +18,42 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SchemaQueryMergeOperator implements ProcessOperator {
   private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
   private final boolean[] noMoreTsBlocks;
+  private final boolean orderByHeat;
 
   private final List<Operator> children;
+  private boolean isFinished;
 
   public SchemaQueryMergeOperator(
-      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
+      PlanNodeId planNodeId,
+      boolean orderByHeat,
+      OperatorContext operatorContext,
+      List<Operator> children) {
     this.planNodeId = planNodeId;
     this.operatorContext = operatorContext;
     this.children = children;
     noMoreTsBlocks = new boolean[children.size()];
+    this.orderByHeat = orderByHeat;
+    isFinished = false;
   }
 
   @Override
@@ -51,14 +64,74 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     // ToDo @xinzhongtianxia consider SHOW LATEST
-
-    for (int i = 0; i < children.size(); i++) {
-      if (!noMoreTsBlocks[i]) {
-        TsBlock tsBlock = children.get(i).next();
-        if (!children.get(i).hasNext()) {
-          noMoreTsBlocks[i] = true;
+    if (orderByHeat) {
+      isFinished = true;
+      TsBlockBuilder tsBlockBuilder =
+          new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
+      // Step 1: load all rows
+      Map<String, List<Object[]>> valueToLines = new HashMap<>();
+      for (int i = 0; i < children.size(); i++) {
+        while (children.get(i).hasNext()) {
+          TsBlock tsBlock = children.get(i).next();
+          TsBlock.TsBlockRowIterator tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
+          while (tsBlockRowIterator.hasNext()) {
+            Object[] row = tsBlockRowIterator.next();
+            String value = row[row.length - 2].toString();
+            if (!valueToLines.containsKey(value)) {
+              valueToLines.put(value, new ArrayList<>());
+            }
+            valueToLines.get(value).add(row);
+          }
         }
-        return tsBlock;
+      }
+      // Step 2: sort and rewrite
+      List<String> values = new ArrayList<>(valueToLines.keySet());
+      values.sort(
+          (o1, o2) -> {
+            long value1;
+            long value2;
+            try {
+              value1 = Long.parseLong(o1);
+            } catch (Exception e) {
+              return -1;
+            }
+            try {
+              value2 = Long.parseLong(o2);
+            } catch (Exception e) {
+              return 1;
+            }
+            if (value1 > value2) {
+              return 1;
+            } else if (value1 == value2) {
+              return 0;
+            } else {
+              return -1;
+            }
+          });
+      for (String value : values) {
+        List<Object[]> rows = valueToLines.get(value);
+        for (Object[] row : rows) {
+          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(row[0].toString()));
+          tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(row[1].toString()));
+          tsBlockBuilder.getColumnBuilder(2).writeBinary(new Binary(row[2].toString()));
+          tsBlockBuilder.getColumnBuilder(3).writeBinary(new Binary(row[3].toString()));
+          tsBlockBuilder.getColumnBuilder(4).writeBinary(new Binary(row[4].toString()));
+          tsBlockBuilder.getColumnBuilder(5).writeBinary(new Binary(row[5].toString()));
+          tsBlockBuilder.getColumnBuilder(6).writeBinary(new Binary(row[6].toString()));
+          tsBlockBuilder.getColumnBuilder(7).writeBinary(new Binary(row[7].toString()));
+          tsBlockBuilder.declarePosition();
+        }
+      }
+      return tsBlockBuilder.build();
+    } else {
+      for (int i = 0; i < children.size(); i++) {
+        if (!noMoreTsBlocks[i]) {
+          TsBlock tsBlock = children.get(i).next();
+          if (!children.get(i).hasNext()) {
+            noMoreTsBlocks[i] = true;
+          }
+          return tsBlock;
+        }
       }
     }
     return null;
@@ -66,6 +139,9 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
+    if (orderByHeat) {
+      return isFinished;
+    }
     for (int i = 0; i < children.size(); i++) {
       if (!noMoreTsBlocks[i] && children.get(i).hasNext()) {
         return true;
@@ -89,6 +165,9 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
+    if (orderByHeat) {
+      return isFinished;
+    }
     return !hasNext();
   }
 }
