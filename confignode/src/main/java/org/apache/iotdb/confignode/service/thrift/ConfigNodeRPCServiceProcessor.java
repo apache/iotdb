@@ -394,7 +394,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus operatePipe(TOperateReceiverPipeReq req) throws TException {
+  public TSStatus operateReceiverPipe(TOperateReceiverPipeReq req) throws TException {
     OperateReceiverPipeReq operateReceiverPipeReq = new OperateReceiverPipeReq(req);
     TSStatus status = configManager.operatePipe(operateReceiverPipeReq);
 

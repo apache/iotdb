@@ -26,7 +26,7 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.mpp.plan.statement.sync.OperatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sync.OperateReceiverPipeStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -38,13 +38,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class OperatePipeTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OperatePipeTask.class);
+public class OperateReceiverPipeTask implements IConfigTask {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperateReceiverPipeTask.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private OperatePipeStatement operatePipeStatement;
+  private OperateReceiverPipeStatement operateReceiverPipeStatement;
 
-  public OperatePipeTask(OperatePipeStatement operatePipeStatement) {
-    this.operatePipeStatement = operatePipeStatement;
+  public OperateReceiverPipeTask(OperateReceiverPipeStatement operateReceiverPipeStatement) {
+    this.operateReceiverPipeStatement = operateReceiverPipeStatement;
   }
 
   @Override
@@ -55,20 +55,20 @@ public class OperatePipeTask implements IConfigTask {
     if (config.isClusterMode()) {
       //      // Construct request using statement
       TOperateReceiverPipeReq req = new TOperateReceiverPipeReq();
-      req.setType(operatePipeStatement.getOperateType());
-      req.setRemoteIp(operatePipeStatement.getRemoteIp());
-      req.setPipeName(operatePipeStatement.getPipeName());
-      req.setCreateTime(operatePipeStatement.getCreateTime());
+      req.setType(operateReceiverPipeStatement.getOperateType());
+      req.setRemoteIp(operateReceiverPipeStatement.getRemoteIp());
+      req.setPipeName(operateReceiverPipeStatement.getPipeName());
+      req.setCreateTime(operateReceiverPipeStatement.getCreateTime());
       try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         // Send request to some API server
-        TSStatus status = client.operatePipe(req);
+        TSStatus status = client.operateReceiverPipe(req);
         //    Get response or throw exception
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
           LOGGER.error(
               "Failed to execute operate pipe {}-{}-{} in config node, status is {}.",
-              operatePipeStatement.getRemoteIp(),
-              operatePipeStatement.getPipeName(),
-              operatePipeStatement.getCreateTime(),
+              operateReceiverPipeStatement.getRemoteIp(),
+              operateReceiverPipeStatement.getPipeName(),
+              operateReceiverPipeStatement.getCreateTime(),
               status);
           future.setException(new StatementExecutionException(status));
         } else {

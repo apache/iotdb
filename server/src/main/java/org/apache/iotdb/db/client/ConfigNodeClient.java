@@ -591,10 +591,10 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
-  public TSStatus operatePipe(TOperateReceiverPipeReq req) throws TException {
+  public TSStatus operateReceiverPipe(TOperateReceiverPipeReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus resp = client.operatePipe(req);
+        TSStatus resp = client.operateReceiverPipe(req);
         if (!updateConfigNodeLeader(resp)) {
           return resp;
         }

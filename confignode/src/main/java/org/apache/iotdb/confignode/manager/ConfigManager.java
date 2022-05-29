@@ -59,11 +59,11 @@ import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMa
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.sync.SyncReceiverManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ClusterReceiverInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
-import org.apache.iotdb.confignode.persistence.SyncReceiverInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -117,7 +117,7 @@ public class ConfigManager implements Manager {
     PartitionInfo partitionInfo = new PartitionInfo();
     AuthorInfo authorInfo = new AuthorInfo();
     ProcedureInfo procedureInfo = new ProcedureInfo();
-    SyncReceiverInfo syncReceiverInfo = new SyncReceiverInfo();
+    ClusterReceiverInfo clusterReceiverInfo = new ClusterReceiverInfo();
 
     // Build state machine and executor
     ConfigRequestExecutor executor =
@@ -127,7 +127,7 @@ public class ConfigManager implements Manager {
             partitionInfo,
             authorInfo,
             procedureInfo,
-            syncReceiverInfo);
+            clusterReceiverInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -137,7 +137,7 @@ public class ConfigManager implements Manager {
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.loadManager = new LoadManager(this);
-    this.syncReceiverManager = new SyncReceiverManager(this, syncReceiverInfo);
+    this.syncReceiverManager = new SyncReceiverManager(this, clusterReceiverInfo);
     this.consensusManager = new ConsensusManager(stateMachine);
 
     // We are on testing.......

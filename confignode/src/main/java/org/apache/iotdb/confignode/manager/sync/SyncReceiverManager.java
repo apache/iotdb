@@ -24,7 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeRe
 import org.apache.iotdb.confignode.consensus.response.PipeInfoResp;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.Manager;
-import org.apache.iotdb.confignode.persistence.SyncReceiverInfo;
+import org.apache.iotdb.confignode.persistence.ClusterReceiverInfo;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 
 import org.slf4j.Logger;
@@ -33,11 +33,11 @@ import org.slf4j.LoggerFactory;
 public class SyncReceiverManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncReceiverManager.class);
   private final Manager configManager;
-  private final SyncReceiverInfo syncReceiverInfo;
+  private final ClusterReceiverInfo clusterReceiverInfo;
 
-  public SyncReceiverManager(Manager manager, SyncReceiverInfo syncReceiverInfo) {
+  public SyncReceiverManager(Manager manager, ClusterReceiverInfo clusterReceiverInfo) {
     this.configManager = manager;
-    this.syncReceiverInfo = syncReceiverInfo;
+    this.clusterReceiverInfo = clusterReceiverInfo;
   }
 
   /**

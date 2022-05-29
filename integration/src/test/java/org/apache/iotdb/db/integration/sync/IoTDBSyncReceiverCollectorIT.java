@@ -35,6 +35,7 @@ import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.BufferedPipeDataQueue;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.sync.receiver.collector.Collector;
+import org.apache.iotdb.db.sync.receiver.manager.LocalReceiverInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -74,13 +75,11 @@ public class IoTDBSyncReceiverCollectorIT {
   String pipeName1 = "pipe1";
   String remoteIp1 = "192.168.0.11";
   long createdTime1 = System.currentTimeMillis();
-  File pipeLogDir1 =
-      new File(SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
+  File pipeLogDir1;
   String pipeName2 = "pipe2";
   String remoteIp2 = "192.168.0.22";
   long createdTime2 = System.currentTimeMillis();
-  File pipeLogDir2 =
-      new File(SyncPathUtil.getReceiverPipeLogDir(pipeName2, remoteIp2, createdTime2));
+  File pipeLogDir2;
 
   @Before
   public void setUp() throws Exception {
@@ -98,6 +97,8 @@ public class IoTDBSyncReceiverCollectorIT {
     EnvironmentUtils.shutdownDaemon();
     File srcDir = new File(IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]);
     FileUtils.moveDirectory(srcDir, tmpDir);
+    pipeLogDir1 = new File(SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
+    pipeLogDir2 = new File(SyncPathUtil.getReceiverPipeLogDir(pipeName2, remoteIp2, createdTime2));
   }
 
   @After
@@ -199,7 +200,7 @@ public class IoTDBSyncReceiverCollectorIT {
     pipeDataQueue.offer(pipeData);
 
     // 3. create and start collector
-    Collector collector = new Collector();
+    Collector collector = new Collector(new LocalReceiverInfo());
     collector.startCollect();
 
     // 4. start collect pipe
@@ -412,7 +413,7 @@ public class IoTDBSyncReceiverCollectorIT {
     BufferedPipeDataQueue pipeDataQueue2 =
         PipeDataQueueFactory.getBufferedPipeDataQueue(
             SyncPathUtil.getReceiverPipeLogDir(pipeName2, remoteIp2, createdTime2));
-    Collector collector = new Collector();
+    Collector collector = new Collector(new LocalReceiverInfo());
     collector.startCollect();
 
     // 4. start collect pipe

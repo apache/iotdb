@@ -90,7 +90,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sync.OperatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sync.OperateReceiverPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -1520,12 +1520,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // TODO: fake implement, just for test
   @Override
   public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
-    operatePipeStatement.setOperateType(RequestType.CREATE);
-    operatePipeStatement.setPipeName(ctx.pipeName.getText());
-    operatePipeStatement.setRemoteIp("127.0.0.1");
-    operatePipeStatement.setCreateTime(1L);
-    return operatePipeStatement;
+    OperateReceiverPipeStatement operateReceiverPipeStatement = new OperateReceiverPipeStatement();
+    operateReceiverPipeStatement.setOperateType(RequestType.CREATE);
+    operateReceiverPipeStatement.setPipeName(ctx.pipeName.getText());
+    operateReceiverPipeStatement.setRemoteIp("127.0.0.1");
+    operateReceiverPipeStatement.setCreateTime(1L);
+    return operateReceiverPipeStatement;
   }
 
   @Override
@@ -1539,32 +1539,32 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitStopPipe(IoTDBSqlParser.StopPipeContext ctx) {
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
-    operatePipeStatement.setOperateType(RequestType.STOP);
-    operatePipeStatement.setPipeName(ctx.pipeName.getText());
-    operatePipeStatement.setRemoteIp("127.0.0.1");
-    operatePipeStatement.setCreateTime(1L);
-    return operatePipeStatement;
+    OperateReceiverPipeStatement operateReceiverPipeStatement = new OperateReceiverPipeStatement();
+    operateReceiverPipeStatement.setOperateType(RequestType.STOP);
+    operateReceiverPipeStatement.setPipeName(ctx.pipeName.getText());
+    operateReceiverPipeStatement.setRemoteIp("127.0.0.1");
+    operateReceiverPipeStatement.setCreateTime(1L);
+    return operateReceiverPipeStatement;
   }
 
   @Override
   public Statement visitStartPipe(IoTDBSqlParser.StartPipeContext ctx) {
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
-    operatePipeStatement.setOperateType(RequestType.START);
-    operatePipeStatement.setPipeName(ctx.pipeName.getText());
-    operatePipeStatement.setRemoteIp("127.0.0.1");
-    operatePipeStatement.setCreateTime(1L);
-    return operatePipeStatement;
+    OperateReceiverPipeStatement operateReceiverPipeStatement = new OperateReceiverPipeStatement();
+    operateReceiverPipeStatement.setOperateType(RequestType.START);
+    operateReceiverPipeStatement.setPipeName(ctx.pipeName.getText());
+    operateReceiverPipeStatement.setRemoteIp("127.0.0.1");
+    operateReceiverPipeStatement.setCreateTime(1L);
+    return operateReceiverPipeStatement;
   }
 
   @Override
   public Statement visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
-    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
-    operatePipeStatement.setOperateType(RequestType.DROP);
-    operatePipeStatement.setPipeName(ctx.pipeName.getText());
-    operatePipeStatement.setRemoteIp("127.0.0.1");
-    operatePipeStatement.setCreateTime(1L);
-    return operatePipeStatement;
+    OperateReceiverPipeStatement operateReceiverPipeStatement = new OperateReceiverPipeStatement();
+    operateReceiverPipeStatement.setOperateType(RequestType.DROP);
+    operateReceiverPipeStatement.setPipeName(ctx.pipeName.getText());
+    operateReceiverPipeStatement.setRemoteIp("127.0.0.1");
+    operateReceiverPipeStatement.setCreateTime(1L);
+    return operateReceiverPipeStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */

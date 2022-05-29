@@ -1018,17 +1018,17 @@ public class ConfigNodeRPCServiceProcessorTest {
     // create pipe p
     TOperateReceiverPipeReq createReq =
         new TOperateReceiverPipeReq(RequestType.CREATE, "p", "192.168.11.11", 1);
-    status = processor.operatePipe(createReq);
+    status = processor.operateReceiverPipe(createReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     // create pipe p1
     TOperateReceiverPipeReq createReq1 =
         new TOperateReceiverPipeReq(RequestType.CREATE, "p1", "192.168.22.22", 2);
-    status = processor.operatePipe(createReq1);
+    status = processor.operateReceiverPipe(createReq1);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     // start pipe p
     TOperateReceiverPipeReq startReq =
         new TOperateReceiverPipeReq(RequestType.START, "p", "192.168.11.11", 1);
-    status = processor.operatePipe(startReq);
+    status = processor.operateReceiverPipe(startReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     // show pipe
     TShowPipeResp showPipeResp = processor.showPipe(new TShowPipeReq());

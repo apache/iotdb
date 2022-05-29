@@ -29,15 +29,15 @@ import org.apache.iotdb.service.transport.thrift.RequestType;
 import java.util.List;
 
 /** operate pipe: heartbeat | create | start | stop | drop */
-public class OperatePipeStatement extends Statement implements IConfigStatement {
+public class OperateReceiverPipeStatement extends Statement implements IConfigStatement {
   private RequestType operateType;
   private String remoteIp;
   private String pipeName;
   private long createTime;
 
-  public OperatePipeStatement() {
+  public OperateReceiverPipeStatement() {
     super();
-    statementType = StatementType.OPERATE_PIPE;
+    statementType = StatementType.OPERATE_RECEIVER_PIPE;
   }
 
   public RequestType getOperateType() {

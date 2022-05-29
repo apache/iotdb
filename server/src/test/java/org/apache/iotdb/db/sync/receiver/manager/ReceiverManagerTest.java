@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.sync.receiver.AbstractReceiverInfo;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -30,6 +31,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 
+// TODO: rename and add test in mock
 public class ReceiverManagerTest {
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
@@ -51,7 +53,7 @@ public class ReceiverManagerTest {
   @Test
   public void test() {
     try {
-      ReceiverManager manager = ReceiverManager.getInstance();
+      MockReceiverInfo manager = new MockReceiverInfo();
       manager.startServer();
       manager.createPipe(pipe1, ip1, 1);
       manager.createPipe(pipe2, ip2, 2);
@@ -94,5 +96,17 @@ public class ReceiverManagerTest {
       e.printStackTrace();
       Assert.fail();
     }
+  }
+
+  private class MockReceiverInfo extends AbstractReceiverInfo {
+
+    @Override
+    protected void afterStartPipe(String pipeName, String remoteIp, long createTime) {}
+
+    @Override
+    protected void afterStopPipe(String pipeName, String remoteIp, long createTime) {}
+
+    @Override
+    protected void afterDropPipe(String pipeName, String remoteIp, long createTime) {}
   }
 }

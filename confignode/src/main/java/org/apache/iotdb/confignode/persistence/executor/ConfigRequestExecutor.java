@@ -51,11 +51,11 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ClusterReceiverInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
-import org.apache.iotdb.confignode.persistence.SyncReceiverInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -85,7 +85,7 @@ public class ConfigRequestExecutor {
 
   private final ProcedureInfo procedureInfo;
 
-  private final SyncReceiverInfo syncReceiverInfo;
+  private final ClusterReceiverInfo clusterReceiverInfo;
 
   public ConfigRequestExecutor(
       NodeInfo nodeInfo,
@@ -93,13 +93,13 @@ public class ConfigRequestExecutor {
       PartitionInfo partitionInfo,
       AuthorInfo authorInfo,
       ProcedureInfo procedureInfo,
-      SyncReceiverInfo syncReceiverInfo) {
+      ClusterReceiverInfo clusterReceiverInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
     this.authorInfo = authorInfo;
     this.procedureInfo = procedureInfo;
-    this.syncReceiverInfo = syncReceiverInfo;
+    this.clusterReceiverInfo = clusterReceiverInfo;
   }
 
   public DataSet executorQueryPlan(ConfigRequest req)
@@ -130,7 +130,7 @@ public class ConfigRequestExecutor {
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
       case ShowPipe:
-        return syncReceiverInfo.showPipe((ShowPipeReq) req);
+        return clusterReceiverInfo.showPipe((ShowPipeReq) req);
       case GetChildPathsPartition:
       case GetChildNodesPartition:
         return getSchemaNodeManagementPartiton(req);
@@ -188,7 +188,7 @@ public class ConfigRequestExecutor {
       case ApplyConfigNode:
         return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
       case OperatePipe:
-        return syncReceiverInfo.operatePipe((OperateReceiverPipeReq) req);
+        return clusterReceiverInfo.operatePipe((OperateReceiverPipeReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

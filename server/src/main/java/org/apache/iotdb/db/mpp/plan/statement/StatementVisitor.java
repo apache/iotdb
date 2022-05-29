@@ -46,7 +46,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sync.OperatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sync.OperateReceiverPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 
@@ -202,8 +202,8 @@ public abstract class StatementVisitor<R, C> {
   }
 
   // sync
-  public R visitOperatePipe(OperatePipeStatement operatePipeStatement, C context) {
-    return visitStatement(operatePipeStatement, context);
+  public R visitOperatePipe(OperateReceiverPipeStatement operateReceiverPipeStatement, C context) {
+    return visitStatement(operateReceiverPipeStatement, context);
   }
 
   public R visitShowPipe(ShowPipeStatement showPipeStatement, C context) {
