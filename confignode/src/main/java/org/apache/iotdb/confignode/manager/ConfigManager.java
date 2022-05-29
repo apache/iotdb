@@ -158,6 +158,7 @@ public class ConfigManager implements Manager {
     consensusManager.close();
     partitionManager.getRegionCleaner().shutdown();
     procedureManager.shiftExecutor(false);
+    syncReceiverManager.close();
   }
 
   @Override

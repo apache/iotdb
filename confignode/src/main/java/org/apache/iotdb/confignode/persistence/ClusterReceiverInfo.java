@@ -36,15 +36,22 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ClusterReceiverInfo extends AbstractReceiverInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterReceiverInfo.class);
+  private static final String snapshotFileName = "sync_receiver";
 
   private boolean pipeServerEnable;
   // <pipeName, <remoteIp, <createTime, status>>>
@@ -52,6 +59,8 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
   // <pipeFolderName, pipeMsg>
   private Map<String, List<PipeMessage>> pipeMessageMap;
   private ReceiverLog log;
+
+  private final ReentrantReadWriteLock receiverInfoReadWriteLock;
 
   public ClusterReceiverInfo() {
     log = new ReceiverLog();
@@ -67,6 +76,7 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
       pipeMessageMap = new ConcurrentHashMap<>();
       pipeServerEnable = false;
     }
+    receiverInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
   @Override
@@ -79,6 +89,7 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
   protected void afterDropPipe(String pipeName, String remoteIp, long createTime) {}
 
   public synchronized TSStatus operatePipe(OperateReceiverPipeReq req) {
+    receiverInfoReadWriteLock.writeLock().lock();
     try {
       switch (req.getOperateType()) {
         case HEARTBEAT:
@@ -110,6 +121,8 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
       }
     } catch (IOException e) {
       return new TSStatus(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode());
+    } finally {
+      receiverInfoReadWriteLock.writeLock().unlock();
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -127,9 +140,50 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    return false;
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+    receiverInfoReadWriteLock.readLock().lock();
+    try {
+      try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+          BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+        serialize(outputStream);
+        outputStream.flush();
+      }
+      return tmpFile.renameTo(snapshotFile);
+    } finally {
+      for (int retry = 0; retry < 5; retry++) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
+      receiverInfoReadWriteLock.readLock().unlock();
+    }
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {}
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+    receiverInfoReadWriteLock.writeLock().lock();
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+        BufferedInputStream inputStream = new BufferedInputStream(fileInputStream)) {
+      deserialize(inputStream);
+    } finally {
+      receiverInfoReadWriteLock.writeLock().unlock();
+    }
+  }
 }

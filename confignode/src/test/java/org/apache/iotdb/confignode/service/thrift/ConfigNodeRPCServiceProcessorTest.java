@@ -122,6 +122,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
     FileUtils.deleteFully(
         new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder()));
+    FileUtils.deleteFully(new File(CommonDescriptor.getInstance().getConfig().getSyncFolder()));
   }
 
   @AfterClass

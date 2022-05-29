@@ -28,8 +28,15 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
+
+import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
 
 // TODO: rename and add test in mock
 public class ReceiverManagerTest {
@@ -51,9 +58,9 @@ public class ReceiverManagerTest {
   }
 
   @Test
-  public void test() {
+  public void testOperatePipe() throws Exception {
+    MockReceiverInfo manager = new MockReceiverInfo();
     try {
-      MockReceiverInfo manager = new MockReceiverInfo();
       manager.startServer();
       manager.createPipe(pipe1, ip1, 1);
       manager.createPipe(pipe2, ip2, 2);
@@ -91,10 +98,47 @@ public class ReceiverManagerTest {
       messages = manager.getPipeMessages(pipe1, ip1, createdTime1, true);
       Assert.assertEquals(1, messages.size());
       Assert.assertEquals(error, messages.get(0));
-      manager.close();
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
+    } finally {
+      manager.close();
+    }
+  }
+
+  @Test
+  public void testSerialize() throws Exception {
+    MockReceiverInfo manager1 = new MockReceiverInfo();
+    MockReceiverInfo manager2 = new MockReceiverInfo();
+    File snapshotFile = new File(BASE_OUTPUT_PATH, "sync_receiver_snapshot");
+    try {
+      try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile);
+          BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
+        manager1.startServer();
+        manager1.createPipe(pipe1, ip1, 1);
+        manager1.createPipe(pipe2, ip2, 2);
+        manager1.dropPipe(pipe1, ip1, 1);
+        manager1.startPipe(pipe2, ip2, 2);
+        manager1.serialize(bufferedOutputStream);
+      }
+      try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+          BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
+        manager2.deserialize(bufferedInputStream);
+        Assert.assertEquals(manager1.isPipeServerEnable(), manager2.isPipeServerEnable());
+        Assert.assertEquals(
+            manager1.getPipeInfo(pipe1, ip1, 1), manager2.getPipeInfo(pipe1, ip1, 1));
+        Assert.assertEquals(
+            manager1.getPipeInfo(pipe2, ip2, 2), manager2.getPipeInfo(pipe2, ip2, 2));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      manager1.close();
+      manager2.close();
+      if (snapshotFile.exists()) {
+        snapshotFile.delete();
+      }
     }
   }
 

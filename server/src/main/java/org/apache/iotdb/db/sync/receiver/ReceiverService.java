@@ -152,53 +152,21 @@ public class ReceiverService implements IService {
   /** create and start a new pipe named pipeName */
   private void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverInfo.createPipe(pipeName, remoteIp, createTime);
-    //    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    //    if (pipeInfo == null || pipeInfo.getStatus().equals(PipeStatus.DROP)) {
-    //      logger.info(
-    //          "create Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
-    //      createDir(pipeName, remoteIp, createTime);
-    //      receiverManager.createPipe(pipeName, remoteIp, createTime);
-    //    }
   }
 
   /** start an existed pipe named pipeName */
   private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverInfo.startPipe(pipeName, remoteIp, createTime);
-    //    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    //    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
-    //      logger.info("start Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp,
-    // createTime);
-    //      receiverManager.startPipe(pipeName, remoteIp, createTime);
-    //      collector.startPipe(pipeName, remoteIp, createTime);
-    //    }
   }
 
   /** stop an existed pipe named pipeName */
   private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverInfo.stopPipe(pipeName, remoteIp, createTime);
-    //    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    //    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
-    //      logger.info("stop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp,
-    // createTime);
-    //      receiverManager.stopPipe(pipeName, remoteIp, createTime);
-    //      collector.stopPipe(pipeName, remoteIp, createTime);
-    //    }
   }
 
   /** drop an existed pipe named pipeName */
   private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     receiverInfo.dropPipe(pipeName, remoteIp, createTime);
-    //    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    //    if (pipeInfo != null && !pipeInfo.getStatus().equals(PipeStatus.DROP)) {
-    //      logger.info("drop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp,
-    // createTime);
-    //      receiverManager.dropPipe(pipeName, remoteIp, createTime);
-    //      collector.stopPipe(pipeName, remoteIp, createTime);
-    //      PipeDataQueueFactory.removeBufferedPipeDataQueue(
-    //          SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
-    //      File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
-    //      FileUtils.deleteDirectory(dir);
-    //    }
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {

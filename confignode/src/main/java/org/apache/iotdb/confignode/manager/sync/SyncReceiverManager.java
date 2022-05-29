@@ -30,6 +30,8 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 public class SyncReceiverManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncReceiverManager.class);
   private final Manager configManager;
@@ -56,5 +58,9 @@ public class SyncReceiverManager {
   public PipeInfoResp showPipe(ShowPipeReq showPipeReq) {
     ConsensusReadResponse readResponse = getConsensusManager().read(showPipeReq);
     return (PipeInfoResp) readResponse.getDataset();
+  }
+
+  public void close() throws IOException {
+    clusterReceiverInfo.close();
   }
 }

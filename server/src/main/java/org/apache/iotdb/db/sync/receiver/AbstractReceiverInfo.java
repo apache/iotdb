@@ -25,18 +25,26 @@ import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.iotdb.commons.sync.SyncConstant.PIPE_MESSAGE_TYPE;
+import static org.apache.iotdb.commons.sync.SyncConstant.PIPE_NAME_MAP_TYPE;
 
 public abstract class AbstractReceiverInfo {
 
@@ -58,7 +66,8 @@ public abstract class AbstractReceiverInfo {
       pipeServerEnable = analyzer.isPipeServerEnable();
       pipeMessageMap = analyzer.getPipeMessageMap();
     } catch (StartupException e) {
-      e.printStackTrace();
+      LOGGER.error(
+          "Cannot recover ReceiverInfo because {}. Use default info values.", e.getMessage());
       pipeInfos = new ConcurrentHashMap<>();
       pipeMessageMap = new ConcurrentHashMap<>();
       pipeServerEnable = false;
@@ -251,6 +260,82 @@ public abstract class AbstractReceiverInfo {
 
   public void setPipeServerEnable(boolean pipeServerEnable) {
     this.pipeServerEnable = pipeServerEnable;
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)) {
+      // serialize pipeServerEnable
+      ReadWriteIOUtils.write(pipeServerEnable, objectOutputStream);
+      // serialize pipeInfos
+      for (Map.Entry<String, Map<String, Map<Long, Pipe.PipeStatus>>> pipeNameEntry :
+          pipeInfos.entrySet()) {
+        ReadWriteIOUtils.write(PIPE_NAME_MAP_TYPE, objectOutputStream);
+        ReadWriteIOUtils.write(pipeNameEntry.getKey(), objectOutputStream);
+        ReadWriteIOUtils.write(pipeNameEntry.getValue().size(), objectOutputStream);
+        for (Map.Entry<String, Map<Long, Pipe.PipeStatus>> remoteIpEntry :
+            pipeNameEntry.getValue().entrySet()) {
+          ReadWriteIOUtils.write(remoteIpEntry.getKey(), objectOutputStream);
+          ReadWriteIOUtils.write(remoteIpEntry.getValue().size(), objectOutputStream);
+          for (Map.Entry<Long, Pipe.PipeStatus> createTimeEntry :
+              remoteIpEntry.getValue().entrySet()) {
+            ReadWriteIOUtils.write(createTimeEntry.getKey(), objectOutputStream);
+            ReadWriteIOUtils.write(createTimeEntry.getValue().ordinal(), objectOutputStream);
+          }
+        }
+      }
+      // serialize pipeMessages
+      ReadWriteIOUtils.write(PIPE_MESSAGE_TYPE, objectOutputStream);
+      ReadWriteIOUtils.write(pipeMessageMap.size(), objectOutputStream);
+      for (Map.Entry<String, List<PipeMessage>> pipeMessageEntry : pipeMessageMap.entrySet()) {
+        ReadWriteIOUtils.write(pipeMessageEntry.getKey(), objectOutputStream);
+        ReadWriteIOUtils.write(pipeMessageEntry.getValue().size(), objectOutputStream);
+        for (PipeMessage pipeMessage : pipeMessageEntry.getValue()) {
+          objectOutputStream.writeObject(pipeMessage);
+        }
+      }
+    }
+  }
+
+  public void deserialize(InputStream inputStream) throws IOException {
+    try (ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+      // deserialize pipeServerEnable
+      pipeServerEnable = ReadWriteIOUtils.readBool(objectInputStream);
+      // deserialize pipeInfos
+      pipeInfos = new ConcurrentHashMap<>();
+      while (ReadWriteIOUtils.readByte(objectInputStream) == PIPE_NAME_MAP_TYPE) {
+        String pipeName = ReadWriteIOUtils.readString(objectInputStream);
+        Map<String, Map<Long, Pipe.PipeStatus>> pipeNameMap = new ConcurrentHashMap<>();
+        pipeInfos.put(pipeName, pipeNameMap);
+        int remoteIpSize = ReadWriteIOUtils.readInt(objectInputStream);
+        for (int i = 0; i < remoteIpSize; i++) {
+          String remoteIp = ReadWriteIOUtils.readString(objectInputStream);
+          Map<Long, Pipe.PipeStatus> remoteIpMap = new ConcurrentHashMap<>();
+          pipeNameMap.put(remoteIp, remoteIpMap);
+          int createTimeSize = ReadWriteIOUtils.readInt(objectInputStream);
+          for (int j = 0; j < createTimeSize; j++) {
+            Long createTime = ReadWriteIOUtils.readLong(objectInputStream);
+            remoteIpMap.put(
+                createTime,
+                Pipe.PipeStatus.getByValue(ReadWriteIOUtils.readInt(objectInputStream)));
+          }
+        }
+      }
+      // deserialize pipeMessages
+      pipeMessageMap = new ConcurrentHashMap<>();
+      int mapSize = ReadWriteIOUtils.readInt(objectInputStream);
+      for (int i = 0; i < mapSize; i++) {
+        String pipeFolderName = ReadWriteIOUtils.readString(objectInputStream);
+        List<PipeMessage> pipeMessageList = new ArrayList<>();
+        pipeMessageMap.put(pipeFolderName, pipeMessageList);
+        int messageSize = ReadWriteIOUtils.readInt(objectInputStream);
+        for (int j = 0; j < messageSize; j++) {
+          pipeMessageList.add((PipeMessage) objectInputStream.readObject());
+        }
+      }
+    } catch (ClassNotFoundException e) {
+      throw new IOException(e);
+    }
+    // TODO(cyz): update log
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {

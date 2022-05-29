@@ -74,4 +74,8 @@ public class SyncConstant {
   public static final String RECEIVER_LOG_NAME = "receiverService.log";
   public static final String RECEIVER_MSG_LOG_NAME = "receiverMessage.log";
   public static final String IP_SEPARATOR = "\\.";
+
+  // serialize AbstractReceiverInfo
+  public static final byte PIPE_NAME_MAP_TYPE = 0;
+  public static final byte PIPE_MESSAGE_TYPE = 2;
 }
