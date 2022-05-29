@@ -42,8 +42,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCou
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryAddLastPointNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
@@ -590,9 +590,9 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaQueryAddLastPoint() {
-    SchemaQueryAddLastPointNode node =
-        new SchemaQueryAddLastPointNode(context.getQueryId().genPlanNodeId());
+  public LogicalPlanBuilder planSchemaQueryOrderByHeat() {
+    SchemaQueryOrderByHeatNode node =
+        new SchemaQueryOrderByHeatNode(context.getQueryId().genPlanNodeId());
     node.addChild(this.getRoot());
     this.root = node;
     return this;

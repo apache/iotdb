@@ -59,7 +59,6 @@ public class HeaderConstant {
 
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
-  public static final DatasetHeader showTimeSeriesWithLatestHeader;
   public static final DatasetHeader showDevicesHeader;
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
@@ -115,19 +114,6 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TAGS, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_ATTRIBUTES, TSDataType.TEXT)),
-            true);
-    showTimeSeriesWithLatestHeader =
-        new DatasetHeader(
-            Arrays.asList(
-                new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TIMESERIES_ALIAS, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TAGS, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_ATTRIBUTES, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TIME, TSDataType.INT64)),
             true);
     showDevicesHeader =
         new DatasetHeader(

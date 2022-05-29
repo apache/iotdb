@@ -18,43 +18,29 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class SchemaQueryMergeOperator implements ProcessOperator {
   private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
   private final boolean[] noMoreTsBlocks;
-  private final boolean orderByHeat;
 
   private final List<Operator> children;
-  private boolean isFinished;
 
   public SchemaQueryMergeOperator(
-      PlanNodeId planNodeId,
-      boolean orderByHeat,
-      OperatorContext operatorContext,
-      List<Operator> children) {
+      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
     this.planNodeId = planNodeId;
     this.operatorContext = operatorContext;
     this.children = children;
     noMoreTsBlocks = new boolean[children.size()];
-    this.orderByHeat = orderByHeat;
-    isFinished = false;
   }
 
   @Override
@@ -64,54 +50,13 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    // ToDo @xinzhongtianxia consider SHOW LATEST
-    if (orderByHeat) {
-      isFinished = true;
-      TsBlockBuilder tsBlockBuilder =
-          new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
-      // Step 1: load all rows
-      Map<Long, List<Object[]>> valueToLines = new HashMap<>();
-      for (int i = 0; i < children.size(); i++) {
-        while (children.get(i).hasNext()) {
-          TsBlock tsBlock = children.get(i).next();
-          TsBlock.TsBlockRowIterator tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
-          while (tsBlockRowIterator.hasNext()) {
-            Object[] row = tsBlockRowIterator.next();
-            long time = Long.parseLong(row[row.length - 2].toString());
-            if (!valueToLines.containsKey(time)) {
-              valueToLines.put(time, new ArrayList<>());
-            }
-            valueToLines.get(time).add(row);
-          }
+    for (int i = 0; i < children.size(); i++) {
+      if (!noMoreTsBlocks[i]) {
+        TsBlock tsBlock = children.get(i).next();
+        if (!children.get(i).hasNext()) {
+          noMoreTsBlocks[i] = true;
         }
-      }
-      // Step 2: sort and rewrite
-      List<Long> times = new ArrayList<>(valueToLines.keySet());
-      times.sort(Comparator.reverseOrder());
-      for (Long time : times) {
-        List<Object[]> rows = valueToLines.get(time);
-        for (Object[] row : rows) {
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(row[0].toString()));
-          tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(row[1].toString()));
-          tsBlockBuilder.getColumnBuilder(2).writeBinary(new Binary(row[2].toString()));
-          tsBlockBuilder.getColumnBuilder(3).writeBinary(new Binary(row[3].toString()));
-          tsBlockBuilder.getColumnBuilder(4).writeBinary(new Binary(row[4].toString()));
-          tsBlockBuilder.getColumnBuilder(5).writeBinary(new Binary(row[5].toString()));
-          tsBlockBuilder.getColumnBuilder(6).writeBinary(new Binary(row[6].toString()));
-          tsBlockBuilder.getColumnBuilder(7).writeBinary(new Binary(row[7].toString()));
-          tsBlockBuilder.declarePosition();
-        }
-      }
-      return tsBlockBuilder.build();
-    } else {
-      for (int i = 0; i < children.size(); i++) {
-        if (!noMoreTsBlocks[i]) {
-          TsBlock tsBlock = children.get(i).next();
-          if (!children.get(i).hasNext()) {
-            noMoreTsBlocks[i] = true;
-          }
-          return tsBlock;
-        }
+        return tsBlock;
       }
     }
     return null;
@@ -119,9 +64,6 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    if (orderByHeat) {
-      return isFinished;
-    }
     for (int i = 0; i < children.size(); i++) {
       if (!noMoreTsBlocks[i] && children.get(i).hasNext()) {
         return true;
@@ -145,9 +87,6 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    if (orderByHeat) {
-      return isFinished;
-    }
     return !hasNext();
   }
 }

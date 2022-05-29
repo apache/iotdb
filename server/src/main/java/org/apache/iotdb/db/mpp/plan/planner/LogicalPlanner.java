@@ -420,22 +420,22 @@ public class LogicalPlanner {
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      // TODO spricoder
       planBuilder =
-          planBuilder.planTimeSeriesSchemaSource(
-              showTimeSeriesStatement.getPathPattern(),
-              showTimeSeriesStatement.getKey(),
-              showTimeSeriesStatement.getValue(),
-              showTimeSeriesStatement.getLimit(),
-              showTimeSeriesStatement.getOffset(),
-              showTimeSeriesStatement.isOrderByHeat(),
-              showTimeSeriesStatement.isContains(),
-              showTimeSeriesStatement.isPrefixPath());
+          planBuilder
+              .planTimeSeriesSchemaSource(
+                  showTimeSeriesStatement.getPathPattern(),
+                  showTimeSeriesStatement.getKey(),
+                  showTimeSeriesStatement.getValue(),
+                  showTimeSeriesStatement.getLimit(),
+                  showTimeSeriesStatement.getOffset(),
+                  showTimeSeriesStatement.isOrderByHeat(),
+                  showTimeSeriesStatement.isContains(),
+                  showTimeSeriesStatement.isPrefixPath())
+              .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
       if (showTimeSeriesStatement.isOrderByHeat()) {
-        planBuilder = planBuilder.planSchemaQueryAddLastPoint();
+        planBuilder = planBuilder.planSchemaQueryOrderByHeat();
       }
       return planBuilder
-          .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat())
           .planOffset(showTimeSeriesStatement.getOffset())
           .planLimit(showTimeSeriesStatement.getLimit())
           .getRoot();

@@ -29,11 +29,11 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SchemaQueryAddLastPointNode extends ProcessNode {
+public class SchemaQueryOrderByHeatNode extends ProcessNode {
 
   private PlanNode child;
 
-  public SchemaQueryAddLastPointNode(PlanNodeId id) {
+  public SchemaQueryOrderByHeatNode(PlanNodeId id) {
     super(id);
   }
 
@@ -53,7 +53,7 @@ public class SchemaQueryAddLastPointNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new SchemaQueryAddLastPointNode(getPlanNodeId());
+    return new SchemaQueryOrderByHeatNode(getPlanNodeId());
   }
 
   @Override
@@ -68,16 +68,16 @@ public class SchemaQueryAddLastPointNode extends ProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaQueryAddLastPoint(this, context);
+    return visitor.visitSchemaQueryOrderByHeat(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.NODE_PATHS_CONVERT.serialize(byteBuffer);
+    PlanNodeType.SCHEMA_QUERY_ORDER_BY_HEAT.serialize(byteBuffer);
   }
 
-  public static SchemaQueryAddLastPointNode deserialize(ByteBuffer byteBuffer) {
+  public static SchemaQueryOrderByHeatNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaQueryAddLastPointNode(planNodeId);
+    return new SchemaQueryOrderByHeatNode(planNodeId);
   }
 }

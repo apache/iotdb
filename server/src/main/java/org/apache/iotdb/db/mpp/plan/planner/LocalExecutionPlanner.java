@@ -92,8 +92,8 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryAddLastPointOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
@@ -118,8 +118,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCou
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryAddLastPointNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -347,10 +347,10 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaQueryAddLastPoint(
-        SchemaQueryAddLastPointNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaQueryOrderByHeat(
+        SchemaQueryOrderByHeatNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      return new SchemaQueryAddLastPointOperator(
+      return new SchemaQueryOrderByHeatOperator(
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
@@ -428,8 +428,7 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaQueryMergeOperator.class.getSimpleName());
-      return new SchemaQueryMergeOperator(
-          node.getPlanNodeId(), node.isOrderByHeat(), operatorContext, children);
+      return new SchemaQueryMergeOperator(node.getPlanNodeId(), operatorContext, children);
     }
 
     @Override

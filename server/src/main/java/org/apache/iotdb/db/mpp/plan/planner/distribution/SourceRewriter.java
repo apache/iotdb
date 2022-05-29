@@ -247,12 +247,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public PlanNode visitSchemaQueryMerge(
       SchemaQueryMergeNode node, DistributionPlanContext context) {
     SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
-    SchemaQueryScanNode seed;
-    if (node.isOrderByHeat()) {
-      seed = (SchemaQueryScanNode) node.getChildren().get(0).getChildren().get(0);
-    } else {
-      seed = (SchemaQueryScanNode) node.getChildren().get(0);
-    }
+    SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
     TreeSet<TRegionReplicaSet> schemaRegions =
         new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
     analysis
