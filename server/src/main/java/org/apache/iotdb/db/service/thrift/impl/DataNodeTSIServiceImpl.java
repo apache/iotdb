@@ -1005,7 +1005,6 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
-    long t1 = System.currentTimeMillis();
     try {
       if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
@@ -1042,8 +1041,6 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.DELETE_DATA, TSStatusCode.EXECUTE_STATEMENT_ERROR);
-    } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
   }
 
