@@ -260,7 +260,7 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
     if (information.isBuiltin()) {
       String errorMessage =
           String.format("Built-in function %s can not be deregistered.", functionName);
-      LOGGER.error(errorMessage);
+      LOGGER.warn(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     }
 

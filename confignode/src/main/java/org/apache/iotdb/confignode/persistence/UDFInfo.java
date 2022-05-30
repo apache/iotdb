@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -95,8 +96,23 @@ public class UDFInfo implements SnapshotProcessor {
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
+              "[ConfigNode] Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
               functionName, className, uris, e);
+      LOGGER.warn(errorMessage, e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(errorMessage);
+    }
+  }
+
+  public synchronized TSStatus dropFunction(DropFunctionReq req) {
+    try {
+      udfRegistrationService.deregister(req.getFunctionName());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format(
+              "[ConfigNode] Failed to deregister UDF %s, because of exception: %s",
+              req.getFunctionName(), e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);

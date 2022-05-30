@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
@@ -187,6 +188,8 @@ public class ConfigRequestExecutor {
         return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionReq) req);
+      case DropFunction:
+        return udfInfo.dropFunction((DropFunctionReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -216,8 +219,7 @@ public class ConfigRequestExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    getAllAttributes()
-        .parallelStream()
+    getAllAttributes().parallelStream()
         .forEach(
             x -> {
               boolean takeSnapshotResult = true;
@@ -246,8 +248,7 @@ public class ConfigRequestExecutor {
       return;
     }
 
-    getAllAttributes()
-        .parallelStream()
+    getAllAttributes().parallelStream()
         .forEach(
             x -> {
               try {
