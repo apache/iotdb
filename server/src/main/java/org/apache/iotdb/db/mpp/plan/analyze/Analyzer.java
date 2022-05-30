@@ -1311,36 +1311,28 @@ public class Analyzer {
     @Override
     public Analysis visitShowChildPaths(
         ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showChildPathsStatement);
-
-      SchemaNodeManagementPartition schemaNodeManagementPartition =
-          partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildPathsStatement.getPartialPath()));
-
-      if (schemaNodeManagementPartition == null) {
-        return analysis;
-      }
-      if (!schemaNodeManagementPartition.getMatchedNode().isEmpty()
-          && schemaNodeManagementPartition.getSchemaPartition().getSchemaPartitionMap().size()
-              == 0) {
-        analysis.setFinishQueryAfterAnalyze(true);
-      }
-      analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
-      analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
-      analysis.setRespDatasetHeader(HeaderConstant.showChildPathsHeader);
-      return analysis;
+      return visitSchemaNodeManagementPartition(
+          showChildPathsStatement,
+          showChildPathsStatement.getPartialPath(),
+          HeaderConstant.showChildPathsHeader);
     }
 
     @Override
     public Analysis visitShowChildNodes(
         ShowChildNodesStatement showChildNodesStatement, MPPQueryContext context) {
+      return visitSchemaNodeManagementPartition(
+          showChildNodesStatement,
+          showChildNodesStatement.getPartialPath(),
+          HeaderConstant.showChildNodesHeader);
+    }
+
+    private Analysis visitSchemaNodeManagementPartition(
+        Statement statement, PartialPath path, DatasetHeader header) {
       Analysis analysis = new Analysis();
-      analysis.setStatement(showChildNodesStatement);
+      analysis.setStatement(statement);
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
-          partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildNodesStatement.getPartialPath()));
+          partitionFetcher.getSchemaNodeManagementPartition(new PathPatternTree(path));
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1352,7 +1344,7 @@ public class Analyzer {
       }
       analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
       analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
-      analysis.setRespDatasetHeader(HeaderConstant.showChildNodesHeader);
+      analysis.setRespDatasetHeader(header);
       return analysis;
     }
   }

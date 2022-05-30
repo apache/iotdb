@@ -258,9 +258,8 @@ public class ConfigRequestExecutor {
             });
   }
 
-  private DataSet getSchemaNodeManagementPartition(ConfigRequest req)
-      throws UnknownPhysicalPlanTypeException {
-    int level = -1;
+  private DataSet getSchemaNodeManagementPartition(ConfigRequest req) {
+    int level;
     PartialPath partialPath;
     Set<String> alreadyMatchedNode;
     Set<PartialPath> needMatchedNode;
