@@ -235,7 +235,7 @@ public class WALNodeTest {
     }
     // recover info from checkpoint file
     Map<Integer, MemTableInfo> actualMemTableId2Info =
-        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));
+        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
 

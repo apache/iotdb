@@ -109,12 +109,17 @@ public class WALNode implements IWALNode {
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   public WALNode(String identifier, String logDirectory) throws FileNotFoundException {
+    this(identifier, logDirectory, 0);
+  }
+
+  public WALNode(String identifier, String logDirectory, int startFileVersion)
+      throws FileNotFoundException {
     this.identifier = identifier;
     this.logDirectory = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!this.logDirectory.exists() && this.logDirectory.mkdirs()) {
       logger.info("create folder {} for wal node-{}.", logDirectory, identifier);
     }
-    this.buffer = new WALBuffer(identifier, logDirectory);
+    this.buffer = new WALBuffer(identifier, logDirectory, startFileVersion);
     this.checkpointManager = new CheckpointManager(identifier, logDirectory);
   }
 

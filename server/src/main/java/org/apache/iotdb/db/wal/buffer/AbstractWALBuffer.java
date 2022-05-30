@@ -45,13 +45,15 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** current wal file log writer */
   protected volatile ILogWriter currentWALFileWriter;
 
-  public AbstractWALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
+  public AbstractWALBuffer(String identifier, String logDirectory, int startFileVersion)
+      throws FileNotFoundException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
       logger.info("create folder {} for wal buffer-{}.", logDirectory, identifier);
     }
+    currentWALFileVersion.set(startFileVersion);
     currentWALFileWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
