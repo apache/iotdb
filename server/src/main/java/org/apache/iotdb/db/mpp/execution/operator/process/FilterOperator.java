@@ -96,15 +96,13 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void readyForFirstIteration() throws QueryProcessException, IOException {
-    iterateFilterReaderToNextValid();
-  }
-
-  private void iterateFilterReaderToNextValid() throws QueryProcessException, IOException {
-    do {
-      filterPointReader.readyForNext();
-    } while (filterPointReader.next()
-        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean()));
+  public boolean hasNext() {
+    try {
+      return super.hasNext() && filterPointReader.next();
+    } catch (Exception e) {
+      LOGGER.error("FilterOperator#hasNext()", e);
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -126,58 +124,44 @@ public class FilterOperator extends TransformOperator {
 
     try {
       int rowCount = 0;
-      while (rowCount < FETCH_SIZE && filterPointReader.next()) {
-        final long currentTime = filterPointReader.currentTime();
 
-        boolean hasAtLeastOneValid = false;
-        for (int i = 0; i < outputColumnCount; ++i) {
-          if (currentTime == iterateValueReadersToNextValid(transformers[i], currentTime)) {
-            hasAtLeastOneValid = true;
-          }
-        }
+      while (rowCount < FETCH_SIZE && !timeHeap.isEmpty() && filterPointReader.next()) {
+        final long currentTime = timeHeap.pollFirst();
 
-        if (hasAtLeastOneValid) {
+        // check filter
+        if (filterPointReader.currentTime() == currentTime
+            && !filterPointReader.isCurrentNull()
+            && filterPointReader.currentBoolean()) {
+          // time
           timeBuilder.writeLong(currentTime);
+
+          // values
           for (int i = 0; i < outputColumnCount; ++i) {
-            collectDataPoint(transformers[i], columnBuilders[i], currentTime);
+            LayerPointReader reader = transformers[i];
+            collectDataPoint(reader, columnBuilders[i], currentTime);
+            iterateReaderToNextValid(reader);
           }
+
           ++rowCount;
+        } else {
+          // values
+          for (int i = 0; i < outputColumnCount; ++i) {
+            iterateReaderToNextValid(transformers[i]);
+          }
         }
 
-        iterateFilterReaderToNextValid();
+        // update filter
+        iterateReaderToNextValid(filterPointReader);
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
 
       tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
-      LOGGER.warn("FilterOperator#next()", e);
+      LOGGER.error("FilterOperator#next()", e);
       throw new RuntimeException(e);
     }
 
     return tsBlockBuilder.build();
-  }
-
-  private long iterateValueReadersToNextValid(LayerPointReader reader, long currentTime)
-      throws QueryProcessException, IOException {
-    while (reader.next() && (reader.isCurrentNull() || reader.currentTime() < currentTime)) {
-      reader.readyForNext();
-    }
-    return reader.currentTime();
-  }
-
-  @Override
-  public boolean hasNext() {
-    try {
-      if (isFirstIteration) {
-        readyForFirstIteration();
-        isFirstIteration = false;
-      }
-
-      return filterPointReader.next();
-    } catch (Exception e) {
-      LOGGER.warn("FilterOperator#hasNext()", e);
-      throw new RuntimeException(e);
-    }
   }
 }

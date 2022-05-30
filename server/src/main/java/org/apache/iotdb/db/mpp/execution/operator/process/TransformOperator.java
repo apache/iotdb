@@ -146,7 +146,7 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  private void iterateReaderToNextValid(LayerPointReader reader)
+  protected void iterateReaderToNextValid(LayerPointReader reader)
       throws QueryProcessException, IOException {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
@@ -167,7 +167,7 @@ public class TransformOperator implements ProcessOperator {
       try {
         readyForFirstIteration();
       } catch (Exception e) {
-        LOGGER.warn("TransformOperator#hasNext()", e);
+        LOGGER.error("TransformOperator#hasNext()", e);
         throw new RuntimeException(e);
       }
       isFirstIteration = false;
@@ -214,7 +214,7 @@ public class TransformOperator implements ProcessOperator {
 
       tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
-      LOGGER.warn("TransformOperator#next()", e);
+      LOGGER.error("TransformOperator#next()", e);
       throw new RuntimeException(e);
     }
 
