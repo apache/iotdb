@@ -72,7 +72,7 @@ public class MetaUtils {
    *     vector1 (s1,s2) would be returned once.
    */
   public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
-    List<PartialPath> result = new LinkedList<>();
+    List<PartialPath> result = new ArrayList<>();
     Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
     for (PartialPath path : fullPaths) {
       MeasurementPath measurementPath = (MeasurementPath) path;
