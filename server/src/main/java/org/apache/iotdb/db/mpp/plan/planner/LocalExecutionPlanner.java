@@ -351,11 +351,13 @@ public class LocalExecutionPlanner {
         SchemaQueryOrderByHeatNode node, LocalExecutionPlanContext context) {
       Operator left = node.getLeft().accept(this, context);
       Operator right = node.getRight().accept(this, context);
+
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SchemaQueryOrderByHeatNode.class.getSimpleName());
+              SchemaQueryOrderByHeatOperator.class.getSimpleName());
+
       return new SchemaQueryOrderByHeatOperator(operatorContext, left, right);
     }
 

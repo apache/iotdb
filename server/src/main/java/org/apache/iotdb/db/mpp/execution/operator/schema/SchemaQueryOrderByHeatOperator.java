@@ -59,7 +59,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
 
     // Step 1: get last point result
-    Map<String, Long> timeseriesToLastStamp = new HashMap<>();
+    Map<String, Long> timeseriesToLastTimestamp = new HashMap<>();
     while (right.hasNext()) {
       TsBlock tsBlock = right.next();
       if (null == tsBlock || tsBlock.isEmpty()) {
@@ -68,12 +68,12 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         String timeseries = tsBlock.getColumn(0).getBinary(i).toString();
         long time = tsBlock.getTimeByIndex(i);
-        timeseriesToLastStamp.put(timeseries, time);
+        timeseriesToLastTimestamp.put(timeseries, time);
       }
     }
 
     // Step 2: get last point timestamp to timeseries map
-    Map<Long, List<Object[]>> lastTimeToTimeseries = new HashMap<>();
+    Map<Long, List<Object[]>> lastTimestampToTsSchema = new HashMap<>();
     while (left.hasNext()) {
       TsBlock tsBlock = left.next();
       if (null == tsBlock || tsBlock.isEmpty()) {
@@ -83,21 +83,21 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
       while (tsBlockRowIterator.hasNext()) {
         Object[] line = tsBlockRowIterator.next();
         String timeseries = line[0].toString();
-        long time = timeseriesToLastStamp.getOrDefault(timeseries, 0L);
-        if (!lastTimeToTimeseries.containsKey(time)) {
-          lastTimeToTimeseries.put(time, new ArrayList<>());
+        long time = timeseriesToLastTimestamp.getOrDefault(timeseries, 0L);
+        if (!lastTimestampToTsSchema.containsKey(time)) {
+          lastTimestampToTsSchema.put(time, new ArrayList<>());
         }
-        lastTimeToTimeseries.get(time).add(line);
+        lastTimestampToTsSchema.get(time).add(line);
       }
     }
 
-    // Step 3: sort and rewrite
-    List<Long> times = new ArrayList<>(lastTimeToTimeseries.keySet());
-    times.sort(Comparator.reverseOrder());
+    // Step 3: sort by last point's timestamp
+    List<Long> timestamps = new ArrayList<>(lastTimestampToTsSchema.keySet());
+    timestamps.sort(Comparator.reverseOrder());
 
     // Step 4: generate result
-    for (Long time : times) {
-      List<Object[]> rows = lastTimeToTimeseries.get(time);
+    for (Long time : timestamps) {
+      List<Object[]> rows = lastTimestampToTsSchema.get(time);
       for (Object[] row : rows) {
         tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
         for (int i = 0; i < HeaderConstant.showTimeSeriesHeader.getRespDataTypes().size(); i++) {
