@@ -84,7 +84,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
     // last timestamp to timeseries
     Map<Long, List<Object[]>> lastTimeToTimeseries = new HashMap<>();
 
-    // TsBlock tsblock = children.get(1).next();
+    TsBlock tsblock = children.get(1).next();
     while (children.get(0).hasNext()) {
       TsBlock block = children.get(0).next();
       if (null != block) {

@@ -357,7 +357,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SchemaFetchMergeOperator.class.getSimpleName());
+              SchemaQueryOrderByHeatNode.class.getSimpleName());
       return new SchemaQueryOrderByHeatOperator(operatorContext, children);
     }
 
