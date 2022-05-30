@@ -68,6 +68,7 @@ public class TimePageWriter {
   public void write(long time) {
     timeEncoder.encode(time, timeOut);
     statistics.update(time);
+    timeRawSize.addAndGet(Long.BYTES);
   }
 
   /** write time series into encoder */

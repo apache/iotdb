@@ -35,7 +35,7 @@ public class PathNodesGenerator {
 
   public static String[] splitPathToNodes(String path) throws PathParseException {
     try {
-      return invokeParser(path);
+      return path.split("\\.");
     } catch (ParseCancellationException e) {
       throw new PathParseException(path);
     }
