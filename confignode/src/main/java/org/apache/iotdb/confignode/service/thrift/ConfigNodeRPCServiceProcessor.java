@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -73,8 +74,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -367,12 +370,20 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+    if (checkConfigNodeDuplicateNum()) {
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+          .setMessage("Remove ConfigNode failed only one ConfigNode in current Cluster.");
+    }
     Peer leader =
         configManager
             .getConsensusManager()
             .getLeader(configManager.getConsensusManager().getConsensusGroupId());
     if (leader.getEndpoint().equals(configNodeLocation.getInternalEndPoint())) {
-      // startElection
+      // transfer leader
+      TEndPoint endPoint = transferLeader(leader);
+      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+          .setRedirectNode(endPoint)
+          .setMessage("Remove ConfigNode is leader, already transfer Leader.");
     }
     RemoveConfigNodeReq removeConfigNodeReq = new RemoveConfigNodeReq(configNodeLocation);
 
@@ -382,6 +393,39 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     LOGGER.info("Execute RemoveConfigNodeRequest {} with result {}", configNodeLocation, status);
 
     return status;
+  }
+
+  private TEndPoint transferLeader(Peer peer) {
+    TEndPoint endPoint = new TEndPoint();
+    for (TConfigNodeLocation onlineConfigNode :
+        configManager.getNodeManager().getOnlineConfigNodes()) {
+      if (!peer.getEndpoint().equals(onlineConfigNode.getInternalEndPoint())) {
+        ConsensusGenericResponse resp =
+            configManager
+                .getConsensusManager()
+                .getConsensusImpl()
+                .transferLeader(
+                    configManager.getConsensusManager().getConsensusGroupId(),
+                    new Peer(
+                        configManager.getConsensusManager().getConsensusGroupId(),
+                        onlineConfigNode.getInternalEndPoint()));
+        if (resp.isSuccess()) {
+          LOGGER.info("Transfer ConfigNode Leader success.");
+          endPoint = onlineConfigNode.getInternalEndPoint();
+        }
+      }
+    }
+    return endPoint;
+  }
+
+  private boolean checkConfigNodeDuplicateNum() {
+    if (configManager.getNodeManager().getOnlineConfigNodes().size() <= 1) {
+      LOGGER.info(
+          "Only {} ConfigNode in current Cluster!",
+          configManager.getNodeManager().getOnlineConfigNodes().size());
+      return true;
+    }
+    return false;
   }
 
   public void handleClientExit() {}

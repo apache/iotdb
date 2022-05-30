@@ -116,16 +116,29 @@ public class SyncConfigNodeClientPool {
         .setMessage("All retry failed.");
   }
 
-  public TSStatus removeConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
+  public TSStatus removeConfigNode(
+      List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
-    for (int retry = 0; retry < retryNum; retry++) {
-      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
-        return client.removeConfigNode(configNodeLocation);
-      } catch (Exception e) {
-        LOGGER.warn("Remove ConfigNode failed, retrying...", e);
-        doRetryWait();
+    for (TConfigNodeLocation nodeLocation : configNodeLocations) {
+      for (int retry = 0; retry < retryNum; retry++) {
+        try (SyncConfigNodeIServiceClient client =
+            clientManager.borrowClient(nodeLocation.getInternalEndPoint())) {
+          TSStatus status = client.removeConfigNode(configNodeLocation);
+          if (updateConfigNodeLeader(status)) {
+            client.close();
+            return clientManager
+                .borrowClient(configNodeLeader)
+                .removeConfigNode(configNodeLocation);
+          } else {
+            return status;
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Remove ConfigNode failed, retrying...", e);
+          doRetryWait();
+        }
       }
     }
+
     LOGGER.error("Remove ConfigNode failed");
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed.");

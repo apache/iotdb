@@ -20,26 +20,26 @@ package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ConfigNode implements ConfigNodeMBean {
@@ -53,12 +53,16 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private final RegisterManager registerManager = new RegisterManager();
 
-  private final ConfigNodeRPCService configNodeRPCService;
-  private final ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
+  private static ConfigNodeRPCService configNodeRPCService;
+  private static ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
   private ConfigManager configManager;
 
   private ConfigNode() {
+    // we do not init anything here, so that we can re-initialize the instance in IT.
+  }
+
+  private void initConfigManager() {
     // Init ConfigManager
     try {
       this.configManager = new ConfigManager();
@@ -73,8 +77,8 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     // Init RPC service
-    this.configNodeRPCService = new ConfigNodeRPCService();
-    this.configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
+    configNodeRPCService = new ConfigNodeRPCService();
+    configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
   }
 
   public static void main(String[] args) {
@@ -84,6 +88,9 @@ public class ConfigNode implements ConfigNodeMBean {
   /** Register services */
   private void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
+    // Init ConfigManager
+    initConfigManager();
+
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
@@ -121,34 +128,24 @@ public class ConfigNode implements ConfigNodeMBean {
     deactivate();
   }
 
-  public void doRemoveNode() throws IOException {
+  public void doRemoveNode(String[] args) throws IOException {
     LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
-    List<TConfigNodeLocation> onlineConfigNodes =
-        configManager.getNodeManager().getOnlineConfigNodes();
-    ConsensusGroupId consensusGroupId = configManager.getConsensusManager().getConsensusGroupId();
-    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-    Peer leader = configManager.getConsensusManager().getLeader(consensusGroupId);
-    TEndPoint removeConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
-    if (checkConfigNodeDuplicateNum(onlineConfigNodes)) {
-      LOGGER.error("Remove ConfigNode failed, because there is only one ConfigNode in Cluster!");
+    if (args.length != 3) {
+      LOGGER.info("Usage: -r <ip1>:<rpcPort1>,<ip2>:<rpcPort2>");
       return;
     }
 
-    if (leader.getEndpoint().equals(removeConfigNode)) {
-      LOGGER.info("The remove ConfigNode is leader, need to transfer leader.");
-      leader = transferLeader(onlineConfigNodes, consensusGroupId);
-    }
-
-    TSStatus status =
-        SyncConfigNodeClientPool.getInstance()
-            .removeConfigNode(
-                leader.getEndpoint(),
-                new TConfigNodeLocation(
-                    removeConfigNode,
-                    new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.error(status.getMessage());
-      throw new IOException("Remove ConfigNode failed:");
+    try {
+      List<TEndPoint> removeConfigNodes =
+          NodeUrlUtils.parseTEndPointUrls(new ArrayList<>(Arrays.asList(args[2].split(","))));
+      for (TEndPoint endPoint : removeConfigNodes) {
+        if (!ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint)) {
+          LOGGER.error("The Current endpoint is not in the Cluster.");
+          return;
+        }
+      }
+    } catch (BadNodeUrlException e) {
+      LOGGER.warn("No ConfigNodes need to be removed.", e);
     }
     LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
   }

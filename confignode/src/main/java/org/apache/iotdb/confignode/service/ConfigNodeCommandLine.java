@@ -75,7 +75,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     } else if (MODE_REMOVE.equals(mode)) {
       // TODO: remove node
       try {
-        ConfigNode.getInstance().doRemoveNode();
+        ConfigNode.getInstance().doRemoveNode(args);
       } catch (IOException e) {
         LOGGER.error("Meet error when doing remove", e);
         return -1;
