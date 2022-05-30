@@ -27,12 +27,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 import java.util.List;
 
+@PowerMockIgnore({"javax.xml.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(DataRegion.class)
 public class StorageEngineV2Test {
