@@ -818,7 +818,7 @@ public class TsFileProcessor {
         MemTableFlushTask flushTask =
             new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
         flushTask.syncFlushMemTable();
-      } catch (Exception e) {
+      } catch (Throwable e) {
         if (writer == null) {
           logger.info(
               "{}: {} is closed during flush, abandon flush task",

@@ -108,23 +108,7 @@ public class ThriftServiceThread extends Thread {
 
   @SuppressWarnings("java:S2259")
   public TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
-    int maxRetry = 5;
-    long retryIntervalMS = 5000;
-    TTransportException lastExp = null;
-    for (int i = 0; i < maxRetry; i++) {
-      try {
-        return new TServerSocket(new InetSocketAddress(bindAddress, port));
-      } catch (TTransportException e) {
-        lastExp = e;
-        try {
-          Thread.sleep(retryIntervalMS);
-        } catch (InterruptedException interruptedException) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-    }
-    throw lastExp;
+    return new TServerSocket(new InetSocketAddress(bindAddress, port));
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {
