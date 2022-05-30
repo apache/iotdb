@@ -150,34 +150,6 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
-  private Peer transferLeader(
-      List<TConfigNodeLocation> onlineConfigNodes, ConsensusGroupId groupId) {
-    Peer leader = configManager.getConsensusManager().getLeader(groupId);
-    for (TConfigNodeLocation onlineConfigNode : onlineConfigNodes) {
-      if (!leader.getEndpoint().equals(onlineConfigNode.getInternalEndPoint())) {
-        Peer newLeader = new Peer(groupId, onlineConfigNode.getInternalEndPoint());
-        ConsensusGenericResponse resp =
-            configManager
-                .getConsensusManager()
-                .getConsensusImpl()
-                .transferLeader(groupId, newLeader);
-        if (resp.isSuccess()) {
-          LOGGER.info("Transfer ConfigNode Leader success.");
-          return newLeader;
-        }
-      }
-    }
-    return leader;
-  }
-
-  private boolean checkConfigNodeDuplicateNum(List<TConfigNodeLocation> onlineConfigNodes) {
-    if (onlineConfigNodes.size() <= onlineConfigNodeNum) {
-      LOGGER.info("Only {} ConfigNode in current Cluster!", onlineConfigNodes.size());
-      return true;
-    }
-    return false;
-  }
-
   private static class ConfigNodeHolder {
 
     private static final ConfigNode INSTANCE = new ConfigNode();
