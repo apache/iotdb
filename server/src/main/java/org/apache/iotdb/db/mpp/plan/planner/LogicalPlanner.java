@@ -273,14 +273,19 @@ public class LogicalPlanner {
         }
       } else {
         planBuilder =
-            planBuilder.planAggregationSource(
-                sourceExpressions,
-                queryStatement.getResultOrder(),
-                analysis.getGlobalTimeFilter(),
-                analysis.getGroupByTimeParameter(),
-                aggregationExpressions,
-                analysis.getGroupByLevelExpressions(),
-                analysis.getTypeProvider());
+            planBuilder
+                .planAggregationSource(
+                    sourceExpressions,
+                    queryStatement.getResultOrder(),
+                    analysis.getGlobalTimeFilter(),
+                    analysis.getGroupByTimeParameter(),
+                    aggregationExpressions,
+                    analysis.getGroupByLevelExpressions(),
+                    analysis.getTypeProvider())
+                .planTransform(
+                    transformExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
       }
 
       return planBuilder.getRoot();

@@ -144,7 +144,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testNodeName() {
     String[] createNodeNames = {
       "a_1",
-      "A@#{}:",
       "aaa",
       "`select`",
       "`a.b`",
@@ -155,12 +154,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "`abc`",
-      "a1_:@#${}"
     };
 
     String[] resultTimeseries = {
       "root.sg1.d1.a_1",
-      "root.sg1.d1.A@#{}:",
       "root.sg1.d1.aaa",
       "root.sg1.d1.select",
       "root.sg1.d1.`a.b`",
@@ -171,12 +168,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "root.sg1.d1.````",
       "root.sg1.d1.`c.d.```",
       "root.sg1.d1.abc",
-      "root.sg1.d1.a1_:@#${}",
     };
 
     String[] selectNodeNames = {
       "a_1",
-      "A@#{}:",
       "aaa",
       "`select`",
       "`a.b`",
@@ -187,12 +182,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "abc",
-      "a1_:@#${}",
     };
 
     String[] suffixInResultColumns = {
       "a_1",
-      "A@#{}:",
       "aaa",
       "select",
       "`a.b`",
@@ -203,7 +196,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "abc",
-      "a1_:@#${}",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

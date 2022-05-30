@@ -20,9 +20,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
@@ -101,7 +99,6 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -332,7 +329,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // measurementAlias is also a nodeName
-      isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
+      PathUtils.isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -390,9 +387,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurements(req.getMeasurementAlias());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurementAlias());
 
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
@@ -440,7 +437,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurements(req.getMeasurementAliasList());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurementAliasList());
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
@@ -646,7 +643,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurementLists(req.getMeasurementsList());
+      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
@@ -696,7 +693,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurementLists(req.getMeasurementsList());
+      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -747,7 +744,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurementLists(req.getMeasurementsList());
+      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -798,7 +795,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -838,7 +835,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
-      isLegalSingleMeasurementLists(req.getMeasurementsList());
+      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -881,7 +878,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
       // Step 1: TODO(INSERT) transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
@@ -931,7 +928,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurementLists(req.getMeasurementsList());
+      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
@@ -1184,7 +1181,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
-      isLegalSingleMeasurements(req.getMeasurements());
+      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -1271,93 +1268,5 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private QueryId genQueryId(long id) {
     return new QueryId(String.valueOf(id));
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement can only be a
-   * single node name
-   */
-  protected void isLegalSingleMeasurementLists(List<List<String>> measurementLists)
-      throws MetadataException {
-    if (measurementLists == null) {
-      return;
-    }
-    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
-    for (List<String> measurementList : measurementLists) {
-      for (String measurement : measurementList) {
-        if (measurement != null) {
-          if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
-              && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
-                  && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
-            throw new IllegalPathException(measurement);
-          } else {
-            path.append(TsFileConstant.PATH_SEPARATOR);
-            path.append(measurement);
-          }
-        }
-      }
-    }
-    try {
-      PathUtils.isLegalPath(path.toString());
-    } catch (IllegalPathException e) {
-      throw new MetadataException("find wrong node name according to syntax convention");
-    }
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement can only be a
-   * single node name
-   */
-  protected void isLegalSingleMeasurements(List<String> measurements) throws MetadataException {
-    if (measurements == null) {
-      return;
-    }
-    StringBuilder path = new StringBuilder(IoTDBConstant.PATH_ROOT);
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        if (measurement.contains(TsFileConstant.PATH_SEPARATOR)
-            && !(measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
-                && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING))) {
-          throw new IllegalPathException(measurement);
-        } else {
-          path.append(TsFileConstant.PATH_SEPARATOR);
-          path.append(measurement);
-        }
-      }
-    }
-    try {
-      PathUtils.isLegalPath(path.toString());
-    } catch (IllegalPathException e) {
-      throw new MetadataException("find wrong node name according to syntax convention");
-    }
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement could be like a.b
-   * (more than one node name), in template?
-   */
-  protected void isLegalMeasurementLists(List<List<String>> measurementLists)
-      throws IllegalPathException {
-    if (measurementLists == null) {
-      return;
-    }
-    for (List<String> measurementList : measurementLists) {
-      isLegalMeasurements(measurementList);
-    }
-  }
-
-  /**
-   * check whether measurement is legal according to syntax convention measurement could be like a.b
-   * (more than one node name), in template?
-   */
-  protected void isLegalMeasurements(List<String> measurements) throws IllegalPathException {
-    if (measurements == null) {
-      return;
-    }
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        PathUtils.isLegalPath(measurement);
-      }
-    }
   }
 }

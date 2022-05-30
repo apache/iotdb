@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceS
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -132,6 +133,10 @@ public abstract class StatementVisitor<R, C> {
   // UDF
   public R visitCreateFunction(CreateFunctionStatement createFunctionStatement, C context) {
     return visitStatement(createFunctionStatement, context);
+  }
+
+  public R visitDropFunction(DropFunctionStatement dropFunctionStatement, C context) {
+    return visitStatement(dropFunctionStatement, context);
   }
 
   /** Data Manipulation Language (DML) */
