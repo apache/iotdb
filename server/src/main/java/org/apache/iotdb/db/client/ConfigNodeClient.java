@@ -21,6 +21,7 @@ package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
@@ -608,10 +609,17 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
+<<<<<<< HEAD
   public TSStatus createFunction(TCreateFunctionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.createFunction(req);
+=======
+  public TSStatus flush(TFlushReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.flush(req);
+>>>>>>> 3550e8de26 (add flush)
         if (!updateConfigNodeLeader(status)) {
           return status;
         }

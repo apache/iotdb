@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
@@ -100,9 +101,14 @@ public class ConfigTaskVisitor
   }
 
   @Override
+<<<<<<< HEAD
   public IConfigTask visitCreateFunction(
       CreateFunctionStatement createFunctionStatement, TaskContext context) {
     return new CreateFunctionTask(createFunctionStatement);
+=======
+  public IConfigTask visitFlush(FlushStatement flushStatement, TaskContext context) {
+    return new FlushTask(flushStatement);
+>>>>>>> 3550e8de26 (add flush)
   }
 
   @Override

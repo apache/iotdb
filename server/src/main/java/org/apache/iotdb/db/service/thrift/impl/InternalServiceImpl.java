@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -355,6 +357,17 @@ public class InternalServiceImpl implements InternalService.Iface {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
+  }
+
+  @Override
+  public TSStatus flush(TFlushReq req) throws TException {
+    TSStatus tsStatus;
+    try {
+      tsStatus = StorageEngineV2.getInstance().operatorFlush(req);
+    } catch (StorageGroupNotSetException e) {
+      tsStatus = RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST);
+    }
+    return tsStatus;
   }
 
   @Override

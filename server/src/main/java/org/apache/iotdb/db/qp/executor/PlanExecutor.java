@@ -2451,7 +2451,7 @@ public class PlanExecutor implements IPlanExecutor {
    * @param storageGroups the storage groups to check
    * @return List of PartialPath the storage groups that not exist
    */
-  List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
+  public static List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
     List<PartialPath> noExistSg = new ArrayList<>();
     if (storageGroups == null) {
       return noExistSg;

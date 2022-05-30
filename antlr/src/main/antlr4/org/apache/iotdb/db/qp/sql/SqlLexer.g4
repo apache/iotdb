@@ -298,6 +298,10 @@ LOAD
     : L O A D
     ;
 
+LOCAL
+    : L O C A L
+    ;
+
 LOCK
     : L O C K
     ;

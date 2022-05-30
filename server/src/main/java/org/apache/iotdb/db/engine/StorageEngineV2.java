@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -44,7 +46,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -220,6 +224,10 @@ public class StorageEngineV2 implements IService {
     recoveryThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.DATA_REGION_RECOVER_SERVICE.getName());
+
+    // init wal recover manager
+    WALRecoverManager.getInstance()
+        .setAllDataRegionScannedLatch(new CountDownLatch(5 * config.getDataRegionNum()));
 
     List<Future<Void>> futures = new LinkedList<>();
     asyncRecover(recoveryThreadPool, futures);
@@ -553,6 +561,61 @@ public class StorageEngineV2 implements IService {
         dataRegion.forceCloseAllWorkingTsFileProcessors();
       }
     }
+  }
+
+  public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq, boolean isSync) {
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion.getLogicalStorageGroupName().equals(storageGroupPath)) {
+        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
+          dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+        }
+      }
+    }
+  }
+
+  public TSStatus operatorFlush(TFlushReq req) throws StorageGroupNotSetException {
+    if (req.storageGroups.isEmpty()) {
+      StorageEngineV2.getInstance().syncCloseAllProcessor();
+    } else {
+      for (String storageGroup : req.storageGroups) {
+        if (req.isSeq == null) {
+          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, true, req.isSync);
+          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, false, req.isSync);
+        } else {
+          StorageEngineV2.getInstance()
+              .closeStorageGroupProcessor(
+                  storageGroup, Boolean.parseBoolean(req.isSeq), req.isSync);
+        }
+      }
+    }
+
+    if (!req.storageGroups.isEmpty()) {
+      List<PartialPath> noExistSg =
+          checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
+      if (!noExistSg.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
+        throw new StorageGroupNotSetException(sb.subSequence(0, sb.length() - 1).toString(), true);
+      }
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /**
+   * @param storageGroups the storage groups to check
+   * @return List of PartialPath the storage groups that not exist
+   */
+  public static List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
+    List<PartialPath> noExistSg = new ArrayList<>();
+    if (storageGroups == null) {
+      return noExistSg;
+    }
+    for (PartialPath storageGroup : storageGroups) {
+      if (LocalSchemaProcessor.getInstance().isStorageGroup(storageGroup)) {
+        noExistSg.add(storageGroup);
+      }
+    }
+    return noExistSg;
   }
 
   public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {
