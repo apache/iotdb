@@ -754,6 +754,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return queryStatement;
   }
 
+  @Override
+  public Statement visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
+    // parse group by time clause & fill clause
+    parseGroupByTimeClause(ctx.groupByFillClause());
+
+    // parse order by time
+    if (ctx.orderByTimeClause() != null) {
+      parseOrderByTimeClause(ctx.orderByTimeClause());
+    }
+
+    // parse limit & offset
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+    return queryStatement;
+  }
+
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
     GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
 
@@ -789,6 +806,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       groupByLevelComponent.setLevels(levels);
       queryStatement.setGroupByLevelComponent(groupByLevelComponent);
+    }
+
+    // parse fill clause
+    if (ctx.fillClause() != null) {
+      parseFillClause(ctx.fillClause());
+    }
+
+    // set groupByTimeComponent
+    queryStatement.setGroupByTimeComponent(groupByTimeComponent);
+  }
+
+  private void parseGroupByTimeClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
+    GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
+
+    // parse time range
+    parseTimeRange(ctx.timeRange(), groupByTimeComponent);
+    groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+
+    // parse time interval
+    groupByTimeComponent.setInterval(
+        parseTimeIntervalOrSlidingStep(
+            ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
+    if (groupByTimeComponent.getInterval() <= 0) {
+      throw new SemanticException(
+          "The second parameter time interval should be a positive integer.");
+    }
+
+    // parse sliding step
+    if (ctx.DURATION_LITERAL().size() == 2) {
+      groupByTimeComponent.setSlidingStep(
+          parseTimeIntervalOrSlidingStep(
+              ctx.DURATION_LITERAL(1).getText(), false, groupByTimeComponent));
+    } else {
+      groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
+      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
     }
 
     // parse fill clause
@@ -1616,30 +1668,51 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return privileges.toArray(new String[0]);
   }
 
+  // Create Storage Group
+
   @Override
   public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupStatement.setStorageGroupPath(path);
-    if (ctx.storageGroupAttributeClause() != null) {
-      for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
-          ctx.storageGroupAttributeClause()) {
-        if (attribute.TTL() != null) {
-          long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setTtl(ttl);
-        } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
-          int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
-        } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
-          int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
-        } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
-          long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
-        }
-      }
+    if (ctx.storageGroupAttributesClause() != null) {
+      parseStorageGroupAttributesClause(
+          setStorageGroupStatement, ctx.storageGroupAttributesClause());
     }
     return setStorageGroupStatement;
+  }
+
+  @Override
+  public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
+    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupStatement.setStorageGroupPath(path);
+    if (ctx.storageGroupAttributesClause() != null) {
+      parseStorageGroupAttributesClause(
+          setStorageGroupStatement, ctx.storageGroupAttributesClause());
+    }
+    return setStorageGroupStatement;
+  }
+
+  private void parseStorageGroupAttributesClause(
+      SetStorageGroupStatement setStorageGroupStatement,
+      IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
+    for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
+        ctx.storageGroupAttributeClause()) {
+      if (attribute.TTL() != null) {
+        long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setTtl(ttl);
+      } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
+        int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
+      } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
+        int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
+      } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
+        long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
+      }
+    }
   }
 
   @Override
