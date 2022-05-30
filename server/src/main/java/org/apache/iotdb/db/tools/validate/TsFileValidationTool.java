@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -199,7 +198,8 @@ public class TsFileValidationTool {
                   break;
                 }
                 long currentChunkEndTime = Long.MIN_VALUE;
-                String measurementID = deviceID + PATH_SEPARATOR + header.getMeasurementID();
+                String measurementID =
+                    deviceID + TsFileConstant.PATH_SEPARATOR + header.getMeasurementID();
                 hasMeasurementPrintedDetails.computeIfAbsent(measurementID, k -> new boolean[4]);
                 measurementLastTime.computeIfAbsent(
                     measurementID,
