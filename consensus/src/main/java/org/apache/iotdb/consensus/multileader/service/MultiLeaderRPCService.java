@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
+import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
 
 import java.lang.reflect.InvocationTargetException;
@@ -34,10 +34,12 @@ import java.lang.reflect.InvocationTargetException;
 public class MultiLeaderRPCService extends ThriftService implements MultiLeaderRPCServiceMBean {
 
   private final TEndPoint thisNode;
+  private final MultiLeaderConfig config;
   private MultiLeaderRPCServiceProcessor multiLeaderRPCServiceProcessor;
 
-  public MultiLeaderRPCService(TEndPoint thisNode) {
+  public MultiLeaderRPCService(TEndPoint thisNode, MultiLeaderConfig config) {
     this.thisNode = thisNode;
+    this.config = config;
   }
 
   @Override
@@ -73,10 +75,10 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
               ThreadName.MULTI_LEADER_CONSENSUS_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
-              MultiLeaderConsensusConfig.RPC_MAX_CONCURRENT_CLIENT_NUM,
-              MultiLeaderConsensusConfig.THRIFT_SERVER_AWAIT_TIME_FOR_STOP_SERVICE,
+              config.getRpc().getRpcMaxConcurrentClientNum(),
+              config.getRpc().getThriftServerAwaitTimeForStopService(),
               new MultiLeaderRPCServiceHandler(multiLeaderRPCServiceProcessor),
-              MultiLeaderConsensusConfig.IS_RPC_THRIFT_COMPRESSION_ENABLED);
+              config.getRpc().isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

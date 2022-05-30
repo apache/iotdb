@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
-import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
@@ -72,14 +72,14 @@ public class LogDispatcher {
     this.threads =
         impl.getConfiguration().stream()
             .filter(x -> !Objects.equals(x, impl.getThisNode()))
-            .map(LogDispatcherThread::new)
+            .map(x -> new LogDispatcherThread(x, impl.getConfig()))
             .collect(Collectors.toList());
     if (!threads.isEmpty()) {
       this.executorService =
           IoTDBThreadPoolFactory.newFixedThreadPool(threads.size(), "LogDispatcher");
       this.clientManager =
           new IClientManager.Factory<TEndPoint, AsyncMultiLeaderServiceClient>()
-              .createClientManager(new AsyncMultiLeaderServiceClientPoolFactory());
+              .createClientManager(new AsyncMultiLeaderServiceClientPoolFactory(impl.getConfig()));
     }
   }
 
@@ -121,26 +121,29 @@ public class LogDispatcher {
 
   public class LogDispatcherThread implements Runnable {
 
-    private volatile boolean stopped = false;
+    private final MultiLeaderConfig config;
     private final Peer peer;
     private final IndexController controller;
     // A sliding window class that manages asynchronously pendingBatches
     private final SyncStatus syncStatus;
     // A queue used to receive asynchronous replication requests
-    private final BlockingQueue<IndexedConsensusRequest> pendingRequest =
-        new ArrayBlockingQueue<>(MultiLeaderConsensusConfig.MAX_PENDING_REQUEST_NUM_PER_NODE);
+    private final BlockingQueue<IndexedConsensusRequest> pendingRequest;
     // A container used to cache requests, whose size changes dynamically
     private final List<IndexedConsensusRequest> bufferedRequest = new LinkedList<>();
     // A reader management class that gets requests from the DataRegion
     private final ConsensusReqReader reader =
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
+    private volatile boolean stopped = false;
 
-    public LogDispatcherThread(Peer peer) {
+    public LogDispatcherThread(Peer peer, MultiLeaderConfig config) {
       this.peer = peer;
+      this.config = config;
+      this.pendingRequest =
+          new ArrayBlockingQueue<>(config.getReplication().getMaxPendingRequestNumPerNode());
       this.controller =
           new IndexController(
               impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()), false);
-      this.syncStatus = new SyncStatus(controller);
+      this.syncStatus = new SyncStatus(controller, config);
     }
 
     public IndexController getController() {
@@ -153,6 +156,10 @@ public class LogDispatcher {
 
     public Peer getPeer() {
       return peer;
+    }
+
+    public MultiLeaderConfig getConfig() {
+      return config;
     }
 
     public boolean offer(IndexedConsensusRequest request) {
@@ -177,8 +184,8 @@ public class LogDispatcher {
             // we may block here if there is no requests in the queue
             bufferedRequest.add(pendingRequest.take());
             // If write pressure is low, we simply sleep a little to reduce the number of RPC
-            if (pendingRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
-              Thread.sleep(MultiLeaderConsensusConfig.MAX_WAITING_TIME_FOR_ACCUMULATE_BATCH_IN_MS);
+            if (pendingRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
+              Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
             }
           }
           // we may block here if the synchronization pipeline is full
@@ -200,11 +207,11 @@ public class LogDispatcher {
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex = impl.getController().getCurrentIndex();
       long endIndex;
-      if (bufferedRequest.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+      if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
         pendingRequest.drainTo(
             bufferedRequest,
-            MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH - bufferedRequest.size());
+            config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
       }
       if (bufferedRequest.isEmpty()) {
         // only execute this after a restart
@@ -217,7 +224,7 @@ public class LogDispatcher {
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
         endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
-        if (logBatches.size() == MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+        if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
           batch = new PendingBatch(startIndex, endIndex, logBatches);
           logger.debug("accumulated a {} from wal", batch);
           return batch;
@@ -226,14 +233,14 @@ public class LogDispatcher {
         endIndex = prev.getSearchIndex();
         iterator.remove();
         while (iterator.hasNext()
-            && logBatches.size() <= MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+            && logBatches.size() <= config.getReplication().getMaxRequestPerBatch()) {
           IndexedConsensusRequest current = iterator.next();
           // Prevents gap between logs. For example, some logs are not written into the queue when
           // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
             endIndex =
                 constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
-            if (logBatches.size() == MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+            if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
               batch = new PendingBatch(startIndex, endIndex, logBatches);
               logger.debug("accumulated a {} from queue and wal", batch);
               return batch;
@@ -271,7 +278,7 @@ public class LogDispatcher {
     private long constructBatchFromWAL(
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
       while (currentIndex < maxIndex
-          && logBatches.size() < MultiLeaderConsensusConfig.MAX_REQUEST_PER_BATCH) {
+          && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
         // TODO iterator
         IConsensusRequest data = reader.getReq(currentIndex++);
         if (data != null) {

@@ -36,6 +36,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
@@ -67,7 +68,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -94,6 +94,8 @@ class RatisConsensus implements IConsensus {
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
+  private final ConsensusConfig config;
+
   private final IClientManager<RaftGroup, RatisClient> clientManager =
       new IClientManager.Factory<RaftGroup, RatisClient>()
           .createClientManager(new RatisClientPoolFactory());
@@ -109,17 +111,15 @@ class RatisConsensus implements IConsensus {
   // TODO make it configurable
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
-  /**
-   * @param ratisStorageDir different groups of RatisConsensus Peer all share ratisStorageDir as
-   *     root dir
-   */
-  public RatisConsensus(TEndPoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
+  public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
-    myself = Utils.fromTEndPointAndPriorityToRaftPeer(endpoint, DEFAULT_PRIORITY);
+    this.config = config;
 
+    myself = Utils.fromTEndPointAndPriorityToRaftPeer(config.getThisNode(), DEFAULT_PRIORITY);
     System.setProperty(
         "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
-    RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
+    RaftServerConfigKeys.setStorageDir(
+        properties, Collections.singletonList(config.getStorageDir()));
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
     // TODO make this configurable so that RatisConsensusTest can trigger multiple snapshot process
     // RaftServerConfigKeys.Snapshot.setAutoTriggerThreshold(properties, 20);
@@ -131,7 +131,7 @@ class RatisConsensus implements IConsensus {
     RaftClientConfigKeys.Rpc.setRequestTimeout(
         properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
 
-    GrpcConfigKeys.Server.setPort(properties, endpoint.getPort());
+    GrpcConfigKeys.Server.setPort(properties, config.getThisNode().getPort());
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
     server =

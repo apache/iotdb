@@ -20,7 +20,7 @@
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
+import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -28,17 +28,19 @@ import java.util.List;
 
 public class SyncStatus {
 
+  private final MultiLeaderConfig config;
   private final IndexController controller;
   private final List<PendingBatch> pendingBatches = new LinkedList<>();
 
-  public SyncStatus(IndexController controller) {
+  public SyncStatus(IndexController controller, MultiLeaderConfig config) {
     this.controller = controller;
+    this.config = config;
   }
 
   /** we may block here if the synchronization pipeline is full */
   public void addNextBatch(PendingBatch batch) throws InterruptedException {
     synchronized (this) {
-      while (pendingBatches.size() >= MultiLeaderConsensusConfig.MAX_PENDING_BATCH) {
+      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatch()) {
         wait();
       }
       pendingBatches.add(batch);

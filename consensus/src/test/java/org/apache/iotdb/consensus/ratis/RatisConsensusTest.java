@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -63,8 +64,10 @@ public class RatisConsensusTest {
       servers.add(
           ConsensusFactory.getConsensusImpl(
                   ConsensusFactory.RatisConsensus,
-                  peers.get(i).getEndpoint(),
-                  peersStorage.get(i),
+                  ConsensusConfig.newBuilder()
+                      .setThisNode(peers.get(i).getEndpoint())
+                      .setStorageDir(peersStorage.get(i))
+                      .build(),
                   groupId -> stateMachines.get(finalI))
               .orElseThrow(
                   () ->

@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
-import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
+import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -35,6 +35,13 @@ public class MultiLeaderConsensusClientPool {
 
   public static class AsyncMultiLeaderServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncMultiLeaderServiceClient> {
+
+    private final MultiLeaderConfig config;
+
+    public AsyncMultiLeaderServiceClientPoolFactory(MultiLeaderConfig config) {
+      this.config = config;
+    }
+
     @Override
     public KeyedObjectPool<TEndPoint, AsyncMultiLeaderServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncMultiLeaderServiceClient> manager) {
@@ -42,11 +49,10 @@ public class MultiLeaderConsensusClientPool {
           new AsyncMultiLeaderServiceClient.Factory(
               manager,
               new ClientFactoryProperty.Builder()
-                  .setConnectionTimeoutMs(MultiLeaderConsensusConfig.CONNECTION_TIMEOUT_IN_MS)
-                  .setRpcThriftCompressionEnabled(
-                      MultiLeaderConsensusConfig.IS_RPC_THRIFT_COMPRESSION_ENABLED)
+                  .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
+                  .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(
-                      MultiLeaderConsensusConfig.SELECTOR_NUM_OF_CLIENT_MANAGER)
+                      config.getRpc().getSelectorNumOfClientManager())
                   .build()),
           new ClientPoolProperty.Builder<AsyncMultiLeaderServiceClient>().build().getConfig());
     }
