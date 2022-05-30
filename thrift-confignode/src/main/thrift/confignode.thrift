@@ -213,6 +213,7 @@ struct TClusterNodeInfos {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
+}
 
 // UDF
 struct TCreateFunctionReq {
