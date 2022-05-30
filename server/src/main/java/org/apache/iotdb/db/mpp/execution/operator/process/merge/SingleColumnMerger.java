@@ -106,8 +106,8 @@ public class SingleColumnMerger implements ColumnMerger {
           columnBuilder.appendNull();
         }
       }
-      // update the index after merging
-      updatedInputIndex[tsBlockIndex] = index;
     }
+    // update the index after merging
+    updatedInputIndex[tsBlockIndex] = index;
   }
 }
