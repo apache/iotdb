@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.confignode.service;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -31,8 +29,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
