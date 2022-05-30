@@ -20,6 +20,7 @@ package org.apache.iotdb.db.consensus.statemachine.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -39,6 +41,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
@@ -112,5 +115,19 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     dataRegion.syncDeleteDataFiles();
     StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) node.getConsensusGroupId());
     return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
+    try {
+      for (PartialPath path : node.getPathList()) {
+        dataRegion.deleteByDevice(
+            path, node.getDeleteStartTime(), node.getDeleteEndTime(), Long.MAX_VALUE, null);
+      }
+      return StatusUtils.OK;
+    } catch (IOException e) {
+      LOGGER.error("Error in executing plan node: {}", node, e);
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
+    }
   }
 }

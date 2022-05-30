@@ -20,38 +20,68 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
-  private final QueryId queryId;
+public class DeleteDataNode extends WritePlanNode {
+
   private final List<PartialPath> pathList;
-  private final List<String> storageGroups;
+  private final long deleteStartTime;
+  private final long deleteEndTime;
 
   private TRegionReplicaSet regionReplicaSet;
 
   public DeleteDataNode(
-      PlanNodeId id, QueryId queryId, List<PartialPath> pathList, List<String> storageGroups) {
+      PlanNodeId id, List<PartialPath> pathList, long deleteStartTime, long deleteEndTime) {
     super(id);
     this.pathList = pathList;
-    this.queryId = queryId;
-    this.storageGroups = storageGroups;
+    this.deleteStartTime = deleteStartTime;
+    this.deleteEndTime = deleteEndTime;
+  }
+
+  public DeleteDataNode(
+      PlanNodeId id,
+      List<PartialPath> pathList,
+      long deleteStartTime,
+      long deleteEndTime,
+      TRegionReplicaSet regionReplicaSet) {
+    super(id);
+    this.pathList = pathList;
+    this.deleteStartTime = deleteStartTime;
+    this.deleteEndTime = deleteEndTime;
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public List<PartialPath> getPathList() {
     return pathList;
+  }
+
+  public long getDeleteStartTime() {
+    return deleteStartTime;
+  }
+
+  public long getDeleteEndTime() {
+    return deleteEndTime;
   }
 
   @Override
@@ -64,7 +94,7 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
 
   @Override
   public PlanNode clone() {
-    return new DeleteDataNode(getPlanNodeId(), queryId, pathList, storageGroups);
+    return new DeleteDataNode(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
   }
 
   @Override
@@ -80,31 +110,25 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DELETE_DATA.serialize(byteBuffer);
-    queryId.serialize(byteBuffer);
     ReadWriteIOUtils.write(pathList.size(), byteBuffer);
     for (PartialPath path : pathList) {
       path.serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(storageGroups.size(), byteBuffer);
-    for (String storageGroup : storageGroups) {
-      ReadWriteIOUtils.write(storageGroup, byteBuffer);
-    }
+    ReadWriteIOUtils.write(deleteStartTime, byteBuffer);
+    ReadWriteIOUtils.write(deleteEndTime, byteBuffer);
   }
 
   public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
-    QueryId queryId = QueryId.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<PartialPath> pathList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       pathList.add((PartialPath) PathDeserializeUtil.deserialize(byteBuffer));
     }
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> storageGroups = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      storageGroups.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
+    long deleteStartTime = ReadWriteIOUtils.readLong(byteBuffer);
+    long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeleteDataNode(planNodeId, queryId, pathList, storageGroups);
+    return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
   }
 
   @Override
@@ -121,20 +145,44 @@ public class DeleteDataNode extends PlanNode implements IPartitionRelatedNode {
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public QueryId getQueryId() {
-    return queryId;
-  }
-
-  public List<String> getStorageGroups() {
-    return storageGroups;
-  }
-
   public String toString() {
     return String.format(
-        "DeleteDataNode-%s[ Paths: %s, StorageGroups: %s, Region: %s ]",
+        "DeleteDataNode-%s[ Paths: %s, Region: %s ]",
         getPlanNodeId(),
         pathList,
-        storageGroups,
         regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    SchemaTree schemaTree = analysis.getSchemaTree();
+    DataPartition dataPartition = analysis.getDataPartitionInfo();
+
+    Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap = new HashMap<>();
+
+    for (PartialPath pathPattern : pathList) {
+      PartialPath devicePattern = pathPattern;
+      if (!pathPattern.getTailNode().equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        devicePattern = pathPattern.getDevicePath();
+      }
+      for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {
+        PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+        // todo implement time slot
+        for (TRegionReplicaSet regionReplicaSet :
+            dataPartition.getDataRegionReplicaSet(
+                devicePath.getFullPath(), Collections.emptyList())) {
+          regionToPatternMap
+              .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
+              .addAll(pathPattern.alterPrefixPath(devicePath));
+        }
+      }
+    }
+
+    return regionToPatternMap.keySet().stream()
+        .map(
+            o ->
+                new DeleteDataNode(
+                    getPlanNodeId(), regionToPatternMap.get(o), deleteStartTime, deleteEndTime, o))
+        .collect(Collectors.toList());
   }
 }

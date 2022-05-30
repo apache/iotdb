@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement;
 
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -220,5 +221,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowChildNodes(ShowChildNodesStatement showChildNodesStatement, C context) {
     return visitStatement(showChildNodesStatement, context);
+  }
+
+  public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {
+    return visitStatement(deleteDataStatement, context);
   }
 }
