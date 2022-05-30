@@ -75,6 +75,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -131,6 +132,13 @@ public class Analyzer {
     public Analysis visitNode(StatementNode node, MPPQueryContext context) {
       throw new UnsupportedOperationException(
           "Unsupported statement type: " + node.getClass().getName());
+    }
+
+    @Override
+    public Analysis visitExplain(ExplainStatement explainStatement, MPPQueryContext context) {
+      Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
     }
 
     @Override
