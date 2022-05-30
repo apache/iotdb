@@ -114,7 +114,7 @@ type queryParam struct {
 	EndTime      int64    `json:"endTime"`
 	Condition    string   `json:"condition"`
 	Control      string   `json:"control"`
-	Aggregated   string   `json:"aggregated"`
+	SqlType      string   `json:"sqlType"`
 	Paths        []string `json:"paths"`
 	AggregateFun string   `json:"aggregateFun"`
 	FillClauses  string   `json:"fillClauses"`
@@ -163,7 +163,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	qp.EndTime = query.TimeRange.To.UnixNano() / 1000000
 
 	client := &http.Client{}
-	if qp.Aggregated == "SQL: Drop-down List" {
+	if qp.SqlType == "SQL: Drop-down List" {
 		qp.Control = ""
 		var expressions []string = qp.Paths[len(qp.Paths)-1:]
 		var paths []string = qp.Paths[0 : len(qp.Paths)-1]

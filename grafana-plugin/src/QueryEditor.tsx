@@ -43,8 +43,8 @@ interface State {
   aggregateFun: string;
   groupBy: GroupBy;
   fillClauses: string;
-  isAggregated: boolean;
-  aggregated: string;
+  isDropDownList: boolean;
+  sqlType: string;
   shouldAdd: boolean;
 }
 
@@ -64,7 +64,7 @@ const selectElement = [
 
 const paths = [''];
 const expressions = [''];
-const selectRaw = ['SQL: Full Customized', 'SQL: Drop-down List'];
+const selectType = ['SQL: Full Customized', 'SQL: Drop-down List'];
 const commonOption: SelectableValue<string> = { label: '*', value: '*' };
 const commonOptionDou: SelectableValue<string> = { label: '**', value: '**' };
 type Props = QueryEditorProps<DataSource, IoTDBQuery, IoTDBOptions>;
@@ -84,8 +84,8 @@ export class QueryEditor extends PureComponent<Props, State> {
       groupByLevel: '',
     },
     fillClauses: '',
-    isAggregated: false,
-    aggregated: selectRaw[0],
+    isDropDownList: false,
+    sqlType: selectType[0],
     shouldAdd: true,
   };
 
@@ -138,7 +138,7 @@ export class QueryEditor extends PureComponent<Props, State> {
     onChange({ ...query });
   };
 
-  onSelectRawChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onSelectTypeChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
     onChange({ ...query });
   };
@@ -176,10 +176,10 @@ export class QueryEditor extends PureComponent<Props, State> {
   };
 
   componentDidMount() {
-    if (this.props.query.aggregated) {
-      this.setState({ isAggregated: this.props.query.isAggregated, aggregated: this.props.query.aggregated });
+    if (this.props.query.sqlType) {
+      this.setState({ isDropDownList: this.props.query.isDropDownList, sqlType: this.props.query.sqlType });
     } else {
-      this.props.query.aggregated = selectRaw[0];
+      this.props.query.sqlType = selectType[0];
     }
     if (this.state.options.length === 1 && this.state.options[0][0].value === '') {
       this.props.datasource.nodeQuery(['root']).then((a) => {
@@ -194,7 +194,7 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   render() {
     const query = defaults(this.props.query);
-    var { expression, prefixPath, condition, control, fillClauses, aggregateFun, paths, options, aggregated, groupBy } =
+    var { expression, prefixPath, condition, control, fillClauses, aggregateFun, paths, options, sqlType, groupBy } =
       query;
     return (
       <>
@@ -204,8 +204,8 @@ export class QueryEditor extends PureComponent<Props, State> {
               <Segment
                 onChange={({ value: value = '' }) => {
                   const { onChange, query } = this.props;
-                  if (value === selectRaw[0]) {
-                    this.props.query.aggregated = selectRaw[0];
+                  if (value === selectType[0]) {
+                    this.props.query.sqlType = selectType[0];
                     this.props.query.aggregateFun = '';
                     if (this.props.query.paths) {
                       const nextTimeSeries = this.props.query.paths.filter((_, i) => i < 0);
@@ -223,40 +223,40 @@ export class QueryEditor extends PureComponent<Props, State> {
                     }
                     this.props.query.condition = '';
                     this.props.query.fillClauses = '';
-                    this.props.query.isAggregated = false;
+                    this.props.query.isDropDownList = false;
                     this.setState({
-                      isAggregated: false,
-                      aggregated: selectRaw[0],
+                      isDropDownList: false,
+                      sqlType: selectType[0],
                       shouldAdd: true,
                       aggregateFun: '',
                       fillClauses: '',
                       condition: '',
                     });
-                    onChange({ ...query, aggregated: value, isAggregated: false });
+                    onChange({ ...query, sqlType: value, isDropDownList: false });
                   } else {
-                    this.props.query.aggregated = selectRaw[1];
+                    this.props.query.sqlType = selectType[1];
                     this.props.query.expression = [''];
                     this.props.query.prefixPath = [''];
                     this.props.query.condition = '';
                     this.props.query.control = '';
-                    this.props.query.isAggregated = true;
+                    this.props.query.isDropDownList = true;
                     this.setState({
-                      isAggregated: true,
-                      aggregated: selectRaw[1],
+                      isDropDownList: true,
+                      sqlType: selectType[1],
                       expression: [''],
                       prefixPath: [''],
                       condition: '',
                       control: '',
                     });
-                    onChange({ ...query, aggregated: value, isAggregated: true });
+                    onChange({ ...query, sqlType: value, isDropDownList: true });
                   }
                 }}
-                options={selectRaw.map(toOption)}
-                value={aggregated ? aggregated : this.state.aggregated}
+                options={selectType.map(toOption)}
+                value={sqlType ? sqlType : this.state.sqlType}
                 className="query-keyword width-10"
               />
             </div>
-            {!this.state.isAggregated && (
+            {!this.state.isDropDownList && (
               <>
                 <div className="gf-form">
                   <QueryInlineField label={'SELECT'}>
@@ -292,7 +292,7 @@ export class QueryEditor extends PureComponent<Props, State> {
                 </div>
               </>
             )}
-            {this.state.isAggregated && (
+            {this.state.isDropDownList && (
               <>
                 <div className="gf-form">
                   <QueryInlineField label={'TIME-SERIES'}>
