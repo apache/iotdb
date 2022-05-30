@@ -437,8 +437,8 @@ public class LogicalPlanner {
                   showTimeSeriesStatement.isContains(),
                   showTimeSeriesStatement.isPrefixPath())
               .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
+      // show latest timeseries
       if (showTimeSeriesStatement.isOrderByHeat()) {
-        // show latest timeseries
         PlanNode lastPlanNode =
             new LogicalPlanBuilder(context)
                 .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())

@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 
+import com.google.common.collect.ImmutableList;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -33,14 +35,32 @@ public class SchemaQueryOrderByHeatNode extends MultiChildNode {
     super(id);
   }
 
+  /** show timeseries */
+  private PlanNode left;
+
+  /** last point */
+  private PlanNode right;
+
+  public PlanNode getLeft() {
+    return left;
+  }
+
+  public PlanNode getRight() {
+    return right;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
-    return children;
+    return ImmutableList.of(left, right);
   }
 
   @Override
   public void addChild(PlanNode child) {
-    children.add(child);
+    if (child instanceof SchemaQueryMergeNode) {
+      left = child;
+    } else {
+      right = child;
+    }
   }
 
   @Override
@@ -55,12 +75,7 @@ public class SchemaQueryOrderByHeatNode extends MultiChildNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    for (PlanNode child : children) {
-      if (child instanceof SchemaQueryMergeNode) {
-        return child.getOutputColumnNames();
-      }
-    }
-    return children.get(0).getOutputColumnNames();
+    return left.getOutputColumnNames();
   }
 
   @Override

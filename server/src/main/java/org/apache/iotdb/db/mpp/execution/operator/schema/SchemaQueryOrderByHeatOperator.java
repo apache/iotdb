@@ -16,63 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.mpp.plan.Coordinator;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
-import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
 public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SchemaQueryOrderByHeatOperator.class);
-
-  private final long queryId = SessionManager.getInstance().requestQueryId(false);
-  private final Coordinator coordinator = Coordinator.getInstance();
-  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
-  private final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
-
   private final OperatorContext operatorContext;
-  private final List<Operator> children;
-  private final boolean[] noMoreTsBlocks;
-  private boolean isFinished;
+  private final Operator left;
+  private final Operator right;
+  private boolean isFinished = false;
 
-  public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, List<Operator> children) {
+  public SchemaQueryOrderByHeatOperator(
+      OperatorContext operatorContext, Operator left, Operator right) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.children = children;
-    isFinished = false;
-    noMoreTsBlocks = new boolean[children.size()];
+    this.left = requireNonNull(left, "left child operator is null");
+    this.right = requireNonNull(right, "right child operator is null");
   }
 
   @Override
@@ -81,85 +57,45 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
-    // last timestamp to timeseries
-    Map<Long, List<Object[]>> lastTimeToTimeseries = new HashMap<>();
 
-    TsBlock tsblock = children.get(1).next();
-    while (children.get(0).hasNext()) {
-      TsBlock block = children.get(0).next();
-      if (null != block) {
-        // Step 1: get paths and storage groups
-        List<MeasurementPath> measurementPaths = new LinkedList<>();
-        Set<String> storageGroups = new HashSet<>();
-        for (int i = 0; i < block.getPositionCount(); i++) {
-          String path = block.getColumn(0).getBinary(i).toString();
-          String storageGroup = block.getColumn(2).getBinary(i).toString();
-          String dataType = block.getColumn(3).getBinary(i).toString();
-          MeasurementPath measurementPath;
-          try {
-            measurementPath = new MeasurementPath(path, TSDataType.valueOf(dataType));
-          } catch (MetadataException e) {
-            LOGGER.error("Failed to convert {} to measurementPath", path);
-            continue;
-          }
-          measurementPaths.add(measurementPath);
-          storageGroups.add(storageGroup);
-        }
-
-        // Step 2: fetch last point
-        LastPointFetchStatement lastPointFetchStatement =
-            new LastPointFetchStatement(measurementPaths, new ArrayList<>(storageGroups));
-        ExecutionResult executionResult =
-            coordinator.execute(
-                lastPointFetchStatement, queryId, null, "", partitionFetcher, schemaFetcher);
-        if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new RuntimeException(
-              String.format(
-                  "cannot fetch last point, status is: %s, msg is: %s",
-                  executionResult.status.getCode(), executionResult.status.getMessage()));
-        }
-
-        Map<String, Long> timeseriesToLastStamp = new HashMap<>();
-        while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-          // So we don't need to clean up it manually
-          Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-            break;
-          }
-          for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-            String timeseries = tsBlock.get().getColumn(0).getBinary(i).toString();
-            long time = tsBlock.get().getTimeByIndex(i);
-            timeseriesToLastStamp.put(timeseries, time);
-          }
-        }
-
-        // Step 3: merge according to result
-        TsBlock.TsBlockRowIterator tsBlockRowIterator = block.getTsBlockRowIterator();
-        while (tsBlockRowIterator.hasNext()) {
-          Object[] line = tsBlockRowIterator.next();
-          String timeseries = line[0].toString();
-          long time = timeseriesToLastStamp.getOrDefault(timeseries, 0L);
-          if (!lastTimeToTimeseries.containsKey(time)) {
-            lastTimeToTimeseries.put(time, new ArrayList<>());
-          }
-          lastTimeToTimeseries.get(time).add(line);
-        }
+    // Step 1: get last point result
+    Map<String, Long> timeseriesToLastStamp = new HashMap<>();
+    while (right.hasNext()) {
+      TsBlock tsBlock = right.next();
+      if (null == tsBlock || tsBlock.isEmpty()) {
+        continue;
+      }
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        String timeseries = tsBlock.getColumn(0).getBinary(i).toString();
+        long time = tsBlock.getTimeByIndex(i);
+        timeseriesToLastStamp.put(timeseries, time);
       }
     }
 
-    // Step 4: sort and rewrite
+    // Step 2: get last point timestamp to timeseries map
+    Map<Long, List<Object[]>> lastTimeToTimeseries = new HashMap<>();
+    while (left.hasNext()) {
+      TsBlock tsBlock = left.next();
+      if (null == tsBlock || tsBlock.isEmpty()) {
+        continue;
+      }
+      TsBlock.TsBlockRowIterator tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
+      while (tsBlockRowIterator.hasNext()) {
+        Object[] line = tsBlockRowIterator.next();
+        String timeseries = line[0].toString();
+        long time = timeseriesToLastStamp.getOrDefault(timeseries, 0L);
+        if (!lastTimeToTimeseries.containsKey(time)) {
+          lastTimeToTimeseries.put(time, new ArrayList<>());
+        }
+        lastTimeToTimeseries.get(time).add(line);
+      }
+    }
+
+    // Step 3: sort and rewrite
     List<Long> times = new ArrayList<>(lastTimeToTimeseries.keySet());
-    times.sort(
-        (l1, l2) -> {
-          if (l1 > l2) {
-            return -1;
-          } else if (l1 < l2) {
-            return 1;
-          } else {
-            return 0;
-          }
-        });
+    times.sort(Comparator.reverseOrder());
+
+    // Step 4: generate result
     for (Long time : times) {
       List<Object[]> rows = lastTimeToTimeseries.get(time);
       for (Object[] row : rows) {
@@ -186,11 +122,13 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < children.size(); i++) {
-      ListenableFuture<Void> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone()) {
-        return blocked;
-      }
+    ListenableFuture<Void> blocked = left.isBlocked();
+    if (!blocked.isDone()) {
+      return blocked;
+    }
+    blocked = right.isBlocked();
+    if (!blocked.isDone()) {
+      return blocked;
     }
     return NOT_BLOCKED;
   }
@@ -202,9 +140,8 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
+    left.close();
+    right.close();
   }
 
   @Override
