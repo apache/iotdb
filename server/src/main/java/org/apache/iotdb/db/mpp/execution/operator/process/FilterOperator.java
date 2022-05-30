@@ -96,16 +96,6 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  public boolean hasNext() {
-    try {
-      return super.hasNext() && filterPointReader.next();
-    } catch (Exception e) {
-      LOGGER.error("FilterOperator#hasNext()", e);
-      throw new RuntimeException(e);
-    }
-  }
-
-  @Override
   public TsBlock next() {
     final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
 
@@ -125,36 +115,36 @@ public class FilterOperator extends TransformOperator {
     try {
       int rowCount = 0;
 
-      while (rowCount < FETCH_SIZE && !timeHeap.isEmpty() && filterPointReader.next()) {
+      while (rowCount < FETCH_SIZE && !timeHeap.isEmpty()) {
         final long currentTime = timeHeap.pollFirst();
 
-        // check filter
-        if (filterPointReader.currentTime() == currentTime
-            && !filterPointReader.isCurrentNull()
-            && filterPointReader.currentBoolean()) {
-          // time
-          timeBuilder.writeLong(currentTime);
+        if (filterPointReader.next() && filterPointReader.currentTime() == currentTime) {
+          if (!filterPointReader.isCurrentNull() && filterPointReader.currentBoolean()) {
+            // time
+            timeBuilder.writeLong(currentTime);
 
-          // values
-          for (int i = 0; i < outputColumnCount; ++i) {
-            LayerPointReader reader = transformers[i];
-            collectDataPoint(reader, columnBuilders[i], currentTime);
-            iterateReaderToNextValid(reader);
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              collectDataPointAndIterateToNextValid(
+                  transformers[i], columnBuilders[i], currentTime);
+            }
+
+            ++rowCount;
+          } else {
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              skipDataPointAndIterateToNextValid(transformers[i], currentTime);
+            }
           }
 
-          ++rowCount;
+          filterPointReader.readyForNext();
+          iterateReaderToNextValid(filterPointReader);
         } else {
           // values
           for (int i = 0; i < outputColumnCount; ++i) {
-            LayerPointReader reader = transformers[i];
-            reader.readyForNext();
-            iterateReaderToNextValid(reader);
+            skipDataPointAndIterateToNextValid(transformers[i], currentTime);
           }
         }
-
-        // update filter
-        filterPointReader.readyForNext();
-        iterateReaderToNextValid(filterPointReader);
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
@@ -166,5 +156,15 @@ public class FilterOperator extends TransformOperator {
     }
 
     return tsBlockBuilder.build();
+  }
+
+  private void skipDataPointAndIterateToNextValid(LayerPointReader reader, long currentTime)
+      throws IOException, QueryProcessException {
+    if (!reader.next() || reader.currentTime() != currentTime) {
+      return;
+    }
+
+    reader.readyForNext();
+    iterateReaderToNextValid(reader);
   }
 }

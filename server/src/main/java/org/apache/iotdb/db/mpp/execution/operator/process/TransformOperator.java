@@ -162,7 +162,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public final boolean hasNext() {
     if (isFirstIteration) {
       try {
         readyForFirstIteration();
@@ -202,9 +202,7 @@ public class TransformOperator implements ProcessOperator {
 
         // values
         for (int i = 0; i < columnCount; ++i) {
-          LayerPointReader reader = transformers[i];
-          collectDataPoint(reader, columnBuilders[i], currentTime);
-          iterateReaderToNextValid(reader);
+          collectDataPointAndIterateToNextValid(transformers[i], columnBuilders[i], currentTime);
         }
 
         ++rowCount;
@@ -221,39 +219,45 @@ public class TransformOperator implements ProcessOperator {
     return tsBlockBuilder.build();
   }
 
-  protected void collectDataPoint(LayerPointReader reader, ColumnBuilder writer, long currentTime)
+  protected void collectDataPointAndIterateToNextValid(
+      LayerPointReader reader, ColumnBuilder writer, long currentTime)
       throws QueryProcessException, IOException {
-    if (!reader.next() || reader.currentTime() != currentTime || reader.isCurrentNull()) {
+    if (!reader.next() || reader.currentTime() != currentTime) {
       writer.appendNull();
       return;
     }
 
-    TSDataType type = reader.getDataType();
-    switch (type) {
-      case INT32:
-        writer.writeInt(reader.currentInt());
-        break;
-      case INT64:
-        writer.writeLong(reader.currentLong());
-        break;
-      case FLOAT:
-        writer.writeFloat(reader.currentFloat());
-        break;
-      case DOUBLE:
-        writer.writeDouble(reader.currentDouble());
-        break;
-      case BOOLEAN:
-        writer.writeBoolean(reader.currentBoolean());
-        break;
-      case TEXT:
-        writer.writeBinary(reader.currentBinary());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
+    if (reader.isCurrentNull()) {
+      writer.appendNull();
+    } else {
+      TSDataType type = reader.getDataType();
+      switch (type) {
+        case INT32:
+          writer.writeInt(reader.currentInt());
+          break;
+        case INT64:
+          writer.writeLong(reader.currentLong());
+          break;
+        case FLOAT:
+          writer.writeFloat(reader.currentFloat());
+          break;
+        case DOUBLE:
+          writer.writeDouble(reader.currentDouble());
+          break;
+        case BOOLEAN:
+          writer.writeBoolean(reader.currentBoolean());
+          break;
+        case TEXT:
+          writer.writeBinary(reader.currentBinary());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", type));
+      }
     }
 
     reader.readyForNext();
+    iterateReaderToNextValid(reader);
   }
 
   @Override
