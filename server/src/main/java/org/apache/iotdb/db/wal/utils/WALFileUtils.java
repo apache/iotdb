@@ -42,13 +42,9 @@ public class WALFileUtils {
    */
   public static final Pattern WAL_FILE_NAME_PATTERN =
       Pattern.compile(
-          WAL_FILE_PREFIX
-              + "(?<"
-              + WAL_VERSION_ID
-              + ">\\d+)-(?<"
-              + WAL_START_SEARCH_INDEX
-              + ">\\d+)\\"
-              + WAL_FILE_SUFFIX);
+          String.format(
+              "%s(?<%s>\\d+)-(?<%s>\\d+)\\%s$",
+              WAL_FILE_PREFIX, WAL_VERSION_ID, WAL_START_SEARCH_INDEX, WAL_FILE_SUFFIX));
 
   /** Return true when this file is .wal file */
   public static boolean walFilenameFilter(File dir, String name) {
