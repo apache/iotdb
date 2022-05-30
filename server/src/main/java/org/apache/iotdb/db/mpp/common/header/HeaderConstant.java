@@ -80,7 +80,6 @@ public class HeaderConstant {
   public static final DatasetHeader countTimeSeriesHeader;
   public static final DatasetHeader countLevelTimeSeriesHeader;
 
-
   // dataset header for show cluster statement
   public static final DatasetHeader showClusterHeader;
 
@@ -174,15 +173,13 @@ public class HeaderConstant {
 
   static {
     showClusterHeader =
-      new DatasetHeader(
-        Arrays.asList(
-          new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
-        true);
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
   }
-
-
 }

@@ -82,8 +82,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
-
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,14 +144,16 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TClusterNodeInfos getAllClusterNodeInfos() throws TException {
     List<TConfigNodeLocation> configNodeLocations =
-      configManager.getNodeManager().getOnlineConfigNodes();
+        configManager.getNodeManager().getOnlineConfigNodes();
     List<TDataNodeLocation> dataNodeInfoLocations =
-      configManager.getNodeManager().getOnlineDataNodes(-1).stream().
-        map(TDataNodeInfo::getLocation).collect(Collectors.toList());
+        configManager.getNodeManager().getOnlineDataNodes(-1).stream()
+            .map(TDataNodeInfo::getLocation)
+            .collect(Collectors.toList());
 
     return new TClusterNodeInfos(
-      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-      configNodeLocations, dataNodeInfoLocations);
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        configNodeLocations,
+        dataNodeInfoLocations);
   }
 
   @Override

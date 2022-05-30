@@ -66,7 +66,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -232,9 +231,8 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     List<TConfigNodeLocation> configNodeInfos = clusterNodes.getConfigNodeList();
     Assert.assertEquals(1, configNodeInfos.size());
-    TConfigNodeLocation configNodeLocation = new TConfigNodeLocation(
-      new TEndPoint("0.0.0.0", 22277),
-      new TEndPoint("0.0.0.0", 22278));
+    TConfigNodeLocation configNodeLocation =
+        new TConfigNodeLocation(new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
     Assert.assertEquals(configNodeLocation, configNodeInfos.get(0));
 
     List<TDataNodeLocation> dataNodeInfos = clusterNodes.getDataNodeList();
