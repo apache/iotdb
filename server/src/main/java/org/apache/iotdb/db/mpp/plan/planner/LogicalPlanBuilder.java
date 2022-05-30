@@ -590,10 +590,11 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaQueryOrderByHeat() {
+  public LogicalPlanBuilder planSchemaQueryOrderByHeat(PlanNode lastPlanNode) {
     SchemaQueryOrderByHeatNode node =
         new SchemaQueryOrderByHeatNode(context.getQueryId().genPlanNodeId());
     node.addChild(this.getRoot());
+    node.addChild(lastPlanNode);
     this.root = node;
     return this;
   }

@@ -438,7 +438,12 @@ public class LogicalPlanner {
                   showTimeSeriesStatement.isPrefixPath())
               .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
       if (showTimeSeriesStatement.isOrderByHeat()) {
-        planBuilder = planBuilder.planSchemaQueryOrderByHeat();
+        // show latest timeseries
+        PlanNode lastPlanNode =
+            new LogicalPlanBuilder(context)
+                .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())
+                .getRoot();
+        planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
       }
       return planBuilder
           .planOffset(showTimeSeriesStatement.getOffset())

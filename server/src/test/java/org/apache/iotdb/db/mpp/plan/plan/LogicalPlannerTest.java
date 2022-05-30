@@ -479,7 +479,7 @@ public class LogicalPlannerTest {
       SchemaQueryOrderByHeatNode schemaQueryOrderByHeatNode =
           (SchemaQueryOrderByHeatNode) offsetNode.getChild();
       SchemaQueryMergeNode metaMergeNode =
-          (SchemaQueryMergeNode) schemaQueryOrderByHeatNode.getChild();
+          (SchemaQueryMergeNode) schemaQueryOrderByHeatNode.getChildren().get(0);
       metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
       TimeSeriesSchemaScanNode showTimeSeriesNode =
           (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);

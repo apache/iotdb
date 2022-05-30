@@ -22,33 +22,25 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProcessNode;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SchemaQueryOrderByHeatNode extends ProcessNode {
-
-  private PlanNode child;
+public class SchemaQueryOrderByHeatNode extends MultiChildNode {
 
   public SchemaQueryOrderByHeatNode(PlanNodeId id) {
     super(id);
   }
 
-  public PlanNode getChild() {
-    return child;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
+    return children;
   }
 
   @Override
   public void addChild(PlanNode child) {
-    this.child = child;
+    children.add(child);
   }
 
   @Override
@@ -58,12 +50,17 @@ public class SchemaQueryOrderByHeatNode extends ProcessNode {
 
   @Override
   public int allowedChildCount() {
-    return ONE_CHILD;
+    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    for (PlanNode child : children) {
+      if (child instanceof SchemaQueryMergeNode) {
+        return child.getOutputColumnNames();
+      }
+    }
+    return children.get(0).getOutputColumnNames();
   }
 
   @Override

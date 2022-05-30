@@ -64,23 +64,15 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   private final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
   private final OperatorContext operatorContext;
-  private final Operator child;
+  private final List<Operator> children;
+  private final boolean[] noMoreTsBlocks;
   private boolean isFinished;
 
-  public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, Operator child) {
+  public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.child = requireNonNull(child, "child operator is null");
+    this.children = children;
     isFinished = false;
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public ListenableFuture<Void> isBlocked() {
-    return child.isBlocked();
+    noMoreTsBlocks = new boolean[children.size()];
   }
 
   @Override
@@ -92,8 +84,9 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
     // last timestamp to timeseries
     Map<Long, List<Object[]>> lastTimeToTimeseries = new HashMap<>();
 
-    while (child.hasNext()) {
-      TsBlock block = child.next();
+    // TsBlock tsblock = children.get(1).next();
+    while (children.get(0).hasNext()) {
+      TsBlock block = children.get(0).next();
       if (null != block) {
         // Step 1: get paths and storage groups
         List<MeasurementPath> measurementPaths = new LinkedList<>();
@@ -187,17 +180,35 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
+  public OperatorContext getOperatorContext() {
+    return operatorContext;
+  }
+
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    for (int i = 0; i < children.size(); i++) {
+      ListenableFuture<Void> blocked = children.get(i).isBlocked();
+      if (!blocked.isDone()) {
+        return blocked;
+      }
+    }
+    return NOT_BLOCKED;
+  }
+
+  @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return !isFinished;
   }
 
   @Override
   public void close() throws Exception {
-    child.close();
+    for (Operator child : children) {
+      child.close();
+    }
   }
 
   @Override
   public boolean isFinished() {
-    return isFinished || child.isFinished();
+    return isFinished;
   }
 }
