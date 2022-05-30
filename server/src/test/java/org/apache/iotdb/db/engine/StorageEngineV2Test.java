@@ -34,7 +34,7 @@ import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 import java.util.List;
 
-@PowerMockIgnore({"javax.xml.*"})
+@PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(DataRegion.class)
 public class StorageEngineV2Test {
