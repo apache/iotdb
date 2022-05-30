@@ -19,18 +19,32 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.memory;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
+import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
+import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanGraphPrinter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -40,6 +54,22 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitNode(StatementNode node, StatementMemorySourceContext context) {
     return new StatementMemorySource(new TsBlock(0), new DatasetHeader(new ArrayList<>(), false));
+  }
+
+  @Override
+  public StatementMemorySource visitExplain(ExplainStatement node, StatementMemorySourceContext context) {
+    context.getAnalysis().setStatement(node.getQueryStatement());
+    LogicalQueryPlan logicalPlan = new LogicalPlanner(context.getQueryContext(), new ArrayList<>()).plan(context.getAnalysis());
+    DistributionPlanner planner = new DistributionPlanner(context.getAnalysis(), logicalPlan);
+    PlanNode rootWithExchange = planner.addExchangeNode(planner.rewriteSource());
+    List<String> lines = rootWithExchange.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+    StringBuilder cellValue = new StringBuilder();
+    lines.forEach(line -> cellValue.append(line).append(System.lineSeparator()));
+    System.out.println(cellValue);
+    BinaryColumn binaryColumn = new BinaryColumn(1, Optional.empty(), new Binary[]{new Binary(cellValue.toString())});
+    TsBlock tsBlock = new TsBlock(new TimeColumn(1, new long[]{0}), binaryColumn);
+    DatasetHeader header = new DatasetHeader(Collections.singletonList(new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)), true);
+    return new StatementMemorySource(tsBlock, header);
   }
 
   @Override

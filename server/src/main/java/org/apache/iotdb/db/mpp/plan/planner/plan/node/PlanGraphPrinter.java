@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 
 import org.apache.commons.lang3.Validate;
@@ -58,23 +59,32 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   @Override
   public List<String> visitSeriesScan(SeriesScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("SeriesScanNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    boxValue.add(String.format("Partition: %s", node.getRegionReplicaSet().getRegionId()));
+    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAlignedSeriesScan(AlignedSeriesScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AlignedSeriesScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Series: %s", node.getAlignedPath()));
+    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
     return render(node, boxValue, context);
   }
 
   @Override
   public List<String> visitExchange(ExchangeNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("ExchangeNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Exchange-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 
   @Override
   public List<String> visitTimeJoin(TimeJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("TimeJoinNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("TimeJoin-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Order: %s", node.getMergeOrder()));
     return render(node, boxValue, context);
   }
@@ -90,7 +100,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   @Override
   public List<String> visitFragmentSink(FragmentSinkNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("FragmentSinkNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("FragmentSink-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Destination: %s", node.getDownStreamPlanNodeId()));
     return render(node, boxValue, context);
   }

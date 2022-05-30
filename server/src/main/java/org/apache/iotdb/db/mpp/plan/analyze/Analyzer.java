@@ -137,6 +137,7 @@ public class Analyzer {
     @Override
     public Analysis visitExplain(ExplainStatement explainStatement, MPPQueryContext context) {
       Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
+      analysis.setStatement(explainStatement);
       analysis.setFinishQueryAfterAnalyze(true);
       return analysis;
     }
