@@ -219,7 +219,8 @@ public class ConfigRequestExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    getAllAttributes().parallelStream()
+    getAllAttributes()
+        .parallelStream()
         .forEach(
             x -> {
               boolean takeSnapshotResult = true;
@@ -248,7 +249,8 @@ public class ConfigRequestExecutor {
       return;
     }
 
-    getAllAttributes().parallelStream()
+    getAllAttributes()
+        .parallelStream()
         .forEach(
             x -> {
               try {
