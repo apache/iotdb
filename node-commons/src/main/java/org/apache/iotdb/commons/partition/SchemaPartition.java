@@ -25,14 +25,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 public class SchemaPartition extends Partition {
 
@@ -90,21 +91,28 @@ public class SchemaPartition extends Partition {
    * Get SchemaPartition by partitionSlotsMap
    *
    * @param partitionSlotsMap Map<StorageGroup, List<SeriesPartitionSlot>>
+   * @param preDeletedStorageGroup
    * @return Subset of current SchemaPartition, including Map<StorageGroup, Map<SeriesPartitionSlot,
    *     RegionReplicaSet>>
    */
   public SchemaPartition getSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap,
+      Set<String> preDeletedStorageGroup) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
-      return new SchemaPartition(
-          new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
+      final Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> resultAll =
+          new HashMap<>(schemaPartitionMap);
+      for (String preDeleted : preDeletedStorageGroup) {
+        resultAll.remove(preDeleted);
+      }
+      return new SchemaPartition(resultAll, seriesSlotExecutorName, seriesPartitionSlotNum);
     } else {
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
 
       partitionSlotsMap.forEach(
           (storageGroup, seriesPartitionSlots) -> {
-            if (schemaPartitionMap.containsKey(storageGroup)) {
+            if (schemaPartitionMap.containsKey(storageGroup)
+                && !preDeletedStorageGroup.contains(storageGroup)) {
               if (seriesPartitionSlots.isEmpty()) {
                 // Return all SchemaPartitions in one StorageGroup when the queried
                 // SeriesPartitionSlots is empty
@@ -127,6 +135,23 @@ public class SchemaPartition extends Partition {
 
       return new SchemaPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
+  }
+
+  /**
+   * Get SchemaPartition by storageGroup name
+   *
+   * @param matchedStorageGroup List<String>
+   * @return Subset of current SchemaPartition which contains matchedStorageGroup
+   */
+  public SchemaPartition getSchemaPartition(List<String> matchedStorageGroup) {
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
+    matchedStorageGroup.forEach(
+        (storageGroup) -> {
+          if (schemaPartitionMap.containsKey(storageGroup)) {
+            result.put(storageGroup, new HashMap<>(schemaPartitionMap.get(storageGroup)));
+          }
+        });
+    return new SchemaPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   /**
@@ -170,30 +195,30 @@ public class SchemaPartition extends Partition {
         .put(seriesPartitionSlot, regionReplicaSet);
   }
 
-  public void serialize(DataOutputStream dataOutputStream, TProtocol protocol)
+  public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
-    dataOutputStream.writeInt(schemaPartitionMap.size());
+    ReadWriteIOUtils.write(schemaPartitionMap.size(), outputStream);
     for (Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> entry :
         schemaPartitionMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), dataOutputStream);
-      writeMap(entry.getValue(), dataOutputStream, protocol);
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      writeMap(entry.getValue(), outputStream, protocol);
     }
   }
 
-  public void deserialize(DataInputStream dataInputStream, TProtocol protocol)
+  public void deserialize(InputStream inputStream, TProtocol protocol)
       throws TException, IOException {
-    int size = dataInputStream.readInt();
+    int size = ReadWriteIOUtils.readInt(inputStream);
     while (size > 0) {
-      String key = ReadWriteIOUtils.readString(dataInputStream);
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> value = readMap(dataInputStream, protocol);
+      String key = ReadWriteIOUtils.readString(inputStream);
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> value = readMap(inputStream, protocol);
       schemaPartitionMap.put(key, value);
       size--;
     }
   }
 
   private Map<TSeriesPartitionSlot, TRegionReplicaSet> readMap(
-      DataInputStream dataInputStream, TProtocol protocol) throws TException, IOException {
-    int size = dataInputStream.readInt();
+      InputStream inputStream, TProtocol protocol) throws TException, IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
     Map<TSeriesPartitionSlot, TRegionReplicaSet> result = new HashMap<>();
     while (size > 0) {
       TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot();
@@ -206,12 +231,25 @@ public class SchemaPartition extends Partition {
     return result;
   }
 
+  public List<RegionReplicaSetInfo> getSchemaDistributionInfo() {
+    Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
+    schemaPartitionMap.forEach(
+        (storageGroup, partition) -> {
+          for (TRegionReplicaSet regionReplicaSet : partition.values()) {
+            distributionMap
+                .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
+                .addStorageGroup(storageGroup);
+          }
+        });
+    return new ArrayList<>(distributionMap.values());
+  }
+
   private void writeMap(
       Map<TSeriesPartitionSlot, TRegionReplicaSet> valueMap,
-      DataOutputStream dataOutputStream,
+      OutputStream outputStream,
       TProtocol protocol)
       throws TException, IOException {
-    dataOutputStream.writeInt(valueMap.size());
+    ReadWriteIOUtils.write(valueMap.size(), outputStream);
     for (Entry<TSeriesPartitionSlot, TRegionReplicaSet> entry : valueMap.entrySet()) {
       entry.getKey().write(protocol);
       entry.getValue().write(protocol);

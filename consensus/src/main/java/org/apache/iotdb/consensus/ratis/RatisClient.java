@@ -28,7 +28,7 @@ import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
-import org.apache.ratis.retry.RetryPolicies;
+import org.apache.ratis.retry.ExponentialBackoffRetry;
 import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,8 +98,11 @@ public class RatisClient {
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
                   .setRetryPolicy(
-                      RetryPolicies.retryForeverWithSleep(
-                          TimeDuration.valueOf(100, TimeUnit.MILLISECONDS)))
+                      ExponentialBackoffRetry.newBuilder()
+                          .setBaseSleepTime(TimeDuration.valueOf(100, TimeUnit.MILLISECONDS))
+                          .setMaxSleepTime(TimeDuration.valueOf(10, TimeUnit.SECONDS))
+                          .setMaxAttempts(10)
+                          .build())
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));

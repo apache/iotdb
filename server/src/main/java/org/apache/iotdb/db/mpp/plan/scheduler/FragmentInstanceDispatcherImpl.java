@@ -24,9 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.consensus.ConsensusImpl;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
@@ -61,6 +64,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private final ExecutorService writeOperationExecutor;
   private final QueryType type;
   private final String localhostIpAddr;
+  private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
@@ -74,6 +78,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     this.writeOperationExecutor = writeOperationExecutor;
     this.internalServiceClientManager = internalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalIp();
+    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
   @Override
@@ -138,7 +143,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private boolean isDispatchedToLocal(TEndPoint endPoint) {
-    return this.localhostIpAddr.equals(endPoint.getIp());
+    return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
   private boolean dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
@@ -167,9 +172,20 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             instance.getRegionReplicaSet().getRegionId());
     switch (instance.getType()) {
       case READ:
-        FragmentInstanceInfo info =
-            (FragmentInstanceInfo) ConsensusImpl.getInstance().read(groupId, instance).getDataset();
-        return !info.getState().isFailed();
+        ConsensusReadResponse readResponse;
+        if (groupId instanceof DataRegionId) {
+          readResponse = DataRegionConsensusImpl.getInstance().read(groupId, instance);
+        } else {
+          readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, instance);
+        }
+        if (!readResponse.isSuccess()) {
+          logger.error(
+              "dispatch FragmentInstance {} locally failed because {}",
+              instance,
+              readResponse.getException());
+          return false;
+        }
+        return !((FragmentInstanceInfo) readResponse.getDataset()).getState().isFailed();
       case WRITE:
         PlanNode planNode = instance.getFragment().getRoot();
         if (planNode instanceof InsertNode) {
@@ -179,8 +195,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             throw new FragmentInstanceDispatchException(e);
           }
         }
-        ConsensusWriteResponse resp = ConsensusImpl.getInstance().write(groupId, instance);
-        return TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode();
+        ConsensusWriteResponse writeResponse;
+        if (groupId instanceof DataRegionId) {
+          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, instance);
+        } else {
+          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, instance);
+        }
+        return TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
     }
     throw new UnsupportedOperationException(
         String.format("unknown query type [%s]", instance.getType()));

@@ -27,6 +27,30 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
@@ -54,10 +78,14 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -72,32 +100,11 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountNodesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
-import org.apache.iotdb.db.query.expression.binary.EqualToExpression;
-import org.apache.iotdb.db.query.expression.binary.GreaterEqualExpression;
-import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
-import org.apache.iotdb.db.query.expression.binary.LessEqualExpression;
-import org.apache.iotdb.db.query.expression.binary.LessThanExpression;
-import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
-import org.apache.iotdb.db.query.expression.binary.LogicOrExpression;
-import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
-import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
-import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
-import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.InExpression;
-import org.apache.iotdb.db.query.expression.unary.LikeExpression;
-import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
-import org.apache.iotdb.db.query.expression.unary.NegationExpression;
-import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -108,13 +115,14 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Pattern;
 
 /** Parse AST to Statement. */
@@ -187,42 +195,97 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.aliasNodeName() != null) {
       createTimeSeriesStatement.setAlias(parseNodeName(ctx.aliasNodeName().nodeName()));
     }
-    final String dataType = ctx.dataType.getText().toUpperCase();
-    final TSDataType tsDataType = TSDataType.valueOf(dataType);
-    createTimeSeriesStatement.setDataType(tsDataType);
 
-    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
-    TSEncoding encoding = ioTDBDescriptor.getDefaultEncodingByType(tsDataType);
-    if (Objects.nonNull(ctx.encoding)) {
-      String encodingString = ctx.encoding.getText().toUpperCase();
-      encoding = TSEncoding.valueOf(encodingString);
+    Map<String, String> props = new HashMap<>();
+    if (ctx.dataType != null) {
+      if (ctx.attributeKey() != null) {
+        if (!parseAttributeKey(ctx.attributeKey())
+            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+          throw new SQLParserException("expecting datatype");
+        }
+      }
+      props.put(
+          IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase(),
+          parseAttributeValue(ctx.dataType).toLowerCase());
     }
-    createTimeSeriesStatement.setEncoding(encoding);
-
-    CompressionType compressor;
-    List<IoTDBSqlParser.AttributePairContext> attributePairContexts = ctx.attributePair();
-    if (ctx.compressor != null) {
-      compressor = CompressionType.valueOf(ctx.compressor.getText().toUpperCase());
-    } else {
-      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    }
-    Map<String, String> props = null;
+    List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
     if (ctx.attributePair(0) != null) {
-      props = new HashMap<>(attributePairContexts.size());
-      for (IoTDBSqlParser.AttributePairContext attributePair : attributePairContexts) {
+      for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
         props.put(
             parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
             parseAttributeValue(attributePair.attributeValue()).toLowerCase());
       }
     }
-    createTimeSeriesStatement.setCompressor(compressor);
+
     createTimeSeriesStatement.setProps(props);
+    checkPropsInCreateTimeSeries(createTimeSeriesStatement);
+
     if (ctx.tagClause() != null) {
       parseTagClause(ctx.tagClause(), createTimeSeriesStatement);
     }
     if (ctx.attributeClause() != null) {
       parseAttributeClause(ctx.attributeClause(), createTimeSeriesStatement);
     }
+  }
+
+  /** check and set datatype, encoding, compressor */
+  private void checkPropsInCreateTimeSeries(CreateTimeSeriesStatement createTimeSeriesStatement) {
+    Map<String, String> props = createTimeSeriesStatement.getProps();
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
+      String datatypeString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesStatement.setDataType(TSDataType.valueOf(datatypeString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
+      }
+    }
+    if (createTimeSeriesStatement.getDataType() == null) {
+      throw new SemanticException("datatype must be declared");
+    }
+
+    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
+    createTimeSeriesStatement.setEncoding(
+        ioTDBDescriptor.getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesStatement.setEncoding(TSEncoding.valueOf(encodingString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
+      }
+    }
+
+    createTimeSeriesStatement.setCompressor(
+        TSFileDescriptor.getInstance().getConfig().getCompressor());
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesStatement.setCompressor(CompressionType.valueOf(compressionString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("Unsupported compression: %s", compressionString));
+      }
+    } else if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesStatement.setCompressor(CompressionType.valueOf(compressorString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported compression: %s", compressorString));
+      }
+    }
+    createTimeSeriesStatement.setProps(props);
   }
 
   public void parseAttributeClauses(
@@ -234,25 +297,74 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createAlignedTimeSeriesStatement.addAliasList(null);
     }
 
-    String dataTypeString = ctx.dataType.getText().toUpperCase();
-    TSDataType dataType = TSDataType.valueOf(dataTypeString);
-    createAlignedTimeSeriesStatement.addDataType(dataType);
+    TSDataType dataType = null;
+    if (ctx.dataType != null) {
+      if (ctx.attributeKey() != null) {
+        if (!parseAttributeKey(ctx.attributeKey())
+            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+          throw new SQLParserException("expecting datatype");
+        }
+      }
+      String dataTypeString = ctx.dataType.getText().toUpperCase();
+      try {
+        dataType = TSDataType.valueOf(dataTypeString);
+        createAlignedTimeSeriesStatement.addDataType(dataType);
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported datatype: %s", dataTypeString));
+      }
+    }
+
+    Map<String, String> props = new HashMap<>();
+    if (ctx.attributePair() != null) {
+      for (int i = 0; i < ctx.attributePair().size(); i++) {
+        props.put(
+            parseAttributeKey(ctx.attributePair(i).attributeKey()).toLowerCase(),
+            parseAttributeValue(ctx.attributePair(i).attributeValue()));
+      }
+    }
 
     TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
-    if (Objects.nonNull(ctx.encoding)) {
-      String encodingString = ctx.encoding.getText().toUpperCase();
-      encoding = TSEncoding.valueOf(encodingString);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        encoding = TSEncoding.valueOf(encodingString);
+        createAlignedTimeSeriesStatement.addEncoding(encoding);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
+      }
+    } else {
+      createAlignedTimeSeriesStatement.addEncoding(encoding);
     }
-    createAlignedTimeSeriesStatement.addEncoding(encoding);
 
     CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    if (ctx.compressor != null) {
-      String compressorString = ctx.compressor.getText().toUpperCase();
-      compressor = CompressionType.valueOf(compressorString);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressorString);
+        createAlignedTimeSeriesStatement.addCompressor(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported compressor: %s", compressorString));
+      }
+    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressionString);
+        createAlignedTimeSeriesStatement.addCompressor(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("unsupported compression: %s", compressionString));
+      }
+    } else {
+      createAlignedTimeSeriesStatement.addCompressor(compressor);
     }
-    createAlignedTimeSeriesStatement.addCompressor(compressor);
 
-    if (ctx.attributePair(0) != null) {
+    if (props.size() > 0) {
       throw new SQLParserException("create aligned timeseries: property is not supported yet.");
     }
 
@@ -309,9 +421,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // rename
     if (ctx.RENAME() != null) {
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
-      alterMap.put(
-          parseStringLiteral(ctx.beforeName.getText()),
-          parseStringLiteral(ctx.currentName.getText()));
+      alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
       // set
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
@@ -319,8 +429,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.DROP() != null) {
       // drop
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
-      for (int i = 0; i < ctx.STRING_LITERAL().size(); i++) {
-        alterMap.put(parseStringLiteral(ctx.STRING_LITERAL(i).getText()), null);
+      for (int i = 0; i < ctx.attributeKey().size(); i++) {
+        alterMap.put(parseAttributeKey(ctx.attributeKey().get(i)), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
@@ -351,6 +461,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (alterTimeSeriesStatement != null && ctx.ALIAS() != null) {
       alterTimeSeriesStatement.setAlias(parseAlias(ctx.alias()));
     }
+  }
+
+  // Delete Timeseries ======================================================================
+
+  @Override
+  public Statement visitDeleteTimeseries(IoTDBSqlParser.DeleteTimeseriesContext ctx) {
+    DeleteTimeSeriesStatement deleteTimeSeriesStatement = new DeleteTimeSeriesStatement();
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      partialPaths.add(parsePrefixPath(prefixPathContext));
+    }
+    deleteTimeSeriesStatement.setPartialPaths(partialPaths);
+    return deleteTimeSeriesStatement;
   }
 
   // Show Timeseries ========================================================================
@@ -477,6 +600,50 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CountStorageGroupStatement(path);
   }
 
+  // Create Function
+  @Override
+  public Statement visitCreateFunction(CreateFunctionContext ctx) {
+    return new CreateFunctionStatement(
+        parseIdentifier(ctx.udfName.getText()),
+        parseStringLiteral(ctx.className.getText()),
+        parseUris(ctx.uri()));
+  }
+
+  private List<URI> parseUris(List<UriContext> uriContexts) {
+    List<URI> uris = new ArrayList<>();
+    if (uriContexts != null) {
+      for (UriContext uriContext : uriContexts) {
+        final String uriString = uriContext.getText();
+        try {
+          uris.add(new URI(parseStringLiteral(uriString)));
+        } catch (URISyntaxException e) {
+          throw new SemanticException(String.format("'%s' is not a legal URI.", uriString));
+        }
+      }
+    }
+    return uris;
+  }
+
+  // Show Child Paths =====================================================================
+  @Override
+  public Statement visitShowChildPaths(IoTDBSqlParser.ShowChildPathsContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowChildPathsStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowChildPathsStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  // Show Child Nodes =====================================================================
+  @Override
+  public Statement visitShowChildNodes(IoTDBSqlParser.ShowChildNodesContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowChildNodesStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowChildNodesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement ========================================================================
@@ -543,7 +710,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (resultColumnContext.AS() != null) {
       alias = parseAlias(resultColumnContext.alias());
     }
-    return new ResultColumn(expression, alias);
+    ResultColumn.ColumnType columnType = ExpressionAnalyzer.identifyOutputColumnType(expression);
+    return new ResultColumn(expression, alias, columnType);
   }
 
   // From Clause
@@ -586,6 +754,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return queryStatement;
   }
 
+  @Override
+  public Statement visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
+    // parse group by time clause & fill clause
+    parseGroupByTimeClause(ctx.groupByFillClause());
+
+    // parse order by time
+    if (ctx.orderByTimeClause() != null) {
+      parseOrderByTimeClause(ctx.orderByTimeClause());
+    }
+
+    // parse limit & offset
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+    return queryStatement;
+  }
+
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
     GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
 
@@ -621,6 +806,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       groupByLevelComponent.setLevels(levels);
       queryStatement.setGroupByLevelComponent(groupByLevelComponent);
+    }
+
+    // parse fill clause
+    if (ctx.fillClause() != null) {
+      parseFillClause(ctx.fillClause());
+    }
+
+    // set groupByTimeComponent
+    queryStatement.setGroupByTimeComponent(groupByTimeComponent);
+  }
+
+  private void parseGroupByTimeClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
+    GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
+
+    // parse time range
+    parseTimeRange(ctx.timeRange(), groupByTimeComponent);
+    groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+
+    // parse time interval
+    groupByTimeComponent.setInterval(
+        parseTimeIntervalOrSlidingStep(
+            ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
+    if (groupByTimeComponent.getInterval() <= 0) {
+      throw new SemanticException(
+          "The second parameter time interval should be a positive integer.");
+    }
+
+    // parse sliding step
+    if (ctx.DURATION_LITERAL().size() == 2) {
+      groupByTimeComponent.setSlidingStep(
+          parseTimeIntervalOrSlidingStep(
+              ctx.DURATION_LITERAL(1).getText(), false, groupByTimeComponent));
+    } else {
+      groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
+      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
     }
 
     // parse fill clause
@@ -1105,16 +1325,40 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeString(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
       if (StringUtils.isNumeric(unWrapped)
-          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
     }
+    checkNodeName(nodeName);
     return nodeName;
+  }
+
+  private void checkNodeName(String src) {
+    // node name could start with * and end with *
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
+    }
+  }
+
+  private void checkIdentifier(String src) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              src));
+    }
   }
 
   // Literals ========================================================================
@@ -1159,15 +1403,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+      // do not unescape string
+      String unWrappedString =
+          src.substring(1, src.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
+        String replaced = unWrappedString.replace("\"\"", "\"");
         return replaced.length() == 0 ? "" : replaced;
       }
       if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
+        String replaced = unWrappedString.replace("''", "'");
         return replaced.length() == 0 ? "" : replaced;
       }
     }
@@ -1184,12 +1430,30 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return src;
   }
 
+  private String parseStringLiteralInLikeOrRegular(String src) {
+    if (2 <= src.length()) {
+      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+        // replace "" with "
+        String replaced = unescapeString.replace("\"\"", "\"");
+        return replaced.length() == 0 ? "" : replaced;
+      }
+      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
+        // replace '' with '
+        String replaced = unescapeString.replace("''", "'");
+        return replaced.length() == 0 ? "" : replaced;
+      }
+    }
+    return src;
+  }
+
   private String parseIdentifier(String src) {
     if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       return src.substring(1, src.length() - 1)
           .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
+    checkIdentifier(src);
     return src;
   }
 
@@ -1404,30 +1668,51 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return privileges.toArray(new String[0]);
   }
 
+  // Create Storage Group
+
   @Override
   public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupStatement.setStorageGroupPath(path);
-    if (ctx.storageGroupAttributeClause() != null) {
-      for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
-          ctx.storageGroupAttributeClause()) {
-        if (attribute.TTL() != null) {
-          long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setTtl(ttl);
-        } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
-          int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
-        } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
-          int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
-        } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
-          long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
-        }
-      }
+    if (ctx.storageGroupAttributesClause() != null) {
+      parseStorageGroupAttributesClause(
+          setStorageGroupStatement, ctx.storageGroupAttributesClause());
     }
     return setStorageGroupStatement;
+  }
+
+  @Override
+  public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
+    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupStatement.setStorageGroupPath(path);
+    if (ctx.storageGroupAttributesClause() != null) {
+      parseStorageGroupAttributesClause(
+          setStorageGroupStatement, ctx.storageGroupAttributesClause());
+    }
+    return setStorageGroupStatement;
+  }
+
+  private void parseStorageGroupAttributesClause(
+      SetStorageGroupStatement setStorageGroupStatement,
+      IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
+    for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
+        ctx.storageGroupAttributeClause()) {
+      if (attribute.TTL() != null) {
+        long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setTtl(ttl);
+      } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
+        int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
+      } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
+        int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
+      } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
+        long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
+      }
+    }
   }
 
   @Override
@@ -1620,13 +1905,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {

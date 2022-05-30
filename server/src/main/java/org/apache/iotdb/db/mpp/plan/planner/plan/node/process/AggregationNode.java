@@ -42,49 +42,38 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregationNode extends ProcessNode {
+public class AggregationNode extends MultiChildNode {
 
-  // The list of aggregate functions, each AggregateDescriptor will be output as one column of
+  // The list of aggregate functions, each AggregateDescriptor will be output as one or two column
+  // of
   // result TsBlock
   protected List<AggregationDescriptor> aggregationDescriptorList;
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
-  protected OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
 
-  protected List<PlanNode> children;
+  protected OrderBy scanOrder;
 
   public AggregationNode(
       PlanNodeId id,
-      List<PlanNode> children,
-      List<AggregationDescriptor> aggregationDescriptorList) {
-    this(id, children, aggregationDescriptorList, null);
+      List<AggregationDescriptor> aggregationDescriptorList,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
+    super(id, new ArrayList<>());
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
   }
 
   public AggregationNode(
       PlanNodeId id,
       List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList,
-      @Nullable GroupByTimeParameter groupByTimeParameter) {
-    super(id);
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
+    this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
     this.children = children;
-    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
-    this.groupByTimeParameter = groupByTimeParameter;
-  }
-
-  public AggregationNode(PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
-    this(id, aggregationDescriptorList, null);
-  }
-
-  public AggregationNode(
-      PlanNodeId id,
-      List<AggregationDescriptor> aggregationDescriptorList,
-      @Nullable GroupByTimeParameter groupByTimeParameter) {
-    super(id);
-    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
-    this.groupByTimeParameter = groupByTimeParameter;
-    this.children = new ArrayList<>();
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -118,7 +107,7 @@ public class AggregationNode extends ProcessNode {
   @Override
   public PlanNode clone() {
     return new AggregationNode(
-        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter());
+        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter(), getScanOrder());
   }
 
   @Override
@@ -127,6 +116,10 @@ public class AggregationNode extends ProcessNode {
         .map(AggregationDescriptor::getOutputColumnNames)
         .flatMap(List::stream)
         .collect(Collectors.toList());
+  }
+
+  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
+    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   @Override
@@ -147,6 +140,7 @@ public class AggregationNode extends ProcessNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
   public static AggregationNode deserialize(ByteBuffer byteBuffer) {
@@ -161,8 +155,10 @@ public class AggregationNode extends ProcessNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationNode(planNodeId, aggregationDescriptorList, groupByTimeParameter);
+    return new AggregationNode(
+        planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);
   }
 
   @Override
@@ -177,15 +173,15 @@ public class AggregationNode extends ProcessNode {
       return false;
     }
     AggregationNode that = (AggregationNode) o;
-    return aggregationDescriptorList.equals(that.aggregationDescriptorList)
+    return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
-        && Objects.equals(children, that.children);
+        && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(), aggregationDescriptorList, groupByTimeParameter, children);
+        super.hashCode(), aggregationDescriptorList, groupByTimeParameter, scanOrder);
   }
 
   /**
@@ -228,5 +224,9 @@ public class AggregationNode extends ProcessNode {
       }
     }
     return deduplicatedDescriptors;
+  }
+
+  public String toString() {
+    return String.format("AggregationNode-%s", getPlanNodeId());
   }
 }

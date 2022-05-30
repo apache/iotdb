@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.conf.ProcedureNodeConfigDescriptor;
-import org.apache.iotdb.confignode.procedure.conf.ProcedureNodeConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -40,8 +39,9 @@ public class ProcedureStore implements IProcedureStore {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureStore.class);
   private String procedureWalDir =
-      ProcedureNodeConfigDescriptor.getInstance().getConf().getProcedureWalDir();
+      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
+  public static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
   private final IProcedureFactory procedureFactory;
   private volatile boolean isRunning = false;
 
@@ -81,11 +81,7 @@ public class ProcedureStore implements IProcedureStore {
   public void load(List<Procedure> procedureList) {
     try {
       Files.list(Paths.get(procedureWalDir))
-          .filter(
-              path ->
-                  path.getFileName()
-                      .toString()
-                      .endsWith(ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX))
+          .filter(path -> path.getFileName().toString().endsWith(PROCEDURE_WAL_SUFFIX))
           .sorted(
               (p1, p2) ->
                   Long.compareUnsigned(
@@ -116,7 +112,7 @@ public class ProcedureStore implements IProcedureStore {
       return;
     }
     long procId = procedure.getProcId();
-    Path path = Paths.get(procedureWalDir, procId + ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX);
+    Path path = Paths.get(procedureWalDir, procId + ProcedureStore.PROCEDURE_WAL_SUFFIX);
     ProcedureWAL procedureWAL =
         procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path, procedureFactory));
     try {

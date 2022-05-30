@@ -21,22 +21,132 @@
 
 # 语法约定
 
+## 旧语法约定中的问题
+
+在之前版本的语法约定中，为了保持兼容性，我们引入了一些会引起歧义的规定。为了避免歧义，我们设计了新的语法约定，本章将说明旧语法约定中存在的问题，以及我们做出改动的原因。
+
+### 路径名使用的相关问题
+
+在旧语法约定中，什么时候需要给路径结点名添加引号，用单双引号还是反引号的规则较为复杂，在新的语法约定中我们做了统一，具体可以参考本文档的相关章节。
+
+#### 单双引号和反引号的使用时机
+
+在之前的语法约定中，路径结点名被定义成标识符，但是当需要在路径结点名中使用路径分隔符 . 时，需要使用单引号或者双引号引用。这与标识符使用反引号引用的规则相悖。
+
+```SQL
+# 在之前的语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，需要使用下述语句：
+create root.sg.'www.baidu.com' with datatype=BOOLEAN, encoding=PLAIN
+
+# 该语句创建的时间序列实际为 root.sg.'www.baidu.com'，即引号一并存入,该时间序列的三个结点为{"root","sg","'www.baidu.com'"}
+
+# 在查询语句中，如果希望查询该时间序列的数据，查询语句如下：
+select 'www.baidu.com' from root.sg;
+```
+
+而在新语法约定中，特殊路径结点名统一使用反引号引用：
+
+```SQL
+# 在现有语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，语法如下：
+create root.sg.`www.baidu.com` with datatype = BOOLEAN, encoding = PLAIN
+
+# 查询该时间序列可以通过如下语句：
+select `www.baidu.com` from root.sg;
+```
+
+#### 路径结点名内部使用引号的问题
+
+在旧语法约定中，在路径结点名中使用单引号 ' 和 双引号 " 时，需要使用反斜杠 \ 进行转义，且反斜杠会被视为路径结点名的一部分存入，而在使用其它标识符时没有这个限制，造成了不统一。
+
+```SQL
+# 创建时间序列 root.sg.\"a
+create timeseries root.sg.`\"a` with datatype=TEXT,encoding=PLAIN;
+
+# 查询时间序列 root.sg.\"a
+select `\"a` from root.sg;
++-----------------------------+-----------+
+|                         Time|root.sg.\"a|
++-----------------------------+-----------+
+|1970-01-01T08:00:00.004+08:00|       test|
++-----------------------------+-----------+
+```
+
+在新语法约定中，特殊路径结点名统一使用反引号进行引用，在路径结点名中使用单双引号无须添加反斜杠转义，使用反引号需要双写，具体可以参考新语法约定路径结点名章节。
+
+### SQL和Session接口对字符串反转义处理不一致
+
+在之前版本中，使用字符串时，SQL 和 Session 接口存在不一致的情况。比如使用 SQL 插入 Text 类型数据时，会对字符串进行反转义处理，而使用 Session 接口时不会进行这样的处理，存在不一致。**在新的语法约定中，我们统一不对字符串做反转义处理，存入什么内容，在查询时就会得到什么内容(字符串内部使用单双引号的规则可以参考本文档字符串常量章节)。**
+
+下面是旧语法约定中不一致的例子：
+
+使用 Session 的 insertRecord 方法向时序 root.sg.a 中插入数据
+
+```Java
+// session 插入
+String deviceId = "root.sg";
+List<String> measurements = new ArrayList<>();
+measurements.add("a");
+String[] values = new String[]{"\\\\", "\\t", "\\\"", "\\u96d5"};
+for(int i = 0; i <= values.length; i++){
+  List<String> valueList = new ArrayList<>();
+  valueList.add(values[i]);
+  session.insertRecord(deviceId, i + 1, measurements, valueList);
+  }
+```
+
+查询 root.sg.a 的数据，可以看到没有做反转义处理：
+
+```Plain%20Text
+// 查询结果
++-----------------------------+---------+
+|                         Time|root.sg.a|
++-----------------------------+---------+
+|1970-01-01T08:00:00.001+08:00|       \\|
+|1970-01-01T08:00:00.002+08:00|       \t|
+|1970-01-01T08:00:00.003+08:00|       \"|
+|1970-01-01T08:00:00.004+08:00|   \u96d5|
++-----------------------------+---------+
+```
+
+而使用 SQL 向 root.sg.a 中插入数据
+
+```SQL
+# SQL 插入
+insert into root.sg(time, a) values(1, "\\")
+insert into root.sg(time, a) values(2, "\t")
+insert into root.sg(time, a) values(3, "\"")
+insert into root.sg(time, a) values(4, "\u96d5")
+```
+
+查询 root.sg.a 的数据，可以看到字符串进行了反转义：
+
+```Plain%20Text
+// 查询结果
++-----------------------------+---------+
+|                         Time|root.sg.a|
++-----------------------------+---------+
+|1970-01-01T08:00:00.001+08:00|        \|
+|1970-01-01T08:00:00.002+08:00|         |
+|1970-01-01T08:00:00.003+08:00|        "|
+|1970-01-01T08:00:00.004+08:00|       雕|
++-----------------------------+---------+
+```
+
 ## 字面值常量
 
 该部分对 IoTDB 中支持的字面值常量进行说明，包括字符串常量、数值型常量、时间戳常量、布尔型常量和空值。
 
 ### 字符串常量
 
-字符串是由单引号（`'`）或双引号（`"`）字符括起来的字符序列。示例如下：
+> 我们参照了 MySQL 对 字符串的定义：A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.
+
+MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :: 9.1.1 String Literals](https://dev.mysql.com/doc/refman/8.0/en/string-literals.html)
+
+即在 IoTDB 中，字符串是由**单引号（**`**'**`**）或双引号（**`**"**`**）字符括起来的字符序列**。示例如下：
 
 ```Plain%20Text
 'a string'
 "another string"
 ```
-
-除文件路径以外，我们会对字符串常量做反转义处理，具体使用可以参考使用场景中的示例。
-
-转义字符可以参考链接：[Characters (The Java™ Tutorials > Learning the Java Language > Numbers and Strings)](https://docs.oracle.com/javase/tutorial/java/data/characters.html)
 
 #### 使用场景
 
@@ -47,20 +157,19 @@
   insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
   insert into root.ln.wf02.wt02(timestamp,hardware) values(2, '\\')
   
-  # 查询 root.ln.wf02.wt02的数据，结果如下，可以看到\\被转义为了\
   +-----------------------------+--------------------------+
   |                         Time|root.ln.wf02.wt02.hardware|
   +-----------------------------+--------------------------+
   |1970-01-01T08:00:00.001+08:00|                        v1|
   +-----------------------------+--------------------------+
-  |1970-01-01T08:00:00.002+08:00|                         \|
+  |1970-01-01T08:00:00.002+08:00|                        \\|
   +-----------------------------+--------------------------+
   
   # select 示例
   select code from root.sg1.d1 where code in ('string1', 'string2');
   ```
-
-- `LOAD` / `REMOVE` / `SETTLE` 指令中的文件路径。由于windows系统使用反斜杠\作为路径分隔符，文件路径我们不会做反转义处理。
+  
+- `LOAD` / `REMOVE` / `SETTLE` 指令中的文件路径。
 
   ```SQL
   # load 示例
@@ -76,7 +185,7 @@
 - 用户密码。
 
   ```SQL
-  # 示例，'write_pwd'即为用户密码
+  # 示例，write_pwd 即为用户密码
   CREATE USER ln_write_user 'write_pwd'
   ```
 
@@ -108,73 +217,13 @@
   +-----------------------------+-----------|-----+
   ```
 
-- 用于表示键值对，键值对的键可以被定义成字符串或者标识符，键值对的值可以被定义成常量（包括字符串）或者标识符，更推荐将键值对表示为字符串。示例如下：
-
-  1. 触发器中表示触发器属性的键值对。参考示例语句中 WITH 后的属性键值对。
-
-  ```SQL
-  # 示例
-  CREATE TRIGGER `alert-listener-sg1d1s1`
-  AFTER INSERT
-  ON root.sg1.d1.s1
-  AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
-  WITH (
-    'lo' = '0', 
-    'hi' = '100.0'
-  )
-  ```
-
-  2. UDF 中函数输入参数中的属性键值对。参考示例语句中 SELECT 子句中的属性键值对。
-
-  ```SQL
-  # 示例
-  SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
-  ```
-
-  3. 时间序列中用于表示标签和属性的键值对。
-
-  ```SQL
-  # 创建时间序列时设定标签和属性
-  CREATE timeseries root.turbine.d1.s1(temprature) 
-  WITH datatype=FLOAT, encoding=RLE, compression=SNAPPY, 'max_point_number' = '5'
-  TAGS('tag1' = 'v1', 'tag2'= 'v2') ATTRIBUTES('attr1' = 'v1', 'attr2' = 'v2')
-  
-  # 修改时间序列的标签和属性
-  ALTER timeseries root.turbine.d1.s1 SET 'newTag1' = 'newV1', 'attr1' = 'newV1'
-  
-  # 修改标签名
-  ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'
-  
-  # 插入别名、标签、属性
-  ALTER timeseries root.turbine.d1.s1 UPSERT 
-  ALIAS='newAlias' TAGS('tag2' = 'newV2', tag3=v3) ATTRIBUTES('attr3' ='v3', 'attr4'='v4')
-  
-  # 添加新的标签
-  ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3' = 'v3', 'tag4' = 'v4'
-  
-  # 添加新的属性
-  ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3' = 'v3', 'attr4' = 'v4'
-  
-  # 查询符合条件的时间序列信息
-  SHOW timeseries root.ln.** WHRER 'unit' = 'c'
-  ```
-
-  4. 创建 Pipe 以及 PipeSink 时表示属性的键值对。
-
-  ```SQL
-  # 创建 PipeSink 时表示属性
-  CREATE PIPESINK my_iotdb AS IoTDB ('ip' = '输入你的IP')
-  
-  # 创建 Pipe 时在 WITH 子句中表示属性
-  CREATE PIPE my_pipe TO my_iotdb FROM 
-  (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
-  ```
+- 用于表示键值对，键值对的键和值可以被定义成常量（包括字符串）或者标识符，具体请参考键值对章节。
 
 #### 如何在字符串内使用引号
 
 - 在单引号引起的字符串内，双引号无需特殊处理。同理，在双引号引起的字符串内，单引号无需特殊处理。
 
-- 在引号前使用转义符 (\)。
+- 在引号前使用转义符 (\\)。
 
 - 在单引号引起的字符串里，可以通过双写单引号来表示一个单引号，即单引号 ' 可以表示为 ''。
 
@@ -228,43 +277,42 @@
 
 ### 使用场景
 
-在 IoTDB 中，触发器名称、UDF函数名、元数据模板名称、用户与角色名、连续查询标识、Pipe、PipeSink、键值对中的键和值、别名等被称为标识符。
+在 IoTDB 中，触发器名称、UDF函数名、元数据模板名称、用户与角色名、连续查询标识、Pipe、PipeSink、键值对中的键和值、别名等可以作为标识符。
 
 ### 约束
 
 请注意，此处约束是标识符的通用约束，具体标识符可能还附带其它约束条件，如用户名限制字符数大于等于4，更严格的约束请参考具体标识符相关的说明文档。
 
-标识符命名有以下约束：
+**标识符命名有以下约束：**
 
 - 不使用反引号括起的标识符中，允许出现以下字符：
-
-  - [ 0-9 a-z A-Z _ : @ # $ { } ] （字母，数字，部分特殊字符）
-
+  - [ 0-9 a-z A-Z _ ] （字母，数字，下划线）
   - ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
-
+  
 - 标识符允许使用数字开头、不使用反引号括起的标识符不能全部为数字。
 
 - 标识符是大小写敏感的。
 
-如果出现如下情况，标识符需要使用反引号进行引用：
+- 标识符允许为关键字。
+
+**如果出现如下情况，标识符需要使用反引号进行引用：**
 
 - 标识符包含不允许的特殊字符。
-- 标识符为系统关键字。
 - 标识符为纯数字。
 
 ### 如何在反引号引起的标识符中使用引号
 
-在反引号引起的标识符中可以直接使用单引号和双引号。
+**在反引号引起的标识符中可以直接使用单引号和双引号。**
 
-在用反引号引用的标识符中，可以通过双写反引号的方式使用反引号，即 ` 可以表示为 ``，示例如下：
+**在用反引号引用的标识符中，可以通过双写反引号的方式使用反引号，即 ` 可以表示为 ``**，示例如下：
 
 ```SQL
-# 创建模板 t1't"t
-create schema template `t1't"t` 
-(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
-
 # 创建模板 t1`t
 create schema template `t1``t` 
+(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+
+# 创建模板 t1't"t
+create schema template `t1't"t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
@@ -289,14 +337,14 @@ create schema template `t1``t`
 - UDF 名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 select 的 UDF，select 为系统关键字，所以需要用反引号引用
-  CREATE FUNCTION `select` AS 'org.apache.iotdb.udf.UDTFExample'
+  # 创建名为 111 的 UDF，111 为纯数字，所以需要用反引号引用。
+  CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - 元数据模板名称出现上述特殊情况时需使用反引号引用：
 
   ```sql
-  # 创建名为 111 的元数据模板，111 为纯数字，需要用反引号引用
+  # 创建名为 111 的元数据模板，111 为纯数字，需要用反引号引用。
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -307,8 +355,8 @@ create schema template `t1``t`
   # 创建用户 special`user.
   CREATE USER `special``user.` 'write_pwd'
   
-  # 创建角色 `select`
-  CREATE ROLE `select`
+  # 创建角色 111
+  CREATE ROLE `111`
   ```
 
 - 连续查询标识出现上述特殊情况时需使用反引号引用：
@@ -340,38 +388,13 @@ create schema template `t1``t`
   ```sql
   select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
   # 表头如下所示
-  +-----------------------------+-----------|-----+
+  +-----------------------------+-----------+-----+
   |                         Time|temperature|speed|
-  +-----------------------------+-----------|-----+
+  +-----------------------------+-----------+-----+
   ```
 
-- 用于表示键值对，键值对的键可以被定义成字符串或者标识符，键值对的值可以被定义成常量（包括字符串）或者标识符，更推荐将键值对表示为字符串。键值对的使用范围和字符串常量中提到的一致，下面以时间序列中用于表示标签和属性的键值对作为示例：
+- 用于表示键值对，键值对的键和值可以被定义成常量（包括字符串）或者标识符，具体请参考键值对章节。
 
-  ```SQL
-  # 创建时间序列时设定标签和属性
-  CREATE timeseries root.turbine.d1.s1(temprature) 
-  WITH datatype=FLOAT, encoding=RLE, compression=SNAPPY, max_point_number = 5
-  TAGS(tag1 = v1, tag2= v2) ATTRIBUTES(attr1 = v1, attr2 = v2)
-  
-  # 修改时间序列的标签和属性
-  ALTER timeseries root.turbine.d1.s1 SET newTag1 = newV1, attr1 = newV1
-  
-  # 修改标签名
-  ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-  
-  # 插入别名、标签、属性
-  ALTER timeseries root.turbine.d1.s1 UPSERT 
-  ALIAS = newAlias TAGS(tag2 = newV2, tag3 = v3) ATTRIBUTES(attr3 = v3, attr4 = v4)
-  
-  # 添加新的标签
-  ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3 = v3, tag4 = v4
-  
-  # 添加新的属性
-  ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3 = v3, attr4 = v4
-  
-  # 查询符合条件的时间序列信息
-  SHOW timeseries root.ln.** WHRER unit = c
-  ```
 
 ## 路径结点名
 
@@ -386,7 +409,7 @@ create schema template `t1``t`
 由于通配符 * 在查询表达式中也可以表示乘法符号，下述例子用于帮助您区分两种情况：
 
 ```SQL
-# 创建时间序列 root.sg.a*b
+# 创建时间序列 root.sg.`a*b`
 create timeseries root.sg.`a*b` with datatype=FLOAT,encoding=PLAIN;
 # 请注意，如标识符部分所述，a*b包含特殊字符，需要用``括起来使用
 # create timeseries root.sg.a*b with datatype=FLOAT,encoding=PLAIN 是错误用法
@@ -397,7 +420,7 @@ create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN;
 # 创建时间序列 root.sg.b
 create timeseries root.sg.b with datatype=FLOAT,encoding=PLAIN;
 
-# 查询时间序列 root.sg.a*b
+# 查询时间序列 root.sg.`a*b`
 select `a*b` from root.sg
 # 其结果集表头为
 |Time|root.sg.a*b|
@@ -410,9 +433,7 @@ select a*b from root.sg
 
 ### 标识符
 
-路径结点名不为通配符时，使用方法和标识符一致。
-
-使用反引号引起的路径结点名，若其中含有特殊字符 . `，在结果集中展示时会添加反引号，其它情况下会正常展示，具体请参考特殊情况示例中结果集的示例。
+路径结点名不为通配符时，使用方法和标识符一致。**在 SQL 中需要使用反引号引用的路径结点，在结果集中也会用反引号引起。**
 
 需要使用反引号进行引用的部分特殊情况示例：
 
@@ -421,9 +442,6 @@ select a*b from root.sg
 ```SQL
 # 路径结点名中包含特殊字符，时间序列各结点为["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
-
-# 路径结点名为系统关键字
-create timeseries root.sg.`select`.a with datatype=FLOAT,encoding=PLAIN;
 
 # 路径结点名为纯数字
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
@@ -435,8 +453,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                 timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|           root.sg.select.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
-|              root.sg.111.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
+|            root.sg.`111`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.sg.`www.``baidu.com`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 ```
@@ -444,11 +461,8 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 - 插入数据时，如下情况需要使用反引号对特殊节点名进行引用：
 
 ```SQL
-# 路径结点名中包含特殊字符 . 和 `
+# 路径结点名中包含特殊字符
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
-
-# 路径结点名为系统关键字
-insert into root.sg.`select`(timestamp, a) values (1, 2);
 
 # 路径结点名为纯数字
 insert into root.sg(timestamp, `111`) values (1, 2);
@@ -457,11 +471,8 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 - 查询数据时，如下情况需要使用反引号对特殊节点名进行引用：
 
 ```SQL
-# 路径结点名中包含特殊字符 . 和 `
+# 路径结点名中包含特殊字符
 select a from root.sg.`www.``baidu.com`;
-
-# 路径结点名为系统关键字
-select a from root.sg.`select`
 
 # 路径结点名为纯数字
 select `111` from root.sg
@@ -477,26 +488,217 @@ select `111` from root.sg
 |1970-01-01T08:00:00.001+08:00|                        2.0|
 +-----------------------------+---------------------------+
 
-# select a from root.sg.`select` 结果集
-+-----------------------------+----------------+
-|                         Time|root.sg.select.a|
-+-----------------------------+----------------+
-|1970-01-01T08:00:00.001+08:00|             2.0|
-+-----------------------------+----------------+
-
 # select `111` from root.sg 结果集
-+-----------------------------+-----------+
-|                         Time|root.sg.111|
-+-----------------------------+-----------+
-|1970-01-01T08:00:00.001+08:00|        2.0|
-+-----------------------------+-----------+
++-----------------------------+-------------+
+|                         Time|root.sg.`111`|
++-----------------------------+-------------+
+|1970-01-01T08:00:00.001+08:00|          2.0|
++-----------------------------+-------------+
+```
+
+## 键值对
+
+**键值对的键和值可以被定义为标识符或者常量。**
+
+下面将介绍键值对的使用场景。
+
+- 触发器中表示触发器属性的键值对。参考示例语句中 WITH 后的属性键值对。
+
+```SQL
+# 以字符串形式表示键值对
+CREATE TRIGGER `alert-listener-sg1d1s1`
+AFTER INSERT
+ON root.sg1.d1.s1
+AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+WITH (
+  'lo' = '0', 
+  'hi' = '100.0'
+)
+
+# 以标识符和常量形式表示键值对
+CREATE TRIGGER `alert-listener-sg1d1s1`
+AFTER INSERT
+ON root.sg1.d1.s1
+AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+WITH (
+  lo = 0, 
+  hi = 100.0
+)
+```
+
+- 时间序列中用于表示标签和属性的键值对。
+
+```sql
+# 创建时间序列时设定标签和属性，用字符串来表示键值对。
+CREATE timeseries root.turbine.d1.s1(temprature) 
+WITH datatype = FLOAT, encoding = RLE, compression = SNAPPY, 'max_point_number' = '5'
+TAGS('tag1' = 'v1', 'tag2'= 'v2') ATTRIBUTES('attr1' = 'v1', 'attr2' = 'v2')
+
+# 创建时间序列时设定标签和属性，用标识符和常量来表示键值对。
+CREATE timeseries root.turbine.d1.s1(temprature) 
+WITH datatype = FLOAT, encoding = RLE, compression = SNAPPY, max_point_number = 5
+TAGS(tag1 = v1, tag2 = v2) ATTRIBUTES(attr1 = v1, attr2 = v2)
+```
+
+```sql
+# 修改时间序列的标签和属性
+ALTER timeseries root.turbine.d1.s1 SET 'newTag1' = 'newV1', 'attr1' = 'newV1'
+
+ALTER timeseries root.turbine.d1.s1 SET newTag1 = newV1, attr1 = newV1
+```
+
+```sql
+# 修改标签名
+ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'
+
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+
+```sql
+# 插入别名、标签、属性
+ALTER timeseries root.turbine.d1.s1 UPSERT 
+ALIAS='newAlias' TAGS('tag2' = 'newV2', 'tag3' = 'v3') ATTRIBUTES('attr3' ='v3', 'attr4'='v4')
+
+ALTER timeseries root.turbine.d1.s1 UPSERT 
+ALIAS = newAlias TAGS(tag2 = newV2, tag3 = v3) ATTRIBUTES(attr3 = v3, attr4 = v4)
+```
+
+```sql
+# 添加新的标签
+ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3' = 'v3', 'tag4' = 'v4'
+
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3 = v3, tag4 = v4
+```
+
+```sql
+# 添加新的属性
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3' = 'v3', 'attr4' = 'v4'
+
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3 = v3, attr4 = v4
+```
+
+```sql
+# 查询符合条件的时间序列信息
+SHOW timeseries root.ln.** WHRER 'unit' = 'c'
+
+SHOW timeseries root.ln.** WHRER unit = c
+```
+
+- 创建 Pipe 以及 PipeSink 时表示属性的键值对。
+
+```SQL
+# 创建 PipeSink 时表示属性
+CREATE PIPESINK my_iotdb AS IoTDB ('ip' = '输入你的IP')
+
+# 创建 Pipe 时在 WITH 子句中表示属性
+CREATE PIPE my_pipe TO my_iotdb FROM 
+(select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
 ```
 
 ## 关键字和保留字
 
-关键字是在 SQL 具有特定含义的词，不能直接用于标识符，需要使用反引号进行转义。保留字是关键字的一个子集，保留字不能用于标识符（即使进行了转义）。
+关键字是在 SQL 具有特定含义的词，可以作为标识符。保留字是关键字的一个子集，保留字不能用于标识符。
 
 关于 IoTDB 的关键字和保留字列表，可以查看 [关键字和保留字](https://iotdb.apache.org/zh/UserGuide/Master/Reference/Keywords.html) 。
+
+## Session、TsFile API
+
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。
+
+1. 以创建时间序列 createTimeseries 为例：
+
+```Java
+public void createTimeseries(
+    String path,
+    TSDataType dataType,
+    TSEncoding encoding,
+    CompressionType compressor)
+    throws IoTDBConnectionException, StatementExecutionException;
+```
+
+如果您希望创建时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`，您使用的 SQL 语句应该如下所示：
+
+```SQL
+create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+
+# 路径结点名中包含特殊字符，时间序列各结点为["root","sg","a.`\"b"]
+create timeseries root.sg.`a.``"b` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+
+# 路径结点名为纯数字
+create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+```
+
+您在调用 createTimeseries 方法时，应该按照如下方法赋值 path 字符串，保证 path 字符串内容与使用 SQL 时一致：
+
+```Java
+// 时间序列 root.sg.a
+String path = "root.sg.a";
+
+// 时间序列 root.sg.`a``"b`
+String path = "root.sg.`a``\"b`";
+
+// 时间序列 root.sg.`111`
+String path = "root.sg.`111`";
+```
+
+2. 以插入数据 insertRecord 为例：
+
+```Java
+public void insertRecord(
+    String deviceId,
+    long time,
+    List<String> measurements,
+    List<TSDataType> types,
+    Object... values)
+    throws IoTDBConnectionException, StatementExecutionException;
+```
+
+如果您希望向时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`中插入数据，您使用的 SQL 语句应该如下所示：
+
+```SQL
+insert into root.sg(timestamp, a, `a.``"b`, `111`) values (1, 2, 2, 2);
+```
+
+您在调用 insertRecord 方法时，应该按照如下方法赋值 deviceId 和 measurements：
+
+```Java
+// deviceId 为 root.sg
+String deviceId = "root.sg";
+
+// measurements
+String[] measurements = new String[]{"a", "`a.``\"b`", "`111`"};
+List<String> measurementList = Arrays.asList(measurements);
+```
+
+3. 以查询数据 executeRawDataQuery 为例：
+
+```Java
+public SessionDataSet executeRawDataQuery(
+    List<String> paths, 
+    long startTime, 
+    long endTime)
+    throws StatementExecutionException, IoTDBConnectionException;
+```
+
+如果您希望查询时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`的数据，您使用的 SQL 语句应该如下所示：
+
+```SQL
+select a from root.sg
+
+# 路径结点名中包含特殊字符
+select `a.``"b` from root.sg;
+
+# 路径结点名为纯数字
+select `111` from root.sg
+```
+
+您在调用 executeRawDataQuery 方法时，应该按照如下方法赋值 paths：
+
+```Java
+// paths
+String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"};
+List<String> pathList = Arrays.asList(paths);
+```
 
 ## 了解更多
 

@@ -101,6 +101,9 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertEquals(
         Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"),
         pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
+    Assert.assertEquals(
+        Arrays.asList("0", "2", "1"),
+        pair.left.stream().map(MeasurementPath::getVersion).collect(Collectors.toList()));
   }
 
   private ISchemaRegion prepareSchemaRegion() throws Exception {
@@ -126,10 +129,10 @@ public class SchemaFetchScanOperatorTest {
 
     createTimeSeriesPlan.setAlias("status");
     createTimeSeriesPlan.setPath(new PartialPath("root.sg.d1.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
+    schemaRegion.createTimeseries(createTimeSeriesPlan, -1, "0");
 
     createTimeSeriesPlan.setPath(new PartialPath("root.sg.d2.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
+    schemaRegion.createTimeseries(createTimeSeriesPlan, -1, "1");
 
     CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
         new CreateAlignedTimeSeriesPlan(
@@ -142,7 +145,7 @@ public class SchemaFetchScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyList());
 
-    schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+    schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan, Arrays.asList(null, "2"));
 
     return schemaRegion;
   }
