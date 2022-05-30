@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service.thrift.impl;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.AuthorizerManager;
@@ -1010,14 +1009,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         return getNotLoggedInStatus();
       }
 
-      DeleteDataStatement statement = new DeleteDataStatement();
-      List<PartialPath> pathList = new ArrayList<>();
-      for (String path : req.getPaths()) {
-        pathList.add(new PartialPath(path));
-      }
-      statement.setPathList(pathList);
-      statement.setDeleteStartTime(req.getStartTime());
-      statement.setDeleteEndTime(req.getEndTime());
+      DeleteDataStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
