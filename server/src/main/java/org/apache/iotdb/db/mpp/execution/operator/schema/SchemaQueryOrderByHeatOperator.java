@@ -43,8 +43,8 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   private final Operator left;
   private final Operator right;
   private boolean isFinished = false;
-  private List<TsBlock> leftResult;
-  private List<TsBlock> rightResult;
+  private final List<TsBlock> leftResult;
+  private final List<TsBlock> rightResult;
 
   public SchemaQueryOrderByHeatOperator(
       OperatorContext operatorContext, Operator left, Operator right) {
@@ -64,7 +64,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     // Step 1: get last point result
     Map<String, Long> timeseriesToLastTimestamp = new HashMap<>();
-    for (TsBlock tsBlock: rightResult) {
+    for (TsBlock tsBlock : rightResult) {
       if (null == tsBlock || tsBlock.isEmpty()) {
         continue;
       }
@@ -77,7 +77,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     // Step 2: get last point timestamp to timeseries map
     Map<Long, List<Object[]>> lastTimestampToTsSchema = new HashMap<>();
-    for (TsBlock tsBlock: leftResult) {
+    for (TsBlock tsBlock : leftResult) {
       if (null == tsBlock || tsBlock.isEmpty()) {
         continue;
       }
@@ -125,7 +125,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   @Override
   public ListenableFuture<Void> isBlocked() {
     ListenableFuture<Void> blocked = left.isBlocked();
-    while (blocked.isDone() && left.hasNext()) {
+    while (left.hasNext() && blocked.isDone()) {
       leftResult.add(left.next());
       blocked = left.isBlocked();
     }
@@ -133,7 +133,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
       return blocked;
     }
     blocked = right.isBlocked();
-    while (blocked.isDone() && right.hasNext()) {
+    while (right.hasNext() && blocked.isDone()) {
       rightResult.add(right.next());
       blocked = right.isBlocked();
     }

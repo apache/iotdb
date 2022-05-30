@@ -230,7 +230,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
-  public PlanNode visitSchemaQueryOrderByHeat(SchemaQueryOrderByHeatNode node, NodeGroupContext context) {
+  public PlanNode visitSchemaQueryOrderByHeat(
+      SchemaQueryOrderByHeatNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 

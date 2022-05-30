@@ -141,7 +141,10 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     return Objects.hash(super.hashCode(), key, value, isContains, orderByHeat);
   }
 
+  @Override
   public String toString() {
-    return String.format("TimeSeriesSchemaScanNode-%s:[DataRegion: %s]", this.getPlanNodeId(), this.getRegionReplicaSet());
+    return String.format(
+        "TimeSeriesSchemaScanNode-%s:[DataRegion: %s]",
+        this.getPlanNodeId(), this.getRegionReplicaSet());
   }
 }
