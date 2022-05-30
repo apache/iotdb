@@ -92,4 +92,8 @@ public class SchemaQueryOrderByHeatNode extends MultiChildNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SchemaQueryOrderByHeatNode(planNodeId);
   }
+
+  public String toString() {
+    return String.format("SchemaQueryOrderByHeatNode-%s", getPlanNodeId());
+  }
 }

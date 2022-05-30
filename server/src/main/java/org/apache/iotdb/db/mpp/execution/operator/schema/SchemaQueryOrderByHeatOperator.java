@@ -43,12 +43,16 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   private final Operator left;
   private final Operator right;
   private boolean isFinished = false;
+  private List<TsBlock> leftResult;
+  private List<TsBlock> rightResult;
 
   public SchemaQueryOrderByHeatOperator(
       OperatorContext operatorContext, Operator left, Operator right) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.left = requireNonNull(left, "left child operator is null");
     this.right = requireNonNull(right, "right child operator is null");
+    this.leftResult = new ArrayList<>();
+    this.rightResult = new ArrayList<>();
   }
 
   @Override
@@ -60,8 +64,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     // Step 1: get last point result
     Map<String, Long> timeseriesToLastTimestamp = new HashMap<>();
-    while (right.hasNext()) {
-      TsBlock tsBlock = right.next();
+    for (TsBlock tsBlock: rightResult) {
       if (null == tsBlock || tsBlock.isEmpty()) {
         continue;
       }
@@ -74,8 +77,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     // Step 2: get last point timestamp to timeseries map
     Map<Long, List<Object[]>> lastTimestampToTsSchema = new HashMap<>();
-    while (left.hasNext()) {
-      TsBlock tsBlock = left.next();
+    for (TsBlock tsBlock: leftResult) {
       if (null == tsBlock || tsBlock.isEmpty()) {
         continue;
       }
@@ -123,10 +125,18 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   @Override
   public ListenableFuture<Void> isBlocked() {
     ListenableFuture<Void> blocked = left.isBlocked();
+    while (blocked.isDone() && left.hasNext()) {
+      leftResult.add(left.next());
+      blocked = left.isBlocked();
+    }
     if (!blocked.isDone()) {
       return blocked;
     }
     blocked = right.isBlocked();
+    while (blocked.isDone() && right.hasNext()) {
+      rightResult.add(right.next());
+      blocked = right.isBlocked();
+    }
     if (!blocked.isDone()) {
       return blocked;
     }
