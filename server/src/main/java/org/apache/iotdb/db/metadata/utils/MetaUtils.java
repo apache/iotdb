@@ -73,21 +73,23 @@ public class MetaUtils {
    */
   public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
     List<PartialPath> result = new LinkedList<>();
-    AlignedPath alignedPath = null;
+    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
     for (PartialPath path : fullPaths) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (!measurementPath.isUnderAlignedEntity()) {
         result.add(measurementPath);
-        alignedPath = null;
       } else {
-        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
-          alignedPath = new AlignedPath(measurementPath);
-          result.add(alignedPath);
+        String deviceName = measurementPath.getDevice();
+        if (!deviceToAlignedPathMap.containsKey(deviceName)) {
+          AlignedPath alignedPath = new AlignedPath(measurementPath);
+          deviceToAlignedPathMap.put(deviceName, alignedPath);
         } else {
+          AlignedPath alignedPath = deviceToAlignedPathMap.get(deviceName);
           alignedPath.addMeasurement(measurementPath);
         }
       }
     }
+    result.addAll(deviceToAlignedPathMap.values());
     return result;
   }
 
