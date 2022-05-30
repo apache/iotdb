@@ -49,8 +49,11 @@ public class UDFInfo implements SnapshotProcessor {
   private final UDFRegistrationService udfRegistrationService;
 
   public UDFInfo() {
-    udfExecutableManager = UDFExecutableManager.getInstance();
-    udfRegistrationService = UDFRegistrationService.getInstance();
+    udfExecutableManager =
+        UDFExecutableManager.setupAndGetInstance(
+            CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
+    udfRegistrationService =
+        UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
   }
 
   public synchronized void validateBeforeRegistration(

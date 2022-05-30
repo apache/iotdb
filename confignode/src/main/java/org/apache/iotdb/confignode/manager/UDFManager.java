@@ -71,7 +71,7 @@ public class UDFManager {
           String.format(
               "Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
               functionName, className, uris, e);
-      LOGGER.warn(errorMessage);
+      LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
@@ -117,7 +117,7 @@ public class UDFManager {
     } catch (Exception e) {
       final String errorMessage =
           String.format("Failed to deregister UDF %s, because of exception: %s", functionName, e);
-      LOGGER.warn(errorMessage);
+      LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
