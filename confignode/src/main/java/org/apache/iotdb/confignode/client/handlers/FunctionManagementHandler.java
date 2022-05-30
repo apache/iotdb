@@ -27,14 +27,14 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-public class CreateFunctionHandler implements AsyncMethodCallback<TSStatus> {
+public class FunctionManagementHandler implements AsyncMethodCallback<TSStatus> {
 
   private final CountDownLatch countDownLatch;
   private final List<TSStatus> dataNodeResponseStatus;
   private final String ip;
   private final int port;
 
-  public CreateFunctionHandler(
+  public FunctionManagementHandler(
       CountDownLatch countDownLatch, List<TSStatus> dataNodeResponseStatus, String ip, int port) {
     this.countDownLatch = countDownLatch;
     this.dataNodeResponseStatus = dataNodeResponseStatus;
@@ -53,6 +53,6 @@ public class CreateFunctionHandler implements AsyncMethodCallback<TSStatus> {
     countDownLatch.countDown();
     dataNodeResponseStatus.add(
         new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage("[" + ip + ":" + port + "] " + exception.getMessage()));
+            .setMessage("DataNode[" + ip + ":" + port + "] " + exception.getMessage()));
   }
 }

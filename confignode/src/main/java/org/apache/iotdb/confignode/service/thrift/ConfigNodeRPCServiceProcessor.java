@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -404,6 +405,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
     return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
+  }
+
+  @Override
+  public TSStatus dropFunction(TDropFunctionReq req) throws TException {
+    return configManager.dropFunction(req.getUdfName());
   }
 
   public void handleClientExit() {}

@@ -613,6 +613,14 @@ public class ConfigManager implements Manager {
   }
 
   @Override
+  public TSStatus dropFunction(String udfName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? udfManager.dropFunction(udfName)
+        : status;
+  }
+
+  @Override
   public UDFManager getUDFManager() {
     return udfManager;
   }
