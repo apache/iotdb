@@ -42,6 +42,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -50,6 +52,8 @@ import java.util.List;
 import java.util.Map;
 
 public class TransformOperator implements ProcessOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TransformOperator.class);
 
   // TODO: make it configurable
   protected static final int FETCH_SIZE = 10000;
@@ -163,6 +167,7 @@ public class TransformOperator implements ProcessOperator {
       try {
         readyForFirstIteration();
       } catch (Exception e) {
+        LOGGER.warn("TransformOperator#hasNext()", e);
         throw new RuntimeException(e);
       }
       isFirstIteration = false;
@@ -209,6 +214,7 @@ public class TransformOperator implements ProcessOperator {
 
       tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
+      LOGGER.warn("TransformOperator#next()", e);
       throw new RuntimeException(e);
     }
 

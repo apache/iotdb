@@ -33,6 +33,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -40,6 +43,8 @@ import java.util.List;
 import java.util.Map;
 
 public class FilterOperator extends TransformOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FilterOperator.class);
 
   private LayerPointReader filterPointReader;
 
@@ -146,6 +151,7 @@ public class FilterOperator extends TransformOperator {
 
       tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
+      LOGGER.warn("FilterOperator#next()", e);
       throw new RuntimeException(e);
     }
 
@@ -170,6 +176,7 @@ public class FilterOperator extends TransformOperator {
 
       return filterPointReader.next();
     } catch (Exception e) {
+      LOGGER.warn("FilterOperator#hasNext()", e);
       throw new RuntimeException(e);
     }
   }
