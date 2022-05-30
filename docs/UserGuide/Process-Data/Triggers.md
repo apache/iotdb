@@ -690,6 +690,8 @@ See [ForwardTrigger](#ForwardTrigger) as example.
 ## ForwardTrigger
 ForwardTrigger is a built-in trigger for data distribution/forwarding. It uses ForwardSink and consumption queue to realize asynchronous batch processing of trigger events. Asynchronous forwarding can avoid the system blocking caused by forwarding blocking. The connection pool in ForwardSink can make the connections in the pool reuse efficiently and safely, and avoid the overhead of frequent connection establishment and closing.
 
+<img src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Triggers/ForwardQueueConsume.png?raw=true" alt="Forward Queue Consume">
+
 ### Trigger process
 1. Trigger event come.
 2. ForwardTrigger put the event into queue pool.

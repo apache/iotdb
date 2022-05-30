@@ -629,6 +629,8 @@ MQTTForwardHandler与MQTTHandler的区别在于，前者使用连接池而后者
 
 ForwardTrigger是内置的用于实现数据分发的触发器，它使用ForwardSink和消费队列实现了对触发事件的异步批量处理。采用异步的方式进行转发，可以避免因为转发阻塞导致的系统阻塞。而采用ForwardSink中的连接池可使得池中的连接可以得到高效、安全的复用，避免了连接频繁建立、关闭的开销。
 
+<img src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Triggers/ForwardQueueConsume.png?raw=true" alt="Forward Queue Consume">
+
 ### 触发流程
 1. 触发事件到来。
 2. ForwardTrigger将触发事件放入队列池。
