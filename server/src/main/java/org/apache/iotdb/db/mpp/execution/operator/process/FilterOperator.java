@@ -146,11 +146,14 @@ public class FilterOperator extends TransformOperator {
         } else {
           // values
           for (int i = 0; i < outputColumnCount; ++i) {
-            iterateReaderToNextValid(transformers[i]);
+            LayerPointReader reader = transformers[i];
+            reader.readyForNext();
+            iterateReaderToNextValid(reader);
           }
         }
 
         // update filter
+        filterPointReader.readyForNext();
         iterateReaderToNextValid(filterPointReader);
 
         inputLayer.updateRowRecordListEvictionUpperBound();
