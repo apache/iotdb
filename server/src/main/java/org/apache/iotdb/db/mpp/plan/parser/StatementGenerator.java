@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -399,6 +401,19 @@ public class StatementGenerator {
   public static Statement createStatement(List<String> storageGroups) {
     DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
     statement.setPrefixPath(storageGroups);
+    return statement;
+  }
+
+  public static DeleteDataStatement createStatement(TSDeleteDataReq req)
+      throws IllegalPathException {
+    DeleteDataStatement statement = new DeleteDataStatement();
+    List<PartialPath> pathList = new ArrayList<>();
+    for (String path : req.getPaths()) {
+      pathList.add(new PartialPath(path));
+    }
+    statement.setPathList(pathList);
+    statement.setDeleteStartTime(req.getStartTime());
+    statement.setDeleteEndTime(req.getEndTime());
     return statement;
   }
 

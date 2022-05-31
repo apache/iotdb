@@ -231,14 +231,15 @@ public class SchemaPartition extends Partition {
     return result;
   }
 
-  public List<RegionReplicaSetInfo> getSchemaDistributionInfo() {
+  @Override
+  public List<RegionReplicaSetInfo> getDistributionInfo() {
     Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
     schemaPartitionMap.forEach(
         (storageGroup, partition) -> {
           for (TRegionReplicaSet regionReplicaSet : partition.values()) {
             distributionMap
                 .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
-                .addStorageGroup(storageGroup);
+                .setStorageGroup(storageGroup);
           }
         });
     return new ArrayList<>(distributionMap.values());

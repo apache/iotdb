@@ -57,7 +57,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -108,8 +107,8 @@ public class IoTDBSyncReceiverIT {
       Assert.fail("Failed to start pipe server because " + e.getMessage());
     }
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    client = new TransportClient(pipe, "127.0.0.1", 6670);
-    remoteIp1 = InetAddress.getLocalHost().getHostAddress();
+    client = new TransportClient(pipe, "127.0.0.1", 6670, "127.0.0.1");
+    remoteIp1 = "127.0.0.1";
     client.handshake();
   }
 

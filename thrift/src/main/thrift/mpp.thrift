@@ -141,6 +141,10 @@ struct TCreateFunctionRequest {
   3: required list<string> uris
 }
 
+struct TDropFunctionRequest {
+  1: required string udfName
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -228,6 +232,13 @@ service InternalService {
    * @param function name, function class name, and executable uris
    **/
   common.TSStatus createFunction(TCreateFunctionRequest req)
+
+  /**
+   * Config node will drop a function on a list of data nodes.
+   *
+   * @param function name
+   **/
+  common.TSStatus dropFunction(TDropFunctionRequest req)
 
   /**
    * Config node will invalidate permission Info cache.

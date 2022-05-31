@@ -96,7 +96,6 @@ public class IoTDBConstant {
   public static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
-  public static final String TLL_NOT_SET = "not set";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";

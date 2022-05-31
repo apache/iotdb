@@ -145,6 +145,10 @@ public class IoTDB implements IoTDBMBean {
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
     initServiceProvider();
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
@@ -181,11 +185,6 @@ public class IoTDB implements IoTDBMBean {
                 + File.separator));
     registerManager.register(ReceiverService.getInstance());
     registerManager.register(MetricsService.getInstance());
-
-    // in cluster mode, RPC service is not enabled.
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
-    }
 
     initProtocols();
     // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
