@@ -16,28 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-package org.apache.iotdb.commons.partition;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+public class ShowClusterStatement extends ShowStatement implements IConfigStatement {
 
-public class RegionReplicaSetInfo {
-  private TRegionReplicaSet regionReplicaSet;
-  private String storageGroup;
-
-  public RegionReplicaSetInfo(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return regionReplicaSet;
-  }
-
-  public String getStorageGroup() {
-    return storageGroup;
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowCluster(this, context);
   }
 }

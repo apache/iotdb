@@ -49,7 +49,7 @@ public class DriverSchedulerTest {
   }
 
   @Test
-  public void testManagingFragmentInstance() {
+  public void testManagingDriver() {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     // submit 2 tasks in one query

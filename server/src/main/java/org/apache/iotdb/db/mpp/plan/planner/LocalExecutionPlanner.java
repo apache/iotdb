@@ -93,6 +93,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOper
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
@@ -118,6 +119,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSch
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -342,6 +344,21 @@ public class LocalExecutionPlanner {
       context.addPath(seriesPath);
 
       return seriesAggregationScanOperator;
+    }
+
+    @Override
+    public Operator visitSchemaQueryOrderByHeat(
+        SchemaQueryOrderByHeatNode node, LocalExecutionPlanContext context) {
+      Operator left = node.getLeft().accept(this, context);
+      Operator right = node.getRight().accept(this, context);
+
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SchemaQueryOrderByHeatOperator.class.getSimpleName());
+
+      return new SchemaQueryOrderByHeatOperator(operatorContext, left, right);
     }
 
     @Override
@@ -1110,8 +1127,7 @@ public class LocalExecutionPlanner {
           return null;
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        context.addCachedLastValue(
-            timeValuePair, node.getPlanNodeId(), node.getSeriesPath().getFullPath());
+        context.addCachedLastValue(timeValuePair, node.getPlanNodeId(), seriesPath.getFullPath());
         return null;
       }
     }
@@ -1179,8 +1195,7 @@ public class LocalExecutionPlanner {
           return null;
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        context.addCachedLastValue(
-            timeValuePair, node.getPlanNodeId(), node.getSeriesPath().getFullPath());
+        context.addCachedLastValue(timeValuePair, node.getPlanNodeId(), seriesPath.getFullPath());
         return null;
       }
     }
