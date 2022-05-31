@@ -50,6 +50,8 @@ public abstract class BinaryTransformer extends Transformer {
     checkType();
   }
 
+  protected abstract void checkType();
+
   @Override
   public boolean isConstantPointReader() {
     return isCurrentConstant;
@@ -77,8 +79,6 @@ public abstract class BinaryTransformer extends Transformer {
   }
 
   protected abstract void transformAndCache() throws QueryProcessException, IOException;
-
-  protected abstract void checkType();
 
   /**
    * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
