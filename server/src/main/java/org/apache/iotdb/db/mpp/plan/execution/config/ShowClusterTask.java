@@ -21,18 +21,13 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
@@ -44,7 +39,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_STATUS_RUNNING;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_CONFIG_NODE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
 
 public class ShowClusterTask implements IConfigTask {
 
@@ -52,10 +51,7 @@ public class ShowClusterTask implements IConfigTask {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ShowClusterStatement showClusterStatement;
-
   public ShowClusterTask(ShowClusterStatement showClusterStatement) {
-    this.showClusterStatement = showClusterStatement;
   }
 
   @Override
@@ -72,35 +68,42 @@ public class ShowClusterTask implements IConfigTask {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
       }
-    } else {
-      future.setException(new TException("SHOW CLUSTER not support local mode"));
     }
 
     // build TSBlock
     TsBlockBuilder builder =
       new TsBlockBuilder(HeaderConstant.showClusterHeader.getRespDataTypes());
-    int configNodeId = 0;
-    for (TConfigNodeLocation nodeLocation : clusterNodeInfos.getConfigNodeList()) {
-      builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeInt(configNodeId++);
-      builder.getColumnBuilder(1).writeBinary(new Binary("ConfigNode"));
-      builder.getColumnBuilder(2).writeBinary(new Binary("Running"));
-      builder.getColumnBuilder(3).writeBinary(new Binary(nodeLocation.getInternalEndPoint().getIp()));
-      builder.getColumnBuilder(4).writeInt(nodeLocation.getInternalEndPoint().getPort());
-      builder.declarePosition();
-    }
-    for (TDataNodeLocation nodeLocation : clusterNodeInfos.getDataNodeList()) {
-      builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeInt(nodeLocation.getDataNodeId());
-      builder.getColumnBuilder(1).writeBinary(new Binary("DataNode"));
-      builder.getColumnBuilder(2).writeBinary(new Binary("Running"));
-      builder.getColumnBuilder(3).writeBinary(new Binary(nodeLocation.getInternalEndPoint().getIp()));
-      builder.getColumnBuilder(4).writeInt(nodeLocation.getInternalEndPoint().getPort());
-      builder.declarePosition();
-    }
+
+    AtomicInteger configNodeId = new AtomicInteger();
+    clusterNodeInfos.getConfigNodeList().forEach(e ->
+      buildTsBlock(builder, configNodeId.getAndIncrement(),
+        NODE_TYPE_CONFIG_NODE, NODE_STATUS_RUNNING,
+        e.getInternalEndPoint().getIp(),
+        e.getInternalEndPoint().getPort()));
+
+    clusterNodeInfos.getDataNodeList().forEach(e ->
+      buildTsBlock(builder, e.getDataNodeId(),
+        NODE_TYPE_DATA_NODE, NODE_STATUS_RUNNING,
+        e.getInternalEndPoint().getIp(),
+        e.getInternalEndPoint().getPort()));
 
     DatasetHeader datasetHeader = HeaderConstant.showClusterHeader;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
     return future;
+  }
+
+  private void buildTsBlock(TsBlockBuilder builder,
+                            int nodeId,
+                            String nodeType,
+                            String nodeStatus,
+                            String hostAddress,
+                            int port) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeInt(nodeId);
+    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
+    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
+    builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
+    builder.getColumnBuilder(4).writeInt(port);
+    builder.declarePosition();
   }
 }
