@@ -521,7 +521,7 @@ public class StorageEngineV2 implements IService {
   /** insert an InsertTabletNode to a storage group */
   // TODO:(New insert)
   public void insertTablet(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
-      throws StorageEngineException, BatchProcessException {
+      throws StorageEngineException, BatchProcessException, WriteProcessException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
