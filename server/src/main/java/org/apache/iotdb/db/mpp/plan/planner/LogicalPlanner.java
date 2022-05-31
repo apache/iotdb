@@ -276,6 +276,13 @@ public class LogicalPlanner {
           }
         }
       } else {
+        AggregationStep curStep =
+            (analysis.getGroupByLevelExpressions() != null
+                    || (analysis.getGroupByTimeParameter() != null
+                        && analysis.getGroupByTimeParameter().hasOverlap()))
+                ? AggregationStep.PARTIAL
+                : AggregationStep.SINGLE;
+
         boolean needTransform = false;
         for (Expression expression : transformExpressions) {
           if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
@@ -288,6 +295,7 @@ public class LogicalPlanner {
           planBuilder =
               planBuilder.planAggregationSourceWithIndexAdjust(
                   sourceExpressions,
+                  curStep,
                   queryStatement.getResultOrder(),
                   analysis.getGlobalTimeFilter(),
                   analysis.getGroupByTimeParameter(),
@@ -300,6 +308,7 @@ public class LogicalPlanner {
               planBuilder
                   .planAggregationSource(
                       sourceExpressions,
+                      curStep,
                       queryStatement.getResultOrder(),
                       analysis.getGlobalTimeFilter(),
                       analysis.getGroupByTimeParameter(),
