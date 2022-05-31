@@ -213,7 +213,9 @@ public class LogicalPlanBuilder {
       List<Integer> measurementIndexes,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       TypeProvider typeProvider) {
-    checkArgument(sourceExpressions.size() == measurementIndexes.size(), "");
+    checkArgument(
+        sourceExpressions.size() == measurementIndexes.size(),
+        "Each aggregate should correspond to a column of output.");
 
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
