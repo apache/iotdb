@@ -245,15 +245,18 @@ public class LogicalPlanBuilder {
             timeFilter,
             groupByTimeParameter);
 
-    // update measurementIndexes
-    measurementIndexes.clear();
-    measurementIndexes.addAll(
-        sourceNodeList.stream()
-            .map(
-                planNode -> ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList())
-            .flatMap(List::stream)
-            .map(aggregationToMeasurementIndexMap::get)
-            .collect(Collectors.toList()));
+    if (!curStep.isOutputPartial()) {
+      // update measurementIndexes
+      measurementIndexes.clear();
+      measurementIndexes.addAll(
+          sourceNodeList.stream()
+              .map(
+                  planNode ->
+                      ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList())
+              .flatMap(List::stream)
+              .map(aggregationToMeasurementIndexMap::get)
+              .collect(Collectors.toList()));
+    }
 
     return convergeAggregationSource(
         sourceNodeList,
