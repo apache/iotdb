@@ -47,6 +47,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -129,6 +130,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTTL(ShowTTLStatement showTTLStatement, C context) {
     return visitStatement(showTTLStatement, context);
+  }
+
+  public R visitShowCluster(ShowClusterStatement showClusterStatement, C context) {
+    return visitStatement(showClusterStatement, context);
   }
 
   // UDF
