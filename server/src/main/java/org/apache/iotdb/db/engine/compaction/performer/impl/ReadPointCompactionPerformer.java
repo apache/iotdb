@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -241,6 +242,19 @@ public class ReadPointCompactionPerformer
     HashMap<String, MeasurementSchema> schemaMap = new HashMap<>();
     List<TsFileResource> allResources = new LinkedList<>(seqFiles);
     allResources.addAll(unseqFiles);
+    // sort the tsfile by version, so that we can iterate the tsfile from the newest to oldest
+    allResources.sort(
+        (o1, o2) -> {
+          try {
+            TsFileNameGenerator.TsFileName n1 =
+                TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
+            TsFileNameGenerator.TsFileName n2 =
+                TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
+            return (int) (n2.getVersion() - n1.getVersion());
+          } catch (IOException e) {
+            return 0;
+          }
+        });
     for (String measurement : measurements) {
       for (TsFileResource tsFileResource : allResources) {
         if (!tsFileResource.mayContainsDevice(device)) {
