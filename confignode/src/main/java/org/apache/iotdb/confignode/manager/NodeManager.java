@@ -183,7 +183,8 @@ public class NodeManager {
 
   private TSStatus redirectionLeader() {
     Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
-    return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode()).setRedirectNode(leader.getEndpoint());
+    return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+        .setRedirectNode(leader.getEndpoint());
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
