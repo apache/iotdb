@@ -1527,8 +1527,14 @@ public class MManager {
    * @param path timeseries
    * @param offset offset in the tag file
    */
-  public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    mtree.getMeasurementMNode(path).setOffset(offset);
+  public void changeOffset(PartialPath path, long offset) throws MetadataException, IOException {
+    IMeasurementMNode mNode = mtree.getMeasurementMNode(path);
+    mNode.setOffset(offset);
+    // the timeseries has already been created and now system is recovering, using the tag info in
+    // tagFile to recover index directly
+    if (isRecovering) {
+      tagManager.recoverIndex(offset, mNode);
+    }
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
