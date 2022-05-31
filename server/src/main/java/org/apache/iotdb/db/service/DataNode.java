@@ -40,7 +40,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.consensus.ConsensusImpl;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -172,8 +173,10 @@ public class DataNode implements DataNodeMBean {
             new TEndPoint(config.getInternalIp(), config.getInternalPort()));
         location.setDataBlockManagerEndPoint(
             new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
-        location.setConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getConsensusPort()));
+        location.setDataRegionConsensusEndPoint(
+            new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
+        location.setSchemaRegionConsensusEndPoint(
+            new TEndPoint(config.getInternalIp(), config.getSchemaRegionConsensusPort()));
 
         // Set DataNodeInfo
         TDataNodeInfo info = new TDataNodeInfo();
@@ -244,7 +247,8 @@ public class DataNode implements DataNodeMBean {
 
     try {
       // TODO: Start consensus layer in some where else
-      ConsensusImpl.getInstance().start();
+      SchemaRegionConsensusImpl.getInstance().start();
+      DataRegionConsensusImpl.getInstance().start();
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -262,6 +266,16 @@ public class DataNode implements DataNodeMBean {
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
     initServiceProvider();
+
+    // init rpc service
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
+
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
@@ -276,19 +290,11 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(StorageEngineV2.getInstance());
     registerManager.register(DataBlockService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
 
     registerUdfServices();
 
     registerManager.register(ReceiverService.getInstance());
     registerManager.register(MetricsService.getInstance());
-
-    // in cluster mode, RPC service is not enabled.
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
-    }
 
     initProtocols();
 

@@ -17,52 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-public class GetChildPathsPartitionReq extends ConfigRequest {
-  private PartialPath partialPath;
+public class DropFunctionReq extends ConfigRequest {
 
-  public GetChildPathsPartitionReq() {
-    super(ConfigRequestType.GetChildPathsPartition);
+  private String functionName;
+
+  public DropFunctionReq() {
+    super(ConfigRequestType.DropFunction);
   }
 
-  public PartialPath getPartialPath() {
-    return partialPath;
+  public DropFunctionReq(String functionName) {
+    super(ConfigRequestType.DropFunction);
+    this.functionName = functionName;
   }
 
-  public void setPartialPath(PartialPath partialPath) {
-    this.partialPath = partialPath;
+  public String getFunctionName() {
+    return functionName;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    partialPath.serialize(buffer);
+    buffer.putInt(getType().ordinal());
+    ReadWriteIOUtils.write(functionName, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    GetChildPathsPartitionReq that = (GetChildPathsPartitionReq) o;
-    return partialPath.equals(that.partialPath);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(partialPath);
+    functionName = ReadWriteIOUtils.readString(buffer);
   }
 }

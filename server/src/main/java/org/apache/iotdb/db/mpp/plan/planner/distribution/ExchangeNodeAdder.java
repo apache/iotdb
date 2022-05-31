@@ -28,9 +28,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
@@ -43,7 +45,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -154,11 +155,13 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processNoChildSourceNode(node, context);
   }
 
+  @Override
   public PlanNode visitSeriesAggregationScan(
       SeriesAggregationScanNode node, NodeGroupContext context) {
     return processNoChildSourceNode(node, context);
   }
 
+  @Override
   public PlanNode visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, NodeGroupContext context) {
     return processNoChildSourceNode(node, context);
@@ -171,30 +174,14 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return node.clone();
   }
 
-  public PlanNode visitDeleteData(DeleteDataNode node, NodeGroupContext context) {
-    context.putNodeDistribution(
-        node.getPlanNodeId(),
-        new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
-    return node;
+  @Override
+  public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
   }
 
-  public PlanNode visitDeleteTimeseries(DeleteTimeSeriesNode node, NodeGroupContext context) {
-    List<PlanNode> visitedChildren = new ArrayList<>();
-    node.getChildren()
-        .forEach(
-            child -> {
-              visitedChildren.add(visit(child, context));
-            });
-    node.getChildren().clear();
-    visitedChildren.forEach(
-        child -> {
-          ExchangeNode exchangeNode =
-              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-          exchangeNode.setChild(child);
-          exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-          node.addChild(exchangeNode);
-        });
-    return node;
+  @Override
+  public PlanNode visitDeviceMerge(DeviceMergeNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
   }
 
   @Override
@@ -207,7 +194,14 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processMultiChildNode(node, context);
   }
 
+  @Override
   public PlanNode visitRowBasedSeriesAggregate(AggregationNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitSchemaQueryOrderByHeat(
+      SchemaQueryOrderByHeatNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 
@@ -263,7 +257,16 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         children.stream()
             .collect(
                 Collectors.groupingBy(
-                    child -> context.getNodeDistribution(child.getPlanNodeId()).region,
+                    child -> {
+                      TRegionReplicaSet region =
+                          context.getNodeDistribution(child.getPlanNodeId()).region;
+                      if (region == null
+                          && context.getNodeDistribution(child.getPlanNodeId()).type
+                              == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
+                        return calculateSchemaRegionByChildren(child.getChildren(), context);
+                      }
+                      return region;
+                    },
                     Collectors.counting()));
     // Step 2: return the RegionReplicaSet with max count
     return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();

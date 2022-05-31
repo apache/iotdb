@@ -176,8 +176,7 @@ public class SenderService implements IService {
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       try {
         transportHandler =
-            TransportHandler.getNewTransportHandler(
-                runningPipe, (IoTDBPipeSink) runningPipeSink, msgManager);
+            TransportHandler.getNewTransportHandler(runningPipe, (IoTDBPipeSink) runningPipeSink);
         sendMsg(RequestType.CREATE);
       } catch (ClassCastException e) {
         logger.error(
@@ -354,8 +353,8 @@ public class SenderService implements IService {
     }
   }
 
-  public void setTempMessage(String msg) {
-    msgManager.setTempMessage(msg);
+  public void setConnecting(boolean isConnecting) {
+    runningPipe.setDisconnected(isConnecting);
   }
 
   /** transport */
@@ -489,7 +488,7 @@ public class SenderService implements IService {
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       this.transportHandler =
           TransportHandler.getNewTransportHandler(
-              runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink(), msgManager);
+              runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
       if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
         transportHandler.start();
       }

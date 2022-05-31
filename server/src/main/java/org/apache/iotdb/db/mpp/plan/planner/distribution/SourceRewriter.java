@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.partition.RegionReplicaSetInfo;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -33,8 +31,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
@@ -48,7 +47,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
@@ -64,7 +62,6 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
@@ -74,88 +71,91 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     this.analysis = analysis;
   }
 
-  // TODO: (xingtanzjr) implement the method visitDeviceMergeNode()
-  public PlanNode visitDeviceMerge(TimeJoinNode node, DistributionPlanContext context) {
-    return null;
-  }
-
-  public PlanNode visitDeleteTimeseries(
-      DeleteTimeSeriesNode node, DistributionPlanContext context) {
-    // Step 1: split DeleteDataNode by partition
-    checkArgument(node.getChildren().size() == 1, "DeleteTimeSeriesNode should have 1 child");
+  @Override
+  public PlanNode visitDeviceView(DeviceViewNode node, DistributionPlanContext context) {
     checkArgument(
-        node.getChildren().get(0) instanceof DeleteDataNode,
-        "Child of DeleteTimeSeriesNode should be DeleteDataNode");
+        node.getDevices().size() == node.getChildren().size(),
+        "size of devices and its children in DeviceViewNode should be same");
 
-    DeleteDataNode deleteDataNode = (DeleteDataNode) node.getChildren().get(0);
-    List<DeleteDataNode> deleteDataNodes = splitDeleteDataNode(deleteDataNode, context);
+    Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
 
-    // Step 2: split DeleteTimeseriesNode by partition
-    List<DeleteTimeSeriesNode> deleteTimeSeriesNodes = splitDeleteTimeseries(node, context);
-
-    // Step 3: construct them as a Tree
-    checkArgument(
-        deleteTimeSeriesNodes.size() > 0,
-        "Size of DeleteTimeseriesNode splits should be larger than 0");
-    deleteDataNodes.forEach(split -> deleteTimeSeriesNodes.get(0).addChild(split));
-    for (int i = 1; i < deleteTimeSeriesNodes.size(); i++) {
-      deleteTimeSeriesNodes.get(i).addChild(deleteTimeSeriesNodes.get(i - 1));
+    List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
+    // Step 1: constructs DeviceViewSplit
+    for (int i = 0; i < node.getDevices().size(); i++) {
+      String device = node.getDevices().get(i);
+      PlanNode child = node.getChildren().get(i);
+      List<TRegionReplicaSet> regionReplicaSets =
+          analysis.getPartitionInfo(device, analysis.getGlobalTimeFilter());
+      deviceViewSplits.add(new DeviceViewSplit(device, child, regionReplicaSets));
+      relatedDataRegions.addAll(regionReplicaSets);
     }
-    return deleteTimeSeriesNodes.get(deleteTimeSeriesNodes.size() - 1);
-  }
 
-  private List<DeleteTimeSeriesNode> splitDeleteTimeseries(
-      DeleteTimeSeriesNode node, DistributionPlanContext context) {
-    List<DeleteTimeSeriesNode> ret = new ArrayList<>();
-    List<PartialPath> rawPaths = node.getPathList();
-    List<RegionReplicaSetInfo> relatedRegions =
-        analysis.getSchemaPartitionInfo().getSchemaDistributionInfo();
-    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
-      List<PartialPath> newPaths =
-          getRelatedPaths(rawPaths, regionReplicaSetInfo.getOwnedStorageGroups());
-      DeleteTimeSeriesNode split =
-          new DeleteTimeSeriesNode(context.queryContext.getQueryId().genPlanNodeId(), newPaths);
-      split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
-      ret.add(split);
-    }
-    return ret;
-  }
+    DeviceMergeNode deviceMergeNode =
+        new DeviceMergeNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrders(),
+            node.getDevices());
 
-  private List<DeleteDataNode> splitDeleteDataNode(
-      DeleteDataNode node, DistributionPlanContext context) {
-    List<DeleteDataNode> ret = new ArrayList<>();
-    List<PartialPath> rawPaths = node.getPathList();
-    List<RegionReplicaSetInfo> relatedRegions =
-        analysis.getDataPartitionInfo().getDataDistributionInfo();
-    for (RegionReplicaSetInfo regionReplicaSetInfo : relatedRegions) {
-      List<PartialPath> newPaths =
-          getRelatedPaths(rawPaths, regionReplicaSetInfo.getOwnedStorageGroups());
-      DeleteDataNode split =
-          new DeleteDataNode(
-              context.queryContext.getQueryId().genPlanNodeId(),
-              context.queryContext.getQueryId(),
-              newPaths,
-              regionReplicaSetInfo.getOwnedStorageGroups());
-      split.setRegionReplicaSet(regionReplicaSetInfo.getRegionReplicaSet());
-      ret.add(split);
-    }
-    return ret;
-  }
-
-  private List<PartialPath> getRelatedPaths(List<PartialPath> paths, List<String> storageGroups) {
-    List<PartialPath> ret = new ArrayList<>();
-    PathPatternTree patternTree = new PathPatternTree(paths);
-    for (String storageGroup : storageGroups) {
-      try {
-        ret.addAll(
-            patternTree.findOverlappedPaths(
-                new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
-      } catch (IllegalPathException e) {
-        // The IllegalPathException is definitely not threw here
-        throw new RuntimeException(e);
+    // Step 2: Iterate all partition and create DeviceViewNode for each region
+    for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
+      List<String> devices = new ArrayList<>();
+      List<PlanNode> children = new ArrayList<>();
+      for (DeviceViewSplit split : deviceViewSplits) {
+        if (split.needDistributeTo(regionReplicaSet)) {
+          devices.add(split.device);
+          children.add(split.buildPlanNodeInRegion(regionReplicaSet, context.queryContext));
+        }
       }
+      DeviceViewNode regionDeviceViewNode =
+          new DeviceViewNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrders(),
+              node.getOutputColumnNames(),
+              node.getDeviceToMeasurementIndexesMap());
+      for (int i = 0; i < devices.size(); i++) {
+        regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
+      }
+      deviceMergeNode.addChild(regionDeviceViewNode);
     }
-    return ret;
+
+    return deviceMergeNode;
+  }
+
+  private static class DeviceViewSplit {
+    protected String device;
+    protected PlanNode root;
+    protected Set<TRegionReplicaSet> dataPartitions;
+
+    protected DeviceViewSplit(
+        String device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
+      this.device = device;
+      this.root = root;
+      this.dataPartitions = new HashSet<>();
+      this.dataPartitions.addAll(dataPartitions);
+    }
+
+    protected PlanNode buildPlanNodeInRegion(
+        TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
+      return buildPlanNodeInRegion(this.root, regionReplicaSet, context);
+    }
+
+    protected boolean needDistributeTo(TRegionReplicaSet regionReplicaSet) {
+      return this.dataPartitions.contains(regionReplicaSet);
+    }
+
+    private PlanNode buildPlanNodeInRegion(
+        PlanNode root, TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
+      List<PlanNode> children =
+          root.getChildren().stream()
+              .map(child -> buildPlanNodeInRegion(child, regionReplicaSet, context))
+              .collect(Collectors.toList());
+      PlanNode newRoot = root.cloneWithChildren(children);
+      newRoot.setPlanNodeId(context.getQueryId().genPlanNodeId());
+      if (newRoot instanceof SourceNode) {
+        ((SourceNode) newRoot).setRegionReplicaSet(regionReplicaSet);
+      }
+      return newRoot;
+    }
   }
 
   @Override
@@ -321,7 +321,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     AggregationNode aggregationNode =
         new AggregationNode(
-            context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            rootAggDescriptorList,
+            node.getGroupByTimeParameter(),
+            node.getScanOrder());
     for (TRegionReplicaSet dataRegion : dataDistribution) {
       SeriesAggregationScanNode split = (SeriesAggregationScanNode) node.clone();
       split.setAggregationDescriptorList(leafAggDescriptorList);
@@ -470,9 +473,15 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                         descriptor.getInputExpressions()));
               });
     }
+    checkArgument(
+        sources.size() > 0, "Aggregation sources should not be empty when distribution planning");
+    SeriesAggregationSourceNode seed = sources.get(0);
     AggregationNode aggregationNode =
         new AggregationNode(
-            context.queryContext.getQueryId().genPlanNodeId(), rootAggDescriptorList);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            rootAggDescriptorList,
+            seed.getGroupByTimeParameter(),
+            seed.getScanOrder());
 
     final boolean[] addParent = {false};
     sourceGroup.forEach(

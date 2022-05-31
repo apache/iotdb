@@ -31,21 +31,25 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
-public class ChildPathsSchemaScanOperator implements SourceOperator {
+public class NodePathsSchemaScanOperator implements SourceOperator {
   private final PlanNodeId sourceId;
 
   private final OperatorContext operatorContext;
 
   private final PartialPath partialPath;
 
+  private final int level;
+
   private boolean isFinished;
 
-  public ChildPathsSchemaScanOperator(
-      PlanNodeId sourceId, OperatorContext operatorContext, PartialPath partialPath) {
+  public NodePathsSchemaScanOperator(
+      PlanNodeId sourceId, OperatorContext operatorContext, PartialPath partialPath, int level) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
+    this.level = level;
   }
 
   @Override
@@ -58,16 +62,28 @@ public class ChildPathsSchemaScanOperator implements SourceOperator {
     isFinished = true;
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-    Set<String> childPaths;
+    Set<String> nodePaths;
+
     try {
-      childPaths =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .getChildNodePathInNextLevel(partialPath);
+      if (-1 == level) {
+        // show child paths
+        nodePaths =
+            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                .getSchemaRegion()
+                .getChildNodePathInNextLevel(partialPath);
+      } else {
+        nodePaths =
+            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, true, null).stream()
+                    .map(PartialPath::getFullPath)
+                    .collect(Collectors.toSet());
+      }
+
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    childPaths.forEach(
+
+    nodePaths.forEach(
         (path) -> {
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
           tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));

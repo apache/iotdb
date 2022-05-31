@@ -16,38 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-package org.apache.iotdb.consensus;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-
-import java.io.File;
-
-public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi {
+public class ShowClusterStatement extends ShowStatement implements IConfigStatement {
 
   @Override
-  public void start() {}
-
-  @Override
-  public void stop() {}
-
-  @Override
-  public TSStatus write(IConsensusRequest IConsensusRequest) {
-    return new TSStatus(0);
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 
   @Override
-  public DataSet read(IConsensusRequest IConsensusRequest) {
-    return null;
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowCluster(this, context);
   }
-
-  @Override
-  public boolean takeSnapshot(File snapshotDir) {
-    return false;
-  }
-
-  @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
 }

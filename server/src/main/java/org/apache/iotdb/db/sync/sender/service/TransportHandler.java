@@ -51,8 +51,8 @@ public class TransportHandler {
   private String pipeName;
   private long createTime;
   private final String localIP;
-  private MsgManager msgManager;
   protected ITransportClient transportClient;
+  private final Pipe pipe;
 
   protected ExecutorService transportExecutorService;
   private Future transportFuture;
@@ -60,10 +60,10 @@ public class TransportHandler {
   protected ScheduledExecutorService heartbeatExecutorService;
   private Future heartbeatFuture;
 
-  public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink, MsgManager msgManager) {
+  public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
+    this.pipe = pipe;
     this.pipeName = pipe.getName();
     this.createTime = pipe.getCreateTime();
-    this.msgManager = msgManager;
 
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -135,10 +135,11 @@ public class TransportHandler {
               transportClient.heartbeat(
                   new SyncRequest(RequestType.HEARTBEAT, pipeName, localIP, createTime)));
       synchronized (((TransportClient) transportClient).getWaitLock()) {
-        msgManager.cleanTempMessage();
+        pipe.setDisconnected(false);
         ((TransportClient) transportClient).getWaitLock().notifyAll();
       }
     } catch (SyncConnectionException e) {
+      pipe.setDisconnected(true);
       logger.warn(
           String.format(
               "Pipe %s sends heartbeat to receiver error, skip this time, because %s.",
@@ -146,10 +147,9 @@ public class TransportHandler {
     }
   }
 
-  public static TransportHandler getNewTransportHandler(
-      Pipe pipe, IoTDBPipeSink pipeSink, MsgManager msgManager) {
+  public static TransportHandler getNewTransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
     if (DEBUG_TRANSPORT_HANDLER == null) {
-      return new TransportHandler(pipe, pipeSink, msgManager);
+      return new TransportHandler(pipe, pipeSink);
     }
     DEBUG_TRANSPORT_HANDLER.resetTransportClient(pipe); // test only
     return DEBUG_TRANSPORT_HANDLER;

@@ -195,6 +195,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // for create-cq clause and select-into clause.
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
 
+  // ${} are allowed
+  private static final Pattern NODE_NAME_IN_SELECT_INTO_PATTERN =
+      Pattern.compile("([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)");
+
   private ZoneId zoneId;
   private QueryOperator queryOp;
 
@@ -1287,7 +1291,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     PartialPath intoPath = null;
     if (intoPathContext.fullPath() != null) {
-      intoPath = parseFullPath(intoPathContext.fullPath());
+      intoPath = parseFullPathInSelectInto(intoPathContext.fullPath());
 
       Matcher m = leveledPathNodePattern.matcher(intoPath.getFullPath());
       while (m.find()) {
@@ -1315,7 +1319,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       for (int i = 1; i <= nodeNameWithoutStars.size(); ++i) {
         intoPathNodes[levelLimitOfSourcePrefixPath + i] =
-            parseNodeNameWithoutWildCard(nodeNameWithoutStars.get(i - 1));
+            parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStars.get(i - 1));
       }
 
       intoPath = new PartialPath(intoPathNodes);
@@ -2518,6 +2522,21 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
+  private PartialPath parseFullPathInSelectInto(IoTDBSqlParser.FullPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] path = new String[nodeNamesWithoutStar.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+      i++;
+      path[i] = parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStar);
+    }
+    return new PartialPath(path);
+  }
+
   /** path of expression in withoutNull clause can start with root. */
   private PartialPath parseFullPathInExpression(
       IoTDBSqlParser.FullPathInExpressionContext ctx, boolean inWithoutNull)
@@ -2578,17 +2597,67 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return parseNodeString(ctx.getText());
   }
 
-  private String parseNodeString(String nodeName) {
+  /** in select into, $ and {} are allowed */
+  private String parseNodeNameWithoutWildCardInSelectInto(
+      IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
+    String nodeName = ctx.getText();
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
       if (StringUtils.isNumeric(unWrapped)
-          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
     }
+    if (!NODE_NAME_IN_SELECT_INTO_PATTERN.matcher(nodeName).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",
+              nodeName));
+    }
     return nodeName;
+  }
+
+  private String parseNodeString(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    checkNodeName(nodeName);
+    return nodeName;
+  }
+
+  private void checkNodeName(String src) {
+    // node name could start with * and end with *
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
+    }
+  }
+
+  private void checkIdentifier(String src) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              src));
+    }
   }
 
   // alias
@@ -3189,6 +3258,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return src.substring(1, src.length() - 1)
           .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
+    checkIdentifier(src);
     return src;
   }
 

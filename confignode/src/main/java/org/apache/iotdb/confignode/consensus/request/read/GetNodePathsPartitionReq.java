@@ -28,11 +28,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetChildNodesPartitionReq extends ConfigRequest {
+public class GetNodePathsPartitionReq extends ConfigRequest {
   private PartialPath partialPath;
+  private int level = -1;
 
-  public GetChildNodesPartitionReq() {
-    super(ConfigRequestType.GetChildNodesPartition);
+  public GetNodePathsPartitionReq() {
+    super(ConfigRequestType.GetNodePathsPartition);
   }
 
   public PartialPath getPartialPath() {
@@ -43,26 +44,40 @@ public class GetChildNodesPartitionReq extends ConfigRequest {
     this.partialPath = partialPath;
   }
 
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
+  }
+
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     partialPath.serialize(buffer);
+    buffer.putInt(level);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    level = buffer.getInt();
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    GetChildNodesPartitionReq that = (GetChildNodesPartitionReq) o;
-    return partialPath.equals(that.partialPath);
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    GetNodePathsPartitionReq that = (GetNodePathsPartitionReq) o;
+    return level == that.level && Objects.equals(partialPath, that.partialPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(partialPath);
+    return Objects.hash(partialPath, level);
   }
 }

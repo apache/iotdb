@@ -19,13 +19,16 @@
 package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
@@ -35,6 +38,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
@@ -48,6 +52,8 @@ public class WALNodeRecoverTask implements Runnable {
   private final CountDownLatch allNodesRecoveredLatch;
   /** version id of first valid .wal file */
   private int firstValidVersionId = Integer.MAX_VALUE;
+  /** version id of last .wal file */
+  private int lastVersionId = -1;
 
   private Map<Integer, MemTableInfo> memTableId2Info;
   private Map<Integer, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
@@ -80,15 +86,22 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
 
-    if (!config.isClusterMode()) {
+    if (!config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
       // delete this wal node folder
       FileUtils.deleteDirectory(logDirectory);
       logger.info(
           "Successfully recover WAL node in the directory {}, so delete these wal files.",
           logDirectory);
     } else {
+      File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
+      for (File checkpointFile : checkpointFiles) {
+        checkpointFile.delete();
+      }
       WALManager.getInstance()
-          .registerWALNode(logDirectory.getName(), logDirectory.getAbsolutePath());
+          .registerWALNode(
+              logDirectory.getName(), logDirectory.getAbsolutePath(), lastVersionId + 1);
       logger.info(
           "Successfully recover WAL node in the directory {}, add this node to WALManger.",
           logDirectory);
@@ -97,8 +110,19 @@ public class WALNodeRecoverTask implements Runnable {
 
   private void recoverInfoFromCheckpoints() {
     // parse memTables information
-    memTableId2Info = CheckpointRecoverUtils.recoverMemTableInfo(logDirectory);
+    CheckpointRecoverUtils.CheckpointInfo info =
+        CheckpointRecoverUtils.recoverMemTableInfo(logDirectory);
+    memTableId2Info = info.getMemTableId2Info();
     memTableId2RecoverPerformer = new HashMap<>();
+    // update init memTable id
+    int maxMemTableId = info.getMaxMemTableId();
+    AtomicInteger memTableIdCounter = AbstractMemTable.memTableIdCounter;
+    int oldVal = memTableIdCounter.get();
+    while (maxMemTableId > oldVal) {
+      if (!memTableIdCounter.compareAndSet(oldVal, maxMemTableId)) {
+        oldVal = memTableIdCounter.get();
+      }
+    }
     // update firstValidVersionId and get recover performer from WALRecoverManager
     for (MemTableInfo memTableInfo : memTableId2Info.values()) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
@@ -135,6 +159,10 @@ public class WALNodeRecoverTask implements Runnable {
     }
     // asc sort by version id
     WALFileUtils.ascSortByVersionId(walFiles);
+    // update last version id
+    if (walFiles.length != 0) {
+      lastVersionId = WALFileUtils.parseVersionId(walFiles[walFiles.length - 1].getName());
+    }
     // read .wal files and redo logs
     for (File walFile : walFiles) {
       try (WALReader walReader = new WALReader(walFile)) {

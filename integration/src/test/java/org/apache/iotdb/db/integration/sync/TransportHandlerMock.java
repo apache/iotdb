@@ -29,7 +29,7 @@ public class TransportHandlerMock extends TransportHandler {
 
   public TransportHandlerMock(
       Pipe pipe, IoTDBPipeSink pipeSink, TransportClientMock transportClientMock) {
-    super(pipe, pipeSink, null);
+    super(pipe, pipeSink);
     this.transportClient = transportClientMock;
   }
 

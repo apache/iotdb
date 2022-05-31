@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -68,8 +67,8 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree, NodeManagementType type) {
+  public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+      PathPatternTree patternTree, Integer level) {
     return null;
   }
 

@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -62,15 +63,16 @@ import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -95,8 +97,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -867,7 +867,7 @@ public class Analyzer {
       analysis.setStatement(statement);
 
       SchemaTree schemaTree = new SchemaTree();
-      schemaTree.setStorageGroups(schemaTree.getStorageGroups());
+      schemaTree.setStorageGroups(statement.getStorageGroups());
 
       return analyzeLast(analysis, statement.getSelectedPaths(), schemaTree);
     }
@@ -1016,46 +1016,6 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitDeleteTimeseries(
-        DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(deleteTimeSeriesStatement);
-
-      // fetch partition information
-
-      PathPatternTree patternTree = new PathPatternTree(deleteTimeSeriesStatement.getPaths());
-
-      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String storageGroup : schemaPartitionInfo.getSchemaPartitionMap().keySet()) {
-        try {
-          for (String devicePath :
-              patternTree
-                  .findOverlappedPattern(
-                      new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD))
-                  .findAllDevicePaths()) {
-            DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-            queryParam.setDevicePath(devicePath);
-            sgNameToQueryParamsMap
-                .computeIfAbsent(storageGroup, key -> new ArrayList<>())
-                .add(queryParam);
-          }
-        } catch (IllegalPathException e) {
-          // definitely won't happen
-          throw new RuntimeException(e);
-        }
-      }
-
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      analysis.setDataPartitionInfo(dataPartition);
-
-      return analysis;
-    }
-
-    @Override
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
@@ -1177,6 +1137,37 @@ public class Analyzer {
           partitionFetcher.getSchemaPartition(
               new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+      if (showTimeSeriesStatement.isOrderByHeat()) {
+        PathPatternTree patternTree = new PathPatternTree(showTimeSeriesStatement.getPathPattern());
+        patternTree.constructTree();
+        // request schema fetch API
+        logger.info("{} fetch query schema...", getLogHeader());
+        SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+        logger.info("{} fetch schema done", getLogHeader());
+        List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
+
+        Set<Expression> sourceExpressions =
+            allSelectedPath.stream()
+                .map(TimeSeriesOperand::new)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        analysis.setSourceExpressions(sourceExpressions);
+
+        Set<String> deviceSet =
+            allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
+        Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+        for (String devicePath : deviceSet) {
+          DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+          queryParam.setDevicePath(devicePath);
+          sgNameToQueryParamsMap
+              .computeIfAbsent(
+                  schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+              .add(queryParam);
+        }
+        DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+        analysis.setDataPartitionInfo(dataPartition);
+      }
+
       analysis.setRespDatasetHeader(HeaderConstant.showTimeSeriesHeader);
       return analysis;
     }
@@ -1216,6 +1207,15 @@ public class Analyzer {
           showDevicesStatement.hasSgCol()
               ? HeaderConstant.showDevicesWithSgHeader
               : HeaderConstant.showDevicesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowCluster(
+        ShowClusterStatement showClusterStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showClusterStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showClusterHeader);
       return analysis;
     }
 
@@ -1286,15 +1286,13 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitShowChildPaths(
-        ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
+    public Analysis visitCountNodes(CountNodesStatement countStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
-      analysis.setStatement(showChildPathsStatement);
+      analysis.setStatement(countStatement);
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
-          partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildPathsStatement.getPartialPath()),
-              NodeManagementType.CHILD_PATHS);
+          partitionFetcher.getSchemaNodeManagementPartitionWithLevel(
+              new PathPatternTree(countStatement.getPartialPath()), countStatement.getLevel());
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1306,20 +1304,35 @@ public class Analyzer {
       }
       analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
       analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
-      analysis.setRespDatasetHeader(HeaderConstant.showChildPathsHeader);
+      analysis.setRespDatasetHeader(HeaderConstant.countNodesHeader);
       return analysis;
+    }
+
+    @Override
+    public Analysis visitShowChildPaths(
+        ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
+      return visitSchemaNodeManagementPartition(
+          showChildPathsStatement,
+          showChildPathsStatement.getPartialPath(),
+          HeaderConstant.showChildPathsHeader);
     }
 
     @Override
     public Analysis visitShowChildNodes(
         ShowChildNodesStatement showChildNodesStatement, MPPQueryContext context) {
+      return visitSchemaNodeManagementPartition(
+          showChildNodesStatement,
+          showChildNodesStatement.getPartialPath(),
+          HeaderConstant.showChildNodesHeader);
+    }
+
+    private Analysis visitSchemaNodeManagementPartition(
+        Statement statement, PartialPath path, DatasetHeader header) {
       Analysis analysis = new Analysis();
-      analysis.setStatement(showChildNodesStatement);
+      analysis.setStatement(statement);
 
       SchemaNodeManagementPartition schemaNodeManagementPartition =
-          partitionFetcher.getSchemaNodeManagementPartition(
-              new PathPatternTree(showChildNodesStatement.getPartialPath()),
-              NodeManagementType.CHILD_NODES);
+          partitionFetcher.getSchemaNodeManagementPartition(new PathPatternTree(path));
 
       if (schemaNodeManagementPartition == null) {
         return analysis;
@@ -1331,7 +1344,39 @@ public class Analyzer {
       }
       analysis.setMatchedNodes(schemaNodeManagementPartition.getMatchedNode());
       analysis.setSchemaPartitionInfo(schemaNodeManagementPartition.getSchemaPartition());
-      analysis.setRespDatasetHeader(HeaderConstant.showChildNodesHeader);
+      analysis.setRespDatasetHeader(header);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDeleteData(
+        DeleteDataStatement deleteDataStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+      Analysis analysis = new Analysis();
+      analysis.setStatement(deleteDataStatement);
+
+      PathPatternTree patternTree = new PathPatternTree(deleteDataStatement.getPathList());
+
+      SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+
+      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, schemaPartition);
+      analysis.setSchemaTree(schemaTree);
+
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+          schemaPartition.getSchemaPartitionMap();
+      for (String storageGroup : schemaPartitionMap.keySet()) {
+        sgNameToQueryParamsMap.put(
+            storageGroup,
+            schemaPartitionMap.get(storageGroup).keySet().stream()
+                .map(DataPartitionQueryParam::new)
+                .collect(Collectors.toList()));
+      }
+
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      analysis.setDataPartitionInfo(dataPartition);
+
       return analysis;
     }
   }

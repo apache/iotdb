@@ -62,7 +62,6 @@ import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
-import org.apache.ratis.util.NetUtils;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -116,11 +115,10 @@ class RatisConsensus implements IConsensus {
    */
   public RatisConsensus(TEndPoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
       throws IOException {
-    System.setProperty(
-        "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
-    String address = Utils.IPAddress(endpoint);
     myself = Utils.fromTEndPointAndPriorityToRaftPeer(endpoint, DEFAULT_PRIORITY);
 
+    System.setProperty(
+        "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
     // TODO make this configurable so that RatisConsensusTest can trigger multiple snapshot process
@@ -130,13 +128,10 @@ class RatisConsensus implements IConsensus {
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(2, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, TimeDuration.valueOf(8, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setSleepTime(properties, TimeDuration.valueOf(1, TimeUnit.SECONDS));
-
     RaftClientConfigKeys.Rpc.setRequestTimeout(
         properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
 
-    // set the port which server listen to in RaftProperty object
-    final int port = NetUtils.createSocketAddr(address).getPort();
-    GrpcConfigKeys.Server.setPort(properties, port);
+    GrpcConfigKeys.Server.setPort(properties, endpoint.getPort());
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
     server =
@@ -478,7 +473,6 @@ class RatisConsensus implements IConsensus {
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
-
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     } finally {

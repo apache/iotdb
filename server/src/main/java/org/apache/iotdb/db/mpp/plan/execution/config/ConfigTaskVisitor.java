@@ -25,8 +25,10 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
@@ -86,6 +88,12 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitShowCluster(
+      ShowClusterStatement showClusterStatement, TaskContext context) {
+    return new ShowClusterTask(showClusterStatement);
+  }
+
+  @Override
   public IConfigTask visitAuthor(AuthorStatement statement, TaskContext context) {
     return new AuthorizerConfigTask(statement);
   }
@@ -94,6 +102,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitCreateFunction(
       CreateFunctionStatement createFunctionStatement, TaskContext context) {
     return new CreateFunctionTask(createFunctionStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropFunction(
+      DropFunctionStatement dropFunctionStatement, TaskContext context) {
+    return new DropFunctionTask(dropFunctionStatement);
   }
 
   public static class TaskContext {}

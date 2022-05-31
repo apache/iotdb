@@ -72,7 +72,8 @@ public enum ServiceType {
   DATA_NODE_MANAGEMENT_SERVICE("Data Node management service", "DataNodeManagementServer"),
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
   DATA_BLOCK_MANAGER_SERVICE("Data block manager", "DataBlockManager"),
-  INTERNAL_SERVICE("Internal Service", "InternalService");
+  INTERNAL_SERVICE("Internal Service", "InternalService"),
+  MULTI_LEADER_CONSENSUS_SERVICE("Multi Leader consensus Service", "MultiLeaderRPCService");
 
   private final String name;
   private final String jmxName;

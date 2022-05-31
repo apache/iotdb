@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.allocation.FirstCreateStrategy;
@@ -56,7 +57,9 @@ public class WALManager implements IService {
   private ScheduledExecutorService walDeleteThread;
 
   private WALManager() {
-    if (config.isClusterMode()) {
+    if (config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
       walNodesManager = new FirstCreateStrategy();
     } else {
       walNodesManager = new RoundRobinStrategy(MAX_WAL_NODE_NUM);
@@ -72,12 +75,16 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  public void registerWALNode(String applicantUniqueId, String logDirectory) {
-    if (config.getWalMode() == WALMode.DISABLE || !config.isClusterMode()) {
+  public void registerWALNode(String applicantUniqueId, String logDirectory, int startFileVersion) {
+    if (config.getWalMode() == WALMode.DISABLE
+        || !config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
       return;
     }
 
-    ((FirstCreateStrategy) walNodesManager).registerWALNode(applicantUniqueId, logDirectory);
+    ((FirstCreateStrategy) walNodesManager)
+        .registerWALNode(applicantUniqueId, logDirectory, startFileVersion);
   }
 
   @Override

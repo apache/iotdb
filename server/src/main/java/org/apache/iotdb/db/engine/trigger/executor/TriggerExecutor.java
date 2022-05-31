@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.executor;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
@@ -136,36 +137,37 @@ public class TriggerExecutor {
   }
 
   public void fireIfActivated(
-      TriggerEvent event, long timestamp, Object value, TSDataType seriesDataType)
+      TriggerEvent event, long timestamp, Object value, TSDataType seriesDataType, PartialPath path)
       throws TriggerExecutionException {
     if (!registrationInformation.isStopped() && event.equals(registrationInformation.getEvent())) {
-      fire(timestamp, value, seriesDataType);
+      fire(timestamp, value, seriesDataType, path);
     }
   }
 
-  private synchronized void fire(long timestamp, Object value, TSDataType seriesDataType)
+  private synchronized void fire(
+      long timestamp, Object value, TSDataType seriesDataType, PartialPath path)
       throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
       switch (seriesDataType) {
         case INT32:
-          trigger.fire(timestamp, (Integer) value);
+          trigger.fire(timestamp, (Integer) value, path);
           break;
         case INT64:
-          trigger.fire(timestamp, (Long) value);
+          trigger.fire(timestamp, (Long) value, path);
           break;
         case FLOAT:
-          trigger.fire(timestamp, (Float) value);
+          trigger.fire(timestamp, (Float) value, path);
           break;
         case DOUBLE:
-          trigger.fire(timestamp, (Double) value);
+          trigger.fire(timestamp, (Double) value, path);
           break;
         case BOOLEAN:
-          trigger.fire(timestamp, (Boolean) value);
+          trigger.fire(timestamp, (Boolean) value, path);
           break;
         case TEXT:
-          trigger.fire(timestamp, (Binary) value);
+          trigger.fire(timestamp, (Binary) value, path);
           break;
         default:
           throw new TriggerExecutionException("Unsupported series data type.");
@@ -178,36 +180,41 @@ public class TriggerExecutor {
   }
 
   public void fireIfActivated(
-      TriggerEvent event, long[] timestamps, Object values, TSDataType seriesDataType)
+      TriggerEvent event,
+      long[] timestamps,
+      Object values,
+      TSDataType seriesDataType,
+      PartialPath path)
       throws TriggerExecutionException {
     if (!registrationInformation.isStopped() && event.equals(registrationInformation.getEvent())) {
-      fire(timestamps, values, seriesDataType);
+      fire(timestamps, values, seriesDataType, path);
     }
   }
 
-  private synchronized void fire(long[] timestamps, Object values, TSDataType seriesDataType)
+  private synchronized void fire(
+      long[] timestamps, Object values, TSDataType seriesDataType, PartialPath path)
       throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
       switch (seriesDataType) {
         case INT32:
-          trigger.fire(timestamps, (int[]) values);
+          trigger.fire(timestamps, (int[]) values, path);
           break;
         case INT64:
-          trigger.fire(timestamps, (long[]) values);
+          trigger.fire(timestamps, (long[]) values, path);
           break;
         case FLOAT:
-          trigger.fire(timestamps, (float[]) values);
+          trigger.fire(timestamps, (float[]) values, path);
           break;
         case DOUBLE:
-          trigger.fire(timestamps, (double[]) values);
+          trigger.fire(timestamps, (double[]) values, path);
           break;
         case BOOLEAN:
-          trigger.fire(timestamps, (boolean[]) values);
+          trigger.fire(timestamps, (boolean[]) values, path);
           break;
         case TEXT:
-          trigger.fire(timestamps, (Binary[]) values);
+          trigger.fire(timestamps, (Binary[]) values, path);
           break;
         default:
           throw new TriggerExecutionException("Unsupported series data type.");

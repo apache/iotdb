@@ -21,7 +21,7 @@ package org.apache.iotdb.db.wal.node;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -74,13 +74,13 @@ public class ConsensusReqReaderTest {
 
   /**
    * Generate wal files as below: <br>
-   * &nbsp _0-0.wal: 1,-1 <br>
-   * &nbsp _1-1.wal: 2,2,2 <br>
-   * &nbsp _2-2.wal: 3,3 <br>
-   * &nbsp _3-3.wal: 3,4 <br>
-   * &nbsp _4-4.wal: 4 <br>
-   * &nbsp _5-4.wal: 4,4,5 <br>
-   * &nbsp _6-5.wal: 6 <br>
+   * _0-0.wal: 1,-1 <br>
+   * _1-1.wal: 2,2,2 <br>
+   * _2-2.wal: 3,3 <br>
+   * _3-3.wal: 3,4 <br>
+   * _4-4.wal: 4 <br>
+   * _5-4.wal: 4,4,5 <br>
+   * _6-5.wal: 6 <br>
    * 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode, 3 - InsertRowsNode, 4 -
    * InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
    */

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class IoTDBConstant {
 
   private IoTDBConstant() {}
@@ -63,6 +66,14 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
+  public static final Set<String> reservedWords =
+      new HashSet<String>() {
+        {
+          add("TIME");
+          add("TIMESTAMP");
+          add("ROOT");
+        }
+      };
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
@@ -220,6 +231,12 @@ public class IoTDBConstant {
   public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
   public static final String WAL_VERSION_ID = "versionId";
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
+
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String NODE_STATUS_RUNNING = "Running";
+  public static final String NODE_STATUS_Down = "Down";
 
   // client version number
   public enum ClientVersion {

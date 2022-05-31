@@ -29,7 +29,9 @@ import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
@@ -64,6 +66,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.literal.BooleanLiteral;
@@ -82,10 +85,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -101,6 +106,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountNodesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
@@ -110,6 +116,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang.StringEscapeUtils;
@@ -624,6 +631,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return uris;
   }
 
+  // Drop Function
+  @Override
+  public Statement visitDropFunction(DropFunctionContext ctx) {
+    return new DropFunctionStatement(parseIdentifier(ctx.udfName.getText()));
+  }
+
   // Show Child Paths =====================================================================
   @Override
   public Statement visitShowChildPaths(IoTDBSqlParser.ShowChildPathsContext ctx) {
@@ -754,6 +767,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return queryStatement;
   }
 
+  @Override
+  public Statement visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
+    // parse group by time clause & fill clause
+    parseGroupByTimeClause(ctx.groupByFillClause());
+
+    // parse order by time
+    if (ctx.orderByTimeClause() != null) {
+      parseOrderByTimeClause(ctx.orderByTimeClause());
+    }
+
+    // parse limit & offset
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+    return queryStatement;
+  }
+
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
     GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
 
@@ -789,6 +819,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       groupByLevelComponent.setLevels(levels);
       queryStatement.setGroupByLevelComponent(groupByLevelComponent);
+    }
+
+    // parse fill clause
+    if (ctx.fillClause() != null) {
+      parseFillClause(ctx.fillClause());
+    }
+
+    // set groupByTimeComponent
+    queryStatement.setGroupByTimeComponent(groupByTimeComponent);
+  }
+
+  private void parseGroupByTimeClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
+    GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
+
+    // parse time range
+    parseTimeRange(ctx.timeRange(), groupByTimeComponent);
+    groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+
+    // parse time interval
+    groupByTimeComponent.setInterval(
+        parseTimeIntervalOrSlidingStep(
+            ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
+    if (groupByTimeComponent.getInterval() <= 0) {
+      throw new SemanticException(
+          "The second parameter time interval should be a positive integer.");
+    }
+
+    // parse sliding step
+    if (ctx.DURATION_LITERAL().size() == 2) {
+      groupByTimeComponent.setSlidingStep(
+          parseTimeIntervalOrSlidingStep(
+              ctx.DURATION_LITERAL(1).getText(), false, groupByTimeComponent));
+    } else {
+      groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
+      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
     }
 
     // parse fill clause
@@ -1273,16 +1338,40 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeString(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
       if (StringUtils.isNumeric(unWrapped)
-          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
     }
+    checkNodeName(nodeName);
     return nodeName;
+  }
+
+  private void checkNodeName(String src) {
+    // node name could start with * and end with *
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
+    }
+  }
+
+  private void checkIdentifier(String src) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              src));
+    }
   }
 
   // Literals ========================================================================
@@ -1377,6 +1466,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return src.substring(1, src.length() - 1)
           .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
+    checkIdentifier(src);
     return src;
   }
 
@@ -1591,30 +1681,51 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return privileges.toArray(new String[0]);
   }
 
+  // Create Storage Group
+
   @Override
   public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupStatement.setStorageGroupPath(path);
-    if (ctx.storageGroupAttributeClause() != null) {
-      for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
-          ctx.storageGroupAttributeClause()) {
-        if (attribute.TTL() != null) {
-          long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setTtl(ttl);
-        } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
-          int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
-        } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
-          int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
-        } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
-          long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-          setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
-        }
-      }
+    if (ctx.storageGroupAttributesClause() != null) {
+      parseStorageGroupAttributesClause(
+          setStorageGroupStatement, ctx.storageGroupAttributesClause());
     }
     return setStorageGroupStatement;
+  }
+
+  @Override
+  public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
+    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupStatement.setStorageGroupPath(path);
+    if (ctx.storageGroupAttributesClause() != null) {
+      parseStorageGroupAttributesClause(
+          setStorageGroupStatement, ctx.storageGroupAttributesClause());
+    }
+    return setStorageGroupStatement;
+  }
+
+  private void parseStorageGroupAttributesClause(
+      SetStorageGroupStatement setStorageGroupStatement,
+      IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
+    for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
+        ctx.storageGroupAttributeClause()) {
+      if (attribute.TTL() != null) {
+        long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setTtl(ttl);
+      } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
+        int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
+      } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
+        int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
+      } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
+        long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
+      }
+    }
   }
 
   @Override
@@ -1653,6 +1764,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowCluster(IoTDBSqlParser.ShowClusterContext ctx) {
+    ShowClusterStatement showClusterStatement = new ShowClusterStatement();
+    return showClusterStatement;
+  }
+
+  @Override
   public Statement visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
     DeleteStorageGroupStatement deleteStorageGroupStatement = new DeleteStorageGroupStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
@@ -1662,6 +1779,79 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     deleteStorageGroupStatement.setPrefixPath(paths);
     return deleteStorageGroupStatement;
+  }
+
+  @Override
+  public Statement visitDeleteStatement(IoTDBSqlParser.DeleteStatementContext ctx) {
+    DeleteDataStatement statement = new DeleteDataStatement();
+    List<IoTDBSqlParser.PrefixPathContext> prefixPaths = ctx.prefixPath();
+    List<PartialPath> pathList = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPaths) {
+      pathList.add(parsePrefixPath(prefixPath));
+    }
+    statement.setPathList(pathList);
+    if (ctx.whereClause() != null) {
+      WhereCondition whereCondition = parseWhereClause(ctx.whereClause());
+      TimeRange timeRange = parseDeleteTimeRange(whereCondition.getPredicate());
+      statement.setTimeRange(timeRange);
+    } else {
+      statement.setTimeRange(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+    }
+    return statement;
+  }
+
+  private TimeRange parseDeleteTimeRange(Expression predicate) {
+    if (predicate instanceof LogicAndExpression) {
+      TimeRange leftTimeRange =
+          parseDeleteTimeRange(((LogicAndExpression) predicate).getLeftExpression());
+      TimeRange rightTimeRange =
+          parseDeleteTimeRange(((LogicAndExpression) predicate).getRightExpression());
+      return new TimeRange(
+          Math.max(leftTimeRange.getMin(), rightTimeRange.getMin()),
+          Math.min(leftTimeRange.getMax(), rightTimeRange.getMax()));
+    } else if (predicate instanceof CompareBinaryExpression) {
+      if (((CompareBinaryExpression) predicate).getLeftExpression() instanceof TimestampOperand) {
+        return parseTimeRange(
+            predicate.getExpressionType(),
+            ((CompareBinaryExpression) predicate).getLeftExpression(),
+            ((CompareBinaryExpression) predicate).getRightExpression());
+      } else {
+        return parseTimeRange(
+            predicate.getExpressionType(),
+            ((CompareBinaryExpression) predicate).getRightExpression(),
+            ((CompareBinaryExpression) predicate).getLeftExpression());
+      }
+    } else {
+      throw new SemanticException(DELETE_RANGE_ERROR_MSG);
+    }
+  }
+
+  private TimeRange parseTimeRange(
+      ExpressionType expressionType, Expression timeExpression, Expression valueExpression) {
+    if (!(timeExpression instanceof TimestampOperand)
+        || !(valueExpression instanceof ConstantOperand)) {
+      throw new SemanticException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
+    }
+
+    if (((ConstantOperand) valueExpression).getDataType() != TSDataType.INT64) {
+      throw new SemanticException("The datatype of timestamp should be LONG.");
+    }
+
+    long time = Long.parseLong(((ConstantOperand) valueExpression).getValueString());
+    switch (expressionType) {
+      case LESS_THAN:
+        return new TimeRange(Long.MIN_VALUE, time - 1);
+      case LESS_EQUAL:
+        return new TimeRange(Long.MIN_VALUE, time);
+      case GREATER_THAN:
+        return new TimeRange(time + 1, Long.MAX_VALUE);
+      case GREATER_EQUAL:
+        return new TimeRange(time, Long.MAX_VALUE);
+      case EQUAL_TO:
+        return new TimeRange(time, time);
+      default:
+        throw new SemanticException(DELETE_RANGE_ERROR_MSG);
+    }
   }
 
   /** function for parsing file path used by LOAD statement. */

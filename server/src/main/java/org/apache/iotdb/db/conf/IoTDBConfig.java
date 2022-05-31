@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
@@ -278,6 +279,20 @@ public class IoTDBConfig {
 
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
+
+  private String dataRegionConsensusDir =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + "consensus"
+          + File.separator
+          + "data_region";
+
+  private String schemaRegionConsensusDir =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + "consensus"
+          + File.separator
+          + "schema_region";
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -825,8 +840,11 @@ public class IoTDBConfig {
   /** Internal port for coordinator */
   private int internalPort = 9003;
 
-  /** Internal port for consensus protocol */
-  private int consensusPort = 40010;
+  /** Internal port for dataRegion consensus protocol */
+  private int dataRegionConsensusPort = 40010;
+
+  /** Internal port for schemaRegion consensus protocol */
+  private int schemaRegionConsensusPort = 50010;
 
   /** Ip and port of config nodes. */
   private List<TEndPoint> configNodeList =
@@ -836,11 +854,18 @@ public class IoTDBConfig {
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
-   * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
-   * set this variable so that the correct class name can be obtained later when the consensus layer
-   * singleton is initialized
+   * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
+   * on startup and set this variable so that the correct class name can be obtained later when the
+   * data region consensus layer singleton is initialized
    */
-  private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+
+  /**
+   * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
+   * on startup and set this variable so that the correct class name can be obtained later when the
+   * schema region consensus layer singleton is initialized
+   */
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /**
    * The series partition executor class. The Datanode should communicate with ConfigNode on startup
@@ -894,6 +919,23 @@ public class IoTDBConfig {
 
   /** Cache expire time of user and role */
   private int authorCacheExpireTime = 30;
+
+  /** Number of queues per forwarding trigger */
+  private int triggerForwardMaxQueueNumber = 8;
+  /** The length of one of the queues per forwarding trigger */
+  private int triggerForwardMaxSizePerQueue = 2000;
+
+  /** Trigger forwarding data size per batch */
+  private int triggerForwardBatchSize = 50;
+
+  /** Trigger HTTP forward pool size */
+  private int triggerForwardHTTPPoolSize = 200;
+
+  /** Trigger HTTP forward pool max connection for per route */
+  private int triggerForwardHTTPPOOLMaxPerRoute = 20;
+
+  /** Trigger MQTT forward pool size */
+  private int triggerForwardMQTTPoolSize = 4;
 
   IoTDBConfig() {}
 
@@ -1182,6 +1224,24 @@ public class IoTDBConfig {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
+    setDataRegionConsensusDir(consensusDir + File.separator + "data_region");
+    setSchemaRegionConsensusDir(consensusDir + File.separator + "schema_region");
+  }
+
+  public String getDataRegionConsensusDir() {
+    return dataRegionConsensusDir;
+  }
+
+  public void setDataRegionConsensusDir(String dataRegionConsensusDir) {
+    this.dataRegionConsensusDir = dataRegionConsensusDir;
+  }
+
+  public String getSchemaRegionConsensusDir() {
+    return schemaRegionConsensusDir;
+  }
+
+  public void setSchemaRegionConsensusDir(String schemaRegionConsensusDir) {
+    this.schemaRegionConsensusDir = schemaRegionConsensusDir;
   }
 
   public String getExtDir() {
@@ -2645,12 +2705,20 @@ public class IoTDBConfig {
     this.internalPort = internalPort;
   }
 
-  public int getConsensusPort() {
-    return consensusPort;
+  public int getDataRegionConsensusPort() {
+    return dataRegionConsensusPort;
   }
 
-  public void setConsensusPort(int consensusPort) {
-    this.consensusPort = consensusPort;
+  public void setDataRegionConsensusPort(int dataRegionConsensusPort) {
+    this.dataRegionConsensusPort = dataRegionConsensusPort;
+  }
+
+  public int getSchemaRegionConsensusPort() {
+    return schemaRegionConsensusPort;
+  }
+
+  public void setSchemaRegionConsensusPort(int schemaRegionConsensusPort) {
+    this.schemaRegionConsensusPort = schemaRegionConsensusPort;
   }
 
   public List<TEndPoint> getConfigNodeList() {
@@ -2669,12 +2737,20 @@ public class IoTDBConfig {
     this.joinClusterTimeOutMs = joinClusterTimeOutMs;
   }
 
-  public String getConsensusProtocolClass() {
-    return consensusProtocolClass;
+  public String getDataRegionConsensusProtocolClass() {
+    return dataRegionConsensusProtocolClass;
   }
 
-  public void setConsensusProtocolClass(String consensusProtocolClass) {
-    this.consensusProtocolClass = consensusProtocolClass;
+  public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public String getSchemaRegionConsensusProtocolClass() {
+    return schemaRegionConsensusProtocolClass;
+  }
+
+  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
+    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
   public String getSeriesPartitionExecutorClass() {
@@ -2803,5 +2879,53 @@ public class IoTDBConfig {
 
   public void setAuthorCacheExpireTime(int authorCacheExpireTime) {
     this.authorCacheExpireTime = authorCacheExpireTime;
+  }
+
+  public int getTriggerForwardMaxQueueNumber() {
+    return triggerForwardMaxQueueNumber;
+  }
+
+  public void setTriggerForwardMaxQueueNumber(int triggerForwardMaxQueueNumber) {
+    this.triggerForwardMaxQueueNumber = triggerForwardMaxQueueNumber;
+  }
+
+  public int getTriggerForwardMaxSizePerQueue() {
+    return triggerForwardMaxSizePerQueue;
+  }
+
+  public void setTriggerForwardMaxSizePerQueue(int triggerForwardMaxSizePerQueue) {
+    this.triggerForwardMaxSizePerQueue = triggerForwardMaxSizePerQueue;
+  }
+
+  public int getTriggerForwardBatchSize() {
+    return triggerForwardBatchSize;
+  }
+
+  public void setTriggerForwardBatchSize(int triggerForwardBatchSize) {
+    this.triggerForwardBatchSize = triggerForwardBatchSize;
+  }
+
+  public int getTriggerForwardHTTPPoolSize() {
+    return triggerForwardHTTPPoolSize;
+  }
+
+  public void setTriggerForwardHTTPPoolSize(int triggerForwardHTTPPoolSize) {
+    this.triggerForwardHTTPPoolSize = triggerForwardHTTPPoolSize;
+  }
+
+  public int getTriggerForwardHTTPPOOLMaxPerRoute() {
+    return triggerForwardHTTPPOOLMaxPerRoute;
+  }
+
+  public void setTriggerForwardHTTPPOOLMaxPerRoute(int triggerForwardHTTPPOOLMaxPerRoute) {
+    this.triggerForwardHTTPPOOLMaxPerRoute = triggerForwardHTTPPOOLMaxPerRoute;
+  }
+
+  public int getTriggerForwardMQTTPoolSize() {
+    return triggerForwardMQTTPoolSize;
+  }
+
+  public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
+    this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
 }

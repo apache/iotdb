@@ -87,6 +87,12 @@ public class TransportClient implements ITransportClient {
   /* hold this lock to wait until successfully reconnect to receiver */
   private final Object waitLock;
 
+  /**
+   * @param pipe sync task
+   * @param ipAddress remote ip address
+   * @param port remote port
+   * @param localIP local ip address
+   */
   public TransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
@@ -470,8 +476,7 @@ public class TransportClient implements ITransportClient {
               String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
           // wait and retry
           synchronized (waitLock) {
-            SenderService.getInstance()
-                .setTempMessage(String.format("Connect to receiver %s:%d error.", ipAddress, port));
+            SenderService.getInstance().setConnecting(true);
             waitLock.wait();
           }
         }
