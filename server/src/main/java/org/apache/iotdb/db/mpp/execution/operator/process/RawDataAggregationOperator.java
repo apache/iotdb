@@ -106,13 +106,13 @@ public class RawDataAggregationOperator implements ProcessOperator {
     // 1. Calculate aggregation result based on current time window
     boolean canCallNext = true;
     while (!calcFromCacheData(curTimeRange)) {
+      preCachedData = null;
       // child.next can only be invoked once
       if (child.hasNext() && canCallNext) {
-        canCallNext = false;
         preCachedData = child.next();
+        canCallNext = false;
         // if child still has next but can't be invoked now
       } else if (child.hasNext()) {
-        preCachedData = null;
         return null;
       } else {
         break;
