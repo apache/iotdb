@@ -94,8 +94,11 @@ public class ConfigNodeRemoveCheck {
                         Integer.parseInt(systemProperties.getProperty("consensus_port")))));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(status.getMessage());
-      throw new IOException("Apply ConfigNode failed:");
+      throw new IOException("Remove ConfigNode failed:");
     }
+
+    // delete systemPropertiesFile
+    systemPropertiesFile.delete();
   }
 
   private static class ConfigNodeConfRemoveCheckHolder {

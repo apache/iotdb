@@ -138,32 +138,28 @@ public class NodeManager {
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
 
-    if (getConsensusManager().isLeader()) {
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-
-      // Return PartitionRegionId
-      resp.setPartitionRegionId(
-          ConsensusGroupId.convertToTConsensusGroupId(getConsensusManager().getConsensusGroupId()));
-
-      // Return online ConfigNodes
-      resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
-      resp.getConfigNodeList().add(req.getConfigNodeLocation());
-    } else {
-      resp.setStatus(new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode()));
-      Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
-      resp.getStatus().setRedirectNode(leader.getEndpoint());
+    if (!getConsensusManager().isLeader()) {
+      return resp.setStatus(redirectionLeader());
     }
+
+    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    // Return PartitionRegionId
+    resp.setPartitionRegionId(
+        ConsensusGroupId.convertToTConsensusGroupId(getConsensusManager().getConsensusGroupId()));
+
+    // Return online ConfigNodes
+    resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
+    resp.getConfigNodeList().add(req.getConfigNodeLocation());
 
     return resp;
   }
 
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     if (!getConsensusManager().isLeader()) {
-      TSStatus status = new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-      Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
-      status.setRedirectNode(leader.getEndpoint());
-      return status;
+      return redirectionLeader();
     }
+
     if (getConsensusManager().addConfigNodePeer(applyConfigNodeReq)) {
       return getConsensusManager().write(applyConfigNodeReq).getStatus();
     } else {
@@ -174,17 +170,20 @@ public class NodeManager {
 
   public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
     if (!getConsensusManager().isLeader()) {
-      TSStatus status = new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-      Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
-      status.setRedirectNode(leader.getEndpoint());
-      return status;
+      return redirectionLeader();
     }
+
     if (getConsensusManager().removeConfigNodePeer(removeConfigNodeReq)) {
       return getConsensusManager().write(removeConfigNodeReq).getStatus();
     } else {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Remove ConfigNode failed because there is no ConfigNode.");
     }
+  }
+
+  private TSStatus redirectionLeader() {
+    Peer leader = getConsensusManager().getLeader(getConsensusManager().getConsensusGroupId());
+    return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode()).setRedirectNode(leader.getEndpoint());
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {

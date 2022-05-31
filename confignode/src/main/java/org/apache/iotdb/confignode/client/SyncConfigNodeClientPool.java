@@ -120,6 +120,10 @@ public class SyncConfigNodeClientPool {
       List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
     for (TConfigNodeLocation nodeLocation : configNodeLocations) {
+      if (nodeLocation.equals(configNodeLocation)) {
+        continue;
+      }
+
       for (int retry = 0; retry < retryNum; retry++) {
         try (SyncConfigNodeIServiceClient client =
             clientManager.borrowClient(nodeLocation.getInternalEndPoint())) {

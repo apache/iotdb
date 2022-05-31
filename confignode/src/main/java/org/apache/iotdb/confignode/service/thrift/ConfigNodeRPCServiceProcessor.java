@@ -408,7 +408,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
                     configManager.getConsensusManager().getConsensusGroupId(),
                     new Peer(
                         configManager.getConsensusManager().getConsensusGroupId(),
-                        onlineConfigNode.getInternalEndPoint()));
+                        onlineConfigNode.getConsensusEndPoint()));
         if (resp.isSuccess()) {
           LOGGER.info("Transfer ConfigNode Leader success.");
           endPoint = onlineConfigNode.getInternalEndPoint();
