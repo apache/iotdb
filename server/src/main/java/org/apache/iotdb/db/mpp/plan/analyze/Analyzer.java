@@ -240,8 +240,8 @@ public class Analyzer {
           Map<String, Set<Expression>> deviceToAggregationTransformExpressions = new HashMap<>();
           for (String deviceName : deviceToTransformExpressions.keySet()) {
             Set<Expression> transformExpressions = deviceToTransformExpressions.get(deviceName);
-            Set<Expression> aggregationExpressions = new HashSet<>();
-            Set<Expression> aggregationTransformExpressions = new HashSet<>();
+            Set<Expression> aggregationExpressions = new LinkedHashSet<>();
+            Set<Expression> aggregationTransformExpressions = new LinkedHashSet<>();
 
             boolean isHasRawDataInputAggregation = false;
             if (queryStatement.isAggregationQuery()) {
