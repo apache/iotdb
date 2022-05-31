@@ -440,18 +440,23 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         Collections.emptyMap());
-    IoTDBDescriptor.getInstance().getConfig().setMergeWriteThroughputMbPerSec(1024);
-    TsFileResource targetResource =
-        new TsFileResource(
-            new File(resources.get(0).getTsFile().getParentFile(), "0-0-1-0.tsfile"));
-    CompactionUtils.merge(
-        targetResource,
-        resources,
-        "root.test",
-        null,
-        new HashSet<>(),
-        true,
-        Collections.EMPTY_LIST,
-        null);
+    int mergeRate = IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec();
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setMergeWriteThroughputMbPerSec(1024);
+      TsFileResource targetResource =
+          new TsFileResource(
+              new File(resources.get(0).getTsFile().getParentFile(), "0-0-1-0.tsfile"));
+      CompactionUtils.merge(
+          targetResource,
+          resources,
+          "root.test",
+          null,
+          new HashSet<>(),
+          true,
+          Collections.EMPTY_LIST,
+          null);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setMergeWriteThroughputMbPerSec(mergeRate);
+    }
   }
 }
