@@ -220,10 +220,10 @@ public class Analyzer {
                   .distinct()
                   .collect(Collectors.toList());
           for (String deviceName : deviceToMeasurementsMap.keySet()) {
-            List<String> measurementsUnderDeivce =
+            List<String> measurementsUnderDevice =
                 new ArrayList<>(deviceToMeasurementsMap.get(deviceName));
             List<Integer> indexes = new ArrayList<>();
-            for (String measurement : measurementsUnderDeivce) {
+            for (String measurement : measurementsUnderDevice) {
               indexes.add(
                   allMeasurements.indexOf(measurement) + 1); // add 1 to skip the device column
             }
