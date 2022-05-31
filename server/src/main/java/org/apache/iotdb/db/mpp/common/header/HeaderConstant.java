@@ -64,6 +64,11 @@ public class HeaderConstant {
   public static final String COLUMN_HOST_ADDRESS = "HostAdress";
   public static final String COLUMN_PORT = "Port";
 
+  // column names for show functions statement
+  public static final String COLUMN_FUNCTION_NAME = "function name";
+  public static final String COLUMN_FUNCTION_TYPE = "function type";
+  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
@@ -85,6 +90,9 @@ public class HeaderConstant {
 
   // dataset header for last query
   public static final DatasetHeader LAST_QUERY_HEADER;
+
+  // dataset header for show functions
+  public static final DatasetHeader SHOW_FUNCTIONS_HEADER;
 
   static {
     countStorageGroupHeader =
@@ -180,6 +188,16 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
+  }
+
+  static {
+    SHOW_FUNCTIONS_HEADER =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT)),
             true);
   }
 }

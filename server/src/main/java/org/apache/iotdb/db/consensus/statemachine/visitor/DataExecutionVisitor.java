@@ -68,7 +68,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.insertTablet(node);
       return StatusUtils.OK;
-    } catch (TriggerExecutionException e) {
+    } catch (TriggerExecutionException | WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {

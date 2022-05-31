@@ -92,11 +92,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -108,6 +110,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.UriContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -635,6 +638,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitDropFunction(DropFunctionContext ctx) {
     return new DropFunctionStatement(parseIdentifier(ctx.udfName.getText()));
+  }
+
+  // Show Functions
+  @Override
+  public Statement visitShowFunctions(ShowFunctionsContext ctx) {
+    return new ShowFunctionsStatement();
   }
 
   // Show Child Paths =====================================================================
@@ -1779,6 +1788,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     deleteStorageGroupStatement.setPrefixPath(paths);
     return deleteStorageGroupStatement;
+  }
+
+  // Explain ========================================================================
+  @Override
+  public Statement visitExplain(IoTDBSqlParser.ExplainContext ctx) {
+    QueryStatement queryStatement = (QueryStatement) visitSelectStatement(ctx.selectStatement());
+    return new ExplainStatement(queryStatement);
   }
 
   @Override
