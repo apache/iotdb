@@ -116,7 +116,7 @@ public class LocalFSFactory implements FSFactory {
       FileUtils.moveFile(srcFile, destFile);
     } catch (IOException e) {
       logger.error(
-          "Failed to move file from {} to {}. ",
+          "Failed to move file from {} to {}",
           srcFile.getAbsolutePath(),
           destFile.getAbsolutePath(),
           e);
@@ -128,7 +128,7 @@ public class LocalFSFactory implements FSFactory {
     boolean success = srcFile.renameTo(destFile);
     if (!success) {
       logger.error(
-          "Failed to rename file from {} to {}. ",
+          "Failed to rename file from {} to {}",
           srcFile.getAbsolutePath(),
           destFile.getAbsolutePath());
     }

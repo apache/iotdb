@@ -61,7 +61,7 @@ public class TsFileManagerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG")));
   }
 
   private TsFileResource generateTsFileResource(int id) {

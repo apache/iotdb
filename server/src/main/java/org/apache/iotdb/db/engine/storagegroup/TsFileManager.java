@@ -350,9 +350,22 @@ public class TsFileManager {
             .add(resource);
       }
       Map<Long, TsFileResource> time2TargetPosition = new HashMap<>();
-      // remove source
+      // find insert target position
       for (TsFileResource tsFileResource : seqFileResources) {
-        time2TargetPosition.put(tsFileResource.getCreatedTime(), tsFileResource.prev);
+        if (time2TargetFiles.containsKey(tsFileResource.getCreatedTime())) {
+          time2TargetPosition.put(tsFileResource.getCreatedTime(), tsFileResource);
+        }
+      }
+      // first add target
+      for (Long time : time2TargetFiles.keySet()) {
+        keepOrderAddAllAndRenameAfter(
+            time2TargetPosition.get(time),
+            time2TargetFiles.get(time),
+            isTargetSequence,
+            timePartition);
+      }
+      // then remove source
+      for (TsFileResource tsFileResource : seqFileResources) {
         if (sequenceFiles.get(timePartition).remove(tsFileResource)) {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
@@ -361,14 +374,6 @@ public class TsFileManager {
         if (unsequenceFiles.get(timePartition).remove(tsFileResource)) {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
-      }
-      // add target
-      for (Long time : time2TargetFiles.keySet()) {
-        keepOrderAddAllAndRenameAfter(
-            time2TargetPosition.get(time),
-            time2TargetFiles.get(time),
-            isTargetSequence,
-            timePartition);
       }
       // register to TsFileResourceManager
       for (TsFileResource resource : targetFileResources) {
