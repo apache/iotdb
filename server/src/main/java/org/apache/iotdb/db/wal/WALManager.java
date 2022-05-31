@@ -75,7 +75,9 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  public void registerWALNode(String applicantUniqueId, String logDirectory, int startFileVersion) {
+  public void registerWALNode(
+      String applicantUniqueId, String logDirectory, int startFileVersion, long startSearchIndex) {
+    String s = config.getDataRegionConsensusProtocolClass();
     if (config.getWalMode() == WALMode.DISABLE
         || !config
             .getDataRegionConsensusProtocolClass()
@@ -84,7 +86,7 @@ public class WALManager implements IService {
     }
 
     ((FirstCreateStrategy) walNodesManager)
-        .registerWALNode(applicantUniqueId, logDirectory, startFileVersion);
+        .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
   }
 
   @Override

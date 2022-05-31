@@ -3541,6 +3541,7 @@ public class DataRegion {
     return idTable;
   }
 
+  /** This method could only be used in multi-leader consensus */
   public IWALNode getWALNode() {
     if (!config
         .getDataRegionConsensusProtocolClass()
