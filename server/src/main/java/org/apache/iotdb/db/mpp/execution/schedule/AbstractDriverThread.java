@@ -49,14 +49,20 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
 
   @Override
   public void run() {
+    DriverTask next;
     while (!closed && !Thread.currentThread().isInterrupted()) {
+      next = null;
       try {
-        DriverTask next = queue.poll();
+        next = queue.poll();
         execute(next);
       } catch (InterruptedException e) {
         break;
       } catch (Exception e) {
         logger.error("Executor " + this.getName() + " processes failed", e);
+        if (next != null) {
+          next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+          scheduler.toAborted(next);
+        }
       }
     }
   }
