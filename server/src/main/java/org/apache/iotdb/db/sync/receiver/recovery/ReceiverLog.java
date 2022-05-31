@@ -114,6 +114,16 @@ public class ReceiverLog {
     pipeServerWriter.flush();
   }
 
+  public void clean() throws IOException{
+    File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
+    File msgFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_MSG_LOG_NAME);
+    if (!logFile.getParentFile().exists()) {
+      logFile.getParentFile().mkdirs();
+    }
+    pipeServerWriter = new BufferedWriter(new FileWriter(logFile, false));
+    msgWriter = new BufferedWriter(new FileWriter(msgFile, false));
+  }
+
   public void close() throws IOException {
     if (pipeServerWriter != null) {
       pipeServerWriter.close();
