@@ -116,8 +116,14 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
 
-    TSStatus result = applicationStateMachine.write(applicationRequest);
-    Message ret = new ResponseMessage(result);
+    Message ret;
+    try {
+      TSStatus result = applicationStateMachine.write(applicationRequest);
+      ret = new ResponseMessage(result);
+    } catch (Exception rte) {
+      logger.error("application statemachine throws a runtime exception: ", rte);
+      ret = Message.valueOf("internal error. statemachine throws a runtime exception");
+    }
 
     return CompletableFuture.completedFuture(ret);
   }
