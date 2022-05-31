@@ -458,6 +458,5 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setMergeWriteThroughputMbPerSec(mergeRate);
     }
-
   }
 }

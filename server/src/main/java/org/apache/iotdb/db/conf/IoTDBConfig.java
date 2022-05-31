@@ -713,6 +713,7 @@ public class IoTDBConfig {
 
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
+
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
