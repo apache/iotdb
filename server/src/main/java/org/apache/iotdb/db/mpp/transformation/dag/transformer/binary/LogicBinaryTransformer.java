@@ -42,11 +42,87 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
+  protected boolean cacheValue() throws QueryProcessException, IOException {
+    final boolean leftHasNext = leftPointReader.next();
+    final boolean rightHasNext = rightPointReader.next();
+
+    if (leftHasNext && rightHasNext) {
+      return cacheValue(leftPointReader, rightPointReader);
+    }
+
+    if (!leftHasNext && !rightHasNext) {
+      return false;
+    }
+
+    if (leftHasNext && !isLeftPointReaderConstant) {
+      return cacheValue(leftPointReader);
+    }
+    if (rightHasNext && !isRightPointReaderConstant) {
+      return cacheValue(rightPointReader);
+    }
+
+    return false;
+  }
+
+  private boolean cacheValue(LayerPointReader reader) throws IOException {
+    cachedTime = reader.currentTime();
+    cachedBoolean = evaluate(false, leftPointReader.currentBoolean());
+    leftPointReader.readyForNext();
+    return true;
+  }
+
+  private boolean cacheValue(LayerPointReader leftPointReader, LayerPointReader rightPointReader)
+      throws IOException {
+    if (isCurrentConstant) {
+      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+      return true;
+    }
+
+    if (isLeftPointReaderConstant) {
+      cachedTime = rightPointReader.currentTime();
+      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+      rightPointReader.readyForNext();
+      return true;
+    }
+
+    if (isRightPointReaderConstant) {
+      cachedTime = leftPointReader.currentTime();
+      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+      leftPointReader.readyForNext();
+      return true;
+    }
+
+    final long leftTime = leftPointReader.currentTime();
+    final long rightTime = rightPointReader.currentTime();
+
+    if (leftTime < rightTime) {
+      cachedTime = leftTime;
+      cachedBoolean = evaluate(leftPointReader.currentBoolean(), false);
+      leftPointReader.readyForNext();
+      return true;
+    }
+
+    if (rightTime < leftTime) {
+      cachedTime = rightTime;
+      cachedBoolean = evaluate(false, rightPointReader.currentBoolean());
+      rightPointReader.readyForNext();
+      return true;
+    }
+
+    // == rightTime
+    cachedTime = leftTime;
     cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+    leftPointReader.readyForNext();
+    rightPointReader.readyForNext();
+    return true;
   }
 
   protected abstract boolean evaluate(boolean leftOperand, boolean rightOperand);
+
+  @Override
+  protected void transformAndCache() throws QueryProcessException, IOException {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   public TSDataType getDataType() {
