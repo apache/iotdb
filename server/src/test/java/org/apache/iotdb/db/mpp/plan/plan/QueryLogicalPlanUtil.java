@@ -716,8 +716,8 @@ public class QueryLogicalPlanUtil {
         new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
-    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 3, 2));
+    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 3, 2));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
