@@ -66,28 +66,33 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
 
   private boolean cacheValue(LayerPointReader reader) throws IOException {
     cachedTime = reader.currentTime();
-    cachedBoolean = evaluate(false, leftPointReader.currentBoolean());
-    leftPointReader.readyForNext();
+    cachedBoolean = !reader.isCurrentNull() && evaluate(false, reader.currentBoolean());
+    reader.readyForNext();
     return true;
   }
 
   private boolean cacheValue(LayerPointReader leftPointReader, LayerPointReader rightPointReader)
       throws IOException {
+    final boolean leftBoolean =
+        !leftPointReader.isCurrentNull() && leftPointReader.currentBoolean();
+    final boolean rightBoolean =
+        !rightPointReader.isCurrentNull() && rightPointReader.currentBoolean();
+
     if (isCurrentConstant) {
-      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+      cachedBoolean = evaluate(leftBoolean, rightBoolean);
       return true;
     }
 
     if (isLeftPointReaderConstant) {
       cachedTime = rightPointReader.currentTime();
-      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+      cachedBoolean = evaluate(leftBoolean, rightBoolean);
       rightPointReader.readyForNext();
       return true;
     }
 
     if (isRightPointReaderConstant) {
       cachedTime = leftPointReader.currentTime();
-      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+      cachedBoolean = evaluate(leftBoolean, rightBoolean);
       leftPointReader.readyForNext();
       return true;
     }
@@ -97,21 +102,21 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
 
     if (leftTime < rightTime) {
       cachedTime = leftTime;
-      cachedBoolean = evaluate(leftPointReader.currentBoolean(), false);
+      cachedBoolean = evaluate(leftBoolean, false);
       leftPointReader.readyForNext();
       return true;
     }
 
     if (rightTime < leftTime) {
       cachedTime = rightTime;
-      cachedBoolean = evaluate(false, rightPointReader.currentBoolean());
+      cachedBoolean = evaluate(false, rightBoolean);
       rightPointReader.readyForNext();
       return true;
     }
 
     // == rightTime
     cachedTime = leftTime;
-    cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
+    cachedBoolean = evaluate(leftBoolean, rightBoolean);
     leftPointReader.readyForNext();
     rightPointReader.readyForNext();
     return true;
