@@ -232,6 +232,12 @@ public class IoTDBConstant {
   public static final String WAL_VERSION_ID = "versionId";
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
 
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String NODE_STATUS_RUNNING = "Running";
+  public static final String NODE_STATUS_Down = "Down";
+
   // client version number
   public enum ClientVersion {
     V_0_12,

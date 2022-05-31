@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
@@ -84,6 +85,12 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitShowTTL(ShowTTLStatement showTTLStatement, TaskContext context) {
     return new ShowTTLTask(showTTLStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowCluster(
+      ShowClusterStatement showClusterStatement, TaskContext context) {
+    return new ShowClusterTask(showClusterStatement);
   }
 
   @Override
