@@ -45,19 +45,15 @@ public class SetStorageGroupReq extends ConfigRequest {
     return schema;
   }
 
-  public void setSchema(TStorageGroupSchema schema) {
-    this.schema = schema;
-  }
-
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(ConfigRequestType.SetStorageGroup.ordinal());
-    ThriftConfigNodeSerDeUtils.writeTStorageGroupSchema(schema, buffer);
+    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(schema, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    schema = ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer);
+    schema = ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer);
   }
 
   @Override

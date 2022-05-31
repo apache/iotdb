@@ -19,12 +19,12 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -89,33 +89,6 @@ public class IoTDBSessionSimpleIT {
   public void tearDown() throws Exception {
     session.close();
     EnvironmentUtils.cleanEnv();
-  }
-
-  @Test
-  public void testInsertByBlankStrAndInferType()
-      throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1 ");
-
-    List<String> values = new ArrayList<>();
-    values.add("1.0");
-    session.insertRecord(deviceId, 1L, measurements, values);
-
-    String[] expected = new String[] {"root.sg1.d1.s1 "};
-
-    assertFalse(session.checkTimeseriesExists("root.sg1.d1.s1 "));
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
-    int i = 0;
-    while (dataSet.hasNext()) {
-      assertEquals(expected[i], dataSet.next().getFields().get(0).toString());
-      i++;
-    }
-
-    session.close();
   }
 
   @Test
@@ -530,7 +503,7 @@ public class IoTDBSessionSimpleIT {
     session.setStorageGroup(storageGroup);
 
     session.createTimeseries(
-        "root.sg.\"my.device.with.colon:\".s",
+        "root.sg.`my.device.with.colon:`.s",
         TSDataType.INT64,
         TSEncoding.RLE,
         CompressionType.SNAPPY);
@@ -557,6 +530,12 @@ public class IoTDBSessionSimpleIT {
     try {
       session.createTimeseries(
           "root.sg.d1..s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("", e);
+    }
+
+    try {
+      session.createTimeseries("", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       logger.error("", e);
     }

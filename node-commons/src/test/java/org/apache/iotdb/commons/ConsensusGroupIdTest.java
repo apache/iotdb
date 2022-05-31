@@ -34,14 +34,14 @@ public class ConsensusGroupIdTest {
   @Test
   public void TestCreate() throws IOException {
     ConsensusGroupId dataRegionId =
-        ConsensusGroupId.Factory.convertFromTConsensusGroupId(
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
     Assert.assertTrue(dataRegionId instanceof DataRegionId);
     Assert.assertEquals(1, dataRegionId.getId());
     Assert.assertEquals(TConsensusGroupType.DataRegion, dataRegionId.getType());
 
     ConsensusGroupId schemaRegionId =
-        ConsensusGroupId.Factory.convertFromTConsensusGroupId(
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
     Assert.assertTrue(schemaRegionId instanceof SchemaRegionId);
     Assert.assertEquals(2, schemaRegionId.getId());

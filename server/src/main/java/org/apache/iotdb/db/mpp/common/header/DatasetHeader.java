@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.header;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import com.google.common.primitives.Bytes;
 
 import java.util.ArrayList;
@@ -38,7 +40,7 @@ public class DatasetHeader {
   // indicate whether the result dataset contain timestamp column
   private final boolean isIgnoreTimestamp;
 
-  // map from
+  // map from output column to output tsBlock index
   private Map<String, Integer> columnToTsBlockIndexMap;
 
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {
@@ -72,6 +74,10 @@ public class DatasetHeader {
         .collect(Collectors.toList());
   }
 
+  public List<TSDataType> getRespDataTypes() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+  }
+
   public List<Byte> getRespAliasColumns() {
     BitSet aliasMap = new BitSet();
     for (int i = 0; i < columnHeaders.size(); ++i) {
@@ -84,5 +90,9 @@ public class DatasetHeader {
 
   public Map<String, Integer> getColumnNameIndexMap() {
     return columnToTsBlockIndexMap;
+  }
+
+  public int getOutputValueColumnCount() {
+    return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
   }
 }

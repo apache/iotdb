@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
-import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import org.junit.Test;
 

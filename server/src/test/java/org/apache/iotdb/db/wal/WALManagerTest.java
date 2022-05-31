@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.wal;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.io.WALWriter;
-import org.apache.iotdb.db.wal.node.IWALNode;
+import org.apache.iotdb.db.wal.node.WALNode;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -66,22 +66,42 @@ public class WALManagerTest {
   }
 
   @Test
-  public void testAllocateWALNode() throws IllegalPathException {
+  public void testDeleteOutdatedWALFiles() throws IllegalPathException {
     WALManager walManager = WALManager.getInstance();
-    IWALNode[] walNodes = new IWALNode[6];
+    WALNode[] walNodes = new WALNode[6];
     for (int i = 0; i < 12; i++) {
-      IWALNode walNode = walManager.applyForWALNode();
+      WALNode walNode = (WALNode) walManager.applyForWALNode(String.valueOf(i));
       if (i < 6) {
         walNodes[i] = walNode;
       } else {
         assertEquals(walNodes[i % 6], walNode);
       }
       walNode.log(i, getInsertRowPlan());
+      walNode.rollWALFile();
     }
+
     for (String walDir : walDirs) {
       File walDirFile = new File(walDir);
       assertTrue(walDirFile.exists());
-      assertNotNull(walDirFile.list(WALWriter::walFilenameFilter));
+      File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
+      assertNotNull(nodeDirs);
+      for (File nodeDir : nodeDirs) {
+        assertTrue(nodeDir.exists());
+        assertEquals(3, WALFileUtils.listAllWALFiles(nodeDir).length);
+      }
+    }
+
+    walManager.deleteOutdatedWALFiles();
+
+    for (String walDir : walDirs) {
+      File walDirFile = new File(walDir);
+      assertTrue(walDirFile.exists());
+      File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
+      assertNotNull(nodeDirs);
+      for (File nodeDir : nodeDirs) {
+        assertTrue(nodeDir.exists());
+        assertEquals(1, WALFileUtils.listAllWALFiles(nodeDir).length);
+      }
     }
   }
 

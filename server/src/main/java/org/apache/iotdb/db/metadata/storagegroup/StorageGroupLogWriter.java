@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.metadata.storagegroup;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.IOException;
 

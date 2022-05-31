@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.common.schematree;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -32,9 +32,11 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.internal.util.collections.Sets;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -112,6 +114,9 @@ public class SchemaTreeTest {
         new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.d.**.c.s1"), 0, 0, false);
     checkVisitorResult(
         visitor, 1, new String[] {"root.c.c.c.d.c.c.s1"}, null, new boolean[] {false});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.d.*.*"), 0, 0, false);
+    checkVisitorResult(visitor, 1, new String[] {"root.c.c.c.d.c.s1"}, null, new boolean[] {false});
   }
 
   private void testSchemaTree(SchemaNode root) throws Exception {
@@ -203,6 +208,54 @@ public class SchemaTreeTest {
         new String[] {"status", "status"},
         new boolean[] {true, false},
         new int[] {2, 3});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*.**"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.*.**.**"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
   }
 
   /**
@@ -222,9 +275,9 @@ public class SchemaTreeTest {
 
     MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
     MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
-    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema1);
+    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema1, null);
     d1.addChild("s1", s1);
-    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema2);
+    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema2, null);
     s2.setAlias("status");
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
@@ -260,7 +313,7 @@ public class SchemaTreeTest {
     SchemaNode s;
     for (int i = 0; i < 5; i++) {
       a = new SchemaEntityNode("a");
-      s = new SchemaMeasurementNode("s", schema);
+      s = new SchemaMeasurementNode("s", schema, null);
       a.addChild("s", s);
       parent.addChild("a", a);
       parent = a;
@@ -280,7 +333,7 @@ public class SchemaTreeTest {
 
     for (int i = 0; i < 2; i++) {
       c = new SchemaEntityNode("c");
-      c.addChild("s1", new SchemaMeasurementNode("s1", schema));
+      c.addChild("s1", new SchemaMeasurementNode("s1", schema, null));
       parent.addChild("c", c);
       parent = c;
     }
@@ -380,13 +433,29 @@ public class SchemaTreeTest {
     DeviceSchemaInfo deviceSchemaInfo = deviceSchemaInfoList.get(0);
     Assert.assertEquals(new PartialPath("root.sg.d2.a"), deviceSchemaInfo.getDevicePath());
     Assert.assertTrue(deviceSchemaInfo.isAligned());
-    Assert.assertEquals(2, deviceSchemaInfo.getMeasurements().size());
+    Assert.assertEquals(2, deviceSchemaInfo.getMeasurements(Sets.newSet("*")).size());
 
     deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.*"), false);
+    deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(2, deviceSchemaInfoList.size());
+    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
 
     deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.**"), false);
+    deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
+    Assert.assertEquals(
+        new PartialPath("root.sg.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
+
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.**"), false);
+    deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
+    Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
+    Assert.assertEquals(
+        new PartialPath("root.sg.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
   }
 
   @Test
@@ -456,6 +525,22 @@ public class SchemaTreeTest {
     measurementPathList.add(measurementPath);
 
     return measurementPathList;
+  }
+
+  @Test
+  public void testPruneMeasurement() throws Exception {
+    SchemaNode root = generateSchemaTree();
+    SchemaTree schemaTree = new SchemaTree(root);
+
+    Pair<List<MeasurementPath>, Integer> result =
+        schemaTree.searchMeasurementPaths(new PartialPath("root.sg.d1.s2"));
+    Assert.assertEquals(1, result.left.size());
+    Assert.assertEquals("root.sg.d1.s2", result.left.get(0).getFullPath());
+
+    schemaTree.pruneSingleMeasurement(new PartialPath("root.sg.d1.s2"));
+
+    result = schemaTree.searchMeasurementPaths(new PartialPath("root.sg.d1.s2"));
+    Assert.assertTrue(result.left.isEmpty());
   }
 
   @Test

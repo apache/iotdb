@@ -23,20 +23,20 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -233,8 +233,11 @@ public class LocalConfigNode {
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
 
     DeleteTimeSeriesPlan deleteTimeSeriesPlan =
-        SchemaSyncManager.getInstance()
-            .splitDeleteTimeseriesPlanByDevice(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+        SchemaSyncManager.getInstance().isEnableSync()
+            ? SchemaSyncManager.getInstance()
+                .splitDeleteTimeseriesPlanByDevice(
+                    storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+            : null;
 
     deleteSchemaRegionsInStorageGroup(
         storageGroup, schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
@@ -536,7 +539,30 @@ public class LocalConfigNode {
    */
   public SchemaRegionId getBelongedSchemaRegionId(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    return schemaPartitionTable.getSchemaRegionId(storageGroup, path);
+    SchemaRegionId schemaRegionId = schemaPartitionTable.getSchemaRegionId(storageGroup, path);
+    // Since the creation of storageGroup, schemaRegionId and schemaRegion is not atomic or locked,
+    // any access concurrent with this creation may get null.
+    // Thread A: create sg, allocate schemaRegionId, create schemaRegion
+    // Thread B: access sg, access partitionTable to get schemaRegionId, access schemaEngine to get
+    // schemaRegion
+    // When A and B are running concurrently, B may get null while getting schemaRegionId or
+    // schemaRegion. This means B must run after A ends.
+    // To avoid this exception, please invoke getBelongedSchemaRegionIdWithAutoCreate according to
+    // the scenario.
+    if (schemaRegionId == null) {
+      throw new MetadataException(
+          String.format(
+              "Storage group %s has not been prepared well. Schema region for %s has not been allocated or is not initialized.",
+              storageGroup, path));
+    }
+    ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+    if (schemaRegion == null) {
+      throw new MetadataException(
+          String.format(
+              "Storage group [%s] has not been prepared well. Schema region [%s] is not initialized.",
+              storageGroup, schemaRegionId));
+    }
+    return schemaRegionId;
   }
 
   // This interface involves storage group and schema region auto creation

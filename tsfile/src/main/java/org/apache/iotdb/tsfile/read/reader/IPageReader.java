@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface IPageReader {
 
@@ -33,11 +35,13 @@ public interface IPageReader {
 
   BatchData getAllSatisfiedPageData(boolean ascending) throws IOException;
 
-  TsBlock getAllSatisfiedData(boolean ascending) throws IOException;
+  TsBlock getAllSatisfiedData() throws IOException;
 
   Statistics getStatistics();
 
   void setFilter(Filter filter);
 
   boolean isModified();
+
+  void initTsBlockBuilder(List<TSDataType> dataTypes);
 }

@@ -28,7 +28,7 @@ import java.util.Map;
 
 public class SchemaInternalNode extends SchemaNode {
 
-  protected Map<String, SchemaNode> children;
+  protected Map<String, SchemaNode> children = new HashMap<>();
 
   public SchemaInternalNode(String name) {
     super(name);
@@ -36,14 +36,16 @@ public class SchemaInternalNode extends SchemaNode {
 
   @Override
   public SchemaNode getChild(String name) {
-    return children == null ? null : children.get(name);
+    return children.get(name);
   }
 
   public void addChild(String name, SchemaNode child) {
-    if (children == null) {
-      children = new HashMap<>();
-    }
     children.put(name, child);
+  }
+
+  @Override
+  public void removeChild(String name) {
+    children.remove(name);
   }
 
   @Override

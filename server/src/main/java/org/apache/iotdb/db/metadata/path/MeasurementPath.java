@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -30,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class MeasurementPath extends PartialPath {
 
@@ -41,6 +44,8 @@ public class MeasurementPath extends PartialPath {
 
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   private String measurementAlias = "";
+
+  private String version = null;
 
   public MeasurementPath() {}
 
@@ -69,10 +74,12 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = schema;
   }
 
+  @Override
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
   }
@@ -85,16 +92,23 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
+  @Override
   public String getMeasurementAlias() {
     return measurementAlias;
   }
 
+  @Override
   public void setMeasurementAlias(String measurementAlias) {
     if (measurementAlias != null) {
       this.measurementAlias = measurementAlias;
     }
   }
 
+  public void removeMeasurementAlias() {
+    this.measurementAlias = null;
+  }
+
+  @Override
   public boolean isMeasurementAliasExists() {
     return measurementAlias != null && !measurementAlias.isEmpty();
   }
@@ -112,6 +126,14 @@ public class MeasurementPath extends PartialPath {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
+  public String getVersion() {
+    return version;
+  }
+
+  public void setVersion(String version) {
+    this.version = version;
+  }
+
   @Override
   public PartialPath copy() {
     MeasurementPath result = new MeasurementPath();
@@ -122,6 +144,15 @@ public class MeasurementPath extends PartialPath {
     result.measurementSchema = measurementSchema;
     result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    MeasurementPath that = (MeasurementPath) o;
+    return Objects.equals(version, that.version);
   }
 
   /**
@@ -145,6 +176,7 @@ public class MeasurementPath extends PartialPath {
     return newMeasurementPath;
   }
 
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Measurement.serialize(byteBuffer);
     super.serializeWithoutType(byteBuffer);
@@ -161,6 +193,8 @@ public class MeasurementPath extends PartialPath {
     }
     ReadWriteIOUtils.write(isUnderAlignedEntity, byteBuffer);
     ReadWriteIOUtils.write(measurementAlias, byteBuffer);
+
+    ReadWriteIOUtils.write(version, byteBuffer);
   }
 
   public static MeasurementPath deserialize(ByteBuffer byteBuffer) {
@@ -177,9 +211,17 @@ public class MeasurementPath extends PartialPath {
     }
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
-    measurementPath.nodes = partialPath.nodes;
+
+    measurementPath.version = ReadWriteIOUtils.readString(byteBuffer);
+
+    measurementPath.nodes = partialPath.getNodes();
     measurementPath.device = partialPath.getDevice();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
+  }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    return getDevicePath().concatNode(getTailNode());
   }
 }

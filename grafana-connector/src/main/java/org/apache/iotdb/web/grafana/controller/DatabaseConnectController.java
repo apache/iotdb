@@ -111,6 +111,9 @@ public class DatabaseConnectController {
           continue;
         }
         String target = object.get(targetStr).getAsString();
+        if (target.contains(";")) {
+          throw new Exception("Only one SQL statement is supported");
+        }
         JsonObject obj = new JsonObject();
         obj.addProperty("target", target);
         String type = getJsonType(object);
@@ -124,7 +127,7 @@ public class DatabaseConnectController {
       logger.info("query finished");
       return result.toString();
     } catch (Exception e) {
-      logger.error("/query failed, request body is {}", json, e);
+      logger.error("/query failed, request body is {}", json.replaceAll("[\n\r\t]", "_"), e);
     }
     return null;
   }

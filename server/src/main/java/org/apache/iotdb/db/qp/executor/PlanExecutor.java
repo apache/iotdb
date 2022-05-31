@@ -19,16 +19,25 @@
 package org.apache.iotdb.db.qp.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
@@ -46,10 +55,7 @@ import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -60,9 +66,7 @@ import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -122,7 +126,6 @@ import org.apache.iotdb.db.qp.physical.sys.SettlePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowNodesInTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPathsSetTemplatePlan;
@@ -150,16 +153,16 @@ import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
+import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
+import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
-import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -197,6 +200,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -227,8 +231,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIB
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ERRORS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_MSG;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_PERF_INFO;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_REMOTE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_ROLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
@@ -740,7 +746,7 @@ public class PlanExecutor implements IPlanExecutor {
       case QUERY_PROCESSLIST:
         return processShowQueryProcesslist();
       case FUNCTIONS:
-        return processShowFunctions((ShowFunctionsPlan) showPlan);
+        return processShowFunctions();
       case TRIGGERS:
         return processShowTriggers();
       case CONTINUOUS_QUERY:
@@ -1068,8 +1074,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan)
-      throws QueryProcessException {
+  private QueryDataSet processShowFunctions() throws QueryProcessException {
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(
@@ -1078,8 +1083,8 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_FUNCTION_CLASS, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
-    appendUDFs(listDataSet, showPlan);
-    appendNativeFunctions(listDataSet, showPlan);
+    appendUDFs(listDataSet);
+    appendNativeFunctions(listDataSet);
 
     listDataSet.sort(
         (r1, r2) ->
@@ -1088,9 +1093,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  @SuppressWarnings("squid:S3776")
-  private void appendUDFs(ListDataSet listDataSet, ShowFunctionsPlan showPlan)
-      throws QueryProcessException {
+  private void appendUDFs(ListDataSet listDataSet) throws QueryProcessException {
     for (UDFRegistrationInformation info :
         UDFRegistrationService.getInstance().getRegistrationInformation()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
@@ -1240,10 +1243,10 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
+  private void appendNativeFunctions(ListDataSet listDataSet) {
     final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
     final Binary className = Binary.valueOf("");
-    for (String functionName : SQLConstant.getNativeFunctionNames()) {
+    for (String functionName : BuiltinAggregationFunction.getNativeFunctionNames()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(functionName.toUpperCase()), TSDataType.TEXT);
       rowRecord.addField(functionType, TSDataType.TEXT);
@@ -1277,14 +1280,15 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPESINK_ATTRIBUTES, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeSinkName());
-    for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink())
-      if (showAll || plan.getPipeSinkName().equals(pipeSink.getName())) {
+    for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink()) {
+      if (showAll || plan.getPipeSinkName().equals(pipeSink.getPipeSinkName())) {
         RowRecord record = new RowRecord(0);
-        record.addField(Binary.valueOf(pipeSink.getName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipeSink.getPipeSinkName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipeSink.getType().name()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipeSink.showAllAttributes()), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
+    }
     return listDataSet;
   }
 
@@ -1293,9 +1297,9 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(new PartialPath(COLUMN_PIPESINK_TYPE, false)),
             Arrays.asList(TSDataType.TEXT));
-    for (PipeSink.Type type : PipeSink.Type.values()) {
+    for (PipeSink.PipeSinkType pipeSinkType : PipeSink.PipeSinkType.values()) {
       RowRecord record = new RowRecord(0);
-      record.addField(Binary.valueOf(type.name()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(pipeSinkType.name()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
     return listDataSet;
@@ -1310,8 +1314,12 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPE_ROLE, false),
                 new PartialPath(COLUMN_PIPE_REMOTE, false),
                 new PartialPath(COLUMN_PIPE_STATUS, false),
-                new PartialPath(COLUMN_PIPE_MSG, false)),
+                new PartialPath(COLUMN_PIPE_MSG, false),
+                new PartialPath(COLUMN_PIPE_ERRORS, false),
+                new PartialPath(COLUMN_PIPE_PERF_INFO, false)),
             Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
@@ -1319,20 +1327,52 @@ public class PlanExecutor implements IPlanExecutor {
                 TSDataType.TEXT,
                 TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeName());
-    for (Pipe pipe : SenderService.getInstance().getAllPipes())
+    for (Pipe pipe : SenderService.getInstance().getAllPipes()) {
       if (showAll || plan.getPipeName().equals(pipe.getName())) {
         RowRecord record = new RowRecord(0);
         record.addField(
             Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getPipeSink().getPipeSinkName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
         record.addField(
             Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
+
+        boolean needSetFields = true;
+        if (pipe.getPipeSink().getType()
+            == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
+          ExtPipePluginManager extPipePluginManager =
+              SenderService.getInstance().getExternalPipeManager();
+
+          if (extPipePluginManager != null) {
+            String extPipeType = ((ExternalPipeSink) pipe.getPipeSink()).getExtPipeSinkTypeName();
+            ExternalPipeStatus externalPipeStatus =
+                extPipePluginManager.getExternalPipeStatus(extPipeType);
+
+            if (externalPipeStatus != null) {
+              record.addField(
+                  Binary.valueOf(externalPipeStatus.getWriterInvocationFailures().toString()),
+                  TSDataType.TEXT);
+              record.addField(
+                  Binary.valueOf(externalPipeStatus.getWriterStatuses().toString()),
+                  TSDataType.TEXT);
+              needSetFields = false;
+            }
+          }
+        }
+
+        if (needSetFields) {
+          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+        }
+
         listDataSet.putRecord(record);
       }
+    }
     ReceiverService.getInstance().showPipe(plan, listDataSet);
+    // sort by create time
+    listDataSet.sort(Comparator.comparing(o -> o.getFields().get(0).getStringValue()));
     return listDataSet;
   }
 
@@ -1476,7 +1516,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void loadNewTsFileVerifyMetadata(TsFileSequenceReader tsFileSequenceReader)
       throws MetadataException, QueryProcessException, IOException {
     Map<String, List<TimeseriesMetadata>> metadataSet =
-        tsFileSequenceReader.getAllTimeseriesMetadata();
+        tsFileSequenceReader.getAllTimeseriesMetadata(false);
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
       String deviceId = entry.getKey();
       PartialPath devicePath = new PartialPath(deviceId);
@@ -1514,7 +1554,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  // Suppress high Cognitive Complexity warning
   private void createSchemaAutomatically(
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, IMeasurementSchema> knownSchemas,
@@ -2006,7 +2046,7 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
+  // high Cognitive Complexity
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan)
       throws BatchProcessException {
     int dataTypeIdx = 0;
@@ -2326,7 +2366,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     int index = 0;
-    if (IoTDBDescriptor.getInstance().getConfig().getAdminName().equals(userName)) {
+    if (CommonDescriptor.getInstance().getConfig().getAdminName().equals(userName)) {
       headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
@@ -2379,7 +2419,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  @SuppressWarnings("unused") // for the distributed version
+  // for the distributed version
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     IoTDBDescriptor.getInstance().loadHotModifiedProps();
   }

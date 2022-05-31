@@ -102,4 +102,13 @@ public interface Column {
    * also be released. If the region column is released, this block may also be released.
    */
   Column getRegion(int positionOffset, int length);
+
+  /**
+   * This method will create a temporary view of origin column, which will reuse the array of column
+   * but with different array offset.
+   */
+  Column subColumn(int fromIndex);
+
+  /** reverse the column */
+  void reverse();
 }

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
@@ -77,7 +78,12 @@ public class WALBuffer extends AbstractWALBuffer {
   private final ExecutorService syncBufferThread;
 
   public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
-    super(identifier, logDirectory);
+    this(identifier, logDirectory, 0);
+  }
+
+  public WALBuffer(String identifier, String logDirectory, int startFileVersion)
+      throws FileNotFoundException {
+    super(identifier, logDirectory, startFileVersion);
     allocateBuffers();
     serializeThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -172,7 +178,7 @@ public class WALBuffer extends AbstractWALBuffer {
 
       // call fsync at last and set fsyncListeners
       if (batchSize > 0) {
-        fsyncWorkingBuffer(fsyncListeners, rollWALFileWriterListener);
+        fsyncWorkingBuffer(currentSearchIndex, fsyncListeners, rollWALFileWriterListener);
       }
     }
 
@@ -203,6 +209,14 @@ public class WALBuffer extends AbstractWALBuffer {
         walEntry.getWalFlushListener().fail(e);
         return false;
       }
+      // update search index
+      if (walEntry.getType() == WALEntryType.INSERT_TABLET_NODE
+          || walEntry.getType() == WALEntryType.INSERT_ROW_NODE) {
+        InsertNode insertNode = (InsertNode) walEntry.getValue();
+        if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
+          currentSearchIndex = insertNode.getSearchIndex();
+        }
+      }
       return true;
     }
 
@@ -214,12 +228,12 @@ public class WALBuffer extends AbstractWALBuffer {
       switch (signalWALEntry.getSignalType()) {
         case ROLL_WAL_LOG_WRITER_SIGNAL:
           rollWALFileWriterListener = signalWALEntry.getWalFlushListener();
-          fsyncWorkingBuffer(fsyncListeners, rollWALFileWriterListener);
+          fsyncWorkingBuffer(currentSearchIndex, fsyncListeners, rollWALFileWriterListener);
           return true;
         case CLOSE_SIGNAL:
           boolean dataExists = batchSize > 0;
           if (dataExists) {
-            fsyncWorkingBuffer(fsyncListeners, rollWALFileWriterListener);
+            fsyncWorkingBuffer(currentSearchIndex, fsyncListeners, rollWALFileWriterListener);
           }
           return dataExists;
         default:
@@ -240,7 +254,7 @@ public class WALBuffer extends AbstractWALBuffer {
     }
 
     private void rollBuffer() {
-      syncWorkingBuffer();
+      syncWorkingBuffer(currentSearchIndex);
     }
 
     @Override
@@ -304,16 +318,19 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   /** Notice: this method only called when buffer is exhausted by SerializeTask. */
-  private void syncWorkingBuffer() {
+  private void syncWorkingBuffer(long searchIndex) {
     switchWorkingBufferToFlushing();
-    syncBufferThread.submit(new SyncBufferTask(false));
+    syncBufferThread.submit(new SyncBufferTask(searchIndex, false));
   }
 
   /** Notice: this method only called at the last of SerializeTask. */
   private void fsyncWorkingBuffer(
-      List<WALFlushListener> fsyncListeners, WALFlushListener rollWALFileWriterListener) {
+      long searchIndex,
+      List<WALFlushListener> fsyncListeners,
+      WALFlushListener rollWALFileWriterListener) {
     switchWorkingBufferToFlushing();
-    syncBufferThread.submit(new SyncBufferTask(true, fsyncListeners, rollWALFileWriterListener));
+    syncBufferThread.submit(
+        new SyncBufferTask(searchIndex, true, fsyncListeners, rollWALFileWriterListener));
   }
 
   // only called by serializeThread
@@ -341,18 +358,21 @@ public class WALBuffer extends AbstractWALBuffer {
    * This task syncs syncingBuffer to disk. The precondition is that syncingBuffer cannot be null.
    */
   private class SyncBufferTask implements Runnable {
+    private final long searchIndex;
     private final boolean forceFlag;
     private final List<WALFlushListener> fsyncListeners;
     private final WALFlushListener rollWALFileWriterListener;
 
-    public SyncBufferTask(boolean forceFlag) {
-      this(forceFlag, null, null);
+    public SyncBufferTask(long searchIndex, boolean forceFlag) {
+      this(searchIndex, forceFlag, null, null);
     }
 
     public SyncBufferTask(
+        long searchIndex,
         boolean forceFlag,
         List<WALFlushListener> fsyncListeners,
         WALFlushListener rollWALFileWriterListener) {
+      this.searchIndex = searchIndex;
       this.forceFlag = forceFlag;
       this.fsyncListeners = fsyncListeners == null ? Collections.emptyList() : fsyncListeners;
       this.rollWALFileWriterListener = rollWALFileWriterListener;
@@ -396,7 +416,7 @@ public class WALBuffer extends AbstractWALBuffer {
         if (rollWALFileWriterListener != null
             || (forceFlag
                 && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
-          rollLogWriter();
+          rollLogWriter(searchIndex);
           if (rollWALFileWriterListener != null) {
             rollWALFileWriterListener.succeed();
           }
@@ -422,7 +442,27 @@ public class WALBuffer extends AbstractWALBuffer {
       // and there is only one buffer can be null between syncingBuffer and idleBuffer
       idleBuffer = syncingBuffer;
       syncingBuffer = null;
-      idleBufferReadyCondition.signal();
+      idleBufferReadyCondition.signalAll();
+    } finally {
+      buffersLock.unlock();
+    }
+  }
+
+  @Override
+  public void waitForFlush() throws InterruptedException {
+    buffersLock.lock();
+    try {
+      idleBufferReadyCondition.await();
+    } finally {
+      buffersLock.unlock();
+    }
+  }
+
+  @Override
+  public boolean waitForFlush(long time, TimeUnit unit) throws InterruptedException {
+    buffersLock.lock();
+    try {
+      return idleBufferReadyCondition.await(time, unit);
     } finally {
       buffersLock.unlock();
     }

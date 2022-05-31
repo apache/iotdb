@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree.node;
 
-import org.apache.iotdb.db.metadata.tree.ITreeNode;
+import org.apache.iotdb.commons.schema.tree.ITreeNode;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -47,6 +47,8 @@ public abstract class SchemaNode implements ITreeNode {
   }
 
   public void addChild(String name, SchemaNode child) {}
+
+  public void removeChild(String name) {}
 
   public abstract void replaceChild(String name, SchemaNode newChild);
 

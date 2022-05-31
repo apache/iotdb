@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +32,12 @@ import java.util.Optional;
 public class ConsensusFactory {
   public static final String CONSTRUCT_FAILED_MSG =
       "Construct consensusImpl failed, Please check your consensus className %s";
+
+  public static final String StandAloneConsensus =
+      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  public static final String RatisConsensus = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  public static final String MultiLeaderConsensus =
+      "org.apache.iotdb.consensus.multileader.MultiLeaderConsensus";
 
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 

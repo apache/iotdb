@@ -25,8 +25,11 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -39,13 +42,10 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.mpp.buffer.DataBlockService;
-import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
-import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -59,6 +59,7 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
@@ -66,6 +67,7 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final RegisterManager registerManager = new RegisterManager();
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
@@ -78,7 +80,7 @@ public class IoTDB implements IoTDBMBean {
 
   public static void main(String[] args) {
     try {
-      IoTDBConfigCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
@@ -114,6 +116,13 @@ public class IoTDB implements IoTDBMBean {
           "{}: failed to start because some checks failed. ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
+
+    // set recover config, avoid creating deleted time series when recovering wal
+    boolean prevIsAutoCreateSchemaEnabled = config.isAutoCreateSchemaEnabled();
+    config.setAutoCreateSchemaEnabled(false);
+    boolean prevIsEnablePartialInsert = config.isEnablePartialInsert();
+    config.setEnablePartialInsert(true);
+
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
@@ -122,6 +131,11 @@ public class IoTDB implements IoTDBMBean {
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
+
+    // reset config
+    config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
+    config.setEnablePartialInsert(prevIsEnablePartialInsert);
+
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
@@ -131,6 +145,10 @@ public class IoTDB implements IoTDBMBean {
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
     initServiceProvider();
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
@@ -147,7 +165,7 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(StorageEngineV2.getInstance());
       registerManager.register(DataBlockService.getInstance());
       registerManager.register(InternalService.getInstance());
-      registerManager.register(FragmentInstanceScheduler.getInstance());
+      registerManager.register(DriverScheduler.getInstance());
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
@@ -156,15 +174,17 @@ public class IoTDB implements IoTDBMBean {
     }
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
-    registerManager.register(UDFClassLoaderManager.getInstance());
-    registerManager.register(UDFRegistrationService.getInstance());
+    registerManager.register(
+        UDFClassLoaderManager.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getUdfDir()));
+    registerManager.register(
+        UDFRegistrationService.setupAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                + File.separator
+                + "udf"
+                + File.separator));
     registerManager.register(ReceiverService.getInstance());
     registerManager.register(MetricsService.getInstance());
-
-    // in cluster mode, RPC service is not enabled.
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
-    }
 
     initProtocols();
     // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to

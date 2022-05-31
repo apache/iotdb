@@ -20,20 +20,10 @@
 
 
 PIDS=$(ps ax | grep -i 'DataNode' | grep java | grep -v grep | awk '{print $1}')
-sig=0
-for every_pid in ${PIDS}
-do
-  cwd_path=$(ls -l /proc/$every_pid | grep "cwd ->" | grep -v grep | awk '{print $NF}')
-  pwd_path=$(/bin/pwd)
-  if [[ $pwd_path =~ $cwd_path ]]; then
-    kill -s TERM $every_pid
-    echo "close IoTDB"
-    sig=1
-  fi
-done
-
-if [ $sig -eq 0 ]; then
-  echo "No IoTDB server to stop"
-  exit 1
+if [ ! $PIDS ];then
+  echo "No DataNode to stop"
+else
+  echo "Stop DataNode"
+  jps | grep -w DataNode | grep -v grep | awk '{print $1}'  | xargs kill -9
 fi
 

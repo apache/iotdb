@@ -19,27 +19,42 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.DataNodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
@@ -49,9 +64,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,8 +72,10 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.ratis.util.FileUtils;
 import org.apache.thrift.TException;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -75,32 +89,50 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeRPCServiceProcessorTest {
 
   ConfigNodeRPCServiceProcessor processor;
 
+  @BeforeClass
+  public static void beforeClass() throws StartupException, ConfigurationException, IOException {
+    final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+    UDFExecutableManager.setupAndGetInstance(
+        configNodeConf.getTemporaryLibDir(), configNodeConf.getUdfLibDir());
+    UDFClassLoaderManager.setupAndGetInstance(configNodeConf.getUdfLibDir());
+    UDFRegistrationService.setupAndGetInstance(configNodeConf.getSystemUdfDir());
+    ConfigNodeStartupCheck.getInstance().startUpCheck();
+  }
+
   @Before
-  public void before() throws IOException, InterruptedException {
+  public void before() throws IOException {
     processor = new ConfigNodeRPCServiceProcessor(new ConfigManager());
-    // Sleep 1s to make sure the Consensus group has done leader election
-    TimeUnit.SECONDS.sleep(1);
+    processor.getConsensusManager().singleCopyMayWaitUntilLeaderReady();
   }
 
   @After
   public void after() throws IOException {
-    DataNodeInfo.getInstance().clear();
-    ClusterSchemaInfo.getInstance().clear();
-    PartitionInfo.getInstance().clear();
     processor.close();
     FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
+    FileUtils.deleteFully(
+        new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder()));
+  }
+
+  @AfterClass
+  public static void afterClass() throws IOException {
+    UDFExecutableManager.getInstance().stop();
+    UDFClassLoaderManager.getInstance().stop();
+    UDFRegistrationService.getInstance().stop();
+    FileUtils.deleteFully(new File(ConfigNodeConstant.DATA_DIR));
   }
 
   private void checkGlobalConfig(TGlobalConfig globalConfig) {
     Assert.assertEquals(
-        ConfigNodeDescriptor.getInstance().getConf().getDataNodeConsensusProtocolClass(),
-        globalConfig.getDataNodeConsensusProtocolClass());
+        ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass(),
+        globalConfig.getDataRegionConsensusProtocolClass());
+    Assert.assertEquals(
+        ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionConsensusProtocolClass(),
+        globalConfig.getSchemaRegionConsensusProtocolClass());
     Assert.assertEquals(
         ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum(),
         globalConfig.getSeriesPartitionSlotNum());
@@ -115,9 +147,15 @@ public class ConfigNodeRPCServiceProcessorTest {
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
       dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
-      dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
 
-      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+      TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+      dataNodeInfo.setLocation(dataNodeLocation);
+      dataNodeInfo.setCpuCoreNum(8);
+      dataNodeInfo.setMaxMemory(1024 * 1024);
+
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeInfo);
       TDataNodeRegisterResp resp = processor.registerDataNode(req);
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -127,7 +165,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void registerAndQueryDataNodeTest() throws TException {
+  public void testRegisterAndQueryDataNode() throws TException {
     registerDataNodes();
 
     // test success re-register
@@ -135,9 +173,15 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6668));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
 
-    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+    dataNodeInfo.setLocation(dataNodeLocation);
+    dataNodeInfo.setCpuCoreNum(8);
+    dataNodeInfo.setMaxMemory(1024 * 1024);
+
+    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeInfo);
     TDataNodeRegisterResp resp = processor.registerDataNode(req);
     Assert.assertEquals(
         TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(), resp.getStatus().getCode());
@@ -145,53 +189,49 @@ public class ConfigNodeRPCServiceProcessorTest {
     checkGlobalConfig(resp.getGlobalConfig());
 
     // test query DataNodeInfo
-    TDataNodeLocationResp locationResp = processor.getDataNodeLocations(-1);
+    TDataNodeInfoResp infoResp = processor.getDataNodeInfo(-1);
     Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), locationResp.getStatus().getCode());
-    Map<Integer, TDataNodeLocation> locationMap = locationResp.getDataNodeLocationMap();
-    Assert.assertEquals(3, locationMap.size());
-    List<Map.Entry<Integer, TDataNodeLocation>> locationList =
-        new ArrayList<>(locationMap.entrySet());
-    locationList.sort(Comparator.comparingInt(Map.Entry::getKey));
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), infoResp.getStatus().getCode());
+    Map<Integer, TDataNodeInfo> infoMap = infoResp.getDataNodeInfoMap();
+    Assert.assertEquals(3, infoMap.size());
+    List<Map.Entry<Integer, TDataNodeInfo>> infoList = new ArrayList<>(infoMap.entrySet());
+    infoList.sort(Comparator.comparingInt(Map.Entry::getKey));
     for (int i = 0; i < 3; i++) {
       dataNodeLocation.setDataNodeId(i);
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
       dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
-      dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
-      Assert.assertEquals(dataNodeLocation, locationList.get(i).getValue());
+      dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
+      Assert.assertEquals(dataNodeLocation, infoList.get(i).getValue().getLocation());
     }
 
-    locationResp = processor.getDataNodeLocations(1);
+    infoResp = processor.getDataNodeInfo(1);
     Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), locationResp.getStatus().getCode());
-    locationMap = locationResp.getDataNodeLocationMap();
-    Assert.assertEquals(1, locationMap.size());
-    Assert.assertNotNull(locationMap.get(1));
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), infoResp.getStatus().getCode());
+    infoMap = infoResp.getDataNodeInfoMap();
+    Assert.assertEquals(1, infoMap.size());
+    Assert.assertNotNull(infoMap.get(1));
     dataNodeLocation.setDataNodeId(1);
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6668));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
-    Assert.assertEquals(dataNodeLocation, locationMap.get(1));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
+    Assert.assertEquals(dataNodeLocation, infoMap.get(1).getLocation());
   }
 
   @Test
-  public void setAndQueryStorageGroupTest() throws TException {
+  public void testSetAndQueryStorageGroup() throws TException {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
-
-    // failed because there are not enough DataNodes
-    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
-    status = processor.setStorageGroup(setReq0);
-    Assert.assertEquals(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), status.getCode());
-    Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
 
     // register DataNodes
     registerDataNodes();
 
     // set StorageGroup0 by default values
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
     status = processor.setStorageGroup(setReq0);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -284,7 +324,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void getAndCreateSchemaPartitionTest()
+  public void testGetAndCreateSchemaPartition()
       throws TException, IOException, IllegalPathException {
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
@@ -306,14 +346,23 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
 
-    // register DataNodes
-    registerDataNodes();
-
     // Set StorageGroups
     status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // Test getOrCreateSchemaPartition, the result should be NOT_ENOUGH_DATANODE
+    buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
+    schemaPartitionReq = new TSchemaPartitionReq(buffer);
+    schemaPartitionResp = processor.getOrCreateSchemaPartition(schemaPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(),
+        schemaPartitionResp.getStatus().getCode());
+    Assert.assertNull(schemaPartitionResp.getSchemaRegionMap());
+
+    // register DataNodes
+    registerDataNodes();
 
     // Test getSchemaPartition, the result should be empty
     buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
@@ -480,7 +529,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void getAndCreateDataPartitionTest() throws TException {
+  public void testGetAndCreateDataPartition() throws TException {
     final String sg = "root.sg";
     final int storageGroupNum = 2;
     final int seriesPartitionSlotNum = 4;
@@ -489,9 +538,6 @@ public class ConfigNodeRPCServiceProcessorTest {
     TSStatus status;
     TDataPartitionReq dataPartitionReq;
     TDataPartitionResp dataPartitionResp;
-
-    // register DataNodes
-    registerDataNodes();
 
     // Prepare partitionSlotsMap
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap0 =
@@ -506,6 +552,16 @@ public class ConfigNodeRPCServiceProcessorTest {
       status = processor.setStorageGroup(setReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
+
+    // Test getOrCreateDataPartition, the result should be NOT_ENOUGH_DATANODE
+    dataPartitionReq = new TDataPartitionReq(partitionSlotsMap0);
+    dataPartitionResp = processor.getOrCreateDataPartition(dataPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), dataPartitionResp.getStatus().getCode());
+    Assert.assertNull(dataPartitionResp.getDataPartitionMap());
+
+    // register DataNodes
+    registerDataNodes();
 
     // Test getDataPartition, the result should be empty
     dataPartitionReq = new TDataPartitionReq(partitionSlotsMap0);
@@ -540,27 +596,36 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void permissionTest() throws TException {
+  public void testPermission() throws TException {
     TSStatus status;
 
     List<String> userList = new ArrayList<>();
     userList.add("root");
     userList.add("tempuser0");
     userList.add("tempuser1");
+
     List<String> roleList = new ArrayList<>();
     roleList.add("temprole0");
     roleList.add("temprole1");
+
     TAuthorizerReq authorizerReq;
     TAuthorizerResp authorizerResp;
+    TCheckUserPrivilegesReq checkUserPrivilegesReq;
+
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.DELETE_USER.ordinal());
     privilegeList.add(PrivilegeType.CREATE_USER.ordinal());
+
     Set<Integer> revokePrivilege = new HashSet<>();
     revokePrivilege.add(PrivilegeType.DELETE_USER.ordinal());
+
     Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
-    privilege.add("root : CREATE_USER");
-    privilege.add("root : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
+
+    List<String> paths = new ArrayList<>();
+    paths.add("root.ln.**");
 
     cleanUserAndRole();
 
@@ -579,6 +644,12 @@ public class ConfigNodeRPCServiceProcessorTest {
     authorizerReq.setUserName("tempuser1");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // check user privileges
+    checkUserPrivilegesReq =
+        new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status = processor.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
+    Assert.assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
 
     // drop user
     authorizerReq =
@@ -666,8 +737,14 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // check user privileges
+    checkUserPrivilegesReq =
+        new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status = processor.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
@@ -679,7 +756,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -705,7 +782,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -718,7 +795,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -731,7 +808,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln");
+            "root.ln.**");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -763,7 +840,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln");
+            "root.ln.**");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -855,6 +932,60 @@ public class ConfigNodeRPCServiceProcessorTest {
     }
   }
 
+  @Test
+  public void testDeleteStorageGroup() throws TException {
+    TSStatus status;
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
+    // register DataNodes
+    registerDataNodes();
+    ConfigNodeProcedureEnv.setSkipForTest(true);
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
+    // set StorageGroup0 by default values
+    status = processor.setStorageGroup(setReq0);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    // set StorageGroup1 by specific values
+    TSetStorageGroupReq setReq1 = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
+    status = processor.setStorageGroup(setReq1);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
+    List<String> sgs = Arrays.asList(sg0, sg1);
+    deleteStorageGroupsReq.setPrefixPathList(sgs);
+    TSStatus deleteSgStatus = processor.deleteStorageGroups(deleteStorageGroupsReq);
+    TStorageGroupSchemaResp root =
+        processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
+    Assert.assertTrue(root.getStorageGroupSchemaMap().isEmpty());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
+  }
+
+  @Test
+  public void testDeleteStorageGroupInvalidateCacheFailed() throws TException {
+    TSStatus status;
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
+    // register DataNodes
+    registerDataNodes();
+    ConfigNodeProcedureEnv.setSkipForTest(true);
+    ConfigNodeProcedureEnv.setInvalidCacheResult(false);
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
+    // set StorageGroup0 by default values
+    status = processor.setStorageGroup(setReq0);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    // set StorageGroup1 by specific values
+    TSetStorageGroupReq setReq1 = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
+    status = processor.setStorageGroup(setReq1);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
+    List<String> sgs = Arrays.asList(sg0, sg1);
+    deleteStorageGroupsReq.setPrefixPathList(sgs);
+    TSStatus deleteSgStatus = processor.deleteStorageGroups(deleteStorageGroupsReq);
+    TStorageGroupSchemaResp root =
+        processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
+    // rollback success
+    Assert.assertEquals(root.getStorageGroupSchemaMap().size(), 2);
+    Assert.assertEquals(TSStatusCode.MULTIPLE_ERROR.getStatusCode(), deleteSgStatus.getCode());
+  }
+
   private void cleanUserAndRole() throws TException {
     TSStatus status;
 
@@ -905,5 +1036,36 @@ public class ConfigNodeRPCServiceProcessorTest {
       status = processor.operatePermission(authorizerReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
+  }
+
+  @Test
+  public void testGetSchemaNodeManagementPartition()
+      throws TException, IllegalPathException, IOException {
+    final String sg = "root.sg";
+    final int storageGroupNum = 2;
+
+    TSStatus status;
+    TSchemaNodeManagementReq nodeManagementReq;
+    TSchemaNodeManagementResp nodeManagementResp;
+
+    // register DataNodes
+    registerDataNodes();
+
+    // set StorageGroups
+    for (int i = 0; i < storageGroupNum; i++) {
+      TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
+      status = processor.setStorageGroup(setReq);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
+
+    ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
+    nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer);
+    nodeManagementReq.setLevel(-1);
+    nodeManagementResp = processor.getSchemaNodeManagementPartition(nodeManagementReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
+    Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
+    Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
+    Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
   }
 }

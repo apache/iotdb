@@ -19,18 +19,19 @@
 package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -43,10 +44,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -104,7 +104,7 @@ public class StorageEngineV2 implements IService {
       FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
   /** DataRegionId -> DataRegion */
-  private final ConcurrentHashMap<ConsensusGroupId, DataRegion> dataRegionMap =
+  private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
       new ConcurrentHashMap<>();
 
   /** number of ready data region */
@@ -194,6 +194,16 @@ public class StorageEngineV2 implements IService {
         Thread.currentThread().interrupt();
       }
     }
+  }
+
+  public static TTimePartitionSlot getTimePartitionSlot(long time) {
+    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
+    if (enablePartition) {
+      timePartitionSlot.setStartTime(time - time % timePartitionInterval);
+    } else {
+      timePartitionSlot.setStartTime(0);
+    }
+    return timePartitionSlot;
   }
 
   public boolean isAllSgReady() {
@@ -489,7 +499,7 @@ public class StorageEngineV2 implements IService {
    * @param insertRowNode
    */
   // TODO:(New insert)
-  public void insert(ConsensusGroupId dataRegionId, InsertRowNode insertRowNode)
+  public void insert(DataRegionId dataRegionId, InsertRowNode insertRowNode)
       throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
@@ -510,7 +520,7 @@ public class StorageEngineV2 implements IService {
 
   /** insert an InsertTabletNode to a storage group */
   // TODO:(New insert)
-  public void insertTablet(ConsensusGroupId dataRegionId, InsertTabletNode insertTabletNode)
+  public void insertTablet(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
       throws StorageEngineException, BatchProcessException {
     if (enableMemControl) {
       try {
@@ -582,8 +592,29 @@ public class StorageEngineV2 implements IService {
     return dataRegion;
   }
 
+  public void deleteDataRegion(DataRegionId regionId) {
+    dataRegionMap.remove(regionId);
+  }
+
   public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
+  }
+
+  public List<DataRegionId> getAllDataRegionIds() {
+    return new ArrayList<>(dataRegionMap.keySet());
+  }
+
+  public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
+    if (dataRegionMap.containsKey(regionId)) {
+      DataRegion oldRegion = dataRegionMap.get(regionId);
+      oldRegion.syncCloseAllWorkingTsFileProcessors();
+      oldRegion.abortCompaction();
+    }
+    dataRegionMap.put(regionId, newRegion);
+  }
+
+  public TsFileFlushPolicy getFileFlushPolicy() {
+    return fileFlushPolicy;
   }
 
   static class InstanceHolder {

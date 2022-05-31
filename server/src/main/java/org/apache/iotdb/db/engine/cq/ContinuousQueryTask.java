@@ -20,13 +20,13 @@ package org.apache.iotdb.db.engine.cq;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
@@ -168,16 +168,17 @@ public class ContinuousQueryTask extends WrappedRunnable {
     return targetPaths;
   }
 
-  protected String fillTargetPathTemplate(PartialPath rawPath) {
-    String[] nodes = rawPath.getNodes();
-    int indexOfLeftBracket = nodes[0].indexOf("(");
+  protected String fillTargetPathTemplate(PartialPath rawPath) throws IllegalPathException {
+    String fullPath = rawPath.getFullPath();
+    int indexOfLeftBracket = fullPath.indexOf("(");
     if (indexOfLeftBracket != -1) {
-      nodes[0] = nodes[0].substring(indexOfLeftBracket + 1);
+      fullPath = fullPath.substring(indexOfLeftBracket + 1);
     }
-    int indexOfRightBracket = nodes[nodes.length - 1].indexOf(")");
+    int indexOfRightBracket = fullPath.lastIndexOf(")");
     if (indexOfRightBracket != -1) {
-      nodes[nodes.length - 1] = nodes[nodes.length - 1].substring(0, indexOfRightBracket);
+      fullPath = fullPath.substring(0, indexOfRightBracket);
     }
+    String[] nodes = new PartialPath(fullPath).getNodes();
     StringBuffer sb = new StringBuffer();
     Matcher m =
         PATH_NODE_NAME_PATTERN.matcher(this.continuousQueryPlan.getTargetPath().getFullPath());

@@ -28,55 +28,58 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
-/** Create regions for specific StorageGroup */
+/** Create regions for specific StorageGroups */
 public class CreateRegionsReq extends ConfigRequest {
 
-  private String storageGroup;
-
-  private final List<TRegionReplicaSet> regionReplicaSets;
+  private final Map<String, List<TRegionReplicaSet>> regionMap;
 
   public CreateRegionsReq() {
     super(ConfigRequestType.CreateRegions);
-    this.regionReplicaSets = new ArrayList<>();
+    this.regionMap = new TreeMap<>();
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public Map<String, List<TRegionReplicaSet>> getRegionMap() {
+    return regionMap;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public void addRegion(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSets.add(regionReplicaSet);
-  }
-
-  public List<TRegionReplicaSet> getRegionReplicaSets() {
-    return regionReplicaSets;
+  public void addRegion(String storageGroup, TRegionReplicaSet regionReplicaSet) {
+    regionMap
+        .computeIfAbsent(storageGroup, regionReplicaSets -> new ArrayList<>())
+        .add(regionReplicaSet);
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(ConfigRequestType.CreateRegions.ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
-
-    buffer.putInt(regionReplicaSets.size());
-    for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-      ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
-    }
+    buffer.putInt(regionMap.size());
+    regionMap.forEach(
+        (storageGroup, regionReplicaSets) -> {
+          BasicStructureSerDeUtil.write(storageGroup, buffer);
+          buffer.putInt(regionReplicaSets.size());
+          regionReplicaSets.forEach(
+              regionReplicaSet ->
+                  ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer));
+        });
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    int storageGroupNum = buffer.getInt();
+    for (int i = 0; i < storageGroupNum; i++) {
+      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
+      regionMap.put(storageGroup, new ArrayList<>());
 
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
-      regionReplicaSets.add(ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer));
+      int regionReplicaSetNum = buffer.getInt();
+      for (int j = 0; j < regionReplicaSetNum; j++) {
+        TRegionReplicaSet regionReplicaSet =
+            ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
+        regionMap.get(storageGroup).add(regionReplicaSet);
+      }
     }
   }
 
@@ -85,12 +88,11 @@ public class CreateRegionsReq extends ConfigRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CreateRegionsReq that = (CreateRegionsReq) o;
-    return storageGroup.equals(that.storageGroup)
-        && regionReplicaSets.equals(that.regionReplicaSets);
+    return regionMap.equals(that.regionMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, regionReplicaSets);
+    return Objects.hash(regionMap);
   }
 }

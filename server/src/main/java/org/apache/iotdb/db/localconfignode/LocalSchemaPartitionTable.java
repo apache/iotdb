@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.ArrayList;
 import java.util.List;
