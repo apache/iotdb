@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -38,9 +40,6 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
@@ -168,7 +167,7 @@ public class TsFileManager {
     }
   }
 
-  public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) throws IOException {
+  public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) {
     writeLock("keepOrderInsert");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
@@ -199,6 +198,141 @@ public class TsFileManager {
     }
   }
 
+  /**
+   * Add files with same timestamp after target file in order, some files' version field will be
+   * renamed when name conflicting occurs.
+   *
+   * @param addAfterThisFile files will be added after this file, null means add to the beginning of
+   *     corresponding TsFileResourceList
+   * @param filesToAdd files to add, add order will follow files order in the list. File name format
+   *     should like {@link TsFileName#TS_FILE_NAME_PATTERN } and their time fields should be same.
+   * @param sequence files in filesToAdd are sequence or not
+   * @param timePartition the time partition of files in filesToAdd
+   * @return false if target file doesn't exist in the TsFileManger or files to add don't share same
+   *     timestamp
+   */
+  public boolean keepOrderAddAllAndRenameAfter(
+      TsFileResource addAfterThisFile,
+      List<TsFileResource> filesToAdd,
+      boolean sequence,
+      long timePartition) {
+    if (filesToAdd.isEmpty()) {
+      return true;
+    }
+    // all files to add should share the same timestamp
+    long targetTime = filesToAdd.get(0).getCreatedTime();
+    for (TsFileResource resource : filesToAdd) {
+      if (resource.getCreatedTime() != targetTime) {
+        LOGGER.warn(
+            "File {} and file {} don't share the same timestamp, please check it.",
+            filesToAdd.get(0).getTsFile(),
+            resource.getTsFile());
+        return false;
+      }
+    }
+
+    writeLock("keepOrderAddAllAndRenameAfter");
+    try {
+      Map<Long, TsFileResourceList> targetMap = sequence ? sequenceFiles : unsequenceFiles;
+      TsFileResourceList targetList =
+          targetMap.computeIfAbsent(timePartition, o -> new TsFileResourceList());
+      Map<Long, TsFileResourceList> leftMap = sequence ? unsequenceFiles : sequenceFiles;
+      TsFileResourceList leftList =
+          leftMap.computeIfAbsent(timePartition, o -> new TsFileResourceList());
+
+      // check target file position
+      if (addAfterThisFile == null) {
+        // check time, make sure target time <= header.time
+        if (!targetList.isEmpty() && targetList.get(0).getCreatedTime() < targetTime) {
+          LOGGER.warn(
+              "Files to add will destroy the order of TsFileResourceList, please check the add position of file {}",
+              filesToAdd.get(0).getTsFile());
+          return false;
+        }
+      } else {
+        // target file doesn't exist
+        if (!targetList.contains(addAfterThisFile)) {
+          LOGGER.warn(
+              "TsFileManager doesn't contain file {}, cannot add files after it.",
+              addAfterThisFile.getTsFile());
+          return false;
+        }
+        // check time, make sure prev.time <= target time <= next.time
+        if ((addAfterThisFile.prev != null && addAfterThisFile.prev.getCreatedTime() > targetTime)
+            || (addAfterThisFile.next != null
+                && addAfterThisFile.next.getCreatedTime() < targetTime)) {
+          LOGGER.warn(
+              "Files to add will destroy the order of TsFileResourceList, please check the add position of file {}",
+              filesToAdd.get(0).getTsFile());
+          return false;
+        }
+      }
+
+      // filter files need renaming
+      List<TsFileResource> filesToRename = new ArrayList<>();
+      long startVersion =
+          addAfterThisFile != null && addAfterThisFile.getCreatedTime() == targetTime
+              ? addAfterThisFile.getVersion() + 1
+              : -1;
+      // 1. filter files need renaming from target list
+      List<TsFileResource> targetSameTimeList = targetList.getFilesByTime(targetTime);
+      // e.g., seq: [1-0-0-0, add here with time=2, 2-0-0-0], unseq: [2-1-0-0]
+      if (startVersion == -1 && !targetSameTimeList.isEmpty()) {
+        startVersion = targetSameTimeList.get(0).getVersion();
+      }
+      for (TsFileResource resource : targetSameTimeList) {
+        if (resource.getVersion() >= startVersion) {
+          filesToRename.add(resource);
+        }
+      }
+      // 2. filter files need renaming from another list
+      List<TsFileResource> leftSameTimeList = leftList.getFilesByTime(targetTime);
+      // e.g., seq: [1-0-0-0, add here with time=2, 3-0-0-0], unseq: [2-0-0-0, 2-1-0-0]
+      if (startVersion == -1 && !leftSameTimeList.isEmpty()) {
+        startVersion = leftSameTimeList.get(leftSameTimeList.size() - 1).getVersion() + 1;
+      }
+      for (TsFileResource resource : leftSameTimeList) {
+        if (resource.getVersion() >= startVersion) {
+          filesToRename.add(resource);
+        }
+      }
+
+      // rename existing files
+      filesToRename.sort(((Comparator<TsFileResource>) (TsFileName::compareFileName)).reversed());
+      long offset = filesToAdd.size();
+      for (TsFileResource resource : filesToRename) {
+        resource.setVersion(resource.getVersion() + offset);
+      }
+
+      // add files
+      if (startVersion == -1) {
+        startVersion = 0;
+      }
+      int index = 0;
+      if (addAfterThisFile == null) {
+        addAfterThisFile = filesToAdd.get(0);
+        addAfterThisFile.setVersion(startVersion);
+        startVersion++;
+        index++;
+        targetList.set(0, addAfterThisFile);
+      }
+      TsFileResource prev = addAfterThisFile;
+      for (; index < filesToAdd.size(); index++) {
+        TsFileResource current = filesToAdd.get(index);
+        // update version
+        current.setVersion(startVersion);
+        startVersion++;
+        // add it to manager
+        targetList.insertAfter(prev, current);
+        prev = current;
+      }
+    } finally {
+      writeUnlock();
+    }
+
+    return true;
+  }
+
   /** This method is called after compaction to update memory. */
   public void replace(
       List<TsFileResource> seqFileResources,
@@ -209,7 +343,16 @@ public class TsFileManager {
       throws IOException {
     writeLock("replace");
     try {
+      Map<Long, List<TsFileResource>> time2TargetFiles = new HashMap<>();
+      for (TsFileResource resource : targetFileResources) {
+        time2TargetFiles
+            .computeIfAbsent(resource.getCreatedTime(), k -> new ArrayList<>())
+            .add(resource);
+      }
+      Map<Long, TsFileResource> time2TargetPosition = new HashMap<>();
+      // remove source
       for (TsFileResource tsFileResource : seqFileResources) {
+        time2TargetPosition.put(tsFileResource.getCreatedTime(), tsFileResource.prev);
         if (sequenceFiles.get(timePartition).remove(tsFileResource)) {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
@@ -219,20 +362,18 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
-      if (isTargetSequence) {
-        // seq inner space compaction or cross space compaction
-        for (TsFileResource resource : targetFileResources) {
-          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-          sequenceFiles.get(timePartition).keepOrderInsert(resource);
-        }
-      } else {
-        // unseq inner space compaction
-        for (TsFileResource resource : targetFileResources) {
-          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-          unsequenceFiles.get(timePartition).keepOrderInsert(resource);
-        }
+      // add target
+      for (Long time : time2TargetFiles.keySet()) {
+        keepOrderAddAllAndRenameAfter(
+            time2TargetPosition.get(time),
+            time2TargetFiles.get(time),
+            isTargetSequence,
+            timePartition);
       }
-
+      // register to TsFileResourceManager
+      for (TsFileResource resource : targetFileResources) {
+        TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+      }
     } finally {
       writeUnlock();
     }
@@ -405,24 +546,6 @@ public class TsFileManager {
           historyTsFiles.add(hardlink);
         }
       }
-    }
-  }
-
-  // ({systemTime}-{versionNum}-{innerCompactionNum}-{crossCompactionNum}.tsfile)
-  public static int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    long ver1 = Long.parseLong(items1[0]);
-    long ver2 = Long.parseLong(items2[0]);
-    int cmp = Long.compare(ver1, ver2);
-    if (cmp == 0) {
-      int cmpVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
-      if (cmpVersion == 0) {
-        return Long.compare(Long.parseLong(items1[2]), Long.parseLong(items2[2]));
-      }
-      return cmpVersion;
-    } else {
-      return cmp;
     }
   }
 }

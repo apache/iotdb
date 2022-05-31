@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -113,19 +112,16 @@ public class SizeTieredCompactionSelector
    * @param taskPriorityQueue it stores the batches of files to be compacted and the total size of
    *     each batch
    * @return return whether to continue the search to higher levels
-   * @throws IOException
    */
   private boolean selectLevelTask(
-      int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
-      throws IOException {
+      int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue) {
     boolean shouldContinueToSearch = true;
     List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
 
     for (TsFileResource currentFile : tsFileResources) {
-      TsFileNameGenerator.TsFileName currentName =
-          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+      TsFileName currentName = TsFileName.parse(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() != level
           || currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
         selectedFileList.clear();
@@ -155,11 +151,10 @@ public class SizeTieredCompactionSelector
     return shouldContinueToSearch;
   }
 
-  private int searchMaxFileLevel() throws IOException {
+  private int searchMaxFileLevel() {
     int maxLevel = -1;
     for (TsFileResource currentFile : tsFileResources) {
-      TsFileNameGenerator.TsFileName currentName =
-          TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
+      TsFileName currentName = TsFileName.parse(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() > maxLevel) {
         maxLevel = currentName.getInnerCompactionCnt();
       }
@@ -175,15 +170,13 @@ public class SizeTieredCompactionSelector
       TsFileResource resourceOfO1 = o1.left.get(0);
       TsFileResource resourceOfO2 = o2.left.get(0);
       try {
-        TsFileNameGenerator.TsFileName fileNameOfO1 =
-            TsFileNameGenerator.getTsFileName(resourceOfO1.getTsFile().getName());
-        TsFileNameGenerator.TsFileName fileNameOfO2 =
-            TsFileNameGenerator.getTsFileName(resourceOfO2.getTsFile().getName());
+        TsFileName fileNameOfO1 = TsFileName.parse(resourceOfO1.getTsFile().getName());
+        TsFileName fileNameOfO2 = TsFileName.parse(resourceOfO2.getTsFile().getName());
         if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
           return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
         }
         return (int) (fileNameOfO2.getVersion() - fileNameOfO1.getVersion());
-      } catch (IOException e) {
+      } catch (RuntimeException e) {
         return 0;
       }
     }
