@@ -291,7 +291,6 @@ public class DataNode implements DataNodeMBean {
     registerUdfServices();
 
     registerManager.register(ReceiverService.getInstance());
-    registerManager.register(MetricsService.getInstance());
 
     initProtocols();
 
