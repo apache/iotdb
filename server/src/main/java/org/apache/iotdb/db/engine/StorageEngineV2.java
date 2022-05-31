@@ -225,9 +225,10 @@ public class StorageEngineV2 implements IService {
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.DATA_REGION_RECOVER_SERVICE.getName());
 
+    /*    List<IStorageGroupMNode> sgNodes = LocalSchemaProcessor.getInstance().getAllStorageGroupNodes();
     // init wal recover manager
     WALRecoverManager.getInstance()
-        .setAllDataRegionScannedLatch(new CountDownLatch(5 * config.getDataRegionNum()));
+        .setAllDataRegionScannedLatch(new CountDownLatch(sgNodes.size() * config.getDataRegionNum()));*/
 
     List<Future<Void>> futures = new LinkedList<>();
     asyncRecover(recoveryThreadPool, futures);
@@ -574,8 +575,9 @@ public class StorageEngineV2 implements IService {
   }
 
   public TSStatus operatorFlush(TFlushReq req) throws StorageGroupNotSetException {
-    if (req.storageGroups.isEmpty()) {
+    if (req.storageGroups == null) {
       StorageEngineV2.getInstance().syncCloseAllProcessor();
+      // WALManager.getInstance().deleteOutdatedWALFiles();
     } else {
       for (String storageGroup : req.storageGroups) {
         if (req.isSeq == null) {
@@ -589,7 +591,7 @@ public class StorageEngineV2 implements IService {
       }
     }
 
-    if (!req.storageGroups.isEmpty()) {
+    if (req.storageGroups != null) {
       List<PartialPath> noExistSg =
           checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
       if (!noExistSg.isEmpty()) {
@@ -611,7 +613,7 @@ public class StorageEngineV2 implements IService {
       return noExistSg;
     }
     for (PartialPath storageGroup : storageGroups) {
-      if (LocalSchemaProcessor.getInstance().isStorageGroup(storageGroup)) {
+      if (!LocalSchemaProcessor.getInstance().isStorageGroup(storageGroup)) {
         noExistSg.add(storageGroup);
       }
     }

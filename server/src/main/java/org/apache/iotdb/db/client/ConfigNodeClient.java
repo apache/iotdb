@@ -609,17 +609,26 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
-<<<<<<< HEAD
   public TSStatus createFunction(TCreateFunctionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.createFunction(req);
-=======
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TSStatus flush(TFlushReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.flush(req);
->>>>>>> 3550e8de26 (add flush)
         if (!updateConfigNodeLeader(status)) {
           return status;
         }

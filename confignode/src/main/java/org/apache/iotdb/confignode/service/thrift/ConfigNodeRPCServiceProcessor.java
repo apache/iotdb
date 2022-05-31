@@ -20,12 +20,9 @@ package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
-<<<<<<< HEAD
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-=======
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
->>>>>>> b2c63d030d (add flush)
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -91,10 +88,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
-<<<<<<< HEAD
-=======
-import org.apache.iotdb.rpc.RpcUtils;
->>>>>>> b2c63d030d (add flush)
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -419,11 +412,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
   }
 
-<<<<<<< HEAD
   @Override
   public TSStatus dropFunction(TDropFunctionReq req) throws TException {
     return configManager.dropFunction(req.getUdfName());
-=======
+  }
+
+  @Override
   public TSStatus flush(TFlushReq req) throws TException {
     IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> INTERNAL_SERVICE_CLIENT_MANAGER =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
@@ -435,15 +429,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       TEndPoint internalEndPoint = dataNodeInfo.getLocation().getInternalEndPoint();
       try {
         tsStatus = INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(internalEndPoint).flush(req);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {}
-
       } catch (IOException e) {
-        LOGGER.error("close tsFile failed, the error is {}", e);
-        return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR, e.getMessage());
+        LOGGER.error("Can't connect to DataNode {}", e);
       }
     }
     return tsStatus;
->>>>>>> b2c63d030d (add flush)
   }
 
   public void handleClientExit() {}

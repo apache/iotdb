@@ -101,14 +101,14 @@ public class ConfigTaskVisitor
   }
 
   @Override
-<<<<<<< HEAD
   public IConfigTask visitCreateFunction(
       CreateFunctionStatement createFunctionStatement, TaskContext context) {
     return new CreateFunctionTask(createFunctionStatement);
-=======
+  }
+
+  @Override
   public IConfigTask visitFlush(FlushStatement flushStatement, TaskContext context) {
     return new FlushTask(flushStatement);
->>>>>>> 3550e8de26 (add flush)
   }
 
   @Override

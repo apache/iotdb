@@ -289,17 +289,15 @@ service ConfigIService {
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
 
-<<<<<<< HEAD
   /* UDF */
 
   common.TSStatus createFunction(TCreateFunctionReq req)
-<<<<<<< HEAD
 
   common.TSStatus dropFunction(TDropFunctionReq req)
-}
-=======
-=======
+
+  /* Flush */
+
   common.TSStatus flush(common.TFlushReq req)
->>>>>>> 3550e8de26 (add flush)
+
 }
->>>>>>> b2c63d030d (add flush)
+
