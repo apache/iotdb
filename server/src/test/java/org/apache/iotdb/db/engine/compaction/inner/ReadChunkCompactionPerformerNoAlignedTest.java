@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionP
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -189,8 +189,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -279,8 +278,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -371,8 +369,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -450,8 +447,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -559,8 +555,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -638,8 +633,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -720,8 +714,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -796,8 +789,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(
@@ -874,8 +866,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileNameGenerator.TsFileName tsFileName =
-          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileName tsFileName = TsFileName.parse(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
           new TsFileResource(
               new File(

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -38,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -267,8 +267,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     for (TsFileResource resource : selectedTsFileResourceList) {
       try {
         selectedFileSize += resource.getTsFileSize();
-        TsFileNameGenerator.TsFileName fileName =
-            TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
+        TsFileName fileName = TsFileName.parse(resource.getTsFile().getName());
         sumOfCompactionCount += fileName.getInnerCompactionCnt();
         if (fileName.getInnerCompactionCnt() > maxCompactionCount) {
           maxCompactionCount = fileName.getInnerCompactionCnt();
@@ -276,7 +275,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         if (fileName.getVersion() > maxFileVersion) {
           maxFileVersion = fileName.getVersion();
         }
-      } catch (IOException e) {
+      } catch (RuntimeException e) {
         LOGGER.warn("Fail to get the tsfile name of {}", resource.getTsFile(), e);
       }
     }

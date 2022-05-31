@@ -124,6 +124,17 @@ public class LocalFSFactory implements FSFactory {
   }
 
   @Override
+  public void renameTo(File srcFile, File destFile) {
+    boolean success = srcFile.renameTo(destFile);
+    if (!success) {
+      logger.error(
+          "Failed to rename file from {} to {}. ",
+          srcFile.getAbsolutePath(),
+          destFile.getAbsolutePath());
+    }
+  }
+
+  @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     return new File(fileFolder).listFiles(file -> file.getName().endsWith(suffix));
   }

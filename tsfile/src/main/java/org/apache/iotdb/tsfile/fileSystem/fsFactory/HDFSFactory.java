@@ -188,6 +188,11 @@ public class HDFSFactory implements FSFactory {
 
   @Override
   public void moveFile(File srcFile, File destFile) {
+    renameTo(srcFile, destFile);
+  }
+
+  @Override
+  public void renameTo(File srcFile, File destFile) {
     try {
       renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {

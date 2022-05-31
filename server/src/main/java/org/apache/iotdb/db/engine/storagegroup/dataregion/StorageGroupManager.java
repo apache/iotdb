@@ -413,15 +413,6 @@ public class StorageGroupManager {
     }
   }
 
-  /** push setPartitionVersionToMax operation down to all virtual storage group processors */
-  public void setPartitionVersionToMax(long partitionId, long newMaxVersion) {
-    for (DataRegion dataRegion : this.dataRegion) {
-      if (dataRegion != null) {
-        dataRegion.setPartitionFileVersionToMax(partitionId, newMaxVersion);
-      }
-    }
-  }
-
   /** push removePartitions operation down to all virtual storage group processors */
   public void removePartitions(TimePartitionFilter filter) {
     for (DataRegion dataRegion : this.dataRegion) {

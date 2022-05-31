@@ -958,14 +958,6 @@ public class StorageEngine implements IService {
     return false;
   }
 
-  /**
-   * Set the version of given partition to newMaxVersion if it is larger than the current version.
-   */
-  public void setPartitionVersionToMax(
-      PartialPath storageGroup, long partitionId, long newMaxVersion) {
-    processorMap.get(storageGroup).setPartitionVersionToMax(partitionId, newMaxVersion);
-  }
-
   public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter) {
     if (processorMap.get(storageGroupPath) != null) {
       processorMap.get(storageGroupPath).removePartitions(filter);
