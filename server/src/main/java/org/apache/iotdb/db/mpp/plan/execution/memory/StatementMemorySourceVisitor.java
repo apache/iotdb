@@ -37,14 +37,11 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -57,18 +54,30 @@ public class StatementMemorySourceVisitor
   }
 
   @Override
-  public StatementMemorySource visitExplain(ExplainStatement node, StatementMemorySourceContext context) {
+  public StatementMemorySource visitExplain(
+      ExplainStatement node, StatementMemorySourceContext context) {
     context.getAnalysis().setStatement(node.getQueryStatement());
-    LogicalQueryPlan logicalPlan = new LogicalPlanner(context.getQueryContext(), new ArrayList<>()).plan(context.getAnalysis());
+    LogicalQueryPlan logicalPlan =
+        new LogicalPlanner(context.getQueryContext(), new ArrayList<>())
+            .plan(context.getAnalysis());
     DistributionPlanner planner = new DistributionPlanner(context.getAnalysis(), logicalPlan);
     PlanNode rootWithExchange = planner.addExchangeNode(planner.rewriteSource());
-    List<String> lines = rootWithExchange.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
-    StringBuilder cellValue = new StringBuilder();
-    lines.forEach(line -> cellValue.append(line).append(System.lineSeparator()));
-    System.out.println(cellValue);
-    BinaryColumn binaryColumn = new BinaryColumn(1, Optional.empty(), new Binary[]{new Binary(cellValue.toString())});
-    TsBlock tsBlock = new TsBlock(new TimeColumn(1, new long[]{0}), binaryColumn);
-    DatasetHeader header = new DatasetHeader(Collections.singletonList(new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)), true);
+    List<String> lines =
+        rootWithExchange.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
+    lines.forEach(
+        line -> {
+          builder.getTimeColumnBuilder().writeLong(0L);
+          builder.getColumnBuilder(0).writeBinary(new Binary(line));
+          builder.declarePosition();
+        });
+    TsBlock tsBlock = builder.build();
+    DatasetHeader header =
+        new DatasetHeader(
+            Collections.singletonList(
+                new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
+            true);
     return new StatementMemorySource(tsBlock, header);
   }
 
