@@ -79,6 +79,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class StorageEngineV2 implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngineV2.class);
@@ -587,8 +588,22 @@ public class StorageEngineV2 implements IService {
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
       throws DataRegionException {
-    DataRegion dataRegion = buildNewDataRegion(sg, String.valueOf(regionId.getId()), ttl);
-    dataRegionMap.put(regionId, dataRegion);
+    logger.error("test", new RuntimeException());
+    AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
+    DataRegion dataRegion =
+        dataRegionMap.computeIfAbsent(
+            regionId,
+            x -> {
+              try {
+                return buildNewDataRegion(sg, String.valueOf(x.getId()), ttl);
+              } catch (DataRegionException e) {
+                exceptionAtomicReference.set(e);
+              }
+              return null;
+            });
+    if (exceptionAtomicReference.get() != null) {
+      throw exceptionAtomicReference.get();
+    }
     return dataRegion;
   }
 
