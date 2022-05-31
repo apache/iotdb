@@ -51,7 +51,7 @@ public class TsFileName implements Comparable<TsFileName> {
   private volatile long version;
   private int innerCompactionCnt;
   private int crossCompactionCnt;
-  private final String suffix;
+  private String suffix;
 
   public TsFileName(
       long time, long version, int innerCompactionCnt, int crossCompactionCnt, String suffix) {

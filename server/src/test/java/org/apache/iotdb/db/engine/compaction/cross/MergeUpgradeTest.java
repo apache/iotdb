@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -93,15 +93,8 @@ public class MergeUpgradeTest {
       File seqfile =
           FSFactoryProducer.getFSFactory()
               .getFile(
-                  TestConstant.BASE_OUTPUT_PATH.concat(
-                      "seq"
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + i
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + i
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + ".tsfile"));
+                  TestConstant.BASE_OUTPUT_PATH.concat("seq"),
+                  TsFileName.getTsFileName(System.currentTimeMillis(), i, i, 0));
       TsFileResource seqTsFileResource = new TsFileResource(seqfile);
       seqResources.add(seqTsFileResource);
       prepareOldFile(seqTsFileResource, i * ptNum, ptNum, 0);
@@ -110,15 +103,8 @@ public class MergeUpgradeTest {
     File unseqfile =
         FSFactoryProducer.getFSFactory()
             .getFile(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    "unseq"
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"));
+                TestConstant.BASE_OUTPUT_PATH.concat("unseq"),
+                TsFileName.getTsFileName(System.currentTimeMillis(), 0, 0, 0));
     TsFileResource unseqTsFileResource = new TsFileResource(unseqfile);
     unseqResources.add(unseqTsFileResource);
     prepareFile(unseqTsFileResource, 0, 2 * ptNum, 10);

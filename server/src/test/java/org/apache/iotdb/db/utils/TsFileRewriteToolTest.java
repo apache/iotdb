@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
@@ -103,7 +104,7 @@ public class TsFileRewriteToolTest {
       boolean success = f.mkdir();
       Assert.assertTrue(success);
     }
-    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
+    path = folder + File.separator + TsFileName.getTsFileName(System.currentTimeMillis(), 0, 0, 0);
   }
 
   @After

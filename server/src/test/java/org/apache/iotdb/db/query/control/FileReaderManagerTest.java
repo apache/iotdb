@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import org.junit.After;
@@ -54,16 +55,15 @@ public class FileReaderManagerTest {
 
   @Test
   public void test() throws IOException, InterruptedException {
-
-    String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.file");
-
     FileReaderManager manager = FileReaderManager.getInstance();
     QueryFileManager testManager = new QueryFileManager();
 
     TsFileResource[] tsFileResources = new TsFileResource[MAX_FILE_SIZE + 1];
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      File file = SystemFileFactory.INSTANCE.getFile(filePath + i);
+      File file =
+          SystemFileFactory.INSTANCE.getFile(
+              TestConstant.BASE_OUTPUT_PATH.concat(TsFileName.getTsFileName(i, 0, 0, 0)));
       file.createNewFile();
       tsFileResources[i] = new TsFileResource(file);
     }
@@ -121,13 +121,18 @@ public class FileReaderManagerTest {
     // Since we have closed the reader after reading the file, it should be false that the file is
     // still contained by manager
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      TsFileResource tsFile = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filePath + i));
+      TsFileResource tsFile =
+          new TsFileResource(
+              SystemFileFactory.INSTANCE.getFile(
+                  TestConstant.BASE_OUTPUT_PATH.concat(TsFileName.getTsFileName(i, 0, 0, 0))));
       Assert.assertFalse(manager.contains(tsFile, false));
     }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = 1; i < MAX_FILE_SIZE; i++) {
-      File file = SystemFileFactory.INSTANCE.getFile(filePath + i);
+      File file =
+          SystemFileFactory.INSTANCE.getFile(
+              TestConstant.BASE_OUTPUT_PATH.concat(TsFileName.getTsFileName(i, 0, 0, 0)));
       boolean result = !file.exists() || file.delete();
       if (!result) {
         fail();

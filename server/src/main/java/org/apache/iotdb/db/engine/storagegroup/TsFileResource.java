@@ -121,9 +121,11 @@ public class TsFileResource {
   /** Minimum index of plans executed within this TsFile. */
   protected long minPlanIndex = Long.MAX_VALUE;
 
-  private long createdTime = 0;
+  /** lazy loaded */
+  private long createdTime = Long.MIN_VALUE;
 
-  private long version = 0;
+  /** lazy loaded */
+  private long version = Long.MIN_VALUE;
 
   private long ramSize;
 
@@ -154,9 +156,6 @@ public class TsFileResource {
 
   public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
-    TsFileName tsFileName = TsFileName.parse(this.file.getName());
-    this.createdTime = tsFileName.getTime();
-    this.version = tsFileName.getVersion();
     this.processor = other.processor;
     this.timeIndex = other.timeIndex;
     this.timeIndexType = other.timeIndexType;
@@ -175,9 +174,6 @@ public class TsFileResource {
   /** for sealed TsFile, call setClosed to close TsFileResource */
   public TsFileResource(File file) {
     this.file = file;
-    TsFileName tsFileName = TsFileName.parse(this.file.getName());
-    this.createdTime = tsFileName.getTime();
-    this.version = tsFileName.getVersion();
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
   }
@@ -185,9 +181,6 @@ public class TsFileResource {
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    TsFileName tsFileName = TsFileName.parse(this.file.getName());
-    this.createdTime = tsFileName.getTime();
-    this.version = tsFileName.getVersion();
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
     this.processor = processor;
@@ -201,9 +194,6 @@ public class TsFileResource {
       TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
-    TsFileName tsFileName = TsFileName.parse(this.file.getName());
-    this.createdTime = tsFileName.getTime();
-    this.version = tsFileName.getVersion();
     this.timeIndex = originTsFileResource.timeIndex;
     this.timeIndexType = originTsFileResource.timeIndexType;
     this.pathToReadOnlyMemChunkMap.put(path, readOnlyMemChunk);
@@ -218,9 +208,6 @@ public class TsFileResource {
       TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
-    TsFileName tsFileName = TsFileName.parse(this.file.getName());
-    this.createdTime = tsFileName.getTime();
-    this.version = tsFileName.getVersion();
     this.timeIndex = originTsFileResource.timeIndex;
     this.timeIndexType = originTsFileResource.timeIndexType;
     this.pathToReadOnlyMemChunkMap = pathToReadOnlyMemChunkMap;
@@ -535,8 +522,9 @@ public class TsFileResource {
   }
 
   void moveTo(File targetDir) {
+    File targetFile = fsFactory.getFile(targetDir, file.getName());
     // .tsfile file
-    fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
+    fsFactory.moveFile(file, targetFile);
     // .resource file
     File originResourceFile = fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX);
     if (originResourceFile.exists()) {
@@ -546,10 +534,21 @@ public class TsFileResource {
     // .mods file
     File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     if (originModFile.exists()) {
-      fsFactory.moveFile(
-          originModFile,
-          fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX));
+      if (modFile != null) {
+        synchronized (this) {
+          try {
+            modFile.close();
+          } catch (IOException e) {
+            LOGGER.error("Fail to close modification file {}", modFile);
+          }
+          modFile = null;
+          File targetModFile =
+              fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX);
+          fsFactory.moveFile(originModFile, targetModFile);
+        }
+      }
     }
+    file = targetFile;
   }
 
   void renameTo(String targetFileName) {
@@ -566,8 +565,19 @@ public class TsFileResource {
     // .mods file
     File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     if (originModFile.exists()) {
-      fsFactory.renameTo(
-          originModFile, fsFactory.getFile(dir, targetFileName + ModificationFile.FILE_SUFFIX));
+      if (modFile != null) {
+        synchronized (this) {
+          try {
+            modFile.close();
+          } catch (IOException e) {
+            LOGGER.error("Fail to close modification file {}", modFile);
+          }
+          modFile = null;
+          File targetModFile =
+              fsFactory.getFile(dir, targetFileName + ModificationFile.FILE_SUFFIX);
+          fsFactory.renameTo(originModFile, targetModFile);
+        }
+      }
     }
     file = targetFile;
   }
@@ -946,6 +956,9 @@ public class TsFileResource {
 
   /** This method will rename file name of this tsfile */
   public void setVersion(long version) {
+    if (version == getVersion()) {
+      return;
+    }
     TsFileName tsFileName = TsFileName.parse(file.getName());
     this.version = version;
     tsFileName.setVersion(version);
@@ -953,10 +966,16 @@ public class TsFileResource {
   }
 
   public long getVersion() {
+    if (version == Long.MIN_VALUE) {
+      version = TsFileName.parseVersion(file.getName());
+    }
     return version;
   }
 
   public long getCreatedTime() {
+    if (createdTime == Long.MIN_VALUE) {
+      createdTime = TsFileName.parseTime(file.getName());
+    }
     return createdTime;
   }
 
