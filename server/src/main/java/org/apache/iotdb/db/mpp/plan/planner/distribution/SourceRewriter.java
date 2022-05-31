@@ -460,9 +460,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       SlidingWindowAggregationNode node, DistributionPlanContext context) {
     DistributionPlanContext childContext = context.copy().setRoot(false);
     PlanNode child = visit(node.getChild(), childContext);
-    node.getChildren().clear();
-    node.addChild(child);
-    return super.visitSlidingWindowAggregation(node, context);
+    PlanNode newRoot = node.clone();
+    newRoot.addChild(child);
+    return newRoot;
   }
 
   private PlanNode planAggregationWithTimeJoin(TimeJoinNode root, DistributionPlanContext context) {
@@ -562,6 +562,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 new TimeJoinNode(
                     context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
             sourceNodes.forEach(timeJoinNode::addChild);
+            parentOfGroup.addChild(timeJoinNode);
           }
           groups.add(parentOfGroup);
         });

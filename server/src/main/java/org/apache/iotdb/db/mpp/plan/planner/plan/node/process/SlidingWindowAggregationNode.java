@@ -179,4 +179,8 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), aggregationDescriptorList, groupByTimeParameter, child);
   }
+
+  public String toString() {
+    return String.format("SlidingWindowAggregationNode-%s", getPlanNodeId());
+  }
 }
