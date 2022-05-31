@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.mpp.plan.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -48,6 +50,7 @@ import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -328,13 +331,7 @@ public class QueryExecution implements IQueryExecution {
     try {
       QueryState state = future.get();
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
-      TSStatusCode statusCode =
-          // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING
-          state == QueryState.FINISHED || state == QueryState.RUNNING
-              ? TSStatusCode.SUCCESS_STATUS
-              : TSStatusCode.QUERY_PROCESS_ERROR;
-      return new ExecutionResult(
-          context.getQueryId(), RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage()));
+      return collectExecutionResult(state);
     } catch (InterruptedException | ExecutionException e) {
       // TODO: (xingtanzjr) use more accurate error handling
       if (e instanceof InterruptedException) {
@@ -358,6 +355,27 @@ public class QueryExecution implements IQueryExecution {
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   stateMachine::transitionToFailed);
     }
+  }
+
+  private ExecutionResult collectExecutionResult(QueryState state) {
+    TSStatusCode statusCode =
+        // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING
+        state == QueryState.FINISHED || state == QueryState.RUNNING
+            ? TSStatusCode.SUCCESS_STATUS
+            : TSStatusCode.QUERY_PROCESS_ERROR;
+
+    TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
+
+    // collect redirect info for client
+    if (analysis.getStatement() instanceof InsertBaseStatement) {
+      if (distributedPlan.getInstances().size() == 1) {
+        TRegionReplicaSet targetRegionReplicaSet =
+            distributedPlan.getInstances().get(0).getRegionReplicaSet();
+        tsstatus.setRedirectNode(
+            targetRegionReplicaSet.getDataNodeLocations().get(0).getExternalEndPoint());
+      }
+    }
+    return new ExecutionResult(context.getQueryId(), tsstatus);
   }
 
   public DistributedQueryPlan getDistributedPlan() {
