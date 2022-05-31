@@ -1110,8 +1110,7 @@ public class LocalExecutionPlanner {
           return null;
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        context.addCachedLastValue(
-            timeValuePair, node.getPlanNodeId(), node.getSeriesPath().getFullPath());
+        context.addCachedLastValue(timeValuePair, node.getPlanNodeId(), seriesPath.getFullPath());
         return null;
       }
     }
@@ -1179,8 +1178,7 @@ public class LocalExecutionPlanner {
           return null;
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        context.addCachedLastValue(
-            timeValuePair, node.getPlanNodeId(), node.getSeriesPath().getFullPath());
+        context.addCachedLastValue(timeValuePair, node.getPlanNodeId(), seriesPath.getFullPath());
         return null;
       }
     }
