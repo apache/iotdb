@@ -101,10 +101,14 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
       long time = tsBlock.getTimeByIndex(row);
       Object value = tsBlock.getColumn(0).getObject(row);
-      if (!tsBlock.getColumn(0).isNull(row)
-          && (valueFilter == null || valueFilter.satisfy(time, value))) {
+      boolean valueIsNull = tsBlock.getColumn(0).isNull(row);
+      if ((valueFilter == null || !valueIsNull && valueFilter.satisfy(time, value))) {
         builder.getTimeColumnBuilder().write(timeColumn, row);
-        builder.getColumnBuilder(0).write(valueColumn, row);
+        if (!valueIsNull) {
+          builder.getColumnBuilder(0).write(valueColumn, row);
+        } else {
+          builder.getColumnBuilder(0).appendNull();
+        }
         satisfyInfo[row] = true;
         builder.declarePosition();
       }

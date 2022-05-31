@@ -33,6 +33,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -40,6 +43,8 @@ import java.util.List;
 import java.util.Map;
 
 public class FilterOperator extends TransformOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FilterOperator.class);
 
   private LayerPointReader filterPointReader;
 
@@ -91,18 +96,6 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void readyForFirstIteration() throws QueryProcessException, IOException {
-    iterateFilterReaderToNextValid();
-  }
-
-  private void iterateFilterReaderToNextValid() throws QueryProcessException, IOException {
-    do {
-      filterPointReader.readyForNext();
-    } while (filterPointReader.next()
-        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean()));
-  }
-
-  @Override
   public TsBlock next() {
     final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
 
@@ -121,56 +114,57 @@ public class FilterOperator extends TransformOperator {
 
     try {
       int rowCount = 0;
-      while (rowCount < FETCH_SIZE && filterPointReader.next()) {
-        final long currentTime = filterPointReader.currentTime();
 
-        boolean hasAtLeastOneValid = false;
-        for (int i = 0; i < outputColumnCount; ++i) {
-          if (currentTime == iterateValueReadersToNextValid(transformers[i], currentTime)) {
-            hasAtLeastOneValid = true;
+      while (rowCount < FETCH_SIZE && !timeHeap.isEmpty()) {
+        final long currentTime = timeHeap.pollFirst();
+
+        if (filterPointReader.next() && filterPointReader.currentTime() == currentTime) {
+          if (!filterPointReader.isCurrentNull() && filterPointReader.currentBoolean()) {
+            // time
+            timeBuilder.writeLong(currentTime);
+
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              collectDataPointAndIterateToNextValid(
+                  transformers[i], columnBuilders[i], currentTime);
+            }
+
+            ++rowCount;
+          } else {
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              skipDataPointAndIterateToNextValid(transformers[i], currentTime);
+            }
           }
-        }
 
-        if (hasAtLeastOneValid) {
-          timeBuilder.writeLong(currentTime);
+          filterPointReader.readyForNext();
+          iterateReaderToNextValid(filterPointReader);
+        } else {
+          // values
           for (int i = 0; i < outputColumnCount; ++i) {
-            collectDataPoint(transformers[i], columnBuilders[i], currentTime);
+            skipDataPointAndIterateToNextValid(transformers[i], currentTime);
           }
-          ++rowCount;
         }
-
-        iterateFilterReaderToNextValid();
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
 
       tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
+      LOGGER.error("FilterOperator#next()", e);
       throw new RuntimeException(e);
     }
 
     return tsBlockBuilder.build();
   }
 
-  private long iterateValueReadersToNextValid(LayerPointReader reader, long currentTime)
-      throws QueryProcessException, IOException {
-    while (reader.next() && (reader.isCurrentNull() || reader.currentTime() < currentTime)) {
-      reader.readyForNext();
+  private void skipDataPointAndIterateToNextValid(LayerPointReader reader, long currentTime)
+      throws IOException, QueryProcessException {
+    if (!reader.next() || reader.currentTime() != currentTime) {
+      return;
     }
-    return reader.currentTime();
-  }
 
-  @Override
-  public boolean hasNext() {
-    try {
-      if (isFirstIteration) {
-        readyForFirstIteration();
-        isFirstIteration = false;
-      }
-
-      return filterPointReader.next();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    reader.readyForNext();
+    iterateReaderToNextValid(reader);
   }
 }

@@ -233,8 +233,8 @@ public class LinearFillOperatorTest {
       }
 
       assertTrue(fillOperator.isFinished());
-      assertEquals(3, count);
-      assertEquals(4, nullBlockIndex);
+      assertEquals(res.length, count);
+      assertEquals(nullBlock.length, nullBlockIndex);
 
     } finally {
       instanceNotificationExecutor.shutdown();
@@ -431,8 +431,113 @@ public class LinearFillOperatorTest {
       }
 
       assertTrue(fillOperator.isFinished());
-      assertEquals(3, count);
-      assertEquals(5, nullBlockIndex);
+      assertEquals(res.length, count);
+      assertEquals(nullBlock.length, nullBlockIndex);
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void batchLinearFillTest3() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+
+      LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
+      LinearFillOperator fillOperator =
+          new LinearFillOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              fillArray,
+              new Operator() {
+                private int index = 0;
+                private final float[][][] value =
+                    new float[][][] {
+                      {{0.0f}}, {{2.0f}}, {{3.0f}}, {{4.0f}}, {{0.0f}}, {{0.0f}}, {{0.0f}}
+                    };
+                final boolean[][][] isNull =
+                    new boolean[][][] {
+                      {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
+                    };
+
+                @Override
+                public OperatorContext getOperatorContext() {
+                  return null;
+                }
+
+                @Override
+                public TsBlock next() {
+                  TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.FLOAT));
+                  for (int i = 0; i < 1; i++) {
+                    builder.getTimeColumnBuilder().writeLong(i + index);
+                    for (int j = 0; j < 1; j++) {
+                      if (isNull[index][i][j]) {
+                        builder.getColumnBuilder(j).appendNull();
+                      } else {
+                        builder.getColumnBuilder(j).writeFloat(value[index][i][j]);
+                      }
+                    }
+                    builder.declarePosition();
+                  }
+                  index++;
+                  return builder.build();
+                }
+
+                @Override
+                public boolean hasNext() {
+                  return index < 7;
+                }
+
+                @Override
+                public boolean isFinished() {
+                  return index >= 7;
+                }
+              });
+
+      int count = 0;
+      float[][][] res =
+          new float[][][] {{{0.0f}}, {{2.0f}}, {{3.0f}}, {{4.0f}}, {{0.0f}}, {{0.0f}}, {{0.0f}}};
+      boolean[][][] isNull =
+          new boolean[][][] {
+            {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
+          };
+
+      boolean[] nullBlock =
+          new boolean[] {true, false, false, false, false, true, true, true, false, false, false};
+      int nullBlockIndex = 0;
+      while (fillOperator.hasNext()) {
+        TsBlock block = fillOperator.next();
+        assertEquals(nullBlock[nullBlockIndex++], block == null);
+        if (block == null) {
+          continue;
+        }
+        for (int i = 0; i < block.getPositionCount(); i++) {
+          long expectedTime = i + count;
+          assertEquals(expectedTime, block.getTimeByIndex(i));
+          for (int j = 0; j < 1; j++) {
+            assertEquals(isNull[count][i][j], block.getColumn(j).isNull(i));
+            if (!isNull[count][i][j]) {
+              assertEquals(res[count][i][j], block.getColumn(j).getFloat(i), 0.00001f);
+            }
+          }
+        }
+        count++;
+      }
+
+      assertTrue(fillOperator.isFinished());
+      assertEquals(res.length, count);
+      assertEquals(nullBlock.length, nullBlockIndex);
 
     } finally {
       instanceNotificationExecutor.shutdown();

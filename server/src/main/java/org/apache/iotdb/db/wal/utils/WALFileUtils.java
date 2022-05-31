@@ -34,21 +34,17 @@ public class WALFileUtils {
   /**
    * versionId is a self-incremented id number, helping to maintain the order of wal files.
    * startSearchIndex is the valid search index of last flushed wal entry. For example: <br>
-   * &nbsp _0-0.wal: 1, 2, 3, -1, -1, 4, 5, -1 <br>
-   * &nbsp _1-5.wal: -1, -1, -1, -1 <br>
-   * &nbsp _2-5.wal: 6, 7, 8, 9, -1, -1, -1, 10, 11, -1, 12, 12 <br>
-   * &nbsp _3-12.wal: 12, 12, 12, 12, 12 <br>
-   * &nbsp _4-12.wal: 12, 13, 14, 15, 16, -1 <br>
+   * _0-0.wal: 1, 2, 3, -1, -1, 4, 5, -1 <br>
+   * _1-5.wal: -1, -1, -1, -1 <br>
+   * _2-5.wal: 6, 7, 8, 9, -1, -1, -1, 10, 11, -1, 12, 12 <br>
+   * _3-12.wal: 12, 12, 12, 12, 12 <br>
+   * _4-12.wal: 12, 13, 14, 15, 16, -1 <br>
    */
   public static final Pattern WAL_FILE_NAME_PATTERN =
       Pattern.compile(
-          WAL_FILE_PREFIX
-              + "(?<"
-              + WAL_VERSION_ID
-              + ">\\d+)-(?<"
-              + WAL_START_SEARCH_INDEX
-              + ">\\d+)\\"
-              + WAL_FILE_SUFFIX);
+          String.format(
+              "%s(?<%s>\\d+)-(?<%s>\\d+)\\%s$",
+              WAL_FILE_PREFIX, WAL_VERSION_ID, WAL_START_SEARCH_INDEX, WAL_FILE_SUFFIX));
 
   /** Return true when this file is .wal file */
   public static boolean walFilenameFilter(File dir, String name) {
@@ -86,11 +82,11 @@ public class WALFileUtils {
   /**
    * Find index of the file which probably contains target insert plan. <br>
    * Given wal files [ _0-0.wal, _1-5.wal, _2-5.wal, _3-12.wal, _4-12.wal ], details as below: <br>
-   * &nbsp _0-0.wal: 1, 2, 3, -1, -1, 4, 5, -1 <br>
-   * &nbsp _1-5.wal: -1, -1, -1, -1 <br>
-   * &nbsp _2-5.wal: 6, 7, 8, 9, -1, -1, -1, 10, 11, -1, 12, 12 <br>
-   * &nbsp _3-12.wal: 12, 12, 12, 12, 12 <br>
-   * &nbsp _4-12.wal: 12, 13, 14, 15, 16, -1 <br>
+   * _0-0.wal: 1, 2, 3, -1, -1, 4, 5, -1 <br>
+   * _1-5.wal: -1, -1, -1, -1 <br>
+   * _2-5.wal: 6, 7, 8, 9, -1, -1, -1, 10, 11, -1, 12, 12 <br>
+   * _3-12.wal: 12, 12, 12, 12, 12 <br>
+   * _4-12.wal: 12, 13, 14, 15, 16, -1 <br>
    * searching [1, 5] will return 0, searching [6, 12] will return 1, search [13, infinity) will
    * return 3， others will return -1
    *
