@@ -45,7 +45,6 @@ import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
-import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
@@ -63,7 +62,6 @@ import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
-import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,8 +92,6 @@ class RatisConsensus implements IConsensus {
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
-  private final ConsensusConfig config;
-
   private final IClientManager<RaftGroup, RatisClient> clientManager =
       new IClientManager.Factory<RaftGroup, RatisClient>()
           .createClientManager(new RatisClientPoolFactory());
@@ -113,25 +109,16 @@ class RatisConsensus implements IConsensus {
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
-    this.config = config;
-
     myself = Utils.fromTEndPointAndPriorityToRaftPeer(config.getThisNode(), DEFAULT_PRIORITY);
+
     System.setProperty(
         "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
     RaftServerConfigKeys.setStorageDir(
         properties, Collections.singletonList(config.getStorageDir()));
-    RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
-    // TODO make this configurable so that RatisConsensusTest can trigger multiple snapshot process
-    // RaftServerConfigKeys.Snapshot.setAutoTriggerThreshold(properties, 20);
-    RaftServerConfigKeys.Rpc.setSlownessTimeout(
-        properties, TimeDuration.valueOf(10, TimeUnit.MINUTES));
-    RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(2, TimeUnit.SECONDS));
-    RaftServerConfigKeys.Rpc.setTimeoutMax(properties, TimeDuration.valueOf(8, TimeUnit.SECONDS));
-    RaftServerConfigKeys.Rpc.setSleepTime(properties, TimeDuration.valueOf(1, TimeUnit.SECONDS));
-    RaftClientConfigKeys.Rpc.setRequestTimeout(
-        properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
-
     GrpcConfigKeys.Server.setPort(properties, config.getThisNode().getPort());
+
+    Utils.initRatisConfig(properties, config.getRatisConfig());
+
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
     server =

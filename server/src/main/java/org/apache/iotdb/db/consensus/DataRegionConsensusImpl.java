@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
+import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig.RPC;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
@@ -53,6 +55,21 @@ public class DataRegionConsensusImpl {
                     .setThisNode(
                         new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))
                     .setStorageDir(new File(conf.getDataRegionConsensusDir()))
+                    .setMultiLeaderConfig(
+                        MultiLeaderConfig.newBuilder()
+                            .setRpc(
+                                RPC.newBuilder()
+                                    .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
+                                    .setRpcMaxConcurrentClientNum(
+                                        conf.getRpcMaxConcurrentClientNum())
+                                    .setRpcThriftCompressionEnabled(
+                                        conf.isRpcThriftCompressionEnable())
+                                    .setSelectorNumOfClientManager(
+                                        conf.getSelectorNumOfClientManager())
+                                    .setThriftServerAwaitTimeForStopService(
+                                        conf.getThriftServerAwaitTimeForStopService())
+                                    .build())
+                            .build())
                     .build(),
                 gid ->
                     new DataRegionStateMachine(

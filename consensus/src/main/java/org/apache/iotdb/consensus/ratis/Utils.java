@@ -22,11 +22,16 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.config.ConsensusConfig.RatisConfig;
 
+import org.apache.ratis.client.RaftClientConfigKeys;
+import org.apache.ratis.conf.RaftProperties;
+import org.apache.ratis.grpc.GrpcConfigKeys;
 import org.apache.ratis.proto.RaftProtos.RaftPeerProto;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
+import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.thrift.TException;
@@ -153,5 +158,65 @@ public class Utils {
   public static TermIndex getTermIndexFromMetadataString(String metadata) {
     String[] items = metadata.split("_");
     return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
+  }
+
+  public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
+    GrpcConfigKeys.setMessageSizeMax(properties, config.getGrpc().getMessageSizeMax());
+    GrpcConfigKeys.setFlowControlWindow(properties, config.getGrpc().getFlowControlWindow());
+    GrpcConfigKeys.Server.setAsyncRequestThreadPoolCached(
+        properties, config.getGrpc().isAsyncRequestThreadPoolCached());
+    GrpcConfigKeys.Server.setAsyncRequestThreadPoolSize(
+        properties, config.getGrpc().getAsyncRequestThreadPoolSize());
+    GrpcConfigKeys.Server.setLeaderOutstandingAppendsMax(
+        properties, config.getGrpc().getLeaderOutstandingAppendsMax());
+
+    RaftServerConfigKeys.Rpc.setSlownessTimeout(properties, config.getRpc().getSlownessTimeout());
+    RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
+    RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
+    RaftServerConfigKeys.Rpc.setSleepTime(properties, config.getRpc().getSleepTime());
+    RaftClientConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
+
+    RaftServerConfigKeys.LeaderElection.setLeaderStepDownWaitTime(
+        properties, config.getLeaderElection().getLeaderStepDownWaitTimeKey());
+    RaftServerConfigKeys.LeaderElection.setPreVote(
+        properties, config.getLeaderElection().isPreVote());
+
+    RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(
+        properties, config.getSnapshot().isAutoTriggerEnabled());
+    RaftServerConfigKeys.Snapshot.setAutoTriggerThreshold(
+        properties, config.getSnapshot().getAutoTriggerThreshold());
+    RaftServerConfigKeys.Snapshot.setCreationGap(properties, config.getSnapshot().getCreationGap());
+    RaftServerConfigKeys.Snapshot.setRetentionFileNum(
+        properties, config.getSnapshot().getRetentionFileNum());
+
+    RaftServerConfigKeys.ThreadPool.setClientCached(
+        properties, config.getThreadPool().isClientCached());
+    RaftServerConfigKeys.ThreadPool.setClientSize(
+        properties, config.getThreadPool().getClientSize());
+    RaftServerConfigKeys.ThreadPool.setProxyCached(
+        properties, config.getThreadPool().isProxyCached());
+    RaftServerConfigKeys.ThreadPool.setProxySize(properties, config.getThreadPool().getProxySize());
+    RaftServerConfigKeys.ThreadPool.setServerCached(
+        properties, config.getThreadPool().isServerCached());
+    RaftServerConfigKeys.ThreadPool.setServerSize(
+        properties, config.getThreadPool().getServerSize());
+
+    RaftServerConfigKeys.Log.setUseMemory(properties, config.getLog().isUseMemory());
+    RaftServerConfigKeys.Log.setQueueElementLimit(
+        properties, config.getLog().getQueueElementLimit());
+    RaftServerConfigKeys.Log.setQueueByteLimit(properties, config.getLog().getQueueByteLimit());
+    RaftServerConfigKeys.Log.setPurgeGap(properties, config.getLog().getPurgeGap());
+    RaftServerConfigKeys.Log.setPurgeUptoSnapshotIndex(
+        properties, config.getLog().isPurgeUptoSnapshotIndex());
+    RaftServerConfigKeys.Log.setSegmentSizeMax(properties, config.getLog().getSegmentSizeMax());
+    RaftServerConfigKeys.Log.setSegmentCacheNumMax(
+        properties, config.getLog().getSegmentCacheNumMax());
+    RaftServerConfigKeys.Log.setSegmentCacheSizeMax(
+        properties, config.getLog().getSegmentCacheSizeMax());
+    RaftServerConfigKeys.Log.setPreallocatedSize(properties, config.getLog().getPreallocatedSize());
+    RaftServerConfigKeys.Log.setWriteBufferSize(properties, config.getLog().getWriteBufferSize());
+    RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
+    RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
+        properties, config.getLog().isUnsafeFlushEnabled());
   }
 }
