@@ -88,7 +88,8 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitShowCluster(ShowClusterStatement showClusterStatement, TaskContext context) {
+  public IConfigTask visitShowCluster(
+      ShowClusterStatement showClusterStatement, TaskContext context) {
     return new ShowClusterTask(showClusterStatement);
   }
 

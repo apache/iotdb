@@ -1221,7 +1221,8 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitShowCluster(ShowClusterStatement showClusterStatement, MPPQueryContext context) {
+    public Analysis visitShowCluster(
+        ShowClusterStatement showClusterStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(showClusterStatement);
       analysis.setRespDatasetHeader(HeaderConstant.showClusterHeader);
