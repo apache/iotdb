@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
@@ -34,6 +32,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,13 +52,12 @@ public class ShowClusterTask implements IConfigTask {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public ShowClusterTask(ShowClusterStatement showClusterStatement) {
-  }
+  public ShowClusterTask(ShowClusterStatement showClusterStatement) {}
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-    IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
-    throws InterruptedException {
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TClusterNodeInfos clusterNodeInfos = new TClusterNodeInfos();
 
@@ -72,32 +72,45 @@ public class ShowClusterTask implements IConfigTask {
 
     // build TSBlock
     TsBlockBuilder builder =
-      new TsBlockBuilder(HeaderConstant.showClusterHeader.getRespDataTypes());
+        new TsBlockBuilder(HeaderConstant.showClusterHeader.getRespDataTypes());
 
     AtomicInteger configNodeId = new AtomicInteger();
-    clusterNodeInfos.getConfigNodeList().forEach(e ->
-      buildTsBlock(builder, configNodeId.getAndIncrement(),
-        NODE_TYPE_CONFIG_NODE, NODE_STATUS_RUNNING,
-        e.getInternalEndPoint().getIp(),
-        e.getInternalEndPoint().getPort()));
+    clusterNodeInfos
+        .getConfigNodeList()
+        .forEach(
+            e ->
+                buildTsBlock(
+                    builder,
+                    configNodeId.getAndIncrement(),
+                    NODE_TYPE_CONFIG_NODE,
+                    NODE_STATUS_RUNNING,
+                    e.getInternalEndPoint().getIp(),
+                    e.getInternalEndPoint().getPort()));
 
-    clusterNodeInfos.getDataNodeList().forEach(e ->
-      buildTsBlock(builder, e.getDataNodeId(),
-        NODE_TYPE_DATA_NODE, NODE_STATUS_RUNNING,
-        e.getInternalEndPoint().getIp(),
-        e.getInternalEndPoint().getPort()));
+    clusterNodeInfos
+        .getDataNodeList()
+        .forEach(
+            e ->
+                buildTsBlock(
+                    builder,
+                    e.getDataNodeId(),
+                    NODE_TYPE_DATA_NODE,
+                    NODE_STATUS_RUNNING,
+                    e.getInternalEndPoint().getIp(),
+                    e.getInternalEndPoint().getPort()));
 
     DatasetHeader datasetHeader = HeaderConstant.showClusterHeader;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
     return future;
   }
 
-  private void buildTsBlock(TsBlockBuilder builder,
-                            int nodeId,
-                            String nodeType,
-                            String nodeStatus,
-                            String hostAddress,
-                            int port) {
+  private void buildTsBlock(
+      TsBlockBuilder builder,
+      int nodeId,
+      String nodeType,
+      String nodeStatus,
+      String hostAddress,
+      int port) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
     builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
