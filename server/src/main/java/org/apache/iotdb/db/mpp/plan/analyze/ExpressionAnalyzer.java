@@ -420,8 +420,11 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof FunctionExpression) {
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : expression.getExpressions()) {
-        extendedExpressions.add(
-            concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree, typeProvider));
+        List<Expression> concatedExpression =
+            concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree, typeProvider);
+        if (concatedExpression != null && concatedExpression.size() != 0) {
+          extendedExpressions.add(concatedExpression);
+        }
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -431,6 +434,9 @@ public class ExpressionAnalyzer {
       PartialPath concatPath = devicePath.concatPath(measurement);
 
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
+      if (actualPaths.isEmpty()) {
+        return new ArrayList<>();
+      }
       List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
       noStarPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
       return reconstructTimeSeriesOperands(noStarPaths);

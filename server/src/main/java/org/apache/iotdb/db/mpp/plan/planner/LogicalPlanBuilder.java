@@ -83,7 +83,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -176,8 +176,8 @@ public class LogicalPlanBuilder {
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
     boolean needCheckAscending = groupByTimeParameter == null;
-    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
-    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new LinkedHashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new LinkedHashMap<>();
     for (Expression sourceExpression : sourceExpressions) {
       AggregationType aggregationFunction =
           AggregationType.valueOf(
