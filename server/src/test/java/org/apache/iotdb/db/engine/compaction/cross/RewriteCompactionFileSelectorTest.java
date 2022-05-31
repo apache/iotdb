@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
@@ -58,7 +58,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       LoggerFactory.getLogger(RewriteCompactionFileSelectorTest.class);
 
   @Test
-  public void testFullSelection() throws MergeException, IOException {
+  public void testFullSelection() throws MergeException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
@@ -87,7 +87,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testWithFewMemoryBudgeSelection() throws MergeException, IOException {
+  public void testWithFewMemoryBudgeSelection() throws MergeException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
@@ -96,7 +96,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testRestrictedSelection() throws MergeException, IOException {
+  public void testRestrictedSelection() throws MergeException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
@@ -109,9 +109,9 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   /**
-   * test unseq merge select with the following files: {0seq-0-0-0.tsfile 0-100 1seq-1-1-0.tsfile
-   * 100-200 2seq-2-2-0.tsfile 200-300 3seq-3-3-0.tsfile 300-400 4seq-4-4-0.tsfile 400-500}
-   * {10unseq-10-10-0.tsfile 0-500}
+   * test unseq merge select with the following files: {seq/0-0-0-0.tsfile 0-100 seq/1-1-1-0.tsfile
+   * 100-200 seq/2-2-2-0.tsfile 200-300 seq/3-3-3-0.tsfile 300-400 seq/4-4-4-0.tsfile 400-500}
+   * {unseq/10-10-10-0.tsfile 0-500}
    */
   @Test
   public void testFileOpenSelection()
@@ -119,16 +119,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
           IllegalAccessException {
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                10
-                    + "unseq"
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 10
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 10
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.BASE_OUTPUT_PATH.concat("unseq"), TsFileName.getTsFileName(10, 10, 10, 0));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
     largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
@@ -163,25 +154,16 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   /**
-   * test unseq merge select with the following files: {0seq-0-0-0.tsfile 0-100 1seq-1-1-0.tsfile
-   * 100-200 2seq-2-2-0.tsfile 200-300 3seq-3-3-0.tsfile 300-400 4seq-4-4-0.tsfile 400-500}
-   * {10unseq-10-10-0.tsfile 0-500}
+   * test unseq merge select with the following files: {seq/0-0-0-0.tsfile 0-100 seq/1-1-1-0.tsfile
+   * 100-200 seq/2-2-2-0.tsfile 200-300 seq/3-3-3-0.tsfile 300-400 seq/4-4-4-0.tsfile 400-500}
+   * {unseq/10-10-10-0.tsfile 0-500}
    */
   @Test
   public void testFileOpenSelectionFromCompaction()
       throws IOException, WriteProcessException, NoSuchFieldException, IllegalAccessException {
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                10
-                    + "unseq"
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 10
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 10
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.BASE_OUTPUT_PATH.concat("unseq"), TsFileName.getTsFileName(10, 10, 10, 0));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
     largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
@@ -215,25 +197,16 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   /**
-   * test unseq merge select with the following files: {0seq-0-0-0.tsfile 0-100 1seq-1-1-0.tsfile
-   * 100-200 2seq-2-2-0.tsfile 200-300 3seq-3-3-0.tsfile 300-400 4seq-4-4-0.tsfile 400-500}
-   * {10unseq-10-10-0.tsfile 0-101}
+   * test unseq merge select with the following files: {seq/0-0-0-0.tsfile 0-100 seq/1-1-1-0.tsfile
+   * 100-200 seq/2-2-2-0.tsfile 200-300 seq/3-3-3-0.tsfile 300-400 seq/4-4-4-0.tsfile 400-500}
+   * {unseq/10-10-10-0.tsfile 0-101}
    */
   @Test
   public void testFileSelectionAboutLastSeqFile()
       throws MergeException, IOException, WriteProcessException {
     File file =
         new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                10
-                    + "unseq"
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 10
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 10
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+            TestConstant.BASE_OUTPUT_PATH.concat("unseq"), TsFileName.getTsFileName(10, 10, 10, 0));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     largeUnseqTsFileResource.setMinPlanIndex(10);
@@ -263,16 +236,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       for (int i = 0; i < seqFileNum; i++) {
         File file =
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "seq"
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + i
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"));
+                TestConstant.BASE_OUTPUT_PATH.concat("seq"),
+                TsFileName.getTsFileName(10, i, 10, 0));
         TsFileResource fileResource = new TsFileResource(file);
         fileResource.setStatus(TsFileResourceStatus.CLOSED);
         prepareFile(fileResource, i, 1, 0);
@@ -283,16 +248,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       for (int i = 0; i < unseqFileNum; i++) {
         File file =
             new File(
-                TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "unseq"
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + i
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 10
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"));
+                TestConstant.BASE_OUTPUT_PATH.concat("unseq"),
+                TsFileName.getTsFileName(10, i, 10, 0));
         TsFileResource fileResource = new TsFileResource(file);
         fileResource.setStatus(TsFileResourceStatus.CLOSED);
         unseqList.add(fileResource);
@@ -341,16 +298,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 11; i < seqFileNum + 11; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("seq"), TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       prepareFile(fileResource, i, 1, i);
@@ -361,16 +309,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("unseq"),
+              TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       prepareFile(fileResource, i, 1, i);
@@ -404,16 +344,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 11; i < seqFileNum + 11; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("seq"), TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       prepareFile(fileResource, i, 1, i);
@@ -424,16 +355,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("unseq"),
+              TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       prepareFile(fileResource, i, 10, i);
@@ -466,16 +389,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 11; i < seqFileNum + 11; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("seq"), TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       prepareFile(fileResource, i, 1, i);
@@ -486,16 +400,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("unseq"),
+              TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       unseqList.add(fileResource);
@@ -530,16 +436,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 11; i < seqFileNum + 11; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("seq"), TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       prepareFile(fileResource, i, 1, i);
@@ -550,16 +447,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("unseq"),
+              TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       unseqList.add(fileResource);
@@ -597,16 +486,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 11; i < seqFileNum + 11; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("seq"), TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       if (i - 11 != 3) {
         fileResource.setStatus(TsFileResourceStatus.CLOSED);
@@ -619,16 +499,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     for (int i = 0; i < unseqFileNum; i++) {
       File file =
           new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 10
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
+              TestConstant.BASE_OUTPUT_PATH.concat("unseq"),
+              TsFileName.getTsFileName(10, i, 10, 0));
       TsFileResource fileResource = new TsFileResource(file);
       fileResource.setStatus(TsFileResourceStatus.CLOSED);
       unseqList.add(fileResource);
@@ -657,17 +529,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     // first file [0, 10]
     // first device [0, 5]
     // second device [0, 10]
-    File firstFile =
-        new File(
-            TestConstant.OUTPUT_DATA_DIR.concat(
-                1
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 1
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+    File firstFile = new File(TestConstant.OUTPUT_DATA_DIR, TsFileName.getTsFileName(1, 1, 0, 0));
     TsFileResource firstTsFileResource = new TsFileResource(firstFile);
     firstTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     firstTsFileResource.setMinPlanIndex(1);
@@ -710,17 +572,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     // second file time range: [11, 20]
     // first measurement: [11, 20]
     // second measurement: [11, 20]
-    File secondFile =
-        new File(
-            TestConstant.OUTPUT_DATA_DIR.concat(
-                2
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 2
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+    File secondFile = new File(TestConstant.OUTPUT_DATA_DIR, TsFileName.getTsFileName(2, 2, 0, 0));
     TsFileResource secondTsFileResource = new TsFileResource(secondFile);
     secondTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     secondTsFileResource.setMinPlanIndex(2);
@@ -756,17 +608,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter.close();
 
     // unseq file: [0, 1]
-    File thirdFile =
-        new File(
-            TestConstant.OUTPUT_DATA_DIR.concat(
-                3
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 3
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+    File thirdFile = new File(TestConstant.OUTPUT_DATA_DIR, TsFileName.getTsFileName(3, 3, 0, 0));
     TsFileResource thirdTsFileResource = new TsFileResource(thirdFile);
     thirdTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     thirdTsFileResource.setMinPlanIndex(3);
@@ -802,17 +644,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     fileWriter.close();
 
     // unseq file: [6, 14]
-    File fourthFile =
-        new File(
-            TestConstant.OUTPUT_DATA_DIR.concat(
-                4
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 4
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+    File fourthFile = new File(TestConstant.OUTPUT_DATA_DIR, TsFileName.getTsFileName(4, 4, 0, 0));
     TsFileResource fourthTsFileResource = new TsFileResource(fourthFile);
     fourthTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     fourthTsFileResource.setMinPlanIndex(4);
@@ -871,7 +703,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testMaxFileSelection() throws MergeException, IOException {
+  public void testMaxFileSelection() throws MergeException {
     int oldMaxCrossCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(5);
@@ -892,7 +724,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testAtLeastOneUnseqFileBeenSelected() throws IOException, MergeException {
+  public void testAtLeastOneUnseqFileBeenSelected() throws MergeException {
     int maxCrossFilesNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);

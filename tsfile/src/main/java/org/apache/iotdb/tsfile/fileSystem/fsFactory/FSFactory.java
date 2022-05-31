@@ -113,6 +113,14 @@ public interface FSFactory {
   void moveFile(File srcFile, File destFile);
 
   /**
+   * rename file
+   *
+   * @param srcFile src file
+   * @param destFile dest file
+   */
+  void renameTo(File srcFile, File destFile);
+
+  /**
    * list file by suffix
    *
    * @param fileFolder file folder

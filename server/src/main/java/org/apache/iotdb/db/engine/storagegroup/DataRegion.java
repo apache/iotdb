@@ -125,8 +125,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -204,8 +204,6 @@ public class DataRegion {
 
   private AtomicInteger upgradeFileCount = new AtomicInteger();
 
-  private AtomicBoolean isSettling = new AtomicBoolean();
-
   /** data region id */
   private String dataRegionId;
   /** logical storage group name */
@@ -234,12 +232,15 @@ public class DataRegion {
   /** file flush policy */
   private TsFileFlushPolicy fileFlushPolicy;
   /**
-   * The max file versions in each partition. By recording this, if several IoTDB instances have the
-   * same policy of closing file and their ingestion is identical, then files of the same version in
-   * different IoTDB instance will have identical data, providing convenience for data comparison
-   * across different instances. partition number -> max version number
+   * TODO：delete this field when new load is completed The max file versions in each partition. By
+   * recording this, if several IoTDB instances have the same policy of closing file and their
+   * ingestion is identical, then files of the same version in different IoTDB instance will have
+   * identical data, providing convenience for data comparison across different instances. partition
+   * number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
+  /** The last file created time in each partition. partition number -> max created time */
+  private final Map<Long, AtomicLong> partition2LastFileCreatedTime = new HashMap<>();
   /** storage group info for mem control */
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
   /** whether it's ready from recovery */
@@ -337,14 +338,6 @@ public class DataRegion {
       ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
     }
     return ret;
-  }
-
-  public AtomicBoolean getIsSettling() {
-    return isSettling;
-  }
-
-  public void setSettling(boolean isSettling) {
-    this.isSettling.set(isSettling);
   }
 
   /** this class is used to store recovering context */
@@ -473,18 +466,26 @@ public class DataRegion {
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
+        updatePartitionFileCreatedTime(
+            partitionNum, TsFileName.parseTime(resource.getTsFile().getName()));
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
+        updatePartitionFileCreatedTime(
+            partitionNum, TsFileName.parseTime(resource.getTsFile().getName()));
       }
       for (TsFileResource resource : upgradeSeqFileList) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
+        updatePartitionFileCreatedTime(
+            partitionNum, TsFileName.parseTime(resource.getTsFile().getName()));
       }
       for (TsFileResource resource : upgradeUnseqFileList) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
+        updatePartitionFileCreatedTime(
+            partitionNum, TsFileName.parseTime(resource.getTsFile().getName()));
       }
       updateLatestFlushedTime();
     } catch (IOException e) {
@@ -526,7 +527,7 @@ public class DataRegion {
         TimeUnit.MILLISECONDS);
   }
 
-  private void recoverCompaction() throws Exception {
+  private void recoverCompaction() {
     CompactionRecoverManager compactionRecoverManager =
         new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, dataRegionId);
     compactionRecoverManager.recoverInnerSpaceCompaction(true);
@@ -538,6 +539,20 @@ public class DataRegion {
     long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
     if (fileVersion > oldVersion) {
       partitionMaxFileVersions.put(partitionNum, fileVersion);
+    }
+  }
+
+  private void updatePartitionFileCreatedTime(long partitionNum, long createdTime) {
+    AtomicLong maxCreatedTime =
+        partition2LastFileCreatedTime.computeIfAbsent(partitionNum, k -> new AtomicLong());
+    boolean flag = true;
+    while (flag) {
+      long oldVal = maxCreatedTime.get();
+      if (createdTime > oldVal) {
+        flag = !maxCreatedTime.compareAndSet(oldVal, createdTime);
+      } else {
+        flag = false;
+      }
     }
   }
 
@@ -625,14 +640,14 @@ public class DataRegion {
       }
     }
 
-    tsFiles.sort(this::compareFileName);
+    tsFiles.sort(TsFileName::compareFileName);
     if (!tsFiles.isEmpty()) {
       checkTsFileTime(tsFiles.get(tsFiles.size() - 1));
     }
     List<TsFileResource> ret = new ArrayList<>();
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
 
-    upgradeFiles.sort(this::compareFileName);
+    upgradeFiles.sort(TsFileName::compareFileName);
     if (!upgradeFiles.isEmpty()) {
       checkTsFileTime(upgradeFiles.get(upgradeFiles.size() - 1));
     }
@@ -753,7 +768,7 @@ public class DataRegion {
       recoverPerformer.recover();
       // pick up crashed compaction target files
       if (recoverPerformer.hasCrashed()) {
-        if (TsFileResource.getInnerCompactionCount(sealedTsFile.getTsFile().getName()) > 0) {
+        if (TsFileName.parseInnerCompactionCnt(sealedTsFile.getTsFile().getName()) > 0) {
           tsFileManager.addForRecover(sealedTsFile, isSeq);
           return;
         } else {
@@ -763,27 +778,13 @@ public class DataRegion {
         }
       }
       sealedTsFile.close();
-      tsFileManager.add(sealedTsFile, isSeq);
+      tsFileManager.keepOrderInsert(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
     } catch (DataRegionException | IOException e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
     } finally {
       // update recovery context
       context.incrementRecoveredFilesNum();
-    }
-  }
-
-  // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
-  private int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    long ver1 = Long.parseLong(items1[0]);
-    long ver2 = Long.parseLong(items2[0]);
-    int cmp = Long.compare(ver1, ver2);
-    if (cmp == 0) {
-      return Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
-    } else {
-      return cmp;
     }
   }
 
@@ -1453,17 +1454,42 @@ public class DataRegion {
 
   private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
-
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
+
+    AtomicLong maxCreatedTime =
+        partition2LastFileCreatedTime.computeIfAbsent(timePartitionId, k -> new AtomicLong());
+    long createdTime = System.currentTimeMillis();
+    boolean flag = true;
+    while (flag) {
+      long oldVal = maxCreatedTime.get();
+      createdTime = System.currentTimeMillis();
+      if (createdTime > oldVal) {
+        flag = !maxCreatedTime.compareAndSet(oldVal, createdTime);
+      } else {
+        logger.warn(
+            "System currentTimeMillis is smaller than time partition-{}'s max file created time {}.",
+            timePartitionId,
+            oldVal);
+        try {
+          Thread.sleep(1_000);
+        } catch (InterruptedException e) {
+          logger.error(
+              "Interrupted when waiting for System currentTimeMillis increases to bigger than {}.",
+              oldVal);
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+
     String filePath =
         TsFileNameGenerator.generateNewTsFilePathWithMkdir(
             sequence,
             logicalStorageGroupName,
             dataRegionId,
             timePartitionId,
-            System.currentTimeMillis(),
-            version,
+            createdTime,
+            version, // TODO: change version to 0L when field partitionMaxFileVersions is removed
             0,
             0);
 
@@ -1504,21 +1530,6 @@ public class DataRegion {
     tsFileProcessor.setTimeRangeId(timePartitionId);
 
     return tsFileProcessor;
-  }
-
-  /**
-   * Create a new tsfile name
-   *
-   * @return file name
-   */
-  private String getNewTsFileName(long timePartitionId) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
-    partitionMaxFileVersions.put(timePartitionId, version);
-    return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
-  }
-
-  private String getNewTsFileName(long time, long version, int mergeCnt, int unseqCompactionCnt) {
-    return TsFileNameGenerator.generateNewTsFileName(time, version, mergeCnt, unseqCompactionCnt);
   }
 
   /**
@@ -2617,21 +2628,6 @@ public class DataRegion {
     }
   }
 
-  /**
-   * Set the version in "partition" to "version" if "version" is larger than the current version.
-   */
-  public void setPartitionFileVersionToMax(long partition, long version) {
-    partitionMaxFileVersions.compute(
-        partition, (prt, oldVer) -> computeMaxVersion(oldVer, version));
-  }
-
-  private long computeMaxVersion(Long oldVersion, Long newVersion) {
-    if (oldVersion == null) {
-      return newVersion;
-    }
-    return Math.max(oldVersion, newVersion);
-  }
-
   private Long getTsFileResourceEstablishTime(TsFileResource tsFileResource) {
     String tsFileName = tsFileResource.getTsFile().getName();
     return Long.parseLong(tsFileName.split(FILE_NAME_SEPARATOR)[0]);
@@ -2813,8 +2809,9 @@ public class DataRegion {
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
    * ({systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile).
    *
-   * <p>The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the
-   * list based on the file name and ensure the correctness of the order, so there are three cases.
+   * <p>The sorting rules for tsfile names @see {@link TsFileName#compareFileName} }, we can restore
+   * the list based on the file name and ensure the correctness of the order, so there are three
+   * cases.
    *
    * <p>1. The tsfile is to be inserted in the first place of the list. Timestamp can be set to half
    * of the timestamp value in the file name of the first tsfile in the list , and the version
@@ -2837,7 +2834,7 @@ public class DataRegion {
       List<TsFileResource> sequenceList) {
     long timePartitionId = newTsFileResource.getTimePartition();
     if (tsFileType == LoadTsFileType.LOAD_UNSEQUENCE || insertIndex == sequenceList.size() - 1) {
-      return getNewTsFileName(
+      return TsFileName.getTsFileName(
           System.currentTimeMillis(),
           getAndSetNewVersion(timePartitionId, newTsFileResource),
           0,
@@ -2849,7 +2846,7 @@ public class DataRegion {
     long subsequenceTime = getTsFileResourceEstablishTime(sequenceList.get(insertIndex + 1));
     long meanTime = preTime + ((subsequenceTime - preTime) >> 1);
 
-    return getNewTsFileName(
+    return TsFileName.getTsFileName(
         meanTime, getAndSetNewVersion(timePartitionId, newTsFileResource), 0, 0);
   }
 
@@ -3608,7 +3605,7 @@ public class DataRegion {
   }
 
   public List<Long> getTimePartitions() {
-    return new ArrayList<>(partitionMaxFileVersions.keySet());
+    return new ArrayList<>(partition2LastFileCreatedTime.keySet());
   }
 
   public String getInsertWriteLockHolder() {

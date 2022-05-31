@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class TsFileUtils {
+  private TsFileUtils() {}
 
   /**
    * decides whether a TsFile is complete (the head magic and tail magic string exists.)

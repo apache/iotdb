@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -47,8 +47,8 @@ import java.util.Set;
 public class CompactionFileGeneratorUtils {
 
   public static TsFileResource getTargetTsFileResourceFromSourceResource(
-      TsFileResource sourceResource) throws IOException {
-    TsFileName tsFileName = TsFileNameGenerator.getTsFileName(sourceResource.getTsFile().getName());
+      TsFileResource sourceResource) {
+    TsFileName tsFileName = TsFileName.parse(sourceResource.getTsFile().getName());
     return new TsFileResource(
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
