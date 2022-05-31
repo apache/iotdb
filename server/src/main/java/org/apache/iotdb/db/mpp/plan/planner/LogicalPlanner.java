@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.TimeseriesVersionUtil;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
@@ -141,6 +142,7 @@ public class LogicalPlanner {
                       analysis.getDeviceToQueryFilter() != null
                           ? analysis.getDeviceToQueryFilter().get(deviceName)
                           : null,
+                      analysis.getDeviceToMeasurementIndexesMap().get(deviceName),
                       context));
           deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
         }
@@ -164,6 +166,7 @@ public class LogicalPlanner {
                     analysis.getAggregationTransformExpressions(),
                     analysis.getTransformExpressions(),
                     analysis.getQueryFilter(),
+                    null,
                     context));
       }
 
@@ -186,6 +189,7 @@ public class LogicalPlanner {
         Set<Expression> aggregationTransformExpressions,
         Set<Expression> transformExpressions,
         Expression queryFilter,
+        List<Integer> measurementIndexes, // only used in ALIGN BY DEVICE
         MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
 
@@ -272,20 +276,41 @@ public class LogicalPlanner {
           }
         }
       } else {
-        planBuilder =
-            planBuilder
-                .planAggregationSource(
-                    sourceExpressions,
-                    queryStatement.getResultOrder(),
-                    analysis.getGlobalTimeFilter(),
-                    analysis.getGroupByTimeParameter(),
-                    aggregationExpressions,
-                    analysis.getGroupByLevelExpressions(),
-                    analysis.getTypeProvider())
-                .planTransform(
-                    transformExpressions,
-                    queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId());
+        boolean needTransform = false;
+        for (Expression expression : transformExpressions) {
+          if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
+            needTransform = true;
+            break;
+          }
+        }
+
+        if (!needTransform && measurementIndexes != null) {
+          planBuilder =
+              planBuilder.planAggregationSourceWithIndexAdjust(
+                  sourceExpressions,
+                  queryStatement.getResultOrder(),
+                  analysis.getGlobalTimeFilter(),
+                  analysis.getGroupByTimeParameter(),
+                  aggregationExpressions,
+                  measurementIndexes,
+                  analysis.getGroupByLevelExpressions(),
+                  analysis.getTypeProvider());
+        } else {
+          planBuilder =
+              planBuilder
+                  .planAggregationSource(
+                      sourceExpressions,
+                      queryStatement.getResultOrder(),
+                      analysis.getGlobalTimeFilter(),
+                      analysis.getGroupByTimeParameter(),
+                      aggregationExpressions,
+                      analysis.getGroupByLevelExpressions(),
+                      analysis.getTypeProvider())
+                  .planTransform(
+                      transformExpressions,
+                      queryStatement.isGroupByTime(),
+                      queryStatement.getSelectComponent().getZoneId());
+        }
       }
 
       return planBuilder.getRoot();

@@ -64,6 +64,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
@@ -89,6 +90,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class LogicalPlanBuilder {
@@ -225,11 +227,123 @@ public class LogicalPlanBuilder {
                 pathAggregationsEntry.getKey(),
                 pathAggregationsEntry.getValue(),
                 scanOrder,
-                groupByTimeParameter,
+                null,
                 timeFilter));
       }
     }
 
+    return convergeAggregationSource(
+        sourceNodeList,
+        curStep,
+        scanOrder,
+        groupByTimeParameter,
+        aggregationExpressions,
+        groupByLevelExpressions);
+  }
+
+  public LogicalPlanBuilder planAggregationSourceWithIndexAdjust(
+      Set<Expression> sourceExpressions,
+      OrderBy scanOrder,
+      Filter timeFilter,
+      GroupByTimeParameter groupByTimeParameter,
+      Set<Expression> aggregationExpressions,
+      List<Integer> measurementIndexes,
+      Map<Expression, Set<Expression>> groupByLevelExpressions,
+      TypeProvider typeProvider) {
+    checkArgument(sourceExpressions.size() == measurementIndexes.size(), "");
+
+    AggregationStep curStep =
+        (groupByLevelExpressions != null
+                || (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()))
+            ? AggregationStep.PARTIAL
+            : AggregationStep.SINGLE;
+
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    boolean needCheckAscending = groupByTimeParameter == null;
+    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
+    Map<AggregationDescriptor, Integer> aggregationIndexMap = new HashMap<>();
+    int index = 0;
+    for (Expression sourceExpression : sourceExpressions) {
+      AggregationType aggregationFunction =
+          AggregationType.valueOf(
+              ((FunctionExpression) sourceExpression).getFunctionName().toUpperCase());
+      AggregationDescriptor aggregationDescriptor =
+          new AggregationDescriptor(
+              aggregationFunction, curStep, sourceExpression.getExpressions());
+      if (curStep.isOutputPartial()) {
+        updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
+      }
+      PartialPath selectPath =
+          ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
+      if (!needCheckAscending
+          || SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
+        ascendingAggregations
+            .computeIfAbsent(selectPath, key -> new ArrayList<>())
+            .add(aggregationDescriptor);
+      } else {
+        descendingAggregations
+            .computeIfAbsent(selectPath, key -> new ArrayList<>())
+            .add(aggregationDescriptor);
+      }
+
+      aggregationIndexMap.put(aggregationDescriptor, measurementIndexes.get(index));
+      index++;
+    }
+
+    Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
+        MetaUtils.groupAlignedAggregations(ascendingAggregations);
+    for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+        groupedAscendingAggregations.entrySet()) {
+      sourceNodeList.add(
+          createAggregationScanNode(
+              pathAggregationsEntry.getKey(),
+              pathAggregationsEntry.getValue(),
+              scanOrder,
+              groupByTimeParameter,
+              timeFilter));
+    }
+
+    if (needCheckAscending) {
+      Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
+          MetaUtils.groupAlignedAggregations(descendingAggregations);
+      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+          groupedDescendingAggregations.entrySet()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                pathAggregationsEntry.getKey(),
+                pathAggregationsEntry.getValue(),
+                scanOrder,
+                null,
+                timeFilter));
+      }
+    }
+
+    measurementIndexes.clear();
+    measurementIndexes.addAll(
+        sourceNodeList.stream()
+            .map(
+                planNode -> ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList())
+            .flatMap(List::stream)
+            .map(aggregationIndexMap::get)
+            .collect(Collectors.toList()));
+
+    return convergeAggregationSource(
+        sourceNodeList,
+        curStep,
+        scanOrder,
+        groupByTimeParameter,
+        aggregationExpressions,
+        groupByLevelExpressions);
+  }
+
+  private LogicalPlanBuilder convergeAggregationSource(
+      List<PlanNode> sourceNodeList,
+      AggregationStep curStep,
+      OrderBy scanOrder,
+      GroupByTimeParameter groupByTimeParameter,
+      Set<Expression> aggregationExpressions,
+      Map<Expression, Set<Expression>> groupByLevelExpressions) {
     if (curStep.isOutputPartial()) {
       if (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()) {
         curStep =
@@ -266,6 +380,7 @@ public class LogicalPlanBuilder {
     } else {
       this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
     }
+
     return this;
   }
 
@@ -421,7 +536,7 @@ public class LogicalPlanBuilder {
         scanOrder);
   }
 
-  private PlanNode createAggregationScanNode(
+  private SeriesAggregationSourceNode createAggregationScanNode(
       PartialPath selectPath,
       List<AggregationDescriptor> aggregationDescriptorList,
       OrderBy scanOrder,
@@ -488,9 +603,9 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planTransform(
-      Set<Expression> selectExpressions, boolean isGroupByTime, ZoneId zoneId) {
+      Set<Expression> transformExpressions, boolean isGroupByTime, ZoneId zoneId) {
     boolean needTransform = false;
-    for (Expression expression : selectExpressions) {
+    for (Expression expression : transformExpressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
         needTransform = true;
         break;
@@ -504,7 +619,7 @@ public class LogicalPlanBuilder {
         new TransformNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            selectExpressions.toArray(new Expression[0]),
+            transformExpressions.toArray(new Expression[0]),
             isGroupByTime,
             zoneId);
     return this;
