@@ -425,17 +425,28 @@ public class LogicalPlanner {
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      planBuilder =
+          planBuilder
+              .planTimeSeriesSchemaSource(
+                  showTimeSeriesStatement.getPathPattern(),
+                  showTimeSeriesStatement.getKey(),
+                  showTimeSeriesStatement.getValue(),
+                  showTimeSeriesStatement.getLimit(),
+                  showTimeSeriesStatement.getOffset(),
+                  showTimeSeriesStatement.isOrderByHeat(),
+                  showTimeSeriesStatement.isContains(),
+                  showTimeSeriesStatement.isPrefixPath())
+              .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
+      // show latest timeseries
+      if (showTimeSeriesStatement.isOrderByHeat()
+          && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
+        PlanNode lastPlanNode =
+            new LogicalPlanBuilder(context)
+                .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())
+                .getRoot();
+        planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
+      }
       return planBuilder
-          .planTimeSeriesSchemaSource(
-              showTimeSeriesStatement.getPathPattern(),
-              showTimeSeriesStatement.getKey(),
-              showTimeSeriesStatement.getValue(),
-              showTimeSeriesStatement.getLimit(),
-              showTimeSeriesStatement.getOffset(),
-              showTimeSeriesStatement.isOrderByHeat(),
-              showTimeSeriesStatement.isContains(),
-              showTimeSeriesStatement.isPrefixPath())
-          .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat())
           .planOffset(showTimeSeriesStatement.getOffset())
           .planLimit(showTimeSeriesStatement.getLimit())
           .getRoot();

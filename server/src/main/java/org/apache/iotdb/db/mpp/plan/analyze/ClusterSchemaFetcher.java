@@ -96,7 +96,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
-
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);

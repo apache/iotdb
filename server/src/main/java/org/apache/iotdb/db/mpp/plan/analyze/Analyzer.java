@@ -866,7 +866,7 @@ public class Analyzer {
       analysis.setStatement(statement);
 
       SchemaTree schemaTree = new SchemaTree();
-      schemaTree.setStorageGroups(schemaTree.getStorageGroups());
+      schemaTree.setStorageGroups(statement.getStorageGroups());
 
       return analyzeLast(analysis, statement.getSelectedPaths(), schemaTree);
     }
@@ -1136,6 +1136,37 @@ public class Analyzer {
           partitionFetcher.getSchemaPartition(
               new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+      if (showTimeSeriesStatement.isOrderByHeat()) {
+        PathPatternTree patternTree = new PathPatternTree(showTimeSeriesStatement.getPathPattern());
+        patternTree.constructTree();
+        // request schema fetch API
+        logger.info("{} fetch query schema...", getLogHeader());
+        SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+        logger.info("{} fetch schema done", getLogHeader());
+        List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
+
+        Set<Expression> sourceExpressions =
+            allSelectedPath.stream()
+                .map(TimeSeriesOperand::new)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        analysis.setSourceExpressions(sourceExpressions);
+
+        Set<String> deviceSet =
+            allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
+        Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+        for (String devicePath : deviceSet) {
+          DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+          queryParam.setDevicePath(devicePath);
+          sgNameToQueryParamsMap
+              .computeIfAbsent(
+                  schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+              .add(queryParam);
+        }
+        DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+        analysis.setDataPartitionInfo(dataPartition);
+      }
+
       analysis.setRespDatasetHeader(HeaderConstant.showTimeSeriesHeader);
       return analysis;
     }
