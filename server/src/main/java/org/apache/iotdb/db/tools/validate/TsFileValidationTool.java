@@ -122,8 +122,12 @@ public class TsFileValidationTool {
           if (!checkIsDirectory(dataRegionDir)) {
             continue;
           }
-          // get time partition dir
-          File[] timePartitionDirs = dataRegionDir.listFiles();
+          // get time partition dirs and sort them
+          List<File> timePartitionDirs =
+              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles()));
+          timePartitionDirs.sort(
+              (f1, f2) ->
+                  Long.compareUnsigned(Long.parseLong(f1.getName()), Long.parseLong(f2.getName())));
           for (File timePartitionDir : Objects.requireNonNull(timePartitionDirs)) {
             if (!checkIsDirectory(timePartitionDir)) {
               continue;
@@ -390,7 +394,10 @@ public class TsFileValidationTool {
         }
       } catch (Throwable e) {
         logger.error("Meet errors in reading file {} , skip it.", tsFile.getAbsolutePath(), e);
-        printBoth("-- Meet errors in reading file " + tsFile.getAbsolutePath());
+        printBoth(
+            "-- Meet errors in reading file "
+                + tsFile.getAbsolutePath()
+                + ", tsfile may be corrupted.");
       }
     }
   }

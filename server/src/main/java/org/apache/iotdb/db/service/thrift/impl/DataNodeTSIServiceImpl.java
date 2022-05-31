@@ -530,20 +530,20 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     }
 
     long startTime = System.currentTimeMillis();
-    Statement s =
-        StatementGenerator.createStatement(
-            statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
-
-    // permission check
-    TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return RpcUtils.getTSExecuteStatementResp(status);
-    }
-
-    QUERY_FREQUENCY_RECORDER.incrementAndGet();
-    AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
-
     try {
+      Statement s =
+          StatementGenerator.createStatement(
+              statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+      AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
+
       long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
       // create and cache dataset
       ExecutionResult result =

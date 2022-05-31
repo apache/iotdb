@@ -108,7 +108,7 @@ public class FirstCreateStrategyTest {
     try {
       for (int i = 0; i < 12; i++) {
         String identifier = String.valueOf(i % 6);
-        roundRobinStrategy.registerWALNode(identifier, walDirs[0] + File.separator + identifier);
+        roundRobinStrategy.registerWALNode(identifier, walDirs[0] + File.separator + identifier, 0);
         IWALNode walNode = roundRobinStrategy.applyForWALNode(identifier);
         if (i < 6) {
           walNodes[i] = walNode;

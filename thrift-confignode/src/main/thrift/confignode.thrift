@@ -215,6 +215,10 @@ struct TCreateFunctionReq {
   3: required list<string> uris
 }
 
+struct TDropFunctionReq {
+  1: required string udfName
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -278,4 +282,6 @@ service ConfigIService {
   /* UDF */
 
   common.TSStatus createFunction(TCreateFunctionReq req)
+
+  common.TSStatus dropFunction(TDropFunctionReq req)
 }
