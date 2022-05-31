@@ -24,6 +24,7 @@ from iotdb.utils.SessionDataSet import SessionDataSet
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
+from .template.Template import Template
 from .thrift.rpc.TSIService import (
     Client,
     TSCreateTimeseriesReq,
@@ -38,6 +39,8 @@ from .thrift.rpc.TSIService import (
     TSInsertTabletsReq,
     TSInsertRecordsReq,
     TSInsertRecordsOfOneDeviceReq,
+    TSCreateSchemaTemplateReq,
+    TSDropSchemaTemplateReq,
 )
 from .thrift.rpc.ttypes import (
     TSDeleteDataReq,
@@ -1151,3 +1154,24 @@ class Session(object):
             is_aligned,
         )
         return request
+
+    def create_schema_template(self, template: Template):
+        bytes_array = template.serialize()
+        request = TSCreateSchemaTemplateReq(
+            self.__session_id, template.get_name(), bytes_array
+        )
+        status = self.__client.createSchemaTemplate(request)
+        logger.debug(
+            "create one template {} template: {}".format(self.__session_id, template)
+        )
+        return Session.verify_success(status)
+
+    def drop_schema_template(self, template_name: str):
+        request = TSDropSchemaTemplateReq(self.__session_id, template_name)
+        status = self.__client.dropSchemaTemplate(request)
+        logger.debug(
+            "drop one template {} template name: {}".format(
+                self.__session_id, template_name
+            )
+        )
+        return Session.verify_success(status)
