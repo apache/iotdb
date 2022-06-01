@@ -1299,15 +1299,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       size++;
     }
-    String[] path;
+    String[] path = new String[size];
     if (ctx.ROOT() != null) {
-      path = new String[size + 1];
       path[0] = ctx.ROOT().getText();
       for (int i = 0; i < nodeNames.size(); i++) {
         path[i + 1] = parseNodeName(nodeNames.get(i));
       }
     } else {
-      path = new String[size];
       for (int i = 0; i < nodeNames.size(); i++) {
         path[i] = parseNodeName(nodeNames.get(i));
       }
