@@ -52,7 +52,6 @@
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/grafana.xml</descriptor>
                                 <descriptor>src/assembly/client-cpp.xml</descriptor>
-                                <descriptor>src/assembly/rewriteBadFile.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -60,8 +59,8 @@
                 </executions>
             </plugin>
             <!--
-Create SHA512 checksum files for the release artifacts.
--->
+          Create SHA512 checksum files for the release artifacts.
+      -->
             <plugin>
                 <groupId>net.nicoulaj.maven.plugins</groupId>
                 <artifactId>checksum-maven-plugin</artifactId>
