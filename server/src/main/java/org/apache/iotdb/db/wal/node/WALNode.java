@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -27,6 +28,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -301,11 +303,17 @@ public class WALNode implements IWALNode {
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
       DataRegion dataRegion;
       try {
-        dataRegion =
-            StorageEngine.getInstance()
-                .getProcessorByDataRegionId(
-                    new PartialPath(TsFileUtils.getStorageGroup(oldestTsFile)),
-                    TsFileUtils.getDataRegionId(oldestTsFile));
+        if (config.isClusterMode()) {
+          dataRegion =
+              StorageEngineV2.getInstance()
+                  .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
+        } else {
+          dataRegion =
+              StorageEngine.getInstance()
+                  .getProcessorByDataRegionId(
+                      new PartialPath(TsFileUtils.getStorageGroup(oldestTsFile)),
+                      TsFileUtils.getDataRegionId(oldestTsFile));
+        }
       } catch (IllegalPathException | StorageEngineException e) {
         logger.error("Fail to get virtual storage group processor for {}", oldestTsFile, e);
         return;
