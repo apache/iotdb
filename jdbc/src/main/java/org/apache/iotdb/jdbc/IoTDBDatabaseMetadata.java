@@ -672,6 +672,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       dataSet.putRecord(record);
     }
     dataSet.setDataTypes(listType);
+    dataSet.setColumnNum(listType.size());
   }
 
   @Override

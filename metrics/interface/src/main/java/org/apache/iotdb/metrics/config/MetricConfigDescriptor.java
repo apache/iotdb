@@ -53,6 +53,10 @@ public class MetricConfigDescriptor {
    */
   private String getPropsUrl() {
     String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
+    // try to get config node conf
+    if (url == null) {
+      url = System.getProperty(MetricConstant.CONFIGNODE_CONF, null);
+    }
     if (url == null) {
       logger.warn(
           "Cannot find IOTDB_CONF environment variable when loading "
@@ -62,6 +66,7 @@ public class MetricConfigDescriptor {
     } else {
       url += (File.separatorChar + MetricConstant.CONFIG_NAME);
     }
+
     return url;
   }
 

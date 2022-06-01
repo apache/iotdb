@@ -184,7 +184,6 @@ public class IoTDB implements IoTDBMBean {
                 + "udf"
                 + File.separator));
     registerManager.register(ReceiverService.getInstance());
-    registerManager.register(MetricsService.getInstance());
 
     initProtocols();
     // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
