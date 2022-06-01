@@ -303,7 +303,7 @@ public class WALNode implements IWALNode {
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
       DataRegion dataRegion;
       try {
-        if (config.isClusterMode()) {
+        if (config.isMppMode()) {
           dataRegion =
               StorageEngineV2.getInstance()
                   .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
