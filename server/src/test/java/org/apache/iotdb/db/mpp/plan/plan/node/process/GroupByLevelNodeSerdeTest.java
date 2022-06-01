@@ -88,7 +88,9 @@ public class GroupByLevelNodeSerdeTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))),
-                    new TimeSeriesOperand(new PartialPath("root.sg.*.s1")))));
+                    new TimeSeriesOperand(new PartialPath("root.sg.*.s1")))),
+            groupByTimeParameter,
+            OrderBy.TIMESTAMP_ASC);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     groupByLevelNode.serialize(byteBuffer);

@@ -30,10 +30,11 @@ struct TDataNodeRegisterReq {
 }
 
 struct TGlobalConfig {
-  1: required string dataNodeConsensusProtocolClass
-  2: required i32 seriesPartitionSlotNum
-  3: required string seriesPartitionExecutorClass
-  4: required i64 timePartitionInterval
+  1: required string dataRegionConsensusProtocolClass
+  2: required string schemaRegionConsensusProtocolClass
+  3: required i32 seriesPartitionSlotNum
+  4: required string seriesPartitionExecutorClass
+  5: required i64 timePartitionInterval
 }
 
 struct TDataNodeRegisterResp {
@@ -119,14 +120,9 @@ struct TSchemaPartitionResp {
 
 // Node Management
 
-enum NodeManagementType {
-CHILD_PATHS,
-CHILD_NODES
-}
-
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
-  2: required NodeManagementType type
+  2: optional i32 level
 }
 
 struct TSchemaNodeManagementResp {
@@ -196,19 +192,27 @@ struct TCheckUserPrivilegesReq{
 // ConfigNode
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
-  2: required string dataNodeConsensusProtocolClass
-  3: required i32 seriesPartitionSlotNum
-  4: required string seriesPartitionExecutorClass
-  5: required i64 defaultTTL
-  6: required i64 timePartitionInterval
-  7: required i32 schemaReplicationFactor
-  8: required i32 dataReplicationFactor
+  2: required string dataRegionConsensusProtocolClass
+  3: required string schemaRegionConsensusProtocolClass
+  4: required i32 seriesPartitionSlotNum
+  5: required string seriesPartitionExecutorClass
+  6: required i64 defaultTTL
+  7: required i64 timePartitionInterval
+  8: required i32 schemaReplicationFactor
+  9: required i32 dataReplicationFactor
 }
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: optional common.TConsensusGroupId partitionRegionId
   3: optional list<common.TConfigNodeLocation> configNodeList
+}
+
+// Show cluster
+struct TClusterNodeInfos {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
 }
 
 // UDF
@@ -218,6 +222,10 @@ struct TCreateFunctionReq {
   3: required list<string> uris
 }
 
+struct TDropFunctionReq {
+  1: required string udfName
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -225,6 +233,9 @@ service ConfigIService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+
+  /* Show Cluster */
+  TClusterNodeInfos getAllClusterNodeInfos()
 
   /* StorageGroup */
 
@@ -281,4 +292,6 @@ service ConfigIService {
   /* UDF */
 
   common.TSStatus createFunction(TCreateFunctionReq req)
+
+  common.TSStatus dropFunction(TDropFunctionReq req)
 }

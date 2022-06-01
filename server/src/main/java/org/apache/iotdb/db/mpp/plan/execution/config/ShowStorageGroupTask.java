@@ -104,7 +104,11 @@ public class ShowStorageGroupTask implements IConfigTask {
       TStorageGroupSchema storageGroupSchema = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(storageGroup));
-      builder.getColumnBuilder(1).writeLong(storageGroupSchema.getTTL());
+      if (Long.MAX_VALUE == storageGroupSchema.getTTL()) {
+        builder.getColumnBuilder(1).appendNull();
+      } else {
+        builder.getColumnBuilder(1).writeLong(storageGroupSchema.getTTL());
+      }
       builder.getColumnBuilder(2).writeInt(storageGroupSchema.getSchemaReplicationFactor());
       builder.getColumnBuilder(3).writeInt(storageGroupSchema.getDataReplicationFactor());
       builder.getColumnBuilder(4).writeLong(storageGroupSchema.getTimePartitionInterval());

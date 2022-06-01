@@ -29,9 +29,8 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -359,27 +358,13 @@ public class PartitionManager {
   }
 
   /**
-   * Get ChildPathsPartition
+   * GetNodePathsPartition
    *
-   * @param physicalPlan GetChildNodesPartitionReq
+   * @param physicalPlan GetNodesPathsPartitionReq
    * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
    *     SchemaPartition and matched child paths aboveMtree
    */
-  public DataSet getChildPathsPartition(GetChildPathsPartitionReq physicalPlan) {
-    SchemaNodeManagementResp schemaNodeManagementResp;
-    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-    schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
-    return schemaNodeManagementResp;
-  }
-
-  /**
-   * Get ChildNodesPartition
-   *
-   * @param physicalPlan GetChildNodesPartitionReq
-   * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
-   *     SchemaPartition and matched child nodes aboveMtree
-   */
-  public DataSet getChildNodesPartition(GetChildNodesPartitionReq physicalPlan) {
+  public DataSet getNodePathsPartition(GetNodePathsPartitionReq physicalPlan) {
     SchemaNodeManagementResp schemaNodeManagementResp;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
     schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();

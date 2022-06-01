@@ -75,7 +75,6 @@ public class SnapshotTest {
 
   @Before
   public void setUp() throws IOException {
-    FileUtils.deleteFully(testDir);
     FileUtils.createDirectories(testDir);
   }
 

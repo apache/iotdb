@@ -83,7 +83,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
   protected long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   /** Physical address of data region after splitting */
-  TRegionReplicaSet dataRegionReplicaSet;
+  protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -178,6 +178,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
   @Override
   public void serializeRequest(ByteBuffer buffer) {
     serializeAttributes(buffer);
+    getPlanNodeId().serialize(buffer);
   }
 
   @Override

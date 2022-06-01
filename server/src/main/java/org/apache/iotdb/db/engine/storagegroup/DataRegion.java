@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -57,10 +58,12 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -874,6 +877,7 @@ public class DataRegion {
           "Fail to insert measurements {} caused by {}",
           insertRowNode.getFailedMeasurements(),
           insertRowNode.getFailedMessages());
+      checkFailedMeasurements(insertRowNode);
     }
   }
 
@@ -1003,7 +1007,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, TriggerExecutionException {
+      throws BatchProcessException, TriggerExecutionException, WriteProcessException {
 
     writeLock("insertTablet");
     try {
@@ -1078,8 +1082,7 @@ public class DataRegion {
       }
       long globalLatestFlushedTime =
           lastFlushTimeManager.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
-      // TODO:LAST CACHE
-      //      tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
+      tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1096,6 +1099,7 @@ public class DataRegion {
           "Fail to insert measurements {} caused by {}",
           insertTabletNode.getFailedMeasurements(),
           insertTabletNode.getFailedMessages());
+      checkFailedMeasurements(insertTabletNode);
     }
   }
 
@@ -1253,6 +1257,24 @@ public class DataRegion {
     }
   }
 
+  private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
+    for (int i = 0; i < node.getColumns().length; i++) {
+      if (node.getColumns()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      DataNodeSchemaCache.getInstance()
+          .updateLastCache(
+              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+    }
+  }
+
   private void insertToTsFileProcessor(
       InsertRowPlan insertRowPlan, boolean sequence, long timePartitionId)
       throws WriteProcessException {
@@ -1295,7 +1317,7 @@ public class DataRegion {
     long globalLatestFlushTime =
         lastFlushTimeManager.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
 
-    // tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
+    tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -1325,6 +1347,24 @@ public class DataRegion {
         IoTDB.schemaProcessor.updateLastCache(
             mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
+    }
+  }
+
+  private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
+    for (int i = 0; i < node.getValues().length; i++) {
+      if (node.getValues()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      DataNodeSchemaCache.getInstance()
+          .updateLastCache(
+              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
     }
   }
 
@@ -2028,6 +2068,88 @@ public class DataRegion {
       }
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+
+      deleteDataInFiles(
+          tsFileManager.getTsFileList(true),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
+      deleteDataInFiles(
+          tsFileManager.getTsFileList(false),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
+
+    } catch (Exception e) {
+      // roll back
+      for (ModificationFile modFile : updatedModFiles) {
+        modFile.abort();
+        // remember to close mod file
+        modFile.close();
+      }
+      throw new IOException(e);
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /**
+   * @param pattern Must be a pattern start with a precise device path
+   * @param startTime
+   * @param endTime
+   * @param planIndex
+   * @param timePartitionFilter
+   * @throws IOException
+   */
+  public void deleteByDevice(
+      PartialPath pattern,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
+      throws IOException {
+    // If there are still some old version tsfiles, the delete won't succeeded.
+    if (upgradeFileCount.get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files upgraded.");
+    }
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files settled.");
+    }
+    // TODO: how to avoid partial deletion?
+    // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
+    // mod files in mergingModification, sequenceFileList, and unsequenceFileList
+    writeLock("delete");
+
+    // record files which are updated so that we can roll back them in case of exception
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+
+    try {
+
+      PartialPath devicePath = pattern.getDevicePath();
+      Set<PartialPath> devicePaths = Collections.singleton(devicePath);
+
+      // delete Last cache record if necessary
+      // todo implement more precise process
+      DataNodeSchemaCache.getInstance().cleanUp();
+
+      // write log to impacted working TsFileProcessors
+      List<WALFlushListener> walListeners =
+          logDeleteInWAL(startTime, endTime, pattern, timePartitionFilter);
+
+      for (WALFlushListener walFlushListener : walListeners) {
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error("Fail to log delete to wal.", walFlushListener.getCause());
+          throw walFlushListener.getCause();
+        }
+      }
+
+      Deletion deletion = new Deletion(pattern, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
       deleteDataInFiles(
           tsFileManager.getTsFileList(true),
@@ -3353,7 +3475,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | BatchProcessException e) {
+      } catch (TriggerExecutionException | BatchProcessException | WriteProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -3363,6 +3485,14 @@ public class DataRegion {
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
     }
+  }
+
+  private void checkFailedMeasurements(InsertNode node) throws WriteProcessException {
+    List<Exception> exceptions = node.getFailedExceptions();
+    throw new WriteProcessException(
+        "failed to insert measurements "
+            + node.getFailedMeasurements()
+            + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : ""));
   }
 
   @TestOnly
@@ -3504,8 +3634,11 @@ public class DataRegion {
     return idTable;
   }
 
+  /** This method could only be used in multi-leader consensus */
   public IWALNode getWALNode() {
-    if (!config.isClusterMode()) {
+    if (!config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
       throw new UnsupportedOperationException();
     }
     // identifier should be same with getTsFileProcessor method

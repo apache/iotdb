@@ -19,16 +19,18 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -111,15 +113,17 @@ public enum PlanNodeType {
   TRANSFORM((short) 37),
   DELETE_REGION((short) 38),
   CREATE_MULTI_TIME_SERIES((short) 39),
-  CHILD_PATHS_SCAN((short) 40),
-  CHILD_NODES_SCAN((short) 41),
+  NODE_PATHS_SCAN((short) 40),
+  NODE_PATHS_CONVERT((short) 41),
   NODE_MANAGEMENT_MEMORY_MERGE((short) 42),
   INVALIDATE_SCHEMA_CACHE((short) 43),
   DELETE_DATA((short) 44),
   DELETE_TIMESERIES((short) 45),
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
-  LAST_QUERY_MERGE((short) 48);
+  LAST_QUERY_MERGE((short) 48),
+  NODE_PATHS_COUNT((short) 49),
+  SCHEMA_QUERY_ORDER_BY_HEAT((short) 50);
 
   private final short nodeType;
 
@@ -224,9 +228,9 @@ public enum PlanNodeType {
       case 39:
         return CreateMultiTimeSeriesNode.deserialize(buffer);
       case 40:
-        return ChildPathsSchemaScanNode.deserialize(buffer);
+        return NodePathsSchemaScanNode.deserialize(buffer);
       case 41:
-        return ChildNodesSchemaScanNode.deserialize(buffer);
+        return NodePathsConvertNode.deserialize(buffer);
       case 42:
         return NodeManagementMemoryMergeNode.deserialize(buffer);
       case 43:
@@ -241,6 +245,10 @@ public enum PlanNodeType {
         return AlignedLastQueryScanNode.deserialize(buffer);
       case 48:
         return LastQueryMergeNode.deserialize(buffer);
+      case 49:
+        return NodePathsCountNode.deserialize(buffer);
+      case 50:
+        return SchemaQueryOrderByHeatNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

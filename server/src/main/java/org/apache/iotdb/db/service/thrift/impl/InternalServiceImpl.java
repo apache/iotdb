@@ -34,14 +34,14 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.auth.AuthorizerManager;
-import org.apache.iotdb.db.consensus.ConsensusImpl;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -76,6 +76,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -105,7 +106,6 @@ public class InternalServiceImpl implements InternalService.Iface {
   private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
-  private final IConsensus consensusImpl = ConsensusImpl.getInstance();
   private final double loadBalanceThreshold = 0.1;
 
   public InternalServiceImpl() {
@@ -120,14 +120,28 @@ public class InternalServiceImpl implements InternalService.Iface {
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     switch (type) {
       case READ:
-        ConsensusReadResponse readResp =
-            ConsensusImpl.getInstance()
-                .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
-        FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
+        ConsensusReadResponse readResponse;
+        if (groupId instanceof DataRegionId) {
+          readResponse =
+              DataRegionConsensusImpl.getInstance()
+                  .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        } else {
+          readResponse =
+              SchemaRegionConsensusImpl.getInstance()
+                  .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        }
+        if (!readResponse.isSuccess()) {
+          LOGGER.error(
+              "execute FragmentInstance in ConsensusGroup {} failed because {}",
+              req.getConsensusGroupId(),
+              readResponse.getException());
+          return new TSendFragmentInstanceResp(false);
+        }
+        FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
         return new TSendFragmentInstanceResp(!info.getState().isFailed());
       case WRITE:
         TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
-        ConsensusWriteResponse resp;
+        ConsensusWriteResponse writeResponse;
 
         FragmentInstance fragmentInstance =
             FragmentInstance.deserializeFrom(req.fragmentInstance.body);
@@ -141,11 +155,15 @@ public class InternalServiceImpl implements InternalService.Iface {
             return response;
           }
         }
-        resp = ConsensusImpl.getInstance().write(groupId, fragmentInstance);
+        if (groupId instanceof DataRegionId) {
+          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, fragmentInstance);
+        } else {
+          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, fragmentInstance);
+        }
         // TODO need consider more status
         response.setAccepted(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
-        response.setMessage(resp.getStatus().message);
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
+        response.setMessage(writeResponse.getStatus().message);
         return response;
     }
     return null;
@@ -198,12 +216,12 @@ public class InternalServiceImpl implements InternalService.Iface {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint endpoint =
             new TEndPoint(
-                dataNodeLocation.getConsensusEndPoint().getIp(),
-                dataNodeLocation.getConsensusEndPoint().getPort());
+                dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
+                dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
         peers.add(new Peer(schemaRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(schemaRegionId, peers);
+          SchemaRegionConsensusImpl.getInstance().addConsensusGroup(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -236,12 +254,12 @@ public class InternalServiceImpl implements InternalService.Iface {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint endpoint =
             new TEndPoint(
-                dataNodeLocation.getConsensusEndPoint().getIp(),
-                dataNodeLocation.getConsensusEndPoint().getPort());
+                dataNodeLocation.getDataRegionConsensusEndPoint().getIp(),
+                dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
         peers.add(new Peer(dataRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(dataRegionId, peers);
+          DataRegionConsensusImpl.getInstance().addConsensusGroup(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -353,7 +371,15 @@ public class InternalServiceImpl implements InternalService.Iface {
     PlanFragment planFragment = new PlanFragment(planFragmentId, deleteRegionNode);
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
-    return consensusImpl.write(consensusGroupId, fragmentInstance).getStatus();
+    if (consensusGroupId instanceof DataRegionId) {
+      return DataRegionConsensusImpl.getInstance()
+          .write(consensusGroupId, fragmentInstance)
+          .getStatus();
+    } else {
+      return SchemaRegionConsensusImpl.getInstance()
+          .write(consensusGroupId, fragmentInstance)
+          .getStatus();
+    }
   }
 
   @Override
@@ -366,6 +392,17 @@ public class InternalServiceImpl implements InternalService.Iface {
               request.getUris(),
               UDFExecutableManager.getInstance(),
               true);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus dropFunction(TDropFunctionRequest request) {
+    try {
+      UDFRegistrationService.getInstance().deregister(request.getUdfName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

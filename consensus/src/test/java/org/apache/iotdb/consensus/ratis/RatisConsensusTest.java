@@ -48,8 +48,6 @@ import java.util.concurrent.TimeUnit;
 
 public class RatisConsensusTest {
 
-  private static final String RATIS_CLASS_NAME = "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
   private ConsensusGroupId gid;
   private List<Peer> peers;
   private List<File> peersStorage;
@@ -64,14 +62,16 @@ public class RatisConsensusTest {
       int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
-                  RATIS_CLASS_NAME,
+                  ConsensusFactory.RatisConsensus,
                   peers.get(i).getEndpoint(),
                   peersStorage.get(i),
                   groupId -> stateMachines.get(finalI))
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              ConsensusFactory.RatisConsensus))));
       servers.get(i).start();
     }
   }
@@ -84,9 +84,9 @@ public class RatisConsensusTest {
     peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6001)));
     peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
     peersStorage = new ArrayList<>();
-    peersStorage.add(new File("./target/1/"));
-    peersStorage.add(new File("./target/2/"));
-    peersStorage.add(new File("./target/3/"));
+    peersStorage.add(new File("target" + java.io.File.separator + "1"));
+    peersStorage.add(new File("target" + java.io.File.separator + "2"));
+    peersStorage.add(new File("target" + java.io.File.separator + "3"));
     for (File dir : peersStorage) {
       dir.mkdirs();
     }
@@ -229,7 +229,7 @@ public class RatisConsensusTest {
     IConsensus leader = null;
     while (leader == null) {
       long current = System.currentTimeMillis();
-      if ((current - start) > 60 * 1000 * 1000) {
+      if ((current - start) > 60 * 1000) {
         break;
       }
       for (int i = 0; i < 3; i++) {
