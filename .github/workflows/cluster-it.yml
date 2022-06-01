@@ -1,14 +1,14 @@
-name: Cluster Test
+name: New Cluster IT
 
 on:
   push:
     branches:
-      - test_cluster
+      - master
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
-      - test_cluster
+      - master
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
@@ -27,9 +27,9 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8 ]
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os}}
+        java: [ 8, 11, 17 ]
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
@@ -49,4 +49,12 @@ jobs:
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
-        run: mvn -B clean verify -Dsession.test.skip=true -Diotdb.test.skip=true -Dcluster.test.skip=true -Dtsfile.test.skip=true -pl integration -am -PCluster
+        run: mvn -B clean verify -Dsession.test.skip=true -Diotdb.test.skip=true -Dcluster.test.skip=true -Dtsfile.test.skip=true -Dcommons.test.skip=true -Dconfignode.test.skip=true -Dconsensus.test.skip=true -pl integration-test -am -PClusterIT
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cluster-log-java${{ matrix.java }}-${{ runner.os }}
+          path: integration-test/target/cluster-logs
+          retention-days: 1
+

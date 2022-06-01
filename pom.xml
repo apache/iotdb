@@ -115,6 +115,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <module>integration-test</module>
         <module>consensus</module>
         <module>external-pipe-api</module>
         <module>library-udf</module>
@@ -999,6 +1000,7 @@
                             <!-- configure your formatting preferences here (see link below) -->
                             <indentSize>4</indentSize>
                             <excludes>**/target/**</excludes>
+                            <excludes>**/checkstyle.xml</excludes>
                         </configuration>
                     </execution>
                 </executions>

@@ -280,19 +280,9 @@ public class IoTDBConfig {
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
-  private String dataRegionConsensusDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
-          + File.separator
-          + "consensus"
-          + File.separator
-          + "data_region";
+  private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
 
-  private String schemaRegionConsensusDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
-          + File.separator
-          + "consensus"
-          + File.separator
-          + "schema_region";
+  private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -1040,6 +1030,8 @@ public class IoTDBConfig {
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
+    dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
+    schemaRegionConsensusDir = addHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
