@@ -311,9 +311,4 @@ public class AlignedPath extends PartialPath {
     }
     return getDevicePath().concatNode(measurementList.get(0));
   }
-
-  @Override
-  public String toString() {
-    return String.format("%s%s", getDevice(), measurementList);
-  }
 }

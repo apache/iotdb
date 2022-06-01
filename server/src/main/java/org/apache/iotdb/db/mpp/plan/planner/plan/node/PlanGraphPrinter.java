@@ -82,7 +82,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitAlignedSeriesScan(AlignedSeriesScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("AlignedSeriesScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getAlignedPath()));
+    boxValue.add(
+        String.format(
+            "Series: %s%s",
+            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
     boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
     return render(node, boxValue, context);
   }
@@ -108,7 +111,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       AlignedSeriesAggregationScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("AlignedSeriesAggregationScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getAlignedPath()));
+    boxValue.add(
+        String.format(
+            "Series: %s%s",
+            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
