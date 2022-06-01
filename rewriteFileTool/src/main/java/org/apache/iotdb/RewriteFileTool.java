@@ -284,8 +284,11 @@ public class RewriteFileTool {
         return false;
       }
     }
-    if (backUpDirPath == null || (validationFilePath == null && tsfileListPath == null)) {
+    if (backUpDirPath == null
+        || (validationFilePath == null && tsfileListPath == null)
+        || outputLogFilePath == null) {
       System.out.println("Param incorrect!" + paramConfig);
+      return false;
     }
     return true;
   }

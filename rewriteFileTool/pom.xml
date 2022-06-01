@@ -26,7 +26,7 @@
         <version>0.12.6-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>rewriteBadFile</artifactId>
+    <artifactId>rewriteFileTool</artifactId>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
