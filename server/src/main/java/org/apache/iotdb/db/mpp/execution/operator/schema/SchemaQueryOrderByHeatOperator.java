@@ -117,24 +117,23 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    ListenableFuture<Void> blocked;
     for (int i = 0; i < operators.size(); i++) {
       if (!noMoreTsBlocks[i]) {
         Operator operator = operators.get(i);
-        while (operator.hasNext()) {
-          blocked = operator.isBlocked();
-          if (blocked.isDone()) {
-            TsBlock tsBlock = operator.next();
-            if (null != tsBlock && !tsBlock.isEmpty()) {
-              if (isShowTimeSeriesBlock(tsBlock)) {
-                showTimeSeriesResult.add(tsBlock);
-              } else {
-                lastQueryResult.add(tsBlock);
-              }
+        ListenableFuture<Void> blocked = operator.isBlocked();
+        while (operator.hasNext() && blocked.isDone()) {
+          TsBlock tsBlock = operator.next();
+          if (null != tsBlock && !tsBlock.isEmpty()) {
+            if (isShowTimeSeriesBlock(tsBlock)) {
+              showTimeSeriesResult.add(tsBlock);
+            } else {
+              lastQueryResult.add(tsBlock);
             }
-          } else {
-            return blocked;
           }
+          blocked = operator.isBlocked();
+        }
+        if (!blocked.isDone()) {
+          return blocked;
         }
         noMoreTsBlocks[i] = true;
       }
