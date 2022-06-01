@@ -64,9 +64,6 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
     // Step 1: get last point result
     Map<String, Long> timeseriesToLastTimestamp = new HashMap<>();
     for (TsBlock tsBlock : lastQueryResult) {
-      if (null == tsBlock || tsBlock.isEmpty()) {
-        continue;
-      }
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         String timeseries = tsBlock.getColumn(0).getBinary(i).toString();
         long time = tsBlock.getTimeByIndex(i);
@@ -77,9 +74,6 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
     // Step 2: get last point timestamp to timeseries map
     Map<Long, List<Object[]>> lastTimestampToTsSchema = new HashMap<>();
     for (TsBlock tsBlock : showTimeSeriesResult) {
-      if (null == tsBlock || tsBlock.isEmpty()) {
-        continue;
-      }
       TsBlock.TsBlockRowIterator tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
       while (tsBlockRowIterator.hasNext()) {
         Object[] line = tsBlockRowIterator.next();
@@ -123,21 +117,26 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
+    ListenableFuture<Void> blocked;
     for (int i = 0; i < operators.size(); i++) {
       if (!noMoreTsBlocks[i]) {
         Operator operator = operators.get(i);
-        ListenableFuture<Void> blocked = operator.isBlocked();
-        while (operator.hasNext() && blocked.isDone()) {
-          TsBlock tsBlock = operator.next();
-          if (isShowTimeSeriesBlock(tsBlock)) {
-            showTimeSeriesResult.add(tsBlock);
+        while (operator.hasNext()) {
+          blocked = operator.isBlocked();
+          if (blocked.isDone()) {
+            TsBlock tsBlock = operator.next();
+            if (null != tsBlock && !tsBlock.isEmpty()) {
+              if (isShowTimeSeriesBlock(tsBlock)) {
+                showTimeSeriesResult.add(tsBlock);
+              } else {
+                lastQueryResult.add(tsBlock);
+              }
+            }
           } else {
-            lastQueryResult.add(tsBlock);
+            return blocked;
           }
         }
-        if (!blocked.isDone()) {
-          return blocked;
-        }
+        noMoreTsBlocks[i] = true;
       }
     }
     return NOT_BLOCKED;
