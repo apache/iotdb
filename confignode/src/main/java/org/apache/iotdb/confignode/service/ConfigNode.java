@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,11 +81,15 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
+    registerManager.register(MetricsService.getInstance());
     registerUdfServices();
 
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
     LOGGER.info("Init rpc server success");
+
+    // start reporter
+    MetricsService.getInstance().startAllReporter();
   }
 
   private void registerUdfServices() throws StartupException {

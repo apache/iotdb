@@ -40,7 +40,7 @@ predefinedMetrics:
   - FILE
 
 # The http server's port for prometheus exporter to get metric data.
-prometheusExporterPort: 9097
+prometheusExporterPort: 9091
 
 # The config of iotdb reporter
 ioTDBReporterConfig:
