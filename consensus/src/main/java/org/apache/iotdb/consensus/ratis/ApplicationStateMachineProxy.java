@@ -122,7 +122,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       ret = new ResponseMessage(result);
     } catch (Exception rte) {
       logger.error("application statemachine throws a runtime exception: ", rte);
-      ret = Message.valueOf("internal error. statemachine throws a runtime exception");
+      ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
     }
 
     return CompletableFuture.completedFuture(ret);
