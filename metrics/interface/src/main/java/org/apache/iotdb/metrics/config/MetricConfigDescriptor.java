@@ -81,7 +81,10 @@ public class MetricConfigDescriptor {
         metricConfig = (MetricConfig) yaml.load(inputStream);
         return;
       } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default config.", url, e);
+        logger.warn(
+            "Fail to find config file : {} because of {}, use default config.",
+            url,
+            e.getMessage());
       }
     } else {
       logger.warn("Fail to find config file, use default");
@@ -99,7 +102,10 @@ public class MetricConfigDescriptor {
         logger.info("Start to read config file {}", url);
         newMetricConfig = (MetricConfig) yaml.load(inputStream);
       } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default", url, e);
+        logger.warn(
+            "Fail to find config file : {} because of {}, use default config.",
+            url,
+            e.getMessage());
       }
     } else {
       logger.warn("Fail to find config file, use default");
