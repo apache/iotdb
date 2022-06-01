@@ -82,14 +82,16 @@ public class LoadManager implements Runnable {
    *
    * @param storageGroups List<StorageGroupName>
    * @param consensusGroupType TConsensusGroupType of Region to be allocated
+   * @param regionNum The number of Regions
    */
-  public void initializeRegions(List<String> storageGroups, TConsensusGroupType consensusGroupType)
+  public void initializeRegions(
+      List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
       throws NotEnoughDataNodeException {
     CreateRegionsReq createRegionsReq = null;
 
     try {
       createRegionsReq =
-          regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, 1);
+          regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, regionNum);
       createRegionsOnDataNodes(createRegionsReq);
     } catch (MetadataException e) {
       LOGGER.error("Meet error when create Regions", e);

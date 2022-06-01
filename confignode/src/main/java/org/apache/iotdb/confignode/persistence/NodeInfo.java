@@ -184,11 +184,26 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** Return the number of online DataNodes */
   public int getOnlineDataNodeCount() {
     int result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       result = onlineDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** Return the number of total cpu cores in online DataNodes */
+  public int getTotalCpuCoreCount() {
+    int result = 0;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      for (TDataNodeInfo info : onlineDataNodes.values()) {
+        result += info.getCpuCoreNum();
+      }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
