@@ -60,8 +60,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       List<Map<String, String>> propsList,
       List<String> aliasList,
       List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList,
-      List<String> versionList) {
+      List<Map<String, String>> attributesList) {
     super(id);
     measurementGroupMap = new HashMap<>();
 
@@ -77,11 +76,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       }
 
       measurementGroup.addMeasurement(
-          paths.get(i).getMeasurement(),
-          dataTypes.get(i),
-          encodings.get(i),
-          compressors.get(i),
-          versionList.get(i));
+          paths.get(i).getMeasurement(), dataTypes.get(i), encodings.get(i), compressors.get(i));
 
       if (propsList != null) {
         measurementGroup.addProps(propsList.get(i));
