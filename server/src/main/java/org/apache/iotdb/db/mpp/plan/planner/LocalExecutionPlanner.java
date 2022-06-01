@@ -349,8 +349,10 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitSchemaQueryOrderByHeat(
         SchemaQueryOrderByHeatNode node, LocalExecutionPlanContext context) {
-      Operator left = node.getLeft().accept(this, context);
-      Operator right = node.getRight().accept(this, context);
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
 
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
@@ -358,7 +360,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SchemaQueryOrderByHeatOperator.class.getSimpleName());
 
-      return new SchemaQueryOrderByHeatOperator(operatorContext, left, right);
+      return new SchemaQueryOrderByHeatOperator(operatorContext, children);
     }
 
     @Override
