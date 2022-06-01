@@ -28,7 +28,6 @@ class ReadWriteUtils:
     FLOAT_LEN = 4
     BIT_LEN = 0.125
     NO_BYTE_TO_READ = -1
-    # TODO：type
     magicStringBytes = []
     RETURN_ERROR = "Intend to read %d bytes but %d are actually returned"
     URN_ERROR = "Intend to read %d bytes but %d are actually returned"
@@ -36,8 +35,6 @@ class ReadWriteUtils:
     @classmethod
     def write(cls, *args, **kwargs):
         value, format_str_list, values_tobe_packed = args
-        # format_str_list = kwargs["format_str_list"]
-        # values_tobe_packed = kwargs["values_tobe_packed"]
         if isinstance(value, bool):
             cls.write_bool(value, format_str_list, values_tobe_packed)
         elif isinstance(value, str):
@@ -50,11 +47,6 @@ class ReadWriteUtils:
             cls.write_byte(value.value, format_str_list, values_tobe_packed)
         elif isinstance(value, Compressor):
             cls.write_byte(value.value, format_str_list, values_tobe_packed)
-
-    @classmethod
-    def write_map(cls, dict_map: dict, format_str_list, values_tobe_packed):
-        # TODO
-        ...
 
     @classmethod
     def write_str(cls, s: str, format_str_list, values_tobe_packed):
@@ -73,13 +65,11 @@ class ReadWriteUtils:
     def write_int(cls, i: int, format_str_list, values_tobe_packed):
         format_str_list.append("i")
         values_tobe_packed.append(i)
-        # return cls.INT_LEN
 
     @classmethod
     def write_bool(cls, flag: bool, format_str_list, values_tobe_packed):
         format_str_list.append("?")
         values_tobe_packed.append(flag)
-        # return cls.BOOLEAN_LEN
 
     @classmethod
     def write_byte(cls, b, format_str_list, values_tobe_packed):
