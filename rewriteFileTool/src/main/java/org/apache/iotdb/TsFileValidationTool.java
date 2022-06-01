@@ -94,7 +94,9 @@ public class TsFileValidationTool {
     if (printToFile) {
       pw = new PrintWriter(new FileWriter(outFilePath));
     }
-    printBoth("Start checking seq files ...");
+    if (printDetails) {
+      printBoth("Start checking seq files ...");
+    }
 
     // check tsfile, which will only check for correctness inside a single tsfile
     for (File f : fileList) {
@@ -113,7 +115,9 @@ public class TsFileValidationTool {
         if (!checkIsDirectory(sgDir)) {
           continue;
         }
-        printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
+        if (printDetails) {
+          printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
+        }
         // get data region dirs
         File[] dataRegionDirs = sgDir.listFiles();
         for (File dataRegionDir : Objects.requireNonNull(dataRegionDirs)) {
@@ -151,7 +155,9 @@ public class TsFileValidationTool {
         }
       }
     }
-    printBoth("Finish checking successfully, totally find " + badFileNum + " bad files.");
+    if (printDetails) {
+      printBoth("Finish checking successfully, totally find " + badFileNum + " bad files.");
+    }
     if (printToFile) {
       pw.close();
     }
@@ -233,7 +239,11 @@ public class TsFileValidationTool {
                     if (timestamp <= measurementLastTime.get(measurementID)[0]) {
                       // find bad file
                       if (!isBadFile) {
-                        printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
+                        if (printDetails) {
+                          printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
+                        } else {
+                          printBoth(tsFile.getAbsolutePath());
+                        }
                         isBadFile = true;
                         badFileNum++;
                       }
@@ -298,7 +308,11 @@ public class TsFileValidationTool {
                         <= deviceEndTime.getOrDefault(deviceID, Long.MIN_VALUE)) {
                   // find bad file
                   if (!isBadFile) {
-                    printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
+                    if (printDetails) {
+                      printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
+                    } else {
+                      printBoth(tsFile.getAbsolutePath());
+                    }
                     isBadFile = true;
                     badFileNum++;
                   }
@@ -324,7 +338,9 @@ public class TsFileValidationTool {
         }
       } catch (Throwable e) {
         logger.error("Meet errors in reading file {} , skip it.", tsFile.getAbsolutePath(), e);
-        printBoth("-- Meet errors in reading file " + tsFile.getAbsolutePath());
+        if (printDetails) {
+          printBoth("-- Meet errors in reading file " + tsFile.getAbsolutePath());
+        }
       }
     }
   }
