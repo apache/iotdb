@@ -63,6 +63,10 @@
             <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
+            <outputDirectory>confignode/conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
             <outputDirectory>datanode/conf</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
         </fileSet>
