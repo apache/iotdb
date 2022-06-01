@@ -85,7 +85,7 @@
         <profile>
             <id>LocalStandalone</id>
             <properties>
-                <test.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</test.includedGroups>
+                <test.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneTest</test.includedGroups>
                 <test.excludedGroups/>
             </properties>
             <activation>
@@ -147,7 +147,7 @@
         <profile>
             <id>Remote</id>
             <properties>
-                <test.includedGroups>org.apache.iotdb.itbase.category.RemoteIT</test.includedGroups>
+                <test.includedGroups>org.apache.iotdb.itbase.category.RemoteTest</test.includedGroups>
                 <test.excludedGroups/>
             </properties>
             <activation>
