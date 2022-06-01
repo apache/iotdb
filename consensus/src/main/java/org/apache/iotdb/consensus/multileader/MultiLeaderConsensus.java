@@ -32,7 +32,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
@@ -70,7 +70,7 @@ public class MultiLeaderConsensus implements IConsensus {
 
   public MultiLeaderConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNode();
-    this.storageDir = config.getStorageDir();
+    this.storageDir = new File(config.getStorageDir());
     this.config = config.getMultiLeaderConfig();
     this.registry = registry;
     this.service = new MultiLeaderRPCService(thisNode, config.getMultiLeaderConfig());

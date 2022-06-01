@@ -126,7 +126,7 @@ public class StandAloneConsensusTest {
                 ConsensusFactory.StandAloneConsensus,
                 ConsensusConfig.newBuilder()
                     .setThisNode(new TEndPoint("0.0.0.0", 6667))
-                    .setStorageDir(new File("target" + java.io.File.separator + "standalone"))
+                    .setStorageDir("target" + java.io.File.separator + "standalone")
                     .build(),
                 gid -> {
                   switch (gid.getType()) {

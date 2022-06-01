@@ -48,7 +48,7 @@ public class RecoveryTest {
                 ConsensusFactory.StandAloneConsensus,
                 ConsensusConfig.newBuilder()
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
-                    .setStorageDir(new File("target" + java.io.File.separator + "recovery"))
+                    .setStorageDir("target" + java.io.File.separator + "recovery")
                     .build(),
                 gid -> new EmptyStateMachine())
             .orElseThrow(

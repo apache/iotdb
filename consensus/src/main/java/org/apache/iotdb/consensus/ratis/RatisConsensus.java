@@ -66,6 +66,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -114,7 +115,7 @@ class RatisConsensus implements IConsensus {
     System.setProperty(
         "org.apache.ratis.thirdparty.io.netty.allocator.useCacheForAllThreads", "false");
     RaftServerConfigKeys.setStorageDir(
-        properties, Collections.singletonList(config.getStorageDir()));
+        properties, Collections.singletonList(new File(config.getStorageDir())));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNode().getPort());
 
     Utils.initRatisConfig(properties, config.getRatisConfig());

@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
 
 import java.lang.reflect.InvocationTargetException;

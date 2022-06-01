@@ -103,7 +103,7 @@ public class MultiLeaderConsensusTest {
                       ConsensusFactory.MultiLeaderConsensus,
                       ConsensusConfig.newBuilder()
                           .setThisNode(peers.get(i).getEndpoint())
-                          .setStorageDir(peersStorage.get(i))
+                          .setStorageDir(peersStorage.get(i).getAbsolutePath())
                           .build(),
                       groupId -> stateMachines.get(finalI))
                   .orElseThrow(

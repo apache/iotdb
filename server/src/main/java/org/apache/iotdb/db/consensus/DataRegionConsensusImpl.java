@@ -24,14 +24,12 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
-import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig.RPC;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig.RPC;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-
-import java.io.File;
 
 /**
  * We can use DataRegionConsensusImpl.getInstance() to obtain a consensus layer reference for
@@ -54,7 +52,7 @@ public class DataRegionConsensusImpl {
                 ConsensusConfig.newBuilder()
                     .setThisNode(
                         new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))
-                    .setStorageDir(new File(conf.getDataRegionConsensusDir()))
+                    .setStorageDir(conf.getDataRegionConsensusDir())
                     .setMultiLeaderConfig(
                         MultiLeaderConfig.newBuilder()
                             .setRpc(

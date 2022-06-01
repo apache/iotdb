@@ -66,7 +66,7 @@ public class RatisConsensusTest {
                   ConsensusFactory.RatisConsensus,
                   ConsensusConfig.newBuilder()
                       .setThisNode(peers.get(i).getEndpoint())
-                      .setStorageDir(peersStorage.get(i))
+                      .setStorageDir(peersStorage.get(i).getAbsolutePath())
                       .build(),
                   groupId -> stateMachines.get(finalI))
               .orElseThrow(

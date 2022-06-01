@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
-import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;

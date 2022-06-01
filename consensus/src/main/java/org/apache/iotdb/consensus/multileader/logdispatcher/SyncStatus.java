@@ -20,7 +20,7 @@
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.config.ConsensusConfig.MultiLeaderConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 
 import java.util.Iterator;
 import java.util.LinkedList;

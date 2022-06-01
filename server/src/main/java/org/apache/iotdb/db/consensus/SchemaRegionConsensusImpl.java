@@ -29,8 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
-import java.io.File;
-
 /**
  * We can use SchemaRegionConsensusImpl.getInstance() to obtain a consensus layer reference for
  * schemaRegion's reading and writing
@@ -52,7 +50,7 @@ public class SchemaRegionConsensusImpl {
                 ConsensusConfig.newBuilder()
                     .setThisNode(
                         new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort()))
-                    .setStorageDir(new File(conf.getSchemaRegionConsensusDir()))
+                    .setStorageDir(conf.getSchemaRegionConsensusDir())
                     .build(),
                 gid ->
                     new SchemaRegionStateMachine(

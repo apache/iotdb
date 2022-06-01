@@ -66,7 +66,7 @@ class StandAloneConsensus implements IConsensus {
 
   public StandAloneConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNode();
-    this.storageDir = config.getStorageDir();
+    this.storageDir = new File(config.getStorageDir());
     this.registry = registry;
   }
 

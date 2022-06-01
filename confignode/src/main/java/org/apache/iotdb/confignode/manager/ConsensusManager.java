@@ -41,7 +41,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,7 +90,7 @@ public class ConsensusManager {
                 conf.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
                     .setThisNode(new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))
-                    .setStorageDir(new File(conf.getConsensusDir()))
+                    .setStorageDir(conf.getConsensusDir())
                     .build(),
                 gid -> stateMachine)
             .orElseThrow(
