@@ -57,13 +57,20 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-public class RewriteBadFileTool {
+/**
+ * This tool reads tsFiles and rewrites it chunk by chunk. It constructs tablet and invokes
+ * insertTablet() for every page in chunk, in case chunk is too large. `Move` command is used to
+ * unload files in iotdb, and mods files are moved manually.
+ */
+public class RewriteFileTool {
   // backup data dir path
-  private static String backUpDirPath = "backup";
+  private static String backUpDirPath;
   // validation file path
-  private static String validationFilePath = "TsFile_validation_view.txt";
+  private static String validationFilePath;
+  // tsfile list path
+  private static String tsfileListPath;
   // output file path
-  private static String outputLogFilePath = "TsFile_rewrite_view.txt";
+  private static String outputLogFilePath;
 
   private static final String HostIP = "localhost";
   private static final String rpcPort = "6667";
@@ -75,8 +82,8 @@ public class RewriteBadFileTool {
   private static PrintWriter pw;
 
   /**
-   * -b=[path of backUp directory] -v=[path of validation file] -o=[path of output log] -m=[whether
-   * move the file]
+   * -b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path
+   * of output log]
    */
   public static void main(String[] args) throws IOException {
     if (!checkArgs(args)) {
@@ -84,20 +91,22 @@ public class RewriteBadFileTool {
     }
     pw = new PrintWriter(new FileWriter(outputLogFilePath));
     try {
-      moveAndRewriteBadFile();
-    } catch (IoTDBConnectionException
-        | IOException
-        | StatementExecutionException
-        | InterruptedException e) {
+      if (validationFilePath != null) {
+        readValidationFile(validationFilePath);
+      }
+      if (tsfileListPath != null) {
+        readTsFileList(tsfileListPath);
+      }
+    } catch (Exception e) {
+      printBoth(e.getMessage());
       e.printStackTrace();
     } finally {
       pw.close();
     }
   }
 
-  public static void moveAndRewriteBadFile()
-      throws IOException, IoTDBConnectionException, StatementExecutionException,
-          InterruptedException {
+  public static void readValidationFile(String validationFilePath)
+      throws IOException, IoTDBConnectionException {
     Session session = new Session(HostIP, rpcPort, user, password);
     session.open(false);
 
@@ -108,40 +117,57 @@ public class RewriteBadFileTool {
         continue;
       }
       String badFilePath = line.replace("-- Find the bad file ", "");
-
-      printBoth(String.format("Start moving %s to backup dir.", badFilePath));
-      session.executeNonQueryStatement(String.format("move '%s' '%s'", badFilePath, backUpDirPath));
-      String[] dirs = badFilePath.split("/");
-      String targetFilePath = backUpDirPath + File.separator + dirs[dirs.length - 1];
-      File targetFile = new File(targetFilePath);
-      // move mods file
-      File modsFile = new File(badFilePath + ModificationFile.FILE_SUFFIX);
-      if (modsFile.exists()) {
-        fsFactory.moveFile(modsFile, new File(targetFilePath + ModificationFile.FILE_SUFFIX));
-      }
-      printBoth(String.format("Finish unloading %s.", badFilePath));
-      // rewriteFile
-      try {
-        printBoth(String.format("Start rewriting %s to iotdb.", badFilePath));
-        if (targetFile.exists()) {
-          rewriteWrongTsFile(targetFilePath, session);
-          targetFile.renameTo(new File(targetFilePath + "." + "finish"));
-        } else {
-          printBoth("---- Meet error in rewriting, " + targetFilePath + " does not exist.");
-        }
-      } catch (Throwable e) {
-        e.printStackTrace();
-        printBoth("---- Meet error in rewriting " + targetFilePath + ", " + e.getMessage());
-      }
+      unloadAndReWriteWrongTsFile(badFilePath, session);
     }
     bufferedReader.close();
     session.close();
     printBoth("Finish rewriting all bad files.");
   }
 
-  public static void rewriteWrongTsFile(String filename, Session session)
-      throws IoTDBConnectionException, StatementExecutionException, IOException,
-          IllegalPathException {
+  public static void readTsFileList(String tsfileListPath)
+      throws IoTDBConnectionException, IOException {
+    Session session = new Session(HostIP, rpcPort, user, password);
+    session.open(false);
+
+    BufferedReader bufferedReader = new BufferedReader(new FileReader(tsfileListPath));
+    String badFilePath;
+    while ((badFilePath = bufferedReader.readLine()) != null) {
+      unloadAndReWriteWrongTsFile(badFilePath, session);
+    }
+    bufferedReader.close();
+    session.close();
+    printBoth("Finish rewriting all bad files.");
+  }
+
+  public static void unloadAndReWriteWrongTsFile(String filename, Session session) {
+    printBoth(String.format("Start moving %s to backup dir.", filename));
+    try {
+      session.executeNonQueryStatement(String.format("move '%s' '%s'", filename, backUpDirPath));
+      String[] dirs = filename.split("/");
+      String targetFilePath = backUpDirPath + File.separator + dirs[dirs.length - 1];
+      File targetFile = new File(targetFilePath);
+      // move mods file
+      File modsFile = new File(filename + ModificationFile.FILE_SUFFIX);
+      if (modsFile.exists()) {
+        fsFactory.moveFile(modsFile, new File(targetFilePath + ModificationFile.FILE_SUFFIX));
+      }
+      printBoth(String.format("Finish unloading %s.", filename));
+
+      // rewriteFile
+      printBoth(String.format("Start rewriting %s to iotdb.", filename));
+      if (targetFile.exists()) {
+        rewriteWrongTsFile(targetFilePath, session);
+        targetFile.renameTo(new File(targetFilePath + "." + "finish"));
+      } else {
+        printBoth("---- Meet error in rewriting, " + targetFilePath + " does not exist.");
+      }
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      printBoth("---- Meet error in unloading " + filename + ", " + e.getMessage());
+    }
+  }
+
+  public static void rewriteWrongTsFile(String filename, Session session) {
     // read mods file
     List<Modification> modifications = null;
     if (FSFactoryProducer.getFSFactory()
@@ -231,27 +257,35 @@ public class RewriteBadFileTool {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
+    } catch (IllegalPathException
+        | IOException
+        | IoTDBConnectionException
+        | StatementExecutionException e) {
+      printBoth("---- Meet error in rewriting " + filename + ", " + e.getMessage());
+      printBoth(e.getMessage());
+      e.printStackTrace();
     }
   }
 
   private static boolean checkArgs(String[] args) {
-    if (args.length != 3) {
-      System.out.println(
-          "Param incorrect, -b=[path of backUp directory] -v=[path of validation file] -o=[path of output file].");
-      return false;
-    }
+    String paramConfig =
+        "-b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path of output log]";
     for (String arg : args) {
       if (arg.startsWith("-b")) {
-        backUpDirPath = arg.split("=")[1];
-      } else if (arg.startsWith("-v")) {
-        validationFilePath = arg.split("=")[1];
+        backUpDirPath = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-vf")) {
+        validationFilePath = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-f")) {
+        tsfileListPath = arg.substring(arg.indexOf('=') + 1);
       } else if (arg.startsWith("-o")) {
-        outputLogFilePath = arg.split("=")[1];
+        outputLogFilePath = arg.substring(arg.indexOf('=') + 1);
       } else {
-        System.out.println(
-            "Param incorrect, -b=[path of backUp directory] -v=[path of validation file] -o=[path of output file].");
+        System.out.println("Param incorrect!" + paramConfig);
         return false;
       }
+    }
+    if (backUpDirPath == null || (validationFilePath == null && tsfileListPath == null)) {
+      System.out.println("Param incorrect!" + paramConfig);
     }
     return true;
   }
