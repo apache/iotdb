@@ -838,7 +838,7 @@ public class LocalExecutionPlanner {
                     context
                         .getTypeProvider()
                         // get the type of first inputExpression
-                        .getType(descriptor.getInputExpressions().get(0).toString()),
+                        .getType(inputColumnNames.get(0)),
                     ascending),
                 descriptor.getStep(),
                 inputLocationList));

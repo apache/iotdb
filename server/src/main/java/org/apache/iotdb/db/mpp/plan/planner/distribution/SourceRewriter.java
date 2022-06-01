@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanBuilder;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -309,7 +310,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                       AggregationStep.PARTIAL,
                       descriptor.getInputExpressions()));
             });
-
+    leafAggDescriptorList.forEach(
+        d ->
+            LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                d, analysis.getTypeProvider()));
     List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
         .forEach(
@@ -482,10 +486,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 rootAggDescriptorList.add(
                     new AggregationDescriptor(
                         descriptor.getAggregationType(),
-                        context.isRoot ? AggregationStep.FINAL : AggregationStep.PARTIAL,
+                        context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
                         descriptor.getInputExpressions()));
               });
     }
+    rootAggDescriptorList.forEach(
+        d ->
+            LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                d, analysis.getTypeProvider()));
     checkArgument(
         sources.size() > 0, "Aggregation sources should not be empty when distribution planning");
     SeriesAggregationSourceNode seed = sources.get(0);
@@ -629,6 +637,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         }
         if (keep) {
           descriptorList.add(originalDescriptor);
+          LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+              originalDescriptor, analysis.getTypeProvider());
         }
       }
       handle.setAggregationDescriptorList(descriptorList);
@@ -657,10 +667,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           continue;
         }
         GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
-        descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.PARTIAL);
+        descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
         descriptor.setInputExpressions(descriptorExpression);
-
         descriptorList.add(descriptor);
+        LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+            descriptor, analysis.getTypeProvider());
       }
       handle.setGroupByLevelDescriptors(descriptorList);
     }
@@ -705,7 +716,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       boolean isFinal = false;
       source
           .getAggregationDescriptorList()
-          .forEach(d -> d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL));
+          .forEach(
+              d -> {
+                d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL);
+                LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                    d, analysis.getTypeProvider());
+              });
     }
     return sources;
   }
