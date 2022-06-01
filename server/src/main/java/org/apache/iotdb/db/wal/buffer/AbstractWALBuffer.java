@@ -41,11 +41,12 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** current wal file version id */
   protected final AtomicInteger currentWALFileVersion = new AtomicInteger();
   /** current search index */
-  protected volatile long currentSearchIndex = 0;
+  protected volatile long currentSearchIndex;
   /** current wal file log writer */
   protected volatile ILogWriter currentWALFileWriter;
 
-  public AbstractWALBuffer(String identifier, String logDirectory, int startFileVersion)
+  public AbstractWALBuffer(
+      String identifier, String logDirectory, int startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
@@ -53,6 +54,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
       logger.info("create folder {} for wal buffer-{}.", logDirectory, identifier);
     }
+    currentSearchIndex = startSearchIndex;
     currentWALFileVersion.set(startFileVersion);
     currentWALFileWriter =
         new WALWriter(

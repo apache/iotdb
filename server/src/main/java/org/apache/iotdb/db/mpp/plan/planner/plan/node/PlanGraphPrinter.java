@@ -19,10 +19,23 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 
 import org.apache.commons.lang3.Validate;
@@ -58,23 +71,129 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   @Override
   public List<String> visitSeriesScan(SeriesScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("SeriesScanNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    boxValue.add(String.format("Partition: %s", node.getRegionReplicaSet().getRegionId()));
+    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAlignedSeriesScan(AlignedSeriesScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AlignedSeriesScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Series: %s", node.getAlignedPath()));
+    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitSeriesAggregationScan(
+      SeriesAggregationScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("SeriesAggregationScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAlignedSeriesAggregationScan(
+      AlignedSeriesAggregationScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AlignedSeriesAggregationScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Series: %s", node.getAlignedPath()));
+    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitDeviceView(DeviceViewNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("DeviceView-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("DeviceCount: %d", node.getDevices().size()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitDeviceMerge(DeviceMergeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("DeviceMerge-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("DeviceCount: %d", node.getDevices().size()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitFill(FillNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Fill-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Policy: %s", node.getFillDescriptor().getFillPolicy()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitFilter(FilterNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Filter-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Predicate: %s", node.getPredicate()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitFilterNull(FilterNullNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("FilterNull-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitGroupByLevel(GroupByLevelNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("GroupByLevel-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitSlidingWindowAggregation(
+      SlidingWindowAggregationNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("SlidingWindowAggregation-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitOffset(OffsetNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Offset-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("value: %d", node.getOffset()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitRowBasedSeriesAggregate(AggregationNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitSort(SortNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderBy: %s", node.getSortOrder()));
     return render(node, boxValue, context);
   }
 
   @Override
   public List<String> visitExchange(ExchangeNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("ExchangeNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Exchange-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 
   @Override
   public List<String> visitTimeJoin(TimeJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("TimeJoinNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("TimeJoin-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Order: %s", node.getMergeOrder()));
     return render(node, boxValue, context);
   }
@@ -90,7 +209,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   @Override
   public List<String> visitFragmentSink(FragmentSinkNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("FragmentSinkNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("FragmentSink-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Destination: %s", node.getDownStreamPlanNodeId()));
     return render(node, boxValue, context);
   }

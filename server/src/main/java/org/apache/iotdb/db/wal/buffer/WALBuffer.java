@@ -78,12 +78,13 @@ public class WALBuffer extends AbstractWALBuffer {
   private final ExecutorService syncBufferThread;
 
   public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
-    this(identifier, logDirectory, 0);
+    this(identifier, logDirectory, 0, 0L);
   }
 
-  public WALBuffer(String identifier, String logDirectory, int startFileVersion)
+  public WALBuffer(
+      String identifier, String logDirectory, int startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
-    super(identifier, logDirectory, startFileVersion);
+    super(identifier, logDirectory, startFileVersion, startSearchIndex);
     allocateBuffers();
     serializeThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(

@@ -17,14 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.http;
+package org.apache.iotdb.db.engine.trigger.sink.forward.http;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.sink.forward.ForwardEvent;
+import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
-public class HTTPForwardEvent extends ForwardEvent {
+public class HTTPForwardConfiguration implements Configuration {
+  private final String endpoint;
+  private final boolean stopIfException;
 
-  public HTTPForwardEvent(long timestamp, Object value, PartialPath fullPath) {
-    super(timestamp, value, fullPath);
+  public HTTPForwardConfiguration(String endpoint, boolean stopIfException) {
+    this.endpoint = endpoint;
+    this.stopIfException = stopIfException;
+  }
+
+  public void checkConfig() throws SinkException {
+    if (endpoint == null || endpoint.isEmpty()) {
+      throw new SinkException("HTTP config item error");
+    }
+  }
+
+  public boolean isStopIfException() {
+    return stopIfException;
+  }
+
+  public String getEndpoint() {
+    return endpoint;
   }
 }

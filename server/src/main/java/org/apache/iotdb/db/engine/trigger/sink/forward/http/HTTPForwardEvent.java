@@ -17,27 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.engine.trigger.sink.forward.http;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.trigger.sink.forward.ForwardEvent;
 
-public class RegionReplicaSetInfo {
-  private TRegionReplicaSet regionReplicaSet;
-  private String storageGroup;
+public class HTTPForwardEvent extends ForwardEvent {
 
-  public RegionReplicaSetInfo(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
-  }
-
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return regionReplicaSet;
-  }
-
-  public String getStorageGroup() {
-    return storageGroup;
+  public HTTPForwardEvent(long timestamp, Object value, PartialPath fullPath) {
+    super(timestamp, value, fullPath);
   }
 }

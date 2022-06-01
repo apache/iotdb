@@ -17,27 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.mpp.plan.statement.sys;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
-public class RegionReplicaSetInfo {
-  private TRegionReplicaSet regionReplicaSet;
-  private String storageGroup;
+import java.util.List;
 
-  public RegionReplicaSetInfo(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
+public class ExplainStatement extends Statement {
+
+  private final QueryStatement queryStatement;
+
+  public ExplainStatement(QueryStatement queryStatement) {
+    this.queryStatement = queryStatement;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
+  public QueryStatement getQueryStatement() {
+    return queryStatement;
   }
 
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return regionReplicaSet;
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return queryStatement.getPaths();
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitExplain(this, context);
   }
 }
