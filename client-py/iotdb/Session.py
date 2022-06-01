@@ -1189,7 +1189,7 @@ class Session(object):
         )
         status = self.__client.createSchemaTemplate(request)
         logger.debug(
-            "create one template {} template: {}".format(self.__session_id, template)
+            "create one template {} template name: {}".format(self.__session_id, template.get_name())
         )
         return Session.verify_success(status)
 
