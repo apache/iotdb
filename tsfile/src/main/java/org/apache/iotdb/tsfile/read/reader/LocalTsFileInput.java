@@ -160,7 +160,7 @@ public class LocalTsFileInput implements TsFileInput {
     } catch (ClosedByInterruptException e) {
       logger.warn(
           "Current thread is interrupted by another thread when it is blocked in an I/O operation upon a channel.");
-      return "";
+      return null;
     }
   }
 
