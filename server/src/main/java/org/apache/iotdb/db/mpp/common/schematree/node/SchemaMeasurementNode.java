@@ -28,12 +28,10 @@ public class SchemaMeasurementNode extends SchemaNode {
 
   private String alias;
   private MeasurementSchema schema;
-  private String version;
 
-  public SchemaMeasurementNode(String name, MeasurementSchema schema, String version) {
+  public SchemaMeasurementNode(String name, MeasurementSchema schema) {
     super(name);
     this.schema = schema;
-    this.version = version;
   }
 
   public String getAlias() {
@@ -68,10 +66,6 @@ public class SchemaMeasurementNode extends SchemaNode {
     this.schema = schema;
   }
 
-  public String getVersion() {
-    return version;
-  }
-
   @Override
   public boolean isMeasurement() {
     return true;
@@ -94,16 +88,14 @@ public class SchemaMeasurementNode extends SchemaNode {
 
     ReadWriteIOUtils.write(alias, buffer);
     schema.serializeTo(buffer);
-    ReadWriteIOUtils.write(version, buffer);
   }
 
   public static SchemaMeasurementNode deserialize(ByteBuffer buffer) {
     String name = ReadWriteIOUtils.readString(buffer);
     String alias = ReadWriteIOUtils.readString(buffer);
     MeasurementSchema schema = MeasurementSchema.deserializeFrom(buffer);
-    String version = ReadWriteIOUtils.readString(buffer);
 
-    SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(name, schema, version);
+    SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(name, schema);
     measurementNode.setAlias(alias);
     return measurementNode;
   }

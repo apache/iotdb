@@ -497,12 +497,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    createTimeseries(plan, offset, null);
-  }
-
-  @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
-      throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
@@ -521,8 +515,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getCompressor(),
               plan.getProps(),
               plan.getAlias());
-
-      leafMNode.setVersion(version);
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(path.getDevicePath());
@@ -615,12 +607,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param plan CreateAlignedTimeSeriesPlan
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    createAlignedTimeSeries(plan, null);
-  }
-
-  @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
-      throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
@@ -646,12 +632,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getEncodings(),
               plan.getCompressors(),
               plan.getAliasList());
-
-      if (versionList != null) {
-        for (int i = 0; i < measurements.size(); i++) {
-          measurementMNodeList.get(i).setVersion(versionList.get(i));
-        }
-      }
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.invalidate(prefixPath);

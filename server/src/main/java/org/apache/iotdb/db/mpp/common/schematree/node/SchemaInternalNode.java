@@ -44,11 +44,6 @@ public class SchemaInternalNode extends SchemaNode {
   }
 
   @Override
-  public void removeChild(String name) {
-    children.remove(name);
-  }
-
-  @Override
   public void replaceChild(String name, SchemaNode newChild) {
     SchemaNode oldChild = children.get(name);
     oldChild.copyDataTo(newChild);
