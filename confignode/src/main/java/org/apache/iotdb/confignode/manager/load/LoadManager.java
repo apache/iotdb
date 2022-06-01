@@ -82,14 +82,16 @@ public class LoadManager implements Runnable {
    *
    * @param storageGroups List<StorageGroupName>
    * @param consensusGroupType TConsensusGroupType of Region to be allocated
+   * @param regionNum The number of Regions
    */
-  public void initializeRegions(List<String> storageGroups, TConsensusGroupType consensusGroupType)
+  public void initializeRegions(
+      List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
       throws NotEnoughDataNodeException {
     CreateRegionsReq createRegionsReq = null;
 
     try {
       createRegionsReq =
-          regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, 1);
+          regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, regionNum);
       createRegionsOnDataNodes(createRegionsReq);
     } catch (MetadataException e) {
       LOGGER.error("Meet error when create Regions", e);
@@ -136,31 +138,48 @@ public class LoadManager implements Runnable {
 
         if (totalReplicaNum < totalCoreNum * 0.5) {
           // Allocate more Regions
-          CreateRegionsReq createRegionsReq;
+          CreateRegionsReq createRegionsReq = null;
+
+          // Assume that cluster will get the best efficiency when SchemaRegion:DataRegion is 1:5
+          // TODO: Find an optimal SchemaRegion:DataRegion rate.
           if (storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
-              > storageGroupSchema.getDataRegionGroupIdsSize()) {
-            // TODO: Find an optimal SchemaRegion:DataRegion rate
-            // Currently, we just assume that it's 1:5
+                  > storageGroupSchema.getDataRegionGroupIdsSize()
+              && storageGroupSchema.getDataRegionGroupIdsSize()
+                  < storageGroupSchema.getMaximumDataRegionCount()) {
+            // Allocate more DataRegions
+
+            // regionNum equals to min(remain cpu core,
+            // min(SchemaRegionCnt * 5 - DataRegionCnt, MaxDataRegionCnt - DataRegionCnt))
             int regionNum =
                 Math.min(
                     ((int) (totalCoreNum * 0.5) - totalReplicaNum)
                         / storageGroupSchema.getDataReplicationFactor(),
-                    storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
-                        - storageGroupSchema.getDataRegionGroupIdsSize());
+                    Math.min(
+                        storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
+                            - storageGroupSchema.getDataRegionGroupIdsSize(),
+                        storageGroupSchema.getMaximumDataRegionCount()
+                            - storageGroupSchema.getDataRegionGroupIdsSize()));
+
             createRegionsReq =
                 regionBalancer.genRegionsAllocationPlan(
                     Collections.singletonList(storageGroup),
                     TConsensusGroupType.DataRegion,
                     regionNum);
-          } else {
+          } else if (storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
+                  <= storageGroupSchema.getDataRegionGroupIdsSize()
+              && storageGroupSchema.getSchemaRegionGroupIdsSize()
+                  < storageGroupSchema.getMaximumSchemaRegionCount()) {
+            // Allocate one more SchemaRegion
             createRegionsReq =
                 regionBalancer.genRegionsAllocationPlan(
                     Collections.singletonList(storageGroup), TConsensusGroupType.SchemaRegion, 1);
           }
 
           // TODO: use procedure to protect this
-          createRegionsOnDataNodes(createRegionsReq);
-          getConsensusManager().write(createRegionsReq);
+          if (createRegionsReq != null) {
+            createRegionsOnDataNodes(createRegionsReq);
+            getConsensusManager().write(createRegionsReq);
+          }
         }
       } catch (MetadataException e) {
         LOGGER.warn("Meet error when doing regionExpansion", e);
@@ -186,7 +205,7 @@ public class LoadManager implements Runnable {
           List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
           for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
             HeartbeatHandler handler =
-                new HeartbeatHandler(dataNodeInfo.getLocation().getDataNodeId(), heartbeatCache);
+                new HeartbeatHandler(dataNodeInfo.getLocation(), heartbeatCache);
             AsyncDataNodeClientPool.getInstance()
                 .getHeartBeat(
                     dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
@@ -195,7 +214,8 @@ public class LoadManager implements Runnable {
           balanceCount += 1;
           // TODO: Adjust load balancing period
           if (balanceCount == 10) {
-            doLoadBalancing();
+            // Pause load balancing temporary
+            // doLoadBalancing();
             balanceCount = 0;
           }
         } else {

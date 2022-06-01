@@ -200,17 +200,6 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setMaximumSchemaRegionCount(
-          Integer.parseInt(
-              properties.getProperty(
-                  "maximum_schema_region_count",
-                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
-
-      conf.setMaximumDataRegionCount(
-          Integer.parseInt(
-              properties.getProperty(
-                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
-
       conf.setHeartbeatInterval(
           Long.parseLong(
               properties.getProperty(
