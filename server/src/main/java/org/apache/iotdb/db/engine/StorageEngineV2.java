@@ -588,7 +588,6 @@ public class StorageEngineV2 implements IService {
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
       throws DataRegionException {
-    logger.error("test", new RuntimeException());
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
     DataRegion dataRegion =
         dataRegionMap.computeIfAbsent(
