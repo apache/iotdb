@@ -16,32 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-package org.apache.iotdb.db.engine.trigger.sink.http;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
-import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
+public class ShowClusterStatement extends ShowStatement implements IConfigStatement {
 
-public class HTTPForwardConfiguration implements Configuration {
-  private final String endpoint;
-  private final boolean stopIfException;
-
-  public HTTPForwardConfiguration(String endpoint, boolean stopIfException) {
-    this.endpoint = endpoint;
-    this.stopIfException = stopIfException;
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 
-  public void checkConfig() throws SinkException {
-    if (endpoint == null || endpoint.isEmpty()) {
-      throw new SinkException("HTTP config item error");
-    }
-  }
-
-  public boolean isStopIfException() {
-    return stopIfException;
-  }
-
-  public String getEndpoint() {
-    return endpoint;
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowCluster(this, context);
   }
 }

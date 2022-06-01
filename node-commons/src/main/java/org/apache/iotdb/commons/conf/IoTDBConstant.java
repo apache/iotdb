@@ -93,6 +93,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
   public static final String COLUMN_IS_ALIGNED = "isAligned";
+  public static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -231,6 +232,12 @@ public class IoTDBConstant {
   public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
   public static final String WAL_VERSION_ID = "versionId";
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
+
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String NODE_STATUS_RUNNING = "Running";
+  public static final String NODE_STATUS_Down = "Down";
 
   // client version number
   public enum ClientVersion {

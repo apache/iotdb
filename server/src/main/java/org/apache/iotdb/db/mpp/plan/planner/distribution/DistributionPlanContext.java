@@ -22,9 +22,20 @@ package org.apache.iotdb.db.mpp.plan.planner.distribution;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 
 public class DistributionPlanContext {
+  protected boolean isRoot;
   protected MPPQueryContext queryContext;
 
   protected DistributionPlanContext(MPPQueryContext queryContext) {
+    this.isRoot = true;
     this.queryContext = queryContext;
+  }
+
+  protected DistributionPlanContext copy() {
+    return new DistributionPlanContext(queryContext);
+  }
+
+  protected DistributionPlanContext setRoot(boolean isRoot) {
+    this.isRoot = isRoot;
+    return this;
   }
 }

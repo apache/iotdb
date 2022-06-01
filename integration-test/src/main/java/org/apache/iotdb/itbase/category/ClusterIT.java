@@ -16,15 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.itbase.category;
 
-package org.apache.iotdb.db.engine.trigger.sink.http;
-
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.sink.forward.ForwardEvent;
-
-public class HTTPForwardEvent extends ForwardEvent {
-
-  public HTTPForwardEvent(long timestamp, Object value, PartialPath fullPath) {
-    super(timestamp, value, fullPath);
-  }
-}
+public interface ClusterIT {}
