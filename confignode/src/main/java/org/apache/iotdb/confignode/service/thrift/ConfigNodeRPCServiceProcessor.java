@@ -141,7 +141,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
     TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
 
-    // Set default configurations
+    // Set default configurations if necessary
     if (!storageGroupSchema.isSetTTL()) {
       storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     }
@@ -157,14 +157,10 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       storageGroupSchema.setTimePartitionInterval(
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
-    if (!storageGroupSchema.isSetMaximumSchemaRegionCount()) {
-      storageGroupSchema.setMaximumSchemaRegionCount(
-          ConfigNodeDescriptor.getInstance().getConf().getMaximumSchemaRegionCount());
-    }
-    if (!storageGroupSchema.isSetMaximumDataRegionCount()) {
-      storageGroupSchema.setMaximumDataRegionCount(
-          ConfigNodeDescriptor.getInstance().getConf().getMaximumDataRegionCount());
-    }
+
+    // Mark the StorageGroup as SchemaRegions and DataRegions not yet created
+    storageGroupSchema.setMaximumSchemaRegionCount(-1);
+    storageGroupSchema.setMaximumDataRegionCount(-1);
 
     // Initialize RegionGroupId List
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());

@@ -212,7 +212,8 @@ public class LoadManager implements Runnable {
           balanceCount += 1;
           // TODO: Adjust load balancing period
           if (balanceCount == 10) {
-            doLoadBalancing();
+            // Pause load balancing temporary
+            // doLoadBalancing();
             balanceCount = 0;
           }
         } else {
