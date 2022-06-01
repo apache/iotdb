@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -71,6 +72,26 @@ public class MetaUtils {
    *     vector1 (s1,s2) would be returned once.
    */
   public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
+    List<PartialPath> result = new LinkedList<>();
+    AlignedPath alignedPath = null;
+    for (PartialPath path : fullPaths) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result.add(measurementPath);
+        alignedPath = null;
+      } else {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
+          alignedPath = new AlignedPath(measurementPath);
+          result.add(alignedPath);
+        } else {
+          alignedPath.addMeasurement(measurementPath);
+        }
+      }
+    }
+    return result;
+  }
+
+  public static List<PartialPath> groupAlignedSeries(List<PartialPath> fullPaths) {
     List<PartialPath> result = new ArrayList<>();
     Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
     for (PartialPath path : fullPaths) {

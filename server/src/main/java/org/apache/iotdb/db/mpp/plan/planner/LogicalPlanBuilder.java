@@ -119,7 +119,7 @@ public class LogicalPlanBuilder {
         sourceExpressions.stream()
             .map(expression -> ((TimeSeriesOperand) expression).getPath())
             .collect(Collectors.toList());
-    List<PartialPath> groupedPaths = MetaUtils.groupAlignedPaths(selectedPaths);
+    List<PartialPath> groupedPaths = MetaUtils.groupAlignedSeries(selectedPaths);
     for (PartialPath path : groupedPaths) {
       if (path instanceof MeasurementPath) { // non-aligned series
         SeriesScanNode seriesScanNode =
