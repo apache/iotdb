@@ -473,6 +473,7 @@ public class LogicalPlanner {
               .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
       // show latest timeseries
       if (showTimeSeriesStatement.isOrderByHeat()
+          && null != analysis.getDataPartitionInfo()
           && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
         PlanNode lastPlanNode =
             new LogicalPlanBuilder(context)
