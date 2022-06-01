@@ -266,6 +266,16 @@ public class DataNode implements DataNodeMBean {
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
     initServiceProvider();
+
+    // init rpc service
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
+
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
@@ -280,19 +290,10 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(StorageEngineV2.getInstance());
     registerManager.register(DataBlockService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
 
     registerUdfServices();
 
     registerManager.register(ReceiverService.getInstance());
-    registerManager.register(MetricsService.getInstance());
-
-    // in cluster mode, RPC service is not enabled.
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
-    }
 
     initProtocols();
 

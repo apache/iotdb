@@ -208,11 +208,22 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+// Show cluster
+struct TClusterNodeInfos {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
+}
+
 // UDF
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
   3: required list<string> uris
+}
+
+struct TDropFunctionReq {
+  1: required string udfName
 }
 
 service ConfigIService {
@@ -222,6 +233,9 @@ service ConfigIService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+
+  /* Show Cluster */
+  TClusterNodeInfos getAllClusterNodeInfos()
 
   /* StorageGroup */
 
@@ -278,4 +292,6 @@ service ConfigIService {
   /* UDF */
 
   common.TSStatus createFunction(TCreateFunctionReq req)
+
+  common.TSStatus dropFunction(TDropFunctionReq req)
 }

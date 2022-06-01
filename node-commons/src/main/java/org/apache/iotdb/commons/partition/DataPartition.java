@@ -314,7 +314,8 @@ public class DataPartition extends Partition {
     }
   }
 
-  public List<RegionReplicaSetInfo> getDataDistributionInfo() {
+  @Override
+  public List<RegionReplicaSetInfo> getDistributionInfo() {
     Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
 
     dataPartitionMap.forEach(
@@ -327,7 +328,7 @@ public class DataPartition extends Partition {
           for (TRegionReplicaSet regionReplicaSet : ret) {
             distributionMap
                 .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
-                .addStorageGroup(storageGroup);
+                .setStorageGroup(storageGroup);
           }
         });
     return new ArrayList<>(distributionMap.values());

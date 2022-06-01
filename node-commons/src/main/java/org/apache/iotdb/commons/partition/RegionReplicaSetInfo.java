@@ -21,29 +21,23 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 public class RegionReplicaSetInfo {
   private TRegionReplicaSet regionReplicaSet;
-  private Set<String> ownedStorageGroups;
+  private String storageGroup;
 
   public RegionReplicaSetInfo(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
-    this.ownedStorageGroups = new HashSet<>();
   }
 
-  public void addStorageGroup(String storageGroup) {
-    ownedStorageGroups.add(storageGroup);
+  public void setStorageGroup(String storageGroup) {
+    this.storageGroup = storageGroup;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
-  public List<String> getOwnedStorageGroups() {
-    return new ArrayList<>(ownedStorageGroups);
+  public String getStorageGroup() {
+    return storageGroup;
   }
 }

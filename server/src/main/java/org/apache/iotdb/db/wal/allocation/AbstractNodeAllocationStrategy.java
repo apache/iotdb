@@ -76,4 +76,14 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       return WALFakeNode.getFailureInstance(e);
     }
   }
+
+  protected IWALNode createWALNode(
+      String identifier, String folder, int startFileVersion, long startSearchIndex) {
+    try {
+      return new WALNode(identifier, folder, startFileVersion, startSearchIndex);
+    } catch (FileNotFoundException e) {
+      logger.error("Fail to create wal node", e);
+      return WALFakeNode.getFailureInstance(e);
+    }
+  }
 }

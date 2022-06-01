@@ -62,7 +62,8 @@ public class TransportHandler {
   public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
     this.pipeName = pipe.getName();
     this.createTime = pipe.getCreateTime();
-    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort());
+    this.localIP = getLocalIP(pipeSink);
+    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
 
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -70,8 +71,6 @@ public class TransportHandler {
     this.heartbeatExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipeName);
-
-    this.localIP = getLocalIP(pipeSink);
   }
 
   private String getLocalIP(IoTDBPipeSink pipeSink) {

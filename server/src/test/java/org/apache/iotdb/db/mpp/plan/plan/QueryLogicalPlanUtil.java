@@ -153,11 +153,6 @@ public class QueryLogicalPlanUtil {
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
-        new AlignedSeriesScanNode(
-            queryId.genPlanNodeId(),
-            (AlignedPath) schemaMap.get("root.sg.d2.a"),
-            OrderBy.TIMESTAMP_ASC));
-    sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
@@ -171,6 +166,11 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
+            OrderBy.TIMESTAMP_ASC));
+    sourceNodeList.add(
+        new AlignedSeriesScanNode(
+            queryId.genPlanNodeId(),
+            (AlignedPath) schemaMap.get("root.sg.d2.a"),
             OrderBy.TIMESTAMP_ASC));
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, sourceNodeList);
@@ -716,8 +716,8 @@ public class QueryLogicalPlanUtil {
         new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
-    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 3, 2));
+    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 3, 2));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),

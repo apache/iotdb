@@ -59,6 +59,8 @@ public class CheckpointManager implements AutoCloseable {
   private final Map<Integer, MemTableInfo> memTableId2Info = new HashMap<>();
   /** cache the biggest byte buffer to serialize checkpoint */
   private volatile ByteBuffer cachedByteBuffer;
+  /** max memTable id */
+  private int maxMemTableId = 0;
   /** current checkpoint file version id, only updated by fsyncAndDeleteThread */
   private int currentCheckPointFileVersion = 0;
   /** current checkpoint file log writer, only updated by fsyncAndDeleteThread */
@@ -76,7 +78,25 @@ public class CheckpointManager implements AutoCloseable {
         new CheckpointWriter(
             SystemFileFactory.INSTANCE.getFile(
                 logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion)));
-    makeGlobalInfoCP();
+    logHeader();
+  }
+
+  private void logHeader() {
+    infoLock.lock();
+    try {
+      // log max memTable id
+      ByteBuffer tmpBuffer = ByteBuffer.allocate(Integer.BYTES);
+      tmpBuffer.putInt(maxMemTableId);
+      try {
+        currentLogWriter.write(tmpBuffer);
+      } catch (IOException e) {
+        logger.error("Fail to log max memTable id: {}", maxMemTableId, e);
+      }
+      // log global memTables' info
+      makeGlobalInfoCP();
+    } finally {
+      infoLock.unlock();
+    }
   }
 
   /**
@@ -84,21 +104,17 @@ public class CheckpointManager implements AutoCloseable {
    * each checkpoint file
    */
   private void makeGlobalInfoCP() {
-    infoLock.lock();
-    try {
-      Checkpoint checkpoint =
-          new Checkpoint(
-              CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
-      logByCachedByteBuffer(checkpoint);
-    } finally {
-      infoLock.unlock();
-    }
+    Checkpoint checkpoint =
+        new Checkpoint(
+            CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
+    logByCachedByteBuffer(checkpoint);
   }
 
   /** make checkpoint for create memTable info */
   public void makeCreateMemTableCP(MemTableInfo memTableInfo) {
     infoLock.lock();
     try {
+      maxMemTableId = Math.max(maxMemTableId, memTableInfo.getMemTableId());
       memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
       Checkpoint checkpoint =
           new Checkpoint(
@@ -162,8 +178,8 @@ public class CheckpointManager implements AutoCloseable {
 
       try {
         if (tryRollingLogWriter()) {
-          // first log global memTables' info, then delete old checkpoint file
-          makeGlobalInfoCP();
+          // first log max memTable id and global memTables' info, then delete old checkpoint file
+          logHeader();
           currentLogWriter.force();
           File oldFile =
               SystemFileFactory.INSTANCE.getFile(
