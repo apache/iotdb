@@ -24,7 +24,13 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.*;
+import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -63,9 +69,7 @@ public class ExpressionUtils {
       switch (expression.getExpressionType()) {
         case IS_NULL:
           resultExpressions.add(
-                  new IsNullExpression(
-                          childExpression,
-                          ((IsNullExpression) expression).isNot()));
+              new IsNullExpression(childExpression, ((IsNullExpression) expression).isNot()));
           break;
         case IN:
           resultExpressions.add(

@@ -33,7 +33,12 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.*;
+import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
@@ -2008,7 +2013,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean inWithoutNull) {
-    return new IsNullExpression(parseExpression(context.uaryBeforeIsNullexpression, inWithoutNull), context.OPERATOR_ISNOTNULL() != null);
+    return new IsNullExpression(
+        parseExpression(context.uaryBeforeIsNullexpression, inWithoutNull),
+        context.OPERATOR_ISNOTNULL() != null);
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -2048,7 +2055,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
           TSDataType.INT64, String.valueOf(parseDateExpression(constantContext.dateExpression())));
-    /*} else if (constantContext.NULL_LITERAL() != null) {
+      /*} else if (constantContext.NULL_LITERAL() != null) {
       return new ConstantOperand(TSDataType.TEXT, "");*/
     } else {
       throw new SQLParserException("Unsupported constant operand: " + text);

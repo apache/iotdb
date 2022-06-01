@@ -11,46 +11,46 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 
 public class IsNullTransformer extends UnaryTransformer {
-    boolean isNot;
+  boolean isNot;
 
-    public IsNullTransformer(LayerPointReader layerPointReader, boolean isNot) {
-        super(layerPointReader);
-        this.isNot = isNot;
+  public IsNullTransformer(LayerPointReader layerPointReader, boolean isNot) {
+    super(layerPointReader);
+    this.isNot = isNot;
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.BOOLEAN;
+  }
+
+  @Override
+  protected final boolean cacheValue() throws QueryProcessException, IOException {
+    if (!layerPointReader.next()) {
+      return false;
     }
 
-    @Override
-    public TSDataType getDataType() {
-        return TSDataType.BOOLEAN;
+    if (!isLayerPointReaderConstant) {
+      cachedTime = layerPointReader.currentTime();
     }
 
-    @Override
-    protected final boolean cacheValue() throws QueryProcessException, IOException {
-        if (!layerPointReader.next()) {
-            return false;
-        }
-
-        if (!isLayerPointReaderConstant) {
-            cachedTime = layerPointReader.currentTime();
-        }
-
-        if (layerPointReader.isCurrentNull()) {
-            currentNull = true;
-        }
-        transformAndCache();
-
-        layerPointReader.readyForNext();
-        return true;
+    if (layerPointReader.isCurrentNull()) {
+      currentNull = true;
     }
+    transformAndCache();
 
-    /*
-     * currNull = true, isNot = false -> cachedBoolean = true;
-     * currNull = false, isNot = true -> cachedBoolean = true;
-     * currNull = true, isNot = true -> cachedBoolean = false;
-     * currNull = false, isNot = false -> cachedBoolean = false.
-     * So we need use '^' here.
-     */
-    @Override
-    protected void transformAndCache() throws QueryProcessException, IOException {
-        cachedBoolean = !currentNull ^ isNot;
-    }
+    layerPointReader.readyForNext();
+    return true;
+  }
+
+  /*
+   * currNull = true, isNot = false -> cachedBoolean = true;
+   * currNull = false, isNot = true -> cachedBoolean = true;
+   * currNull = true, isNot = true -> cachedBoolean = false;
+   * currNull = false, isNot = false -> cachedBoolean = false.
+   * So we need use '^' here.
+   */
+  @Override
+  protected void transformAndCache() throws QueryProcessException, IOException {
+    cachedBoolean = !currentNull ^ isNot;
+  }
 }
