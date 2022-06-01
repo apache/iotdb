@@ -69,7 +69,6 @@ class ReadWriteUtils:
         values_tobe_packed.append(len(value_bytes))
         values_tobe_packed.append(value_bytes)
 
-    # TODO buffer的内容先按照list来算
     @classmethod
     def write_int(cls, i: int, format_str_list, values_tobe_packed):
         format_str_list.append("i")
