@@ -57,7 +57,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   private ProcedureState state = ProcedureState.INITIALIZING;
   private int childrenLatch = 0;
-  private org.apache.iotdb.confignode.procedure.exception.ProcedureException exception;
+  private ProcedureException exception;
 
   private volatile long timeout = NO_TIMEOUT;
   private volatile long lastUpdate;
