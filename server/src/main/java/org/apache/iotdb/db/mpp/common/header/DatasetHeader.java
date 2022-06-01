@@ -101,7 +101,6 @@ public class DatasetHeader {
   }
 
   public int getOutputValueColumnCount() {
-    return (int)
-        columnHeaders.stream().map(ColumnHeader::getColumnNameWithAlias).distinct().count();
+    return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
   }
 }
