@@ -674,6 +674,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
+    if (ctx.intoClause() != null) {
+      throw new SemanticException(
+          "The SELECT-INTO statement is not supported in the current version.");
+    }
+
     // initialize query statement
     queryStatement = new QueryStatement();
 
