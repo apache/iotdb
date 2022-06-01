@@ -55,6 +55,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -116,7 +117,11 @@ public class FunctionExpression extends Expression {
 
   public FunctionExpression(ByteBuffer byteBuffer) {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
-    functionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+
+    Map<String, String> deserializedFunctionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    functionAttributes =
+        deserializedFunctionAttributes != null ? deserializedFunctionAttributes : new HashMap<>();
+
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Expression> expressions = new ArrayList<>();
     for (int i = 0; i < expressionSize; i++) {
