@@ -50,8 +50,9 @@ public class HeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
   @Override
   public void onError(Exception e) {
     LOGGER.error(
-        String.format(
-            "Heartbeat error on DataNode: {id=%d, internalEndPoint=%s}, exception: %s",
-            dataNodeLocation.getDataNodeId(), dataNodeLocation.getInternalEndPoint(), e));
+        "Heartbeat error on DataNode: {id={}, internalEndPoint={}}",
+        dataNodeLocation.getDataNodeId(),
+        dataNodeLocation.getInternalEndPoint(),
+        e);
   }
 }
