@@ -156,13 +156,13 @@ public class AuthorityFetcher {
         }
         // The Time column will be ignored by the setting of ColumnHeader.
         // So we can put a meaningless value here
-        for (String value : authorizerInfo.get(headerList.get(0).getColumnName())) {
+        for (String value : authorizerInfo.get(headerList.get(0).getColumnNameWithAlias())) {
           builder.getTimeColumnBuilder().writeLong(0L);
           builder.getColumnBuilder(0).writeBinary(new Binary(value));
           builder.declarePosition();
         }
         for (int i = 1; i < headerList.size(); i++) {
-          for (String value : authorizerInfo.get(headerList.get(i).getColumnName())) {
+          for (String value : authorizerInfo.get(headerList.get(i).getColumnNameWithAlias())) {
             builder.getColumnBuilder(i).writeBinary(new Binary(value));
           }
         }

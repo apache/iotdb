@@ -64,7 +64,9 @@ public class DatasetHeader {
   }
 
   public List<String> getRespColumns() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+    return columnHeaders.stream()
+        .map(ColumnHeader::getColumnNameWithAlias)
+        .collect(Collectors.toList());
   }
 
   public List<String> getRespDataTypeList() {
@@ -89,10 +91,17 @@ public class DatasetHeader {
   }
 
   public Map<String, Integer> getColumnNameIndexMap() {
-    return columnToTsBlockIndexMap;
+    Map<String, Integer> columnNameIndexMap = new HashMap<>();
+    for (ColumnHeader columnHeader : columnHeaders) {
+      columnNameIndexMap.put(
+          columnHeader.getColumnNameWithAlias(),
+          columnToTsBlockIndexMap.get(columnHeader.getColumnName()));
+    }
+    return columnNameIndexMap;
   }
 
   public int getOutputValueColumnCount() {
-    return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
+    return (int)
+        columnHeaders.stream().map(ColumnHeader::getColumnNameWithAlias).distinct().count();
   }
 }
