@@ -335,7 +335,33 @@ public abstract class AbstractReceiverInfo {
     } catch (ClassNotFoundException e) {
       throw new IOException(e);
     }
-    // TODO(cyz): update log
+    // update log
+    log.close();
+    if (pipeServerEnable) {
+      log.startPipeServer();
+    }
+    List<PipeInfo> pipeInfos = getAllPipeInfos();
+    for (PipeInfo pipeInfo : pipeInfos) {
+      log.createPipe(pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
+      switch (pipeInfo.getStatus()) {
+        case RUNNING:
+          log.startPipe(pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
+          break;
+        case STOP:
+          log.stopPipe(pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
+          break;
+        case DROP:
+          log.dropPipe(pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
+          break;
+        default:
+          throw new UnsupportedOperationException();
+      }
+    }
+    for (Map.Entry<String, List<PipeMessage>> entry : pipeMessageMap.entrySet()) {
+      for (PipeMessage pipeMessage : entry.getValue()) {
+        log.writePipeMsg(entry.getKey(), pipeMessage);
+      }
+    }
   }
 
   private void createDir(String pipeName, String remoteIp, long createTime) {

@@ -114,7 +114,7 @@ public class ReceiverLog {
     pipeServerWriter.flush();
   }
 
-  public void clean() throws IOException{
+  public void clean() throws IOException {
     File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
     File msgFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_MSG_LOG_NAME);
     if (!logFile.getParentFile().exists()) {

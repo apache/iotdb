@@ -217,7 +217,7 @@ struct TCreateFunctionReq {
 
 // Sync
 struct TOperateReceiverPipeReq{
-  1:required transport.RequestType type // todo(cyz) 移到common，并改名
+  1:required transport.RequestType type
   2:required string pipeName
   3:required string remoteIp
   4:required i64 createTime
