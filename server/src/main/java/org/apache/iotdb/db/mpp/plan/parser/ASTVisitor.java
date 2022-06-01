@@ -1,20 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *   * Licensed to the Apache Software Foundation (ASF) under one  * or more contributor license agreements.  See the NOTICE file  * distributed with this work for additional information  * regarding copyright ownership.  The ASF licenses this file  * to you under the Apache License, Version 2.0 (the  * "License"); you may not use this file except in compliance  * with the License.  You may obtain a copy of the License at  *  *     http://www.apache.org/licenses/LICENSE-2.0  *  * Unless required by applicable law or agreed to in writing,  * software distributed under the License is distributed on an  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY  * KIND, either express or implied.  See the License for the  * specific language governing permissions and limitations  * under the License.
  */
 
 package org.apache.iotdb.db.mpp.plan.parser;
@@ -51,11 +36,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.*;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
@@ -1964,6 +1945,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new UnsupportedOperationException();
     }
 
+    if (context.uaryBeforeIsNullexpression != null) {
+      return parseIsNullExpression(context, inWithoutNull);
+    }
+
     if (context.unaryBeforeInExpression != null) {
       return parseInExpression(context, inWithoutNull);
     }
@@ -2036,6 +2021,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
   }
 
+  private Expression parseIsNullExpression(ExpressionContext context, boolean inWithoutNull) {
+    return new IsNullExpression(parseExpression(context.uaryBeforeIsNullexpression, inWithoutNull), context.OPERATOR_ISNOTNULL() != null);
+  }
+
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
     Expression childExpression = parseExpression(context.unaryBeforeInExpression, inWithoutNull);
     LinkedHashSet<String> values = new LinkedHashSet<>();
@@ -2073,6 +2062,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
           TSDataType.INT64, String.valueOf(parseDateExpression(constantContext.dateExpression())));
+    /*} else if (constantContext.NULL_LITERAL() != null) {
+      return new ConstantOperand(TSDataType.TEXT, "");*/
     } else {
       throw new SQLParserException("Unsupported constant operand: " + text);
     }
