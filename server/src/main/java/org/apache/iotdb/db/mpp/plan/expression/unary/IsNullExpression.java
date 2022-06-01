@@ -16,54 +16,54 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 
 public class IsNullExpression extends UnaryExpression {
-    private final boolean isNot;
+  private final boolean isNot;
 
-    public IsNullExpression(Expression expression, boolean isNot) {
-        super(expression);
-        this.isNot = isNot;
-    }
+  public IsNullExpression(Expression expression, boolean isNot) {
+    super(expression);
+    this.isNot = isNot;
+  }
 
-    public IsNullExpression(ByteBuffer byteBuffer) {
-        super(Expression.deserialize(byteBuffer));
-        isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    }
+  public IsNullExpression(ByteBuffer byteBuffer) {
+    super(Expression.deserialize(byteBuffer));
+    isNot = ReadWriteIOUtils.readBool(byteBuffer);
+  }
 
-    public boolean isNot() {
-        return isNot;
-    }
+  public boolean isNot() {
+    return isNot;
+  }
 
-    @Override
-    public TSDataType inferTypes(TypeProvider typeProvider) {
-        final String expressionString = toString();
-        if (!typeProvider.containsTypeInfoOf(expressionString)) {
-            typeProvider.setType(expressionString, expression.inferTypes(typeProvider));
-        }
-        return typeProvider.getType(expressionString);
+  @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) {
+    final String expressionString = toString();
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      typeProvider.setType(expressionString, expression.inferTypes(typeProvider));
     }
+    return typeProvider.getType(expressionString);
+  }
 
-    @Override
-    protected String getExpressionStringInternal() {
-        return expression + " IS " + (isNot ? "" : "NOT ") + "NULL";
-    }
+  @Override
+  protected String getExpressionStringInternal() {
+    return expression + " IS " + (isNot ? "" : "NOT ") + "NULL";
+  }
 
-    @Override
-    public ExpressionType getExpressionType() {
-        return ExpressionType.IS_NULL;
-    }
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.IS_NULL;
+  }
 
-    @Override
-    protected Transformer constructTransformer(LayerPointReader pointReader) {
-        return new IsNullTransformer(pointReader, isNot);
-    }
+  @Override
+  protected Transformer constructTransformer(LayerPointReader pointReader) {
+    return new IsNullTransformer(pointReader, isNot);
+  }
 
-    @Override
-    protected Expression constructExpression(Expression childExpression) {
-        return new IsNullExpression(childExpression, isNot);
-    }
+  @Override
+  protected Expression constructExpression(Expression childExpression) {
+    return new IsNullExpression(childExpression, isNot);
+  }
 
-    @Override
-    protected void serialize(ByteBuffer byteBuffer) {
-        super.serialize(byteBuffer);
-        ReadWriteIOUtils.write(isNot, byteBuffer);
-    }
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(isNot, byteBuffer);
+  }
 }
