@@ -33,9 +33,6 @@ public class IsNullTransformer extends UnaryTransformer {
       cachedTime = layerPointReader.currentTime();
     }
 
-    if (layerPointReader.isCurrentNull()) {
-      currentNull = true;
-    }
     transformAndCache();
 
     layerPointReader.readyForNext();
@@ -51,6 +48,6 @@ public class IsNullTransformer extends UnaryTransformer {
    */
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
-    cachedBoolean = !currentNull ^ isNot;
+    cachedBoolean = layerPointReader.isCurrentNull() ^ isNot;
   }
 }
