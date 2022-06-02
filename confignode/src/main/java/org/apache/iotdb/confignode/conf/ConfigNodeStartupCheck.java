@@ -243,8 +243,8 @@ public class ConfigNodeStartupCheck {
     systemProperties.setProperty(
         "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
 
-    try {
-      systemProperties.store(new FileOutputStream(systemPropertiesFile), "");
+    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
+      systemProperties.store(fileOutputStream, "");
     } catch (IOException e) {
       LOGGER.error(
           "Can't store system properties file {}.", systemPropertiesFile.getAbsolutePath());
