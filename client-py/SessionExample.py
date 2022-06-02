@@ -20,6 +20,9 @@
 import numpy as np
 
 from iotdb.Session import Session
+from iotdb.template.InternalNode import InternalNode
+from iotdb.template.MeasurementNode import MeasurementNode
+from iotdb.template.Template import Template
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
 from iotdb.utils.NumpyTablet import NumpyTablet
@@ -313,6 +316,52 @@ with session.execute_last_data_query(
 # delete storage group
 session.delete_storage_group("root.sg_test_01")
 
+# create measurement node template
+template = Template(name="template_python", share_time=False)
+m_node_1 = MeasurementNode(
+    name="s1",
+    data_type=TSDataType.INT64,
+    encoding=TSEncoding.RLE,
+    compression_type=Compressor.SNAPPY,
+)
+m_node_2 = MeasurementNode(
+    name="s2",
+    data_type=TSDataType.INT64,
+    encoding=TSEncoding.RLE,
+    compression_type=Compressor.SNAPPY,
+)
+m_node_3 = MeasurementNode(
+    name="s3",
+    data_type=TSDataType.INT64,
+    encoding=TSEncoding.RLE,
+    compression_type=Compressor.SNAPPY,
+)
+template.add_template(m_node_1)
+template.add_template(m_node_2)
+template.add_template(m_node_3)
+session.create_schema_template(template)
+print("create template success template_python")
+
+# create internal node template
+template = Template(name="treeTemplate_python", share_time=True)
+i_node_gps = InternalNode(name="GPS", share_time=False)
+i_node_v = InternalNode(name="vehicle", share_time=True)
+m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+
+i_node_gps.add_child(m_node_x)
+i_node_gps.add_child(m_node_x)
+i_node_v.add_child(m_node_x)
+template.add_template(i_node_gps)
+template.add_template(i_node_v)
+template.add_template(m_node_x)
+
+session.create_schema_template(template)
+print("create template success treeTemplate_python}")
+
+# drop template
+session.drop_schema_template("template_python")
+session.drop_schema_template("treeTemplate_python")
+print("drop template success, template_python and treeTemplate_python")
 # close session connection.
 session.close()
 
