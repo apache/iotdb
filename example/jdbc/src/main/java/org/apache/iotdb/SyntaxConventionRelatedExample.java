@@ -59,6 +59,8 @@ public class SyntaxConventionRelatedExample {
    */
   private static final String ROOT_SG1_NORMAL_NODE_EXAMPLE = "root.sg1.a";
 
+  private static final String DEVICE = "root.sg1";
+
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
@@ -71,7 +73,7 @@ public class SyntaxConventionRelatedExample {
 
       // create time series
       try {
-        statement.execute("SET STORAGE GROUP TO root.sg1");
+        statement.execute(String.format("SET STORAGE GROUP TO %s", DEVICE));
         statement.execute(
             String.format(
                 "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
@@ -154,6 +156,6 @@ public class SyntaxConventionRelatedExample {
   }
 
   private static String removeDevice(String path) {
-    return path.substring(9);
+    return path.substring(DEVICE.length() + 1);
   }
 }
