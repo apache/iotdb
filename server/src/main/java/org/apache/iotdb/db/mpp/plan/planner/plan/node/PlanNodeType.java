@@ -100,6 +100,7 @@ public enum PlanNodeType {
   TIME_SERIES_SCHEMA_SCAN((short) 23),
   SCHEMA_FETCH_SCAN((short) 24),
   SCHEMA_QUERY_MERGE((short) 25),
+  SCHEMA_QUERY_ORDER_BY_HEAT((short) 26),
   DEVICES_COUNT((short) 27),
   TIME_SERIES_COUNT((short) 28),
   LEVEL_TIME_SERIES_COUNT((short) 29),
@@ -122,8 +123,7 @@ public enum PlanNodeType {
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY_MERGE((short) 48),
-  NODE_PATHS_COUNT((short) 49),
-  SCHEMA_QUERY_ORDER_BY_HEAT((short) 50);
+  NODE_PATHS_COUNT((short) 49);
 
   private final short nodeType;
 
