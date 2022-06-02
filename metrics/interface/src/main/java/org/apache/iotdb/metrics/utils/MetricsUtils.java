@@ -33,23 +33,23 @@ public class MetricsUtils {
     stringBuilder
         .append("root.")
         .append(metricConfig.getIoTDBReporterConfig().getDatabase())
-        .append(".\"")
+        .append(".`")
         .append(metricConfig.getInstanceHost())
         .append(":")
         .append(metricConfig.getInstancePort())
-        .append("\"")
+        .append("`")
         .append(".")
-        .append("\"")
+        .append("`")
         .append(name)
-        .append("\"");
+        .append("`");
     for (Map.Entry<String, String> entry : labels.entrySet()) {
       stringBuilder
           .append(".")
-          .append("\"")
+          .append("`")
           .append(entry.getKey())
           .append("=")
           .append(entry.getValue())
-          .append("\"");
+          .append("`");
     }
     return stringBuilder.toString();
   }
