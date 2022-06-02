@@ -35,7 +35,7 @@ The Built-in MQTT Service provide the ability of direct connection to IoTDB thro
  and then write the data into storage immediately. 
 The MQTT topic corresponds to IoTDB timeseries. 
 The messages payload can be format to events by `PayloadFormatter` which loaded by java SPI, and the default implementation is `JSONPayloadFormatter`.
-The default `json` formatter support two json format, and the following is an MQTT message payload example:
+The default `json` formatter support two json format and its json array. The following is an MQTT message payload example:
 
 ```json
  {
