@@ -125,7 +125,7 @@ public class AggregationOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return timeRangeIterator.hasNextTimeRange();
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
