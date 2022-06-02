@@ -117,12 +117,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
       }
       Statistics valueStatistics = Statistics.getStatsByType(dataTypeList.get(column));
-      IChunkMetadata valueChunkMetadata =
-          new ChunkMetadata(
-              measurementList.get(column), dataTypeList.get(column), 0, valueStatistics);
-      valueChunkMetadataList.add(valueChunkMetadata);
       if (alignedChunkData.getValues().get(column) == null) {
-        valueStatistics.setEmpty(true);
+        valueChunkMetadataList.add(null);
         continue;
       }
       for (int row = 0; row < alignedChunkData.rowCount(); row++) {
@@ -183,6 +179,15 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           default:
             throw new QueryProcessException("Unsupported data type:" + dataType);
         }
+      }
+      if (valueStatistics.getCount() > 0) {
+        IChunkMetadata valueChunkMetadata =
+            new ChunkMetadata(
+                measurementList.get(column), dataTypeList.get(column), 0, valueStatistics);
+        valueChunkMetadataList.add(valueChunkMetadata);
+        valueStatistics.setEmpty(false);
+      } else {
+        valueChunkMetadataList.add(null);
       }
       valueStatistics.setEmpty(false);
     }
