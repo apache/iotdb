@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
@@ -99,7 +100,6 @@ public enum PlanNodeType {
   TIME_SERIES_SCHEMA_SCAN((short) 23),
   SCHEMA_FETCH_SCAN((short) 24),
   SCHEMA_QUERY_MERGE((short) 25),
-  STORAGE_GROUP_SCHEMA_SCAN((short) 26),
   DEVICES_COUNT((short) 27),
   TIME_SERIES_COUNT((short) 28),
   LEVEL_TIME_SERIES_COUNT((short) 29),
@@ -219,6 +219,8 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserialize(buffer);
       case 34:
         return AlignedSeriesAggregationScanNode.deserialize(buffer);
+      case 35:
+        return DeviceMergeNode.deserialize(buffer);
       case 36:
         return SchemaFetchMergeNode.deserialize(buffer);
       case 37:
