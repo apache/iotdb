@@ -69,7 +69,7 @@ public class ShowPipeTask implements IConfigTask {
         future.setException(e);
       }
     } else {
-      // TODO
+      // TODO(sync）: standalone show pipe
     }
     // build TSBlock
     TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showPipeHeader.getRespDataTypes());

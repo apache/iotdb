@@ -34,11 +34,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
 
-// TODO: rename and add test in mock
 public class AbstractReceiverInfoTest {
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
@@ -62,13 +62,23 @@ public class AbstractReceiverInfoTest {
     MockReceiverInfo manager = new MockReceiverInfo();
     try {
       manager.startServer();
-      manager.createPipe(pipe1, ip1, 1);
-      manager.createPipe(pipe2, ip2, 2);
-      manager.createPipe(pipe1, ip2, 3);
-      manager.stopPipe(pipe1, ip1, 1);
-      manager.stopPipe(pipe2, ip2, 2);
-      manager.dropPipe(pipe1, ip2, 3);
-      manager.startPipe(pipe1, ip1, 1);
+      manager.createPipe(pipe1, ip1, createdTime1);
+      manager.createPipe(pipe2, ip2, createdTime2);
+      manager.createPipe(pipe1, ip2, createdTime2 + 1);
+      manager.stopPipe(pipe1, ip1, createdTime1);
+      manager.stopPipe(pipe2, ip2, createdTime2);
+      manager.dropPipe(pipe1, ip2, createdTime2 + 1);
+      manager.startPipe(pipe1, ip1, createdTime1);
+      List<String> actualRecords = manager.getOperateRecord();
+      String[] expectedRecords =
+          new String[] {
+            String.format("%s-%s-%d-%s", pipe1, ip2, createdTime2 + 1, PipeStatus.DROP.name()),
+            String.format("%s-%s-%d-%s", pipe1, ip1, createdTime1, PipeStatus.RUNNING.name())
+          };
+      Assert.assertEquals(expectedRecords.length, actualRecords.size());
+      for (int i = 0; i < expectedRecords.length; i++) {
+        Assert.assertEquals(expectedRecords[i], actualRecords.get(i));
+      }
       List<PipeInfo> allPipeInfos = manager.getAllPipeInfos();
       Assert.assertEquals(3, allPipeInfos.size());
       List<PipeInfo> pipeInfos1 = manager.getPipeInfosByPipeName(pipe1);
@@ -76,13 +86,14 @@ public class AbstractReceiverInfoTest {
       Assert.assertEquals(2, pipeInfos1.size());
       Assert.assertEquals(1, pipeInfos2.size());
       for (PipeInfo pipeInfo : pipeInfos2) {
-        Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.STOP, 2), pipeInfo);
+        Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.STOP, createdTime2), pipeInfo);
       }
       for (PipeInfo pipeInfo : pipeInfos1) {
         if (pipeInfo.getRemoteIp().equals(ip1)) {
-          Assert.assertEquals(new PipeInfo(pipe1, ip1, PipeStatus.RUNNING, 1), pipeInfo);
+          Assert.assertEquals(new PipeInfo(pipe1, ip1, PipeStatus.RUNNING, createdTime1), pipeInfo);
         } else {
-          Assert.assertEquals(new PipeInfo(pipe1, ip2, PipeStatus.DROP, 3), pipeInfo);
+          Assert.assertEquals(
+              new PipeInfo(pipe1, ip2, PipeStatus.DROP, createdTime2 + 1), pipeInfo);
         }
       }
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
@@ -115,10 +126,10 @@ public class AbstractReceiverInfoTest {
       try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile);
           BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
         manager1.startServer();
-        manager1.createPipe(pipe1, ip1, 1);
-        manager1.createPipe(pipe2, ip2, 2);
-        manager1.dropPipe(pipe1, ip1, 1);
-        manager1.startPipe(pipe2, ip2, 2);
+        manager1.createPipe(pipe1, ip1, createdTime1);
+        manager1.createPipe(pipe2, ip2, createdTime2);
+        manager1.dropPipe(pipe1, ip1, createdTime1);
+        manager1.startPipe(pipe2, ip2, createdTime2);
         manager1.serialize(bufferedOutputStream);
       }
       try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
@@ -126,9 +137,11 @@ public class AbstractReceiverInfoTest {
         manager2.deserialize(bufferedInputStream);
         Assert.assertEquals(manager1.isPipeServerEnable(), manager2.isPipeServerEnable());
         Assert.assertEquals(
-            manager1.getPipeInfo(pipe1, ip1, 1), manager2.getPipeInfo(pipe1, ip1, 1));
+            manager1.getPipeInfo(pipe1, ip1, createdTime1),
+            manager2.getPipeInfo(pipe1, ip1, createdTime1));
         Assert.assertEquals(
-            manager1.getPipeInfo(pipe2, ip2, 2), manager2.getPipeInfo(pipe2, ip2, 2));
+            manager1.getPipeInfo(pipe2, ip2, createdTime2),
+            manager2.getPipeInfo(pipe2, ip2, createdTime2));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -143,14 +156,28 @@ public class AbstractReceiverInfoTest {
   }
 
   private class MockReceiverInfo extends AbstractReceiverInfo {
+    private final List<String> operateRecord = new ArrayList<>();
+
+    public List<String> getOperateRecord() {
+      return operateRecord;
+    }
 
     @Override
-    protected void afterStartPipe(String pipeName, String remoteIp, long createTime) {}
+    protected void afterStartPipe(String pipeName, String remoteIp, long createTime) {
+      operateRecord.add(
+          String.format("%s-%s-%d-%s", pipeName, remoteIp, createTime, PipeStatus.RUNNING.name()));
+    }
 
     @Override
-    protected void afterStopPipe(String pipeName, String remoteIp, long createTime) {}
+    protected void afterStopPipe(String pipeName, String remoteIp, long createTime) {
+      operateRecord.add(
+          String.format("%s-%s-%d-%s", pipeName, remoteIp, createTime, PipeStatus.STOP.name()));
+    }
 
     @Override
-    protected void afterDropPipe(String pipeName, String remoteIp, long createTime) {}
+    protected void afterDropPipe(String pipeName, String remoteIp, long createTime) {
+      operateRecord.add(
+          String.format("%s-%s-%d-%s", pipeName, remoteIp, createTime, PipeStatus.DROP.name()));
+    }
   }
 }

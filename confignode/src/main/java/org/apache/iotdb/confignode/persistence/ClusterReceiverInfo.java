@@ -194,10 +194,10 @@ public class ClusterReceiverInfo extends AbstractReceiverInfo implements Snapsho
   }
 
   @TestOnly
-  public void clear() {
+  public void clear() throws IOException {
     pipeInfos = new ConcurrentHashMap<>();
     pipeMessageMap = new ConcurrentHashMap<>();
     pipeServerEnable = false;
-    // TODO: clean log
+    log.clean();
   }
 }

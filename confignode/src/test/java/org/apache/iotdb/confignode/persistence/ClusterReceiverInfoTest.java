@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TOperateReceiverPipeReq;
 import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
@@ -58,7 +57,7 @@ public class ClusterReceiverInfoTest {
   }
 
   @Test
-  public void testSnapshot() throws IOException, IllegalPathException {
+  public void testSnapshot() throws IOException {
     String pipeName1 = "p1";
     String remoteIp1 = "192.168.11.11";
     long createTime1 = System.currentTimeMillis();

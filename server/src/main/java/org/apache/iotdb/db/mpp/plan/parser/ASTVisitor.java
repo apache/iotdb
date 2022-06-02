@@ -1882,7 +1882,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Sync tools command  ========================================================================
-  // TODO: fake implement, just for test
+  // TODO(sync-sender): implement create|start|stop|drop pipe parser. There is fake implementation
+  // just for test in receiver now.
   @Override
   public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
     OperateReceiverPipeStatement operateReceiverPipeStatement = new OperateReceiverPipeStatement();
