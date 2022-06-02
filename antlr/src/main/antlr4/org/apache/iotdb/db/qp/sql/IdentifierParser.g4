@@ -84,6 +84,7 @@ keyWords
     | INFO
     | INSERT
     | INTO
+    | IS
     | KILL
     | LABEL
     | LAST
@@ -99,7 +100,9 @@ keyWords
     | MERGE
     | METADATA
     | NODES
+    | NOT
     | NOW
+    | NULL
     | OF
     | OFF
     | OFFSET
