@@ -846,7 +846,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               AggregationOperator.class.getSimpleName());
       return new AggregationOperator(
-          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter(), false);
     }
 
     @Override
@@ -953,7 +953,12 @@ public class LocalExecutionPlanner {
                 node.getPlanNodeId(),
                 AggregationOperator.class.getSimpleName());
         return new AggregationOperator(
-            operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+            operatorContext,
+            aggregators,
+            children,
+            ascending,
+            node.getGroupByTimeParameter(),
+            true);
       }
     }
 

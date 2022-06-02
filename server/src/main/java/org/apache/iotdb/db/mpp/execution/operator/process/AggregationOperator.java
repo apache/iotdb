@@ -53,7 +53,7 @@ public class AggregationOperator implements ProcessOperator {
   private final TsBlock[] inputTsBlocks;
   private final TsBlockBuilder tsBlockBuilder;
 
-  private ITimeRangeIterator timeRangeIterator;
+  private final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
@@ -62,7 +62,8 @@ public class AggregationOperator implements ProcessOperator {
       List<Aggregator> aggregators,
       List<Operator> children,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputPartialTimeWindow) {
     this.operatorContext = operatorContext;
     this.aggregators = aggregators;
     this.children = children;
@@ -74,7 +75,8 @@ public class AggregationOperator implements ProcessOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, ascending, outputPartialTimeWindow);
   }
 
   @Override
