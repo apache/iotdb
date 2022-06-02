@@ -98,7 +98,9 @@ public class AggregationOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     // update input tsBlock
-    curTimeRange = timeRangeIterator.nextTimeRange();
+    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+      curTimeRange = timeRangeIterator.nextTimeRange();
+    }
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (inputTsBlocks[i] != null) {
         continue;
@@ -114,6 +116,7 @@ public class AggregationOperator implements ProcessOperator {
       aggregator.processTsBlocks(inputTsBlocks);
     }
     // output result from aggregator
+    curTimeRange = null;
     for (int i = 0; i < inputOperatorsCount; i++) {
       inputTsBlocks[i] = null;
     }
