@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCon
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -475,7 +476,10 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SchemaQueryMergeNode metaMergeNode = (SchemaQueryMergeNode) offsetNode.getChild();
+      SchemaQueryOrderByHeatNode schemaQueryOrderByHeatNode =
+          (SchemaQueryOrderByHeatNode) offsetNode.getChild();
+      SchemaQueryMergeNode metaMergeNode =
+          (SchemaQueryMergeNode) schemaQueryOrderByHeatNode.getChildren().get(0);
       metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
       TimeSeriesSchemaScanNode showTimeSeriesNode =
           (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);

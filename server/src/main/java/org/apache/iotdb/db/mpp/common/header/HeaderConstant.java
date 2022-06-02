@@ -65,6 +65,13 @@ public class HeaderConstant {
   public static final String COLUMN_COUNT_TIMESERIES = "count(timeseries)";
   public static final String COLUMN_COUNT_STORAGE_GROUP = "count(storage group)";
 
+  // column names for show cluster statement
+  public static final String COLUMN_NODE_ID = "NodeID";
+  public static final String COLUMN_NODE_TYPE = "NodeType";
+  public static final String COLUMN_STATUS = "Status";
+  public static final String COLUMN_HOST_ADDRESS = "HostAdress";
+  public static final String COLUMN_PORT = "Port";
+
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
@@ -81,6 +88,9 @@ public class HeaderConstant {
   public static final DatasetHeader countDevicesHeader;
   public static final DatasetHeader countTimeSeriesHeader;
   public static final DatasetHeader countLevelTimeSeriesHeader;
+
+  // dataset header for show cluster statement
+  public static final DatasetHeader showClusterHeader;
 
   // dataset header for last query
   public static final DatasetHeader LAST_QUERY_HEADER;
@@ -141,7 +151,7 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
                 new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
                 new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
                 new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64)),
@@ -150,7 +160,7 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TTL, TSDataType.TEXT)),
+                new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
             true);
     showChildPathsHeader =
         new DatasetHeader(
@@ -178,5 +188,17 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT)),
             false);
+  }
+
+  static {
+    showClusterHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
   }
 }

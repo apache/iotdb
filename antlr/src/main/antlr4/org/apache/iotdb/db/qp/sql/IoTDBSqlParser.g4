@@ -43,7 +43,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -76,15 +76,19 @@ syncStatement
 
 // Create Storage Group
 setStorageGroup
-    : SET STORAGE GROUP TO prefixPath (WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*)?
+    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
+    ;
+
+createStorageGroup
+    : CREATE STORAGE GROUP prefixPath storageGroupAttributesClause?
+    ;
+
+storageGroupAttributesClause
+    : WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*
     ;
 
 storageGroupAttributeClause
     : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL) '=' INTEGER_LITERAL
-    ;
-
-createStorageGroup
-    : CREATE STORAGE GROUP prefixPath
     ;
 
 // Create Timeseries
@@ -297,6 +301,11 @@ showTTL
 // Show All TTL
 showAllTTL
     : SHOW ALL TTL
+    ;
+
+// Show Cluster
+showCluster
+    : SHOW CLUSTER
     ;
 
 // Show Schema Template

@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.OperateReceiverPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -196,6 +197,8 @@ public class ConfigRequestExecutor {
         return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionReq) req);
+      case DropFunction:
+        return udfInfo.dropFunction((DropFunctionReq) req);
       case OperatePipe:
         return clusterReceiverInfo.operatePipe((OperateReceiverPipeReq) req);
       default:
@@ -269,9 +272,8 @@ public class ConfigRequestExecutor {
             });
   }
 
-  private DataSet getSchemaNodeManagementPartition(ConfigRequest req)
-      throws UnknownPhysicalPlanTypeException {
-    int level = -1;
+  private DataSet getSchemaNodeManagementPartition(ConfigRequest req) {
+    int level;
     PartialPath partialPath;
     Set<String> alreadyMatchedNode;
     Set<PartialPath> needMatchedNode;

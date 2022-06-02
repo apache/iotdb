@@ -56,8 +56,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -80,6 +78,7 @@ public class TransportClient implements ITransportClient {
   private TransportService.Client serviceClient = null;
 
   private String ipAddress;
+  private String localIP;
 
   private int port;
 
@@ -87,11 +86,12 @@ public class TransportClient implements ITransportClient {
 
   private Pipe pipe;
 
-  public TransportClient(Pipe pipe, String ipAddress, int port) {
+  public TransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
 
     this.pipe = pipe;
     this.ipAddress = ipAddress;
+    this.localIP = localIP;
     this.port = port;
   }
 
@@ -148,10 +148,7 @@ public class TransportClient implements ITransportClient {
 
       identityInfo =
           new IdentityInfo(
-              InetAddress.getLocalHost().getHostAddress(),
-              pipe.getName(),
-              pipe.getCreateTime(),
-              config.getIoTDBMajorVersion());
+              localIP, pipe.getName(), pipe.getCreateTime(), config.getIoTDBMajorVersion());
       TransportStatus status = serviceClient.handshake(identityInfo);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
@@ -160,9 +157,6 @@ public class TransportClient implements ITransportClient {
     } catch (TException e) {
       logger.warn("Cannot connect to the receiver. ", e);
       return false;
-    } catch (UnknownHostException e) {
-      logger.warn("Cannot confirm identity with the receiver. ", e);
-      throw new SyncConnectionException(String.format("Get local host error, because %s.", e), e);
     }
     return true;
   }
@@ -460,10 +454,7 @@ public class TransportClient implements ITransportClient {
           .receiveMsg(
               heartbeat(
                   new SyncRequest(
-                      RequestType.START,
-                      pipe.getName(),
-                      InetAddress.getLocalHost().getHostAddress(),
-                      pipe.getCreateTime())));
+                      RequestType.START, pipe.getName(), localIP, pipe.getCreateTime())));
       while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = pipe.take();
         if (!senderTransport(pipeData)) {
@@ -481,7 +472,7 @@ public class TransportClient implements ITransportClient {
       }
     } catch (InterruptedException e) {
       logger.info("Interrupted by pipe, exit transport.");
-    } catch (SyncConnectionException | UnknownHostException e) {
+    } catch (SyncConnectionException e) {
       logger.error(
           String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
       SenderService.getInstance()

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement;
 
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -41,10 +42,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceS
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -131,9 +134,17 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showTTLStatement, context);
   }
 
+  public R visitShowCluster(ShowClusterStatement showClusterStatement, C context) {
+    return visitStatement(showClusterStatement, context);
+  }
+
   // UDF
   public R visitCreateFunction(CreateFunctionStatement createFunctionStatement, C context) {
     return visitStatement(createFunctionStatement, context);
+  }
+
+  public R visitDropFunction(DropFunctionStatement dropFunctionStatement, C context) {
+    return visitStatement(dropFunctionStatement, context);
   }
 
   /** Data Manipulation Language (DML) */
@@ -222,6 +233,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowChildNodes(ShowChildNodesStatement showChildNodesStatement, C context) {
     return visitStatement(showChildNodesStatement, context);
+  }
+
+  public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {
+    return visitStatement(deleteDataStatement, context);
   }
 
   // sync

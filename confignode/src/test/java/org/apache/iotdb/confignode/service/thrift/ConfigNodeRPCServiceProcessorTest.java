@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.thrift;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -45,6 +46,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -226,6 +228,32 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
     Assert.assertEquals(dataNodeLocation, infoMap.get(1).getLocation());
+  }
+
+  @Test
+  public void getAllClusterNodeInfosTest() throws TException {
+    registerDataNodes();
+
+    TClusterNodeInfos clusterNodes = processor.getAllClusterNodeInfos();
+
+    List<TConfigNodeLocation> configNodeInfos = clusterNodes.getConfigNodeList();
+    Assert.assertEquals(1, configNodeInfos.size());
+    TConfigNodeLocation configNodeLocation =
+        new TConfigNodeLocation(new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
+    Assert.assertEquals(configNodeLocation, configNodeInfos.get(0));
+
+    List<TDataNodeLocation> dataNodeInfos = clusterNodes.getDataNodeList();
+    Assert.assertEquals(3, dataNodeInfos.size());
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    for (int i = 0; i < 3; i++) {
+      dataNodeLocation.setDataNodeId(i);
+      dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
+      dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
+      dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
+      Assert.assertEquals(dataNodeLocation, dataNodeInfos.get(i));
+    }
   }
 
   @Test

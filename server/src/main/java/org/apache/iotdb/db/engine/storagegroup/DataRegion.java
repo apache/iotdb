@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -2093,6 +2094,88 @@ public class DataRegion {
     }
   }
 
+  /**
+   * @param pattern Must be a pattern start with a precise device path
+   * @param startTime
+   * @param endTime
+   * @param planIndex
+   * @param timePartitionFilter
+   * @throws IOException
+   */
+  public void deleteByDevice(
+      PartialPath pattern,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
+      throws IOException {
+    // If there are still some old version tsfiles, the delete won't succeeded.
+    if (upgradeFileCount.get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files upgraded.");
+    }
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files settled.");
+    }
+    // TODO: how to avoid partial deletion?
+    // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
+    // mod files in mergingModification, sequenceFileList, and unsequenceFileList
+    writeLock("delete");
+
+    // record files which are updated so that we can roll back them in case of exception
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+
+    try {
+
+      PartialPath devicePath = pattern.getDevicePath();
+      Set<PartialPath> devicePaths = Collections.singleton(devicePath);
+
+      // delete Last cache record if necessary
+      // todo implement more precise process
+      DataNodeSchemaCache.getInstance().cleanUp();
+
+      // write log to impacted working TsFileProcessors
+      List<WALFlushListener> walListeners =
+          logDeleteInWAL(startTime, endTime, pattern, timePartitionFilter);
+
+      for (WALFlushListener walFlushListener : walListeners) {
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error("Fail to log delete to wal.", walFlushListener.getCause());
+          throw walFlushListener.getCause();
+        }
+      }
+
+      Deletion deletion = new Deletion(pattern, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+
+      deleteDataInFiles(
+          tsFileManager.getTsFileList(true),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
+      deleteDataInFiles(
+          tsFileManager.getTsFileList(false),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
+
+    } catch (Exception e) {
+      // roll back
+      for (ModificationFile modFile : updatedModFiles) {
+        modFile.abort();
+        // remember to close mod file
+        modFile.close();
+      }
+      throw new IOException(e);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   private List<WALFlushListener> logDeleteInWAL(
       long startTime, long endTime, PartialPath path, TimePartitionFilter timePartitionFilter) {
     long timePartitionStartId = StorageEngine.getTimePartition(startTime);
@@ -3541,7 +3624,9 @@ public class DataRegion {
   }
 
   public IWALNode getWALNode() {
-    if (!config.isClusterMode()) {
+    if (!config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
       throw new UnsupportedOperationException();
     }
     // identifier should be same with getTsFileProcessor method

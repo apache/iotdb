@@ -60,7 +60,9 @@ public enum ConfigRequestType {
   ListRoleUsers,
   ApplyConfigNode,
   CreateFunction,
-  GetNodePathsPartition,
+  DropFunction,
   OperatePipe,
-  ShowPipe
+  ShowPipe,
+  GetNodePathsPartition,
+  ;
 }

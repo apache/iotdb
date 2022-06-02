@@ -125,7 +125,8 @@ public class LinearFillOperator implements ProcessOperator {
     TsBlock result =
         new TsBlock(originTsBlock.getPositionCount(), originTsBlock.getTimeColumn(), columns);
     for (int i = 0; i < outputColumnCount; i++) {
-      nextTsBlockIndex[i]--;
+      // make sure nextTsBlockIndex for each column >= 1
+      nextTsBlockIndex[i] = Math.max(1, nextTsBlockIndex[i] - 1);
     }
     return result;
   }
