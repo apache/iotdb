@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -239,6 +240,9 @@ public class ConfigNodeDescriptor {
       commonDescriptor
           .getConfig()
           .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+      MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
     }
   }
 
