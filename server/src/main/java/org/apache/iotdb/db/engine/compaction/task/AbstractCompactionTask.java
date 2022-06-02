@@ -48,6 +48,7 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   protected volatile boolean ran = false;
   protected volatile boolean finished = false;
   protected ICompactionPerformer performer;
+  protected int hashCode = -1;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,

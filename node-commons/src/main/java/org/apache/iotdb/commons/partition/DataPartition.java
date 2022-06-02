@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DataPartition extends Partition {
@@ -138,13 +139,15 @@ public class DataPartition extends Partition {
   public DataPartition getDataPartition(
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap,
       String seriesSlotExecutorName,
-      int seriesPartitionSlotNum) {
+      int seriesPartitionSlotNum,
+      Set<String> preDeletedStorageGroup) {
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         result = new HashMap<>();
 
     for (String storageGroupName : partitionSlotsMap.keySet()) {
       // Compare StorageGroupName
-      if (dataPartitionMap.containsKey(storageGroupName)) {
+      if (dataPartitionMap.containsKey(storageGroupName)
+          && !preDeletedStorageGroup.contains(storageGroupName)) {
         Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
             seriesTimePartitionSlotMap = dataPartitionMap.get(storageGroupName);
         for (TSeriesPartitionSlot seriesPartitionSlot :
@@ -309,5 +312,25 @@ public class DataPartition extends Partition {
       dataPartitionMap.put(storageGroup, seriesPartitionSlotMapHashMap);
       storageGroupNum--;
     }
+  }
+
+  @Override
+  public List<RegionReplicaSetInfo> getDistributionInfo() {
+    Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
+
+    dataPartitionMap.forEach(
+        (storageGroup, partition) -> {
+          List<TRegionReplicaSet> ret =
+              partition.entrySet().stream()
+                  .flatMap(
+                      s -> s.getValue().entrySet().stream().flatMap(e -> e.getValue().stream()))
+                  .collect(Collectors.toList());
+          for (TRegionReplicaSet regionReplicaSet : ret) {
+            distributionMap
+                .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
+                .setStorageGroup(storageGroup);
+          }
+        });
+    return new ArrayList<>(distributionMap.values());
   }
 }

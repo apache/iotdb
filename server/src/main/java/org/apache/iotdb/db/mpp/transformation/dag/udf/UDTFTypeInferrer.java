@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.udf.api.UDTF;
 import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;

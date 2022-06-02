@@ -66,7 +66,6 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.INT32,
@@ -94,7 +93,6 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.BOOLEAN,

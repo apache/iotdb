@@ -29,10 +29,9 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -59,9 +58,11 @@ import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -103,6 +104,9 @@ public class ConfigManager implements Manager {
   /** Manage procedure */
   private final ProcedureManager procedureManager;
 
+  /** UDF */
+  private final UDFManager udfManager;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -110,11 +114,12 @@ public class ConfigManager implements Manager {
     PartitionInfo partitionInfo = new PartitionInfo();
     AuthorInfo authorInfo = new AuthorInfo();
     ProcedureInfo procedureInfo = new ProcedureInfo();
+    UDFInfo udfInfo = new UDFInfo();
 
     // Build state machine and executor
     ConfigRequestExecutor executor =
         new ConfigRequestExecutor(
-            nodeInfo, clusterSchemaInfo, partitionInfo, authorInfo, procedureInfo);
+            nodeInfo, clusterSchemaInfo, partitionInfo, authorInfo, procedureInfo, udfInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -123,6 +128,7 @@ public class ConfigManager implements Manager {
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);
+    this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
     this.consensusManager = new ConsensusManager(stateMachine);
 
@@ -135,6 +141,7 @@ public class ConfigManager implements Manager {
 
   public void close() throws IOException {
     consensusManager.close();
+    partitionManager.getRegionCleaner().shutdown();
     procedureManager.shiftExecutor(false);
   }
 
@@ -360,10 +367,14 @@ public class ConfigManager implements Manager {
               partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionReq);
 
       // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info(
-          "GetOrCreateSchemaPartition interface receive devicePaths: {}, return SchemaPartition: {}",
-          devicePaths,
-          resp.getSchemaPartition().getSchemaPartitionMap());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "GetOrCreateSchemaPartition success. receive devicePaths: {}, return SchemaPartition: {}",
+            devicePaths,
+            resp.getSchemaPartition().getSchemaPartitionMap());
+      } else {
+        LOGGER.info("GetOrCreateSchemaPartition failed: {}", resp.getStatus());
+      }
 
       return resp;
     } else {
@@ -374,26 +385,15 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getChildPathsPartition(PartialPath partialPath) {
+  public DataSet getNodePathsPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      GetChildPathsPartitionReq getChildPathsPartitionReq = new GetChildPathsPartitionReq();
-      getChildPathsPartitionReq.setPartialPath(partialPath);
-      return partitionManager.getChildPathsPartition(getChildPathsPartitionReq);
-    } else {
-      SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
-      dataSet.setStatus(status);
-      return dataSet;
-    }
-  }
-
-  @Override
-  public DataSet getChildNodesPartition(PartialPath partialPath) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      GetChildNodesPartitionReq getChildNodesPartitionReq = new GetChildNodesPartitionReq();
-      getChildNodesPartitionReq.setPartialPath(partialPath);
-      return partitionManager.getChildNodesPartition(getChildNodesPartitionReq);
+      GetNodePathsPartitionReq getNodePathsPartitionReq = new GetNodePathsPartitionReq();
+      getNodePathsPartitionReq.setPartialPath(partialPath);
+      if (null != level) {
+        getNodePathsPartitionReq.setLevel(level);
+      }
+      return partitionManager.getNodePathsPartition(getNodePathsPartitionReq);
     } else {
       SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
       dataSet.setStatus(status);
@@ -431,10 +431,14 @@ public class ConfigManager implements Manager {
               partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
       // TODO: Delete or hide this LOGGER before officially release.
-      LOGGER.info(
-          "GetOrCreateDataPartition receive PartitionSlotsMap: {}, return DataPartition: {}",
-          getOrCreateDataPartitionReq.getPartitionSlotsMap(),
-          resp.getDataPartition().getDataPartitionMap());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return DataPartition: {}",
+            getOrCreateDataPartitionReq.getPartitionSlotsMap(),
+            resp.getDataPartition().getDataPartitionMap());
+      } else {
+        LOGGER.info("GetOrCreateDataPartition failed: {}", resp.getStatus());
+      }
 
       return resp;
     } else {
@@ -502,22 +506,27 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus login(String username, String password) {
+  public TPermissionInfoResp login(String username, String password) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.login(username, password);
     } else {
-      return status;
+      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(status);
+      return permissionInfoResp;
     }
   }
 
   @Override
-  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+  public TPermissionInfoResp checkUserPrivileges(
+      String username, List<String> paths, int permission) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
-      return status;
+      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(status);
+      return permissionInfoResp;
     }
   }
 
@@ -527,11 +536,22 @@ public class ConfigManager implements Manager {
     ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
-    if (!req.getDataNodeConsensusProtocolClass().equals(conf.getDataNodeConsensusProtocolClass())) {
+    if (!req.getDataRegionConsensusProtocolClass()
+        .equals(conf.getDataRegionConsensusProtocolClass())) {
       errorResp
           .getStatus()
           .setMessage(
-              "Reject register, please ensure that the data_node_consensus_protocol_class are consistent.");
+              "Reject register, please ensure that the data_region_consensus_protocol_class "
+                  + "are consistent.");
+      return errorResp;
+    }
+    if (!req.getSchemaRegionConsensusProtocolClass()
+        .equals(conf.getSchemaRegionConsensusProtocolClass())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the schema_region_consensus_protocol_class "
+                  + "are consistent.");
       return errorResp;
     }
     if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
@@ -582,6 +602,27 @@ public class ConfigManager implements Manager {
   @Override
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     return nodeManager.applyConfigNode(applyConfigNodeReq);
+  }
+
+  @Override
+  public TSStatus createFunction(String udfName, String className, List<String> uris) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? udfManager.createFunction(udfName, className, uris)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropFunction(String udfName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? udfManager.dropFunction(udfName)
+        : status;
+  }
+
+  @Override
+  public UDFManager getUDFManager() {
+    return udfManager;
   }
 
   public ProcedureManager getProcedureManager() {

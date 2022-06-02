@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,9 +42,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /** This class is used to manage checkpoints of one wal node */
 public class CheckpointManager implements AutoCloseable {
-  /** use size limit to control WALEntry number in each file */
-  public static final long LOG_SIZE_LIMIT = 3 * 1024 * 1024;
-
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -61,6 +59,8 @@ public class CheckpointManager implements AutoCloseable {
   private final Map<Integer, MemTableInfo> memTableId2Info = new HashMap<>();
   /** cache the biggest byte buffer to serialize checkpoint */
   private volatile ByteBuffer cachedByteBuffer;
+  /** max memTable id */
+  private int maxMemTableId = 0;
   /** current checkpoint file version id, only updated by fsyncAndDeleteThread */
   private int currentCheckPointFileVersion = 0;
   /** current checkpoint file log writer, only updated by fsyncAndDeleteThread */
@@ -77,8 +77,26 @@ public class CheckpointManager implements AutoCloseable {
     currentLogWriter =
         new CheckpointWriter(
             SystemFileFactory.INSTANCE.getFile(
-                logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion)));
-    makeGlobalInfoCP();
+                logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion)));
+    logHeader();
+  }
+
+  private void logHeader() {
+    infoLock.lock();
+    try {
+      // log max memTable id
+      ByteBuffer tmpBuffer = ByteBuffer.allocate(Integer.BYTES);
+      tmpBuffer.putInt(maxMemTableId);
+      try {
+        currentLogWriter.write(tmpBuffer);
+      } catch (IOException e) {
+        logger.error("Fail to log max memTable id: {}", maxMemTableId, e);
+      }
+      // log global memTables' info
+      makeGlobalInfoCP();
+    } finally {
+      infoLock.unlock();
+    }
   }
 
   /**
@@ -86,21 +104,17 @@ public class CheckpointManager implements AutoCloseable {
    * each checkpoint file
    */
   private void makeGlobalInfoCP() {
-    infoLock.lock();
-    try {
-      Checkpoint checkpoint =
-          new Checkpoint(
-              CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
-      logByCachedByteBuffer(checkpoint);
-    } finally {
-      infoLock.unlock();
-    }
+    Checkpoint checkpoint =
+        new Checkpoint(
+            CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
+    logByCachedByteBuffer(checkpoint);
   }
 
   /** make checkpoint for create memTable info */
   public void makeCreateMemTableCP(MemTableInfo memTableInfo) {
     infoLock.lock();
     try {
+      maxMemTableId = Math.max(maxMemTableId, memTableInfo.getMemTableId());
       memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
       Checkpoint checkpoint =
           new Checkpoint(
@@ -164,12 +178,13 @@ public class CheckpointManager implements AutoCloseable {
 
       try {
         if (tryRollingLogWriter()) {
-          // first log global memTables' info, then delete old checkpoint file
-          makeGlobalInfoCP();
+          // first log max memTable id and global memTables' info, then delete old checkpoint file
+          logHeader();
           currentLogWriter.force();
           File oldFile =
               SystemFileFactory.INSTANCE.getFile(
-                  logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion - 1));
+                  logDirectory,
+                  CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion - 1));
           oldFile.delete();
         }
       } catch (IOException e) {
@@ -185,14 +200,14 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   private boolean tryRollingLogWriter() throws IOException {
-    if (currentLogWriter.size() < LOG_SIZE_LIMIT) {
+    if (currentLogWriter.size() < config.getCheckpointFileSizeThresholdInByte()) {
       return false;
     }
     currentLogWriter.close();
     currentCheckPointFileVersion++;
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, CheckpointWriter.getLogFileName(currentCheckPointFileVersion));
+            logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion));
     currentLogWriter = new CheckpointWriter(nextLogFile);
     return true;
   }

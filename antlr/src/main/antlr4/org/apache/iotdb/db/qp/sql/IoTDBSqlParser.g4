@@ -43,7 +43,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -60,7 +60,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle
+    : merge | fullMerge | flush | clearCache | settle | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
@@ -76,15 +76,19 @@ syncStatement
 
 // Create Storage Group
 setStorageGroup
-    : SET STORAGE GROUP TO prefixPath (WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*)?
+    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
+    ;
+
+createStorageGroup
+    : CREATE STORAGE GROUP prefixPath storageGroupAttributesClause?
+    ;
+
+storageGroupAttributesClause
+    : WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*
     ;
 
 storageGroupAttributeClause
     : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL) '=' INTEGER_LITERAL
-    ;
-
-createStorageGroup
-    : CREATE STORAGE GROUP prefixPath
     ;
 
 // Create Timeseries
@@ -115,7 +119,11 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL (USING uri (COMMA uri)*)?
+    ;
+
+uri
+    : STRING_LITERAL
     ;
 
 // Create Trigger
@@ -295,6 +303,11 @@ showAllTTL
     : SHOW ALL TTL
     ;
 
+// Show Cluster
+showCluster
+    : SHOW CLUSTER
+    ;
+
 // Show Schema Template
 showSchemaTemplates
     : SHOW SCHEMA? TEMPLATES
@@ -412,10 +425,10 @@ withoutNullClause
     ;
 
 oldTypeClause
-    : (dataType=DATATYPE_VALUE | ALL) LS_BRACKET linearClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET specificValueClause RS_BRACKET
-    | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
+    : (ALL | dataType=attributeValue) LS_BRACKET linearClause RS_BRACKET
+    | (ALL | dataType=attributeValue) LS_BRACKET previousClause RS_BRACKET
+    | (ALL | dataType=attributeValue) LS_BRACKET specificValueClause RS_BRACKET
+    | (ALL | dataType=attributeValue) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -612,6 +625,11 @@ clearCache
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
+    ;
+
+// Explain
+explain
+    : EXPLAIN selectStatement
     ;
 
 // Set System To ReadOnly/Writable
@@ -879,16 +897,12 @@ fromClause
 // Attribute Clause
 
 attributeClauses
-    : aliasNodeName? WITH DATATYPE operator_eq dataType=DATATYPE_VALUE
-    (COMMA ENCODING operator_eq encoding=ENCODING_VALUE)?
-    (COMMA (COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
+    : aliasNodeName? WITH attributeKey operator_eq dataType=attributeValue
     (COMMA attributePair)*
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | aliasNodeName? WITH? (DATATYPE operator_eq)? dataType=DATATYPE_VALUE
-    (ENCODING operator_eq encoding=ENCODING_VALUE)?
-    ((COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
+    | aliasNodeName? WITH? (attributeKey operator_eq)? dataType=attributeValue
     attributePair*
     tagClause?
     attributeClause?
@@ -907,7 +921,7 @@ attributeClause
     ;
 
 attributePair
-    : key=attributeKey (OPERATOR_SEQ | OPERATOR_DEQ) value=attributeValue
+    : key=attributeKey operator_eq value=attributeValue
     ;
 
 attributeKey

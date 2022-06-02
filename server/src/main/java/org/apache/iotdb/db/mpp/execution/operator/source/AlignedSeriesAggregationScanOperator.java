@@ -94,7 +94,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending);
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
   @Override
@@ -125,7 +125,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
       // 1. Clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
         aggregator.reset();
-        aggregator.setTimeRange(curTimeRange);
+        aggregator.updateTimeRange(curTimeRange);
       }
 
       // 2. Calculate aggregation result based on current time window
@@ -315,11 +315,9 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
       calcFromBatch(tsBlock, curTimeRange);
 
       // judge whether the calculation finished
-      if (isEndCalc(aggregators)
-          || (tsBlockIterator.hasNext()
-              && (ascending
-                  ? tsBlockIterator.currentTime() > curTimeRange.getMax()
-                  : tsBlockIterator.currentTime() < curTimeRange.getMin()))) {
+      if (isEndCalc(aggregators) || ascending
+          ? tsBlock.getEndTime() > curTimeRange.getMax()
+          : tsBlock.getEndTime() < curTimeRange.getMin()) {
         return true;
       }
     }

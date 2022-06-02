@@ -534,11 +534,11 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 * avg\_series\_point\_number\_threshold
 
 |名字| avg\_series\_point\_number\_threshold |
-|:---:|:---|
-|描述| 内存中平均每个时间序列点数最大值，达到触发 flush |
-|类型| Int32 |
-|默认值| 10000 |
-|改后生效方式|重启服务生效|
+|:---:|:--------------------------------------|
+|描述| 内存中平均每个时间序列点数最大值，达到触发 flush           |
+|类型| Int32                                 |
+|默认值| 100000                                |
+|改后生效方式| 重启服务生效                                |
 
 * concurrent\_flush\_thread
 

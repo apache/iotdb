@@ -120,6 +120,7 @@ var config = {
 					  { text: 'Become a Contributor', link: '/Development/HowToJoin'},
 					  { text: 'Become a Committer', link: '/Development/Committer'},
 					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
+					  { text: 'How to Contribute Code', link: '/Development/HowtoContributeCode'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
@@ -1061,6 +1062,7 @@ var config = {
 					  { text: '成为Contributor', link: '/zh/Development/HowToJoin'},
 					  { text: '成为Committer', link: '/zh/Development/Committer'},
 					  { text: '项目开发指南', link: '/zh/Development/ContributeGuide'},
+					  { text: '技术贡献指南', link: '/zh/Development/HowtoContributeCode'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
 					]

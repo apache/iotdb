@@ -39,7 +39,7 @@ public class DataNodeLastCacheManager {
    * @return the last cache value
    */
   public static TimeValuePair getLastCache(SchemaCacheEntry entry) {
-    if (null == entry) {
+    if (!CACHE_ENABLED || null == entry) {
       return null;
     }
     ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
@@ -59,7 +59,7 @@ public class DataNodeLastCacheManager {
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    if (null == entry) {
+    if (!CACHE_ENABLED || null == entry) {
       return;
     }
     ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
@@ -72,7 +72,7 @@ public class DataNodeLastCacheManager {
    * @param entry schema cache entry in DataNodeSchemaCache
    */
   public static void resetLastCache(SchemaCacheEntry entry) {
-    if (null == entry) {
+    if (!CACHE_ENABLED || null == entry) {
       return;
     }
     ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();

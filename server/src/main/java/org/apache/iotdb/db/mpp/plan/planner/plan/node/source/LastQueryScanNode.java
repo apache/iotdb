@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -26,44 +27,33 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
-
-import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class LastQueryScanNode extends SourceNode {
+public class LastQueryScanNode extends SeriesSourceNode {
 
-  public static final List<String> LAST_QUERY_COLUMN_HEADERS =
-      ImmutableList.of("Time", "timeseries", "value", "dataType");
+  public static final List<String> LAST_QUERY_HEADER_COLUMNS =
+      ImmutableList.of("timeseries", "value", "dataType");
 
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
 
-  private Filter timeFilter;
-
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath, Filter timeFilter) {
+  public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
-    this.timeFilter = timeFilter;
   }
 
   public LastQueryScanNode(
-      PlanNodeId id,
-      MeasurementPath seriesPath,
-      Filter timeFilter,
-      TRegionReplicaSet regionReplicaSet) {
+      PlanNodeId id, MeasurementPath seriesPath, TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.seriesPath = seriesPath;
-    this.timeFilter = timeFilter;
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -84,15 +74,6 @@ public class LastQueryScanNode extends SourceNode {
     return seriesPath;
   }
 
-  @Nullable
-  public Filter getTimeFilter() {
-    return timeFilter;
-  }
-
-  public void setTimeFilter(@Nullable Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
   @Override
   public void close() throws Exception {}
 
@@ -108,7 +89,7 @@ public class LastQueryScanNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryScanNode(getPlanNodeId(), seriesPath, timeFilter, regionReplicaSet);
+    return new LastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet);
   }
 
   @Override
@@ -118,7 +99,7 @@ public class LastQueryScanNode extends SourceNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return LAST_QUERY_COLUMN_HEADERS;
+    return LAST_QUERY_HEADER_COLUMNS;
   }
 
   @Override
@@ -133,13 +114,12 @@ public class LastQueryScanNode extends SourceNode {
     if (!super.equals(o)) return false;
     LastQueryScanNode that = (LastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
-        && Objects.equals(timeFilter, that.timeFilter)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), seriesPath, timeFilter, regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath, regionReplicaSet);
   }
 
   @Override
@@ -153,21 +133,21 @@ public class LastQueryScanNode extends SourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
-    if (timeFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      timeFilter.serialize(byteBuffer);
-    }
   }
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
-    Filter timeFilter = null;
-    if (!ReadWriteIOUtils.readIsNull(byteBuffer)) {
-      timeFilter = FilterFactory.deserialize(byteBuffer);
-    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryScanNode(planNodeId, partialPath, timeFilter);
+    return new LastQueryScanNode(planNodeId, partialPath);
+  }
+
+  @Override
+  public PartialPath getPartitionPath() {
+    return seriesPath;
+  }
+
+  @Override
+  public Filter getPartitionTimeFilter() {
+    return null;
   }
 }

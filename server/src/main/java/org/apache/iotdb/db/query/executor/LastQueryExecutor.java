@@ -67,6 +67,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
 
 public class LastQueryExecutor {
 
@@ -377,10 +378,6 @@ public class LastQueryExecutor {
         logger.error("last query can't find storage group: path is: " + fullPath);
       }
     }
-  }
-
-  private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
-    return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 
   public static void clear() {

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -41,7 +40,7 @@ public class FileMetrics implements IMetricSet {
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         walDirs,
-        value -> Stream.of(value).mapToLong(dir -> FileUtils.getDirSize(dir)).sum(),
+        value -> Stream.of(value).mapToLong(FileUtils::getDirSize).sum(),
         Tag.NAME.toString(),
         "wal");
 
@@ -83,12 +82,14 @@ public class FileMetrics implements IMetricSet {
                 .mapToLong(
                     dir -> {
                       File walFolder = new File(dir);
-                      File[] walNodeFolders = walFolder.listFiles(WALNode::walNodeFolderNameFilter);
-                      for (File walNodeFolder : walNodeFolders) {
-                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                          return org.apache.commons.io.FileUtils.listFiles(
-                                  walNodeFolder, null, true)
-                              .size();
+                      File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
+                      if (null != walNodeFolders) {
+                        for (File walNodeFolder : walNodeFolders) {
+                          if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
+                            return org.apache.commons.io.FileUtils.listFiles(
+                                    walNodeFolder, null, true)
+                                .size();
+                          }
                         }
                       }
                       return 0L;
@@ -105,9 +106,14 @@ public class FileMetrics implements IMetricSet {
                 .mapToLong(
                     dir -> {
                       dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
+                      File folder = new File(dir);
+                      if (folder.exists()) {
+                        return org.apache.commons.io.FileUtils.listFiles(
+                                new File(dir), new String[] {"tsfile"}, true)
+                            .size();
+                      } else {
+                        return 0L;
+                      }
                     })
                 .sum(),
         Tag.NAME.toString(),
@@ -121,9 +127,14 @@ public class FileMetrics implements IMetricSet {
                 .mapToLong(
                     dir -> {
                       dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
+                      File folder = new File(dir);
+                      if (folder.exists()) {
+                        return org.apache.commons.io.FileUtils.listFiles(
+                                new File(dir), new String[] {"tsfile"}, true)
+                            .size();
+                      } else {
+                        return 0L;
+                      }
                     })
                 .sum(),
         Tag.NAME.toString(),
