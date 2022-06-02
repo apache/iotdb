@@ -203,6 +203,8 @@ public enum PlanNodeType {
         return SchemaFetchScanNode.deserialize(buffer);
       case 25:
         return SchemaQueryMergeNode.deserialize(buffer);
+      case 26:
+        return SchemaQueryOrderByHeatNode.deserialize(buffer);
       case 27:
         return DevicesCountNode.deserialize(buffer);
       case 28:
@@ -249,8 +251,6 @@ public enum PlanNodeType {
         return LastQueryMergeNode.deserialize(buffer);
       case 49:
         return NodePathsCountNode.deserialize(buffer);
-      case 50:
-        return SchemaQueryOrderByHeatNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
