@@ -650,25 +650,25 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // AggregationDescriptor
       List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
       for (GroupByLevelDescriptor originalDescriptor : handle.getGroupByLevelDescriptors()) {
-        List<Expression> descriptorExpression = new ArrayList<>();
+        Set<Expression> descriptorExpressions = new HashSet<>();
         for (String childColumn : childrenOutputColumns) {
           // If this condition matched, the childColumn should come from GroupByLevelNode
           if (isAggColumnMatchExpression(childColumn, originalDescriptor.getOutputExpression())) {
-            descriptorExpression.add(originalDescriptor.getOutputExpression());
+            descriptorExpressions.add(originalDescriptor.getOutputExpression());
             continue;
           }
           for (Expression exp : originalDescriptor.getInputExpressions()) {
             if (isAggColumnMatchExpression(childColumn, exp)) {
-              descriptorExpression.add(exp);
+              descriptorExpressions.add(exp);
             }
           }
         }
-        if (descriptorExpression.size() == 0) {
+        if (descriptorExpressions.size() == 0) {
           continue;
         }
         GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
-        descriptor.setInputExpressions(descriptorExpression);
+        descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);
         LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
             descriptor, analysis.getTypeProvider());

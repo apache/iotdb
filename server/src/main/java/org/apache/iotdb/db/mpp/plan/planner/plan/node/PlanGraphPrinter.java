@@ -173,7 +173,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(
           String.format(
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
-      boxValue.add(String.format("Output-%d: %s", i, descriptor.getOutputColumnNames()));
+      boxValue.add(String.format("  Output: %s", descriptor.getOutputColumnNames()));
+      boxValue.add(String.format("  Input: %s", descriptor.getInputExpressions()));
     }
     return render(node, boxValue, context);
   }
