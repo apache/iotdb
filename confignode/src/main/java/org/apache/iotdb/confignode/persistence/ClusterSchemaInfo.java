@@ -42,20 +42,23 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -72,12 +75,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private MTreeAboveSG mTree;
 
-  // The size of the buffer used for snapshot(temporary value)
-  private final int bufferSize = 10 * 1024 * 1024;
-
   private final String snapshotFileName = "cluster_schema.bin";
 
-  private ClusterSchemaInfo() {
+  public ClusterSchemaInfo() {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
 
     try {
@@ -136,7 +136,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
       PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
       mTree.deleteStorageGroup(partialPathName);
-      PartitionInfo.getInstance().deleteStorageGroup(req);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.warn("Storage group not exist", e);
@@ -161,18 +160,27 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.writeLock().lock();
 
     try {
-      for (Map.Entry<String, TRegionReplicaSet> reqEntry : req.getRegionMap().entrySet()) {
+      for (Map.Entry<String, List<TRegionReplicaSet>> reqEntry : req.getRegionMap().entrySet()) {
         PartialPath partialPathName = new PartialPath(reqEntry.getKey());
         TStorageGroupSchema storageGroupSchema =
             mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
-        switch (reqEntry.getValue().getRegionId().getType()) {
-          case SchemaRegion:
-            storageGroupSchema.getSchemaRegionGroupIds().add(reqEntry.getValue().getRegionId());
-            break;
-          case DataRegion:
-            storageGroupSchema.getDataRegionGroupIds().add(reqEntry.getValue().getRegionId());
-            break;
-        }
+        reqEntry
+            .getValue()
+            .forEach(
+                regionReplicaSet -> {
+                  switch (regionReplicaSet.getRegionId().getType()) {
+                    case SchemaRegion:
+                      storageGroupSchema
+                          .getSchemaRegionGroupIds()
+                          .add(regionReplicaSet.getRegionId());
+                      break;
+                    case DataRegion:
+                      storageGroupSchema
+                          .getDataRegionGroupIds()
+                          .add(regionReplicaSet.getRegionId());
+                      break;
+                  }
+                });
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -345,27 +353,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return All StorageGroupSchemas that matches to the specific StorageGroup patterns */
-  public Map<String, TStorageGroupSchema> getDeleteStorageGroups(List<String> rawPathList) {
-    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      for (String rawPath : rawPathList) {
-        PartialPath patternPath = new PartialPath(rawPath);
-        List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
-        for (PartialPath path : matchedPaths) {
-          schemaMap.put(
-              path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
-        }
-      }
-    } catch (MetadataException e) {
-      LOGGER.warn("Error StorageGroup name", e);
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-    return schemaMap;
-  }
-
   /** @return True if StorageGroupInfo contains the specific StorageGroup */
   public boolean containsStorageGroup(String storageName) {
     boolean result;
@@ -398,6 +385,28 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
+  }
+
+  /** @return All StorageGroupSchemas that matches to the specific StorageGroup patterns */
+  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
+      List<String> rawPathList) {
+    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      for (String rawPath : rawPathList) {
+        PartialPath patternPath = new PartialPath(rawPath);
+        List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+        for (PartialPath path : matchedPaths) {
+          schemaMap.put(
+              path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+        }
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn("Error StorageGroup name", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return schemaMap;
   }
 
   /**
@@ -446,20 +455,24 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
 
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 
     storageGroupReadWriteLock.readLock().lock();
     try {
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-          FileChannel fileChannel = fileOutputStream.getChannel()) {
-        mTree.serialize(buffer);
-        buffer.flip();
-        fileChannel.write(buffer);
+          BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+        mTree.serialize(outputStream);
+        outputStream.flush();
       }
       return tmpFile.renameTo(snapshotFile);
     } finally {
-      buffer.clear();
-      tmpFile.delete();
+      for (int retry = 0; retry < 5; retry++) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
       storageGroupReadWriteLock.readLock().unlock();
     }
   }
@@ -475,35 +488,60 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return;
     }
     storageGroupReadWriteLock.writeLock().lock();
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        FileChannel fileChannel = fileInputStream.getChannel()) {
-      // get buffer from fileChannel
-      fileChannel.read(buffer);
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       mTree.clear();
-      buffer.flip();
-      mTree.deserialize(buffer);
+      mTree.deserialize(bufferedInputStream);
     } finally {
-      buffer.clear();
       storageGroupReadWriteLock.writeLock().unlock();
     }
+  }
+
+  public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
+      PartialPath partialPath, int level) {
+    Pair<List<PartialPath>, Set<PartialPath>> matchedPathsInNextLevel =
+        new Pair(new HashSet<>(), new HashSet<>());
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, true, null);
+    } catch (MetadataException e) {
+      LOGGER.error("Error get matched paths in given level.", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return matchedPathsInNextLevel;
+  }
+
+  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath partialPath) {
+    Pair<Set<String>, Set<PartialPath>> matchedPathsInNextLevel =
+        new Pair(new HashSet<>(), new HashSet<>());
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath);
+    } catch (MetadataException e) {
+      LOGGER.error("Error get matched paths in next level.", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return matchedPathsInNextLevel;
+  }
+
+  public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath partialPath) {
+    Pair<Set<String>, Set<PartialPath>> matchedNamesInNextLevel =
+        new Pair(new HashSet<>(), new HashSet<>());
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      matchedNamesInNextLevel = mTree.getChildNodeNameInNextLevel(partialPath);
+    } catch (MetadataException e) {
+      LOGGER.error("Error get matched names in next level.", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return matchedNamesInNextLevel;
   }
 
   @TestOnly
   public void clear() {
     mTree.clear();
-  }
-
-  private static class StorageGroupInfoHolder {
-
-    private static final ClusterSchemaInfo INSTANCE = new ClusterSchemaInfo();
-
-    private StorageGroupInfoHolder() {
-      // Empty constructor
-    }
-  }
-
-  public static ClusterSchemaInfo getInstance() {
-    return StorageGroupInfoHolder.INSTANCE;
   }
 }

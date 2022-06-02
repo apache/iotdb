@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -70,14 +72,19 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
       if (level < targetLevel) {
         return false;
       }
+      Deque<IMNode> stack = new ArrayDeque<>();
       while (level > targetLevel) {
-        node = node.getParent();
+        node = traverseContext.pop();
+        stack.push(node);
         level--;
       }
       // record processed node so they will not be processed twice
       if (!processedNodes.contains(node)) {
         processedNodes.add(node);
         transferToResult(node);
+      }
+      while (!stack.isEmpty()) {
+        traverseContext.push(stack.pop());
       }
       return true;
     } else {

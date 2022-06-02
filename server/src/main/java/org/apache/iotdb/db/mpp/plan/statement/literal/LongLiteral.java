@@ -48,7 +48,30 @@ public class LongLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.INT32 || dataType == TSDataType.INT64;
+    return dataType == TSDataType.INT32
+        || dataType == TSDataType.INT64
+        || dataType == TSDataType.FLOAT
+        || dataType == TSDataType.DOUBLE;
+  }
+
+  @Override
+  public int getInt() {
+    return Math.toIntExact(value);
+  }
+
+  @Override
+  public long getLong() {
+    return value;
+  }
+
+  @Override
+  public float getFloat() {
+    return value;
+  }
+
+  @Override
+  public double getDouble() {
+    return value;
   }
 
   @Override

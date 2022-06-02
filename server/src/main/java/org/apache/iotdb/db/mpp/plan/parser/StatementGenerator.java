@@ -22,14 +22,18 @@ package org.apache.iotdb.db.mpp.plan.parser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.plan.constant.FilterConstant;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -37,15 +41,18 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -68,11 +75,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -94,30 +97,21 @@ public class StatementGenerator {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
-    selectComponent.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectComponent.addResultColumn(
+        new ResultColumn(
+            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
     // set query filter
-    QueryFilter queryFilter = new QueryFilter(FilterConstant.FilterType.KW_AND);
-    PartialPath timePath = new PartialPath(TIME);
-    queryFilter.setSinglePath(timePath);
-    Set<PartialPath> pathSet = new HashSet<>();
-    pathSet.add(timePath);
-    queryFilter.setIsSingle(true);
-    queryFilter.setPathSet(pathSet);
-
-    BasicFunctionFilter left =
-        new BasicFunctionFilter(
-            FilterConstant.FilterType.GREATERTHANOREQUALTO,
-            timePath,
-            Long.toString(rawDataQueryReq.getStartTime()));
-    BasicFunctionFilter right =
-        new BasicFunctionFilter(
-            FilterConstant.FilterType.LESSTHAN,
-            timePath,
-            Long.toString(rawDataQueryReq.getEndTime()));
-    queryFilter.addChildOperator(left);
-    queryFilter.addChildOperator(right);
-    //    whereCondition.setQueryFilter(queryFilter);
+    GreaterEqualExpression leftPredicate =
+        new GreaterEqualExpression(
+            new TimestampOperand(),
+            new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getStartTime())));
+    LessThanExpression rightPredicate =
+        new LessThanExpression(
+            new TimestampOperand(),
+            new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getEndTime())));
+    LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
+    whereCondition.setPredicate(predicate);
 
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
@@ -140,16 +134,16 @@ public class StatementGenerator {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
-    selectComponent.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectComponent.addResultColumn(
+        new ResultColumn(
+            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
     // set query filter
-    PartialPath timePath = new PartialPath(TIME);
-    BasicFunctionFilter basicFunctionFilter =
-        new BasicFunctionFilter(
-            FilterConstant.FilterType.GREATERTHANOREQUALTO,
-            timePath,
-            Long.toString(lastDataQueryReq.getTime()));
-    //    whereCondition.setQueryFilter(basicFunctionFilter);
+    GreaterEqualExpression predicate =
+        new GreaterEqualExpression(
+            new TimestampOperand(),
+            new ConstantOperand(TSDataType.INT64, Long.toString(lastDataQueryReq.getTime())));
+    whereCondition.setPredicate(predicate);
 
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
@@ -370,6 +364,56 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAlias);
+    return statement;
+  }
+
+  public static Statement createStatement(TSCreateMultiTimeseriesReq req)
+      throws IllegalPathException {
+    // construct create multi timeseries statement
+    List<PartialPath> paths = new ArrayList<>();
+    for (String path : req.paths) {
+      paths.add(new PartialPath(path));
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int dataType : req.dataTypes) {
+      dataTypes.add(TSDataType.values()[dataType]);
+    }
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int encoding : req.encodings) {
+      encodings.add(TSEncoding.values()[encoding]);
+    }
+    List<CompressionType> compressors = new ArrayList<>();
+    for (int compressor : req.compressors) {
+      compressors.add(CompressionType.values()[compressor]);
+    }
+    CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
+    statement.setPaths(paths);
+    statement.setDataTypes(dataTypes);
+    statement.setEncodings(encodings);
+    statement.setCompressors(compressors);
+    statement.setPropsList(req.propsList);
+    statement.setTagsList(req.tagsList);
+    statement.setAttributesList(req.attributesList);
+    statement.setAliasList(req.measurementAliasList);
+    return statement;
+  }
+
+  public static Statement createStatement(List<String> storageGroups) {
+    DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
+    statement.setPrefixPath(storageGroups);
+    return statement;
+  }
+
+  public static DeleteDataStatement createStatement(TSDeleteDataReq req)
+      throws IllegalPathException {
+    DeleteDataStatement statement = new DeleteDataStatement();
+    List<PartialPath> pathList = new ArrayList<>();
+    for (String path : req.getPaths()) {
+      pathList.add(new PartialPath(path));
+    }
+    statement.setPathList(pathList);
+    statement.setDeleteStartTime(req.getStartTime());
+    statement.setDeleteEndTime(req.getEndTime());
     return statement;
   }
 

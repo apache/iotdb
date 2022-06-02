@@ -20,13 +20,11 @@ package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -35,22 +33,18 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.Manager;
 import org.apache.iotdb.confignode.manager.NodeManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
-import org.apache.iotdb.confignode.manager.load.allocator.CopySetRegionAllocator;
-import org.apache.iotdb.confignode.manager.load.allocator.IRegionAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -61,37 +55,43 @@ public class LoadManager implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
-  private final long heartbeatInterval =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
-
   private final Manager configManager;
 
+  private final long heartbeatInterval =
+      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
   private final HeartbeatCache heartbeatCache;
 
-  private final IRegionAllocator regionAllocator;
+  private final RegionBalancer regionBalancer;
+
+  private final Map<TConsensusGroupId, TRegionReplicaSet> replicaScoreMap;
 
   // TODO: Interfaces for active, interrupt and reset LoadBalancer
 
   public LoadManager(Manager configManager) {
     this.configManager = configManager;
     this.heartbeatCache = new HeartbeatCache();
-    this.regionAllocator = new CopySetRegionAllocator();
+
+    this.regionBalancer = new RegionBalancer(configManager);
+
+    this.replicaScoreMap = new TreeMap<>();
   }
 
   /**
-   * Allocate and create one Region on DataNode for each StorageGroup.
+   * Allocate and create one Region for each StorageGroup. TODO: Use procedure to protect create
+   * Regions process
    *
    * @param storageGroups List<StorageGroupName>
    * @param consensusGroupType TConsensusGroupType of Region to be allocated
+   * @param regionNum The number of Regions
    */
-  public void allocateAndCreateRegions(
-      List<String> storageGroups, TConsensusGroupType consensusGroupType)
+  public void initializeRegions(
+      List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
       throws NotEnoughDataNodeException {
     CreateRegionsReq createRegionsReq = null;
 
-    // TODO: use procedure to protect create Regions process
     try {
-      createRegionsReq = allocateRegions(storageGroups, consensusGroupType);
+      createRegionsReq =
+          regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, regionNum);
       createRegionsOnDataNodes(createRegionsReq);
     } catch (MetadataException e) {
       LOGGER.error("Meet error when create Regions", e);
@@ -100,142 +100,134 @@ public class LoadManager implements Runnable {
     getConsensusManager().write(createRegionsReq);
   }
 
-  private CreateRegionsReq allocateRegions(
-      List<String> storageGroups, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, MetadataException {
-    CreateRegionsReq createRegionsReq = new CreateRegionsReq();
-
-    List<TDataNodeLocation> onlineDataNodes = getNodeManager().getOnlineDataNodes();
-    List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllocatedRegions();
-
-    for (String storageGroup : storageGroups) {
-      TStorageGroupSchema storageGroupSchema =
-          getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
-      int replicationFactor =
-          consensusGroupType == TConsensusGroupType.SchemaRegion
-              ? storageGroupSchema.getSchemaReplicationFactor()
-              : storageGroupSchema.getDataReplicationFactor();
-
-      if (onlineDataNodes.size() < replicationFactor) {
-        throw new NotEnoughDataNodeException();
-      }
-
-      TRegionReplicaSet newRegion =
-          regionAllocator.allocateRegion(
-              onlineDataNodes,
-              allocatedRegions,
-              replicationFactor,
-              new TConsensusGroupId(
-                  consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
-      createRegionsReq.addRegion(storageGroup, newRegion);
-    }
-
-    return createRegionsReq;
-  }
-
   private void createRegionsOnDataNodes(CreateRegionsReq createRegionsReq)
       throws MetadataException {
-    // Index of each Region
-    int index = 0;
-    // Number of regions to be created
-    int regionNum = 0;
-    Map<String, Map<Integer, Integer>> indexMap = new HashMap<>();
     Map<String, Long> ttlMap = new HashMap<>();
-    for (Map.Entry<String, TRegionReplicaSet> entry : createRegionsReq.getRegionMap().entrySet()) {
-      regionNum += entry.getValue().getDataNodeLocationsSize();
+    for (String storageGroup : createRegionsReq.getRegionMap().keySet()) {
       ttlMap.put(
-          entry.getKey(),
-          getClusterSchemaManager().getStorageGroupSchemaByName(entry.getKey()).getTTL());
-      for (TDataNodeLocation dataNodeLocation : entry.getValue().getDataNodeLocations()) {
-        indexMap
-            .computeIfAbsent(entry.getKey(), sg -> new HashMap<>())
-            .put(dataNodeLocation.getDataNodeId(), index);
-        index += 1;
-      }
+          storageGroup,
+          getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
+    }
+    AsyncDataNodeClientPool.getInstance().createRegions(createRegionsReq, ttlMap);
+  }
+
+  private THeartbeatReq genHeartbeatReq() {
+    return new THeartbeatReq(System.currentTimeMillis());
+  }
+
+  private void regionExpansion() {
+    // Currently, we simply expand the number of regions held by each storage group to
+    // 50% of the total CPU cores to facilitate performance testing of multiple regions
+
+    int totalCoreNum = 0;
+    List<TDataNodeInfo> dataNodeInfos = getNodeManager().getOnlineDataNodes(-1);
+    for (TDataNodeInfo dataNodeInfo : dataNodeInfos) {
+      totalCoreNum += dataNodeInfo.getCpuCoreNum();
     }
 
-    BitSet bitSet = new BitSet(regionNum);
-
-    for (int retry = 0; retry < 3; retry++) {
-      CountDownLatch latch = new CountDownLatch(regionNum - bitSet.cardinality());
-
-      createRegionsReq
-          .getRegionMap()
-          .forEach(
-              (storageGroup, regionReplicaSet) -> {
-                // Enumerate each Region
-                regionReplicaSet
-                    .getDataNodeLocations()
-                    .forEach(
-                        dataNodeLocation -> {
-                          // Skip those created successfully
-                          if (!bitSet.get(
-                              indexMap.get(storageGroup).get(dataNodeLocation.getDataNodeId()))) {
-                            TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
-                            CreateRegionHandler handler =
-                                new CreateRegionHandler(
-                                    indexMap
-                                        .get(storageGroup)
-                                        .get(dataNodeLocation.getDataNodeId()),
-                                    bitSet,
-                                    latch,
-                                    regionReplicaSet.getRegionId(),
-                                    dataNodeLocation);
-
-                            switch (regionReplicaSet.getRegionId().getType()) {
-                              case SchemaRegion:
-                                AsyncDataNodeClientPool.getInstance()
-                                    .createSchemaRegion(
-                                        endPoint,
-                                        genCreateSchemaRegionReq(storageGroup, regionReplicaSet),
-                                        handler);
-                                break;
-                              case DataRegion:
-                                AsyncDataNodeClientPool.getInstance()
-                                    .createDataRegion(
-                                        endPoint,
-                                        genCreateDataRegionReq(
-                                            storageGroup,
-                                            regionReplicaSet,
-                                            ttlMap.get(storageGroup)),
-                                        handler);
-                            }
-                          }
-                        });
-              });
-
+    List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
+    for (String storageGroup : storageGroups) {
       try {
-        latch.await();
+        TStorageGroupSchema storageGroupSchema =
+            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
+        int totalReplicaNum =
+            storageGroupSchema.getSchemaReplicationFactor()
+                    * storageGroupSchema.getSchemaRegionGroupIdsSize()
+                + storageGroupSchema.getDataReplicationFactor()
+                    * storageGroupSchema.getDataRegionGroupIdsSize();
+
+        if (totalReplicaNum < totalCoreNum * 0.5) {
+          // Allocate more Regions
+          CreateRegionsReq createRegionsReq = null;
+
+          // Assume that cluster will get the best efficiency when SchemaRegion:DataRegion is 1:5
+          // TODO: Find an optimal SchemaRegion:DataRegion rate.
+          if (storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
+                  > storageGroupSchema.getDataRegionGroupIdsSize()
+              && storageGroupSchema.getDataRegionGroupIdsSize()
+                  < storageGroupSchema.getMaximumDataRegionCount()) {
+            // Allocate more DataRegions
+
+            // regionNum equals to min(remain cpu core,
+            // min(SchemaRegionCnt * 5 - DataRegionCnt, MaxDataRegionCnt - DataRegionCnt))
+            int regionNum =
+                Math.min(
+                    ((int) (totalCoreNum * 0.5) - totalReplicaNum)
+                        / storageGroupSchema.getDataReplicationFactor(),
+                    Math.min(
+                        storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
+                            - storageGroupSchema.getDataRegionGroupIdsSize(),
+                        storageGroupSchema.getMaximumDataRegionCount()
+                            - storageGroupSchema.getDataRegionGroupIdsSize()));
+
+            createRegionsReq =
+                regionBalancer.genRegionsAllocationPlan(
+                    Collections.singletonList(storageGroup),
+                    TConsensusGroupType.DataRegion,
+                    regionNum);
+          } else if (storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
+                  <= storageGroupSchema.getDataRegionGroupIdsSize()
+              && storageGroupSchema.getSchemaRegionGroupIdsSize()
+                  < storageGroupSchema.getMaximumSchemaRegionCount()) {
+            // Allocate one more SchemaRegion
+            createRegionsReq =
+                regionBalancer.genRegionsAllocationPlan(
+                    Collections.singletonList(storageGroup), TConsensusGroupType.SchemaRegion, 1);
+          }
+
+          // TODO: use procedure to protect this
+          if (createRegionsReq != null) {
+            createRegionsOnDataNodes(createRegionsReq);
+            getConsensusManager().write(createRegionsReq);
+          }
+        }
+      } catch (MetadataException e) {
+        LOGGER.warn("Meet error when doing regionExpansion", e);
+      } catch (NotEnoughDataNodeException ignore) {
+        // The LoadManager will expand Regions automatically after there are enough DataNodes.
+      }
+    }
+  }
+
+  private void doLoadBalancing() {
+    regionExpansion();
+    // TODO: update replicaScoreMap
+  }
+
+  @Override
+  public void run() {
+    int balanceCount = 0;
+    while (true) {
+      try {
+
+        if (getConsensusManager().isLeader()) {
+          // Ask DataNode for heartbeat in every heartbeat interval
+          List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
+          for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+            HeartbeatHandler handler =
+                new HeartbeatHandler(dataNodeInfo.getLocation(), heartbeatCache);
+            AsyncDataNodeClientPool.getInstance()
+                .getHeartBeat(
+                    dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
+          }
+
+          balanceCount += 1;
+          // TODO: Adjust load balancing period
+          if (balanceCount == 10) {
+            // Pause load balancing temporary
+            // doLoadBalancing();
+            balanceCount = 0;
+          }
+        } else {
+          heartbeatCache.discardAllCache();
+        }
+
+        TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
       } catch (InterruptedException e) {
-        LOGGER.error("ClusterSchemaManager was interrupted during create Regions on DataNodes", e);
-      }
-
-      if (bitSet.cardinality() == regionNum) {
-        break;
+        LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
+        System.exit(-1);
       }
     }
-
-    if (bitSet.cardinality() < regionNum) {
-      LOGGER.error(
-          "Failed to create some SchemaRegions or DataRegions on DataNodes. Please check former logs.");
-    }
-  }
-
-  private TCreateSchemaRegionReq genCreateSchemaRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet) {
-    TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
-    req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet);
-    return req;
-  }
-
-  private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
-    TCreateDataRegionReq req = new TCreateDataRegionReq();
-    req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet);
-    req.setTtl(TTL);
-    return req;
   }
 
   private ConsensusManager getConsensusManager() {
@@ -248,40 +240,5 @@ public class LoadManager implements Runnable {
 
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
-  }
-
-  private PartitionManager getPartitionManager() {
-    return configManager.getPartitionManager();
-  }
-
-  private THeartbeatReq genHeartbeatReq() {
-    return new THeartbeatReq(System.currentTimeMillis());
-  }
-
-  @Override
-  public void run() {
-    while (true) {
-      try {
-
-        if (getConsensusManager().isLeader()) {
-          // Ask DataNode for heartbeat in every heartbeat interval
-          List<TDataNodeLocation> onlineDataNodes = getNodeManager().getOnlineDataNodes();
-          for (TDataNodeLocation dataNodeLocation : onlineDataNodes) {
-            HeartbeatHandler handler =
-                new HeartbeatHandler(dataNodeLocation.getDataNodeId(), heartbeatCache);
-            AsyncDataNodeClientPool.getInstance()
-                .getHeartBeat(dataNodeLocation.getInternalEndPoint(), genHeartbeatReq(), handler);
-          }
-
-        } else {
-          heartbeatCache.discardAllCache();
-        }
-
-        TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
-      } catch (InterruptedException e) {
-        LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
-        System.exit(-1);
-      }
-    }
   }
 }

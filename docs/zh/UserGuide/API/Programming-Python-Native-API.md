@@ -246,6 +246,37 @@ session.execute_query_statement(sql)
 session.execute_non_query_statement(sql)
 ```
 
+
+### 元数据模版接口
+#### 构建元数据模版
+1. 首先构建Template类
+2. 添加子节点，可以选择InternalNode或MeasurementNode
+3. 调用创建元数据模版接口
+
+```python
+template = Template(name="treeTemplate_python", share_time=True)
+
+i_node_gps = InternalNode(name="GPS", share_time=False)
+i_node_v = InternalNode(name="vehicle", share_time=True)
+m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+
+i_node_gps.add_child(m_node_x)
+i_node_gps.add_child(m_node_x)
+i_node_v.add_child(m_node_x)
+
+template.add_template(i_node_gps)
+template.add_template(i_node_v)
+template.add_template(m_node_x)
+
+session.create_schema_template(template)
+```
+#### 删除元数据模版
+删除已经存在的元数据模版，不支持删除已经挂载的模版
+```python
+session.drop_schema_template("template_python")
+```
+
+
 ### 对 Pandas 的支持
 
 我们支持将查询结果轻松地转换为 [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)。

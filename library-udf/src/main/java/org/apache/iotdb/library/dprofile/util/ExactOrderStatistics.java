@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.library.dprofile.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.commons.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;

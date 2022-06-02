@@ -132,7 +132,6 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
@@ -593,13 +592,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
-      conf.setEnablePerformanceStat(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
       int maxConcurrentClientNum =
           Integer.parseInt(
               properties.getProperty(
@@ -801,6 +793,8 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
+      conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
+
       conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
           Integer.parseInt(
               properties.getProperty(
@@ -895,6 +889,9 @@ public class IoTDBDescriptor {
 
       // shuffle
       loadShuffleProps(properties);
+
+      // author cache
+      loadAuthorCache(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -906,6 +903,17 @@ public class IoTDBDescriptor {
       conf.updatePath();
       commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
     }
+  }
+
+  private void loadAuthorCache(Properties properties) {
+    conf.setAuthorCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "author_cache_size", String.valueOf(conf.getAuthorCacheSize()))));
+    conf.setAuthorCacheExpireTime(
+        Integer.parseInt(
+            properties.getProperty(
+                "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
   }
 
   // to keep consistent with the cluster module.
@@ -1506,6 +1514,37 @@ public class IoTDBDescriptor {
     if (tlogBufferSize > 0) {
       conf.setTlogBufferSize(tlogBufferSize);
     }
+
+    conf.setTriggerForwardMaxQueueNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_queue_number",
+                Integer.toString(conf.getTriggerForwardMaxQueueNumber()))));
+    conf.setTriggerForwardMaxSizePerQueue(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_size_per_queue",
+                Integer.toString(conf.getTriggerForwardMaxSizePerQueue()))));
+    conf.setTriggerForwardBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_batch_size",
+                Integer.toString(conf.getTriggerForwardBatchSize()))));
+    conf.setTriggerForwardHTTPPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_http_pool_size",
+                Integer.toString(conf.getTriggerForwardHTTPPoolSize()))));
+    conf.setTriggerForwardHTTPPOOLMaxPerRoute(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_http_pool_max_per_route",
+                Integer.toString(conf.getTriggerForwardHTTPPOOLMaxPerRoute()))));
+    conf.setTriggerForwardMQTTPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_mqtt_pool_size",
+                Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
   }
 
   private void loadCQProps(Properties properties) {
@@ -1555,9 +1594,17 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
 
-    conf.setConsensusPort(
+    conf.setDataRegionConsensusPort(
         Integer.parseInt(
-            properties.getProperty("consensus_port", Integer.toString(conf.getConsensusPort()))));
+            properties.getProperty(
+                "data_region_consensus_port",
+                Integer.toString(conf.getDataRegionConsensusPort()))));
+
+    conf.setSchemaRegionConsensusPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_consensus_port",
+                Integer.toString(conf.getSchemaRegionConsensusPort()))));
   }
 
   public void loadShuffleProps(Properties properties) {
@@ -1608,7 +1655,9 @@ public class IoTDBDescriptor {
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
-    conf.setConsensusProtocolClass(globalConfig.getDataNodeConsensusProtocolClass());
+    conf.setDataRegionConsensusProtocolClass(globalConfig.getDataRegionConsensusProtocolClass());
+    conf.setSchemaRegionConsensusProtocolClass(
+        globalConfig.getSchemaRegionConsensusProtocolClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }

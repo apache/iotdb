@@ -252,7 +252,8 @@ public class DataRegionTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws QueryProcessException, IllegalPathException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, TriggerExecutionException,
+          WriteProcessException {
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
@@ -416,7 +417,8 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
+          WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -508,7 +510,8 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
+          WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -600,7 +603,8 @@ public class DataRegionTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
-      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException,
+          WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();

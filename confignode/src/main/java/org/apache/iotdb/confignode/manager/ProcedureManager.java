@@ -23,16 +23,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.procedure.ConfigProcedureStore;
-import org.apache.iotdb.confignode.procedure.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
+import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
+import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
+import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
+import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.procedure.Procedure;
-import org.apache.iotdb.procedure.ProcedureExecutor;
-import org.apache.iotdb.procedure.scheduler.ProcedureScheduler;
-import org.apache.iotdb.procedure.scheduler.SimpleProcedureScheduler;
-import org.apache.iotdb.procedure.store.IProcedureStore;
-import org.apache.iotdb.procedure.store.ProcedureStore;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import org.slf4j.Logger;
@@ -44,19 +45,22 @@ import java.util.concurrent.TimeUnit;
 
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
+
+  private static final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+
   private static final int procedureWaitTimeOut = 30;
   private static final int procedureWaitRetryTimeout = 250;
-  private final ConfigManager configNodeManager;
+
+  private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
   private ProcedureScheduler scheduler;
   private IProcedureStore store;
   private ConfigNodeProcedureEnv env;
-  private ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
 
-  public ProcedureManager(ConfigManager configManager) {
-    this.configNodeManager = configManager;
+  public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
+    this.configManager = configManager;
     this.scheduler = new SimpleProcedureScheduler();
-    this.store = new ConfigProcedureStore(configManager);
+    this.store = new ConfigProcedureStore(configManager, procedureInfo);
     this.env = new ConfigNodeProcedureEnv(configManager);
     this.executor = new ProcedureExecutor<>(env, store, scheduler);
   }
@@ -145,8 +149,8 @@ public class ProcedureManager {
      GET-SET Region
   */
   // ======================================================
-  public Manager getConfigNodeManager() {
-    return configNodeManager;
+  public Manager getConfigManager() {
+    return configManager;
   }
 
   public ProcedureExecutor<ConfigNodeProcedureEnv> getExecutor() {

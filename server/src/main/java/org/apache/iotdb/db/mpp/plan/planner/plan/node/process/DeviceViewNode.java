@@ -40,7 +40,7 @@ import java.util.Objects;
  * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
  * contain n+1 columns where the new column is Device column.
  */
-public class DeviceViewNode extends ProcessNode {
+public class DeviceViewNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first OrderBy in this list has higher priority.
@@ -48,9 +48,6 @@ public class DeviceViewNode extends ProcessNode {
 
   // The size devices and children should be the same.
   private final List<String> devices = new ArrayList<>();
-
-  // each child node whose output TsBlock contains the data belonged to one device.
-  private final List<PlanNode> children = new ArrayList<>();
 
   // Device column and measurement columns in result output
   private final List<String> outputColumnNames;
@@ -115,6 +112,10 @@ public class DeviceViewNode extends ProcessNode {
   public PlanNode clone() {
     return new DeviceViewNode(
         getPlanNodeId(), mergeOrders, outputColumnNames, devices, deviceToMeasurementIndexesMap);
+  }
+
+  public List<OrderBy> getMergeOrders() {
+    return mergeOrders;
   }
 
   @Override
@@ -212,5 +213,10 @@ public class DeviceViewNode extends ProcessNode {
         children,
         outputColumnNames,
         deviceToMeasurementIndexesMap);
+  }
+
+  @Override
+  public String toString() {
+    return "DeviceView-" + this.getPlanNodeId();
   }
 }

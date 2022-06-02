@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -80,6 +79,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class StorageEngineV2 implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngineV2.class);
@@ -105,7 +105,7 @@ public class StorageEngineV2 implements IService {
       FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
   /** DataRegionId -> DataRegion */
-  private final ConcurrentHashMap<ConsensusGroupId, DataRegion> dataRegionMap =
+  private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
       new ConcurrentHashMap<>();
 
   /** number of ready data region */
@@ -500,7 +500,7 @@ public class StorageEngineV2 implements IService {
    * @param insertRowNode
    */
   // TODO:(New insert)
-  public void insert(ConsensusGroupId dataRegionId, InsertRowNode insertRowNode)
+  public void insert(DataRegionId dataRegionId, InsertRowNode insertRowNode)
       throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
@@ -521,8 +521,8 @@ public class StorageEngineV2 implements IService {
 
   /** insert an InsertTabletNode to a storage group */
   // TODO:(New insert)
-  public void insertTablet(ConsensusGroupId dataRegionId, InsertTabletNode insertTabletNode)
-      throws StorageEngineException, BatchProcessException {
+  public void insertTablet(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
+      throws StorageEngineException, BatchProcessException, WriteProcessException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -588,8 +588,21 @@ public class StorageEngineV2 implements IService {
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
       throws DataRegionException {
-    DataRegion dataRegion = buildNewDataRegion(sg, String.valueOf(regionId.getId()), ttl);
-    dataRegionMap.put(regionId, dataRegion);
+    AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
+    DataRegion dataRegion =
+        dataRegionMap.computeIfAbsent(
+            regionId,
+            x -> {
+              try {
+                return buildNewDataRegion(sg, String.valueOf(x.getId()), ttl);
+              } catch (DataRegionException e) {
+                exceptionAtomicReference.set(e);
+              }
+              return null;
+            });
+    if (exceptionAtomicReference.get() != null) {
+      throw exceptionAtomicReference.get();
+    }
     return dataRegion;
   }
 
@@ -599,6 +612,23 @@ public class StorageEngineV2 implements IService {
 
   public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
+  }
+
+  public List<DataRegionId> getAllDataRegionIds() {
+    return new ArrayList<>(dataRegionMap.keySet());
+  }
+
+  public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
+    if (dataRegionMap.containsKey(regionId)) {
+      DataRegion oldRegion = dataRegionMap.get(regionId);
+      oldRegion.syncCloseAllWorkingTsFileProcessors();
+      oldRegion.abortCompaction();
+    }
+    dataRegionMap.put(regionId, newRegion);
+  }
+
+  public TsFileFlushPolicy getFileFlushPolicy() {
+    return fileFlushPolicy;
   }
 
   static class InstanceHolder {

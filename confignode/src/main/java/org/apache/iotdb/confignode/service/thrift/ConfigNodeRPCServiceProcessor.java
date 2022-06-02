@@ -19,9 +19,12 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
@@ -40,27 +43,35 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
@@ -72,6 +83,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -82,6 +94,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
@@ -99,9 +112,14 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     configManager.close();
   }
 
+  @TestOnly
+  public ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
+  }
+
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-    RegisterDataNodeReq registerReq = new RegisterDataNodeReq(req.getDataNodeLocation());
+    RegisterDataNodeReq registerReq = new RegisterDataNodeReq(req.getDataNodeInfo());
     DataNodeConfigurationResp registerResp =
         (DataNodeConfigurationResp) configManager.registerDataNode(registerReq);
 
@@ -115,21 +133,35 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TDataNodeLocationResp getDataNodeLocations(int dataNodeID) throws TException {
+  public TDataNodeInfoResp getDataNodeInfo(int dataNodeID) throws TException {
     GetDataNodeInfoReq queryReq = new GetDataNodeInfoReq(dataNodeID);
-    DataNodeLocationsResp queryResp =
-        (DataNodeLocationsResp) configManager.getDataNodeInfo(queryReq);
+    DataNodeInfosResp queryResp = (DataNodeInfosResp) configManager.getDataNodeInfo(queryReq);
 
-    TDataNodeLocationResp resp = new TDataNodeLocationResp();
+    TDataNodeInfoResp resp = new TDataNodeInfoResp();
     queryResp.convertToRpcDataNodeLocationResp(resp);
     return resp;
+  }
+
+  @Override
+  public TClusterNodeInfos getAllClusterNodeInfos() throws TException {
+    List<TConfigNodeLocation> configNodeLocations =
+        configManager.getNodeManager().getOnlineConfigNodes();
+    List<TDataNodeLocation> dataNodeInfoLocations =
+        configManager.getNodeManager().getOnlineDataNodes(-1).stream()
+            .map(TDataNodeInfo::getLocation)
+            .collect(Collectors.toList());
+
+    return new TClusterNodeInfos(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        configNodeLocations,
+        dataNodeInfoLocations);
   }
 
   @Override
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
     TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
 
-    // Set default configurations
+    // Set default configurations if necessary
     if (!storageGroupSchema.isSetTTL()) {
       storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     }
@@ -145,14 +177,10 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       storageGroupSchema.setTimePartitionInterval(
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
-    if (!storageGroupSchema.isSetMaximumSchemaRegionCount()) {
-      storageGroupSchema.setMaximumSchemaRegionCount(
-          ConfigNodeDescriptor.getInstance().getConf().getMaximumSchemaRegionCount());
-    }
-    if (!storageGroupSchema.isSetMaximumDataRegionCount()) {
-      storageGroupSchema.setMaximumDataRegionCount(
-          ConfigNodeDescriptor.getInstance().getConf().getMaximumDataRegionCount());
-    }
+
+    // Mark the StorageGroup as SchemaRegions and DataRegions not yet created
+    storageGroupSchema.setMaximumSchemaRegionCount(-1);
+    storageGroupSchema.setMaximumDataRegionCount(-1);
 
     // Initialize RegionGroupId List
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
@@ -254,6 +282,20 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
+  public TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
+      throws TException {
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    PartialPath partialPath = patternTree.splitToPathList().get(0);
+    SchemaNodeManagementResp schemaNodeManagementResp;
+    schemaNodeManagementResp =
+        (SchemaNodeManagementResp) configManager.getNodePathsPartition(partialPath, req.getLevel());
+    TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
+    schemaNodeManagementResp.convertToRpcSchemaNodeManagementPartitionResp(resp);
+    return resp;
+  }
+
+  @Override
   public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
     GetDataPartitionReq getDataPartitionReq = new GetDataPartitionReq();
     getDataPartitionReq.convertFromRpcTDataPartitionReq(req);
@@ -327,12 +369,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus login(TLoginReq req) throws TException {
+  public TPermissionInfoResp login(TLoginReq req) throws TException {
     return configManager.login(req.getUserrname(), req.getPassword());
   }
 
   @Override
-  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+  public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     return configManager.checkUserPrivileges(
         req.getUsername(), req.getPaths(), req.getPermission());
   }
@@ -356,6 +398,16 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
 
     return status;
+  }
+
+  @Override
+  public TSStatus createFunction(TCreateFunctionReq req) {
+    return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
+  }
+
+  @Override
+  public TSStatus dropFunction(TDropFunctionReq req) throws TException {
+    return configManager.dropFunction(req.getUdfName());
   }
 
   public void handleClientExit() {}

@@ -35,6 +35,7 @@ public class LastValueAccumulator implements Accumulator {
   protected final TSDataType seriesDataType;
   protected TsPrimitiveType lastValue;
   protected long maxTime = Long.MIN_VALUE;
+  protected boolean initResult = false;
 
   public LastValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -62,6 +63,7 @@ public class LastValueAccumulator implements Accumulator {
         break;
       case BOOLEAN:
         addBooleanInput(column, timeRange);
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));
@@ -72,6 +74,9 @@ public class LastValueAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 2, "partialResult of LastValue should be 2");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntLastValue(partialResult[0].getInt(0), partialResult[1].getLong(0));
@@ -114,8 +119,10 @@ public class LastValueAccumulator implements Accumulator {
         break;
       case TEXT:
         updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+        break;
       case BOOLEAN:
         updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getEndTime());
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));
@@ -133,6 +140,11 @@ public class LastValueAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 2, "partialResult of LastValue should be 2");
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+      columnBuilders[1].appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilders[0].writeInt(lastValue.getInt());
@@ -161,6 +173,10 @@ public class LastValueAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilder.writeInt(lastValue.getInt());
@@ -188,6 +204,7 @@ public class LastValueAccumulator implements Accumulator {
 
   @Override
   public void reset() {
+    initResult = false;
     this.maxTime = Long.MIN_VALUE;
     this.lastValue.reset();
   }
@@ -210,13 +227,14 @@ public class LastValueAccumulator implements Accumulator {
   protected void addIntInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateIntLastValue(column[1].getInt(i), curTime);
       }
     }
   }
 
   protected void updateIntLastValue(int value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setInt(value);
@@ -226,13 +244,14 @@ public class LastValueAccumulator implements Accumulator {
   protected void addLongInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateLongLastValue(column[1].getLong(i), curTime);
       }
     }
   }
 
   protected void updateLongLastValue(long value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setLong(value);
@@ -242,13 +261,14 @@ public class LastValueAccumulator implements Accumulator {
   protected void addFloatInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateFloatLastValue(column[1].getFloat(i), curTime);
       }
     }
   }
 
   protected void updateFloatLastValue(float value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setFloat(value);
@@ -258,13 +278,14 @@ public class LastValueAccumulator implements Accumulator {
   protected void addDoubleInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateDoubleLastValue(column[1].getDouble(i), curTime);
       }
     }
   }
 
   protected void updateDoubleLastValue(double value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setDouble(value);
@@ -274,13 +295,14 @@ public class LastValueAccumulator implements Accumulator {
   protected void addBooleanInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBooleanLastValue(column[1].getBoolean(i), curTime);
       }
     }
   }
 
   protected void updateBooleanLastValue(boolean value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setBoolean(value);
@@ -290,13 +312,14 @@ public class LastValueAccumulator implements Accumulator {
   protected void addBinaryInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBinaryLastValue(column[1].getBinary(i), curTime);
       }
     }
   }
 
   protected void updateBinaryLastValue(Binary value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setBinary(value);

@@ -66,7 +66,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
-  private static final int QUERY_TIMEOUT_MS = 10_000; // TODO: load from config files or requests
+  private static final int QUERY_TIMEOUT_MS = 60_000; // TODO: load from config files or requests
   private final ThreadGroup workerGroups;
   private final List<AbstractDriverThread> threads;
 
@@ -184,19 +184,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
     if (task.getStatus() != DriverTaskStatus.FINISHED) {
       task.setStatus(DriverTaskStatus.ABORTED);
     }
-    if (task.getAbortCause() != null) {
-      task.getFragmentInstance()
-          .failed(
-              new FragmentInstanceAbortedException(
-                  task.getFragmentInstance().getInfo(), task.getAbortCause()));
-    }
-    if (task.getStatus() == DriverTaskStatus.ABORTED) {
-      blockManager.forceDeregisterFragmentInstance(
-          new TFragmentInstanceId(
-              task.getId().getQueryId().getId(),
-              task.getId().getFragmentId().getId(),
-              task.getId().getInstanceId()));
-    }
     readyQueue.remove(task.getId());
     timeoutQueue.remove(task.getId());
     blockedTasks.remove(task);
@@ -205,6 +192,27 @@ public class DriverScheduler implements IDriverScheduler, IService {
       tasks.remove(task);
       if (tasks.isEmpty()) {
         queryMap.remove(task.getId().getQueryId());
+      }
+    }
+    if (task.getAbortCause() != null) {
+      try {
+        task.getFragmentInstance()
+            .failed(
+                new FragmentInstanceAbortedException(
+                    task.getFragmentInstance().getInfo(), task.getAbortCause()));
+      } catch (Exception e) {
+        logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
+      }
+    }
+    if (task.getStatus() == DriverTaskStatus.ABORTED) {
+      try {
+        blockManager.forceDeregisterFragmentInstance(
+            new TFragmentInstanceId(
+                task.getId().getQueryId().getId(),
+                task.getId().getFragmentId().getId(),
+                task.getId().getInstanceId()));
+      } catch (Exception e) {
+        logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
       }
     }
   }

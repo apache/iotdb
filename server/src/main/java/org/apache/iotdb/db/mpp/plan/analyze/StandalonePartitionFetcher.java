@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -62,6 +63,12 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    return null;
+  }
+
+  @Override
+  public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+      PathPatternTree patternTree, Integer level) {
     return null;
   }
 

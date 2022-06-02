@@ -22,11 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
@@ -54,12 +50,10 @@ public class AuthorInfoTest {
 
   private static AuthorInfo authorInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "authorInfo-snapshot");
-  private static final ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   @BeforeClass
   public static void setup() {
-    authorInfo = AuthorInfo.getInstance();
+    authorInfo = new AuthorInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
@@ -118,7 +112,10 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // check user privileges
-    status = authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status =
+        authorInfo
+            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
+            .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
 
     // drop user
@@ -169,7 +166,10 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // check user privileges
-    status = authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status =
+        authorInfo
+            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
+            .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role

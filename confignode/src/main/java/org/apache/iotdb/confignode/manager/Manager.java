@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -35,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -89,6 +91,13 @@ public interface Manager {
   LoadManager getLoadManager();
 
   /**
+   * Get UDFManager
+   *
+   * @return UDFManager instance
+   */
+  UDFManager getUDFManager();
+
+  /**
    * Register DataNode
    *
    * @return DataNodeConfigurationDataSet
@@ -132,9 +141,9 @@ public interface Manager {
   TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
 
   /**
-   * Delete StorageGroup
+   * Delete StorageGroups
    *
-   * @param deleteStorageGroupsReq deleteStorageGroupReq
+   * @param deletedPaths List<StringPattern>
    * @return status
    */
   TSStatus deleteStorageGroups(List<String> deletedPaths);
@@ -152,6 +161,13 @@ public interface Manager {
    * @return SchemaPartitionDataSet
    */
   DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
+
+  /**
+   * create SchemaNodeManagementPartition for child paths node management
+   *
+   * @return SchemaNodeManagementPartitionDataSet
+   */
+  DataSet getNodePathsPartition(PartialPath partialPath, Integer level);
 
   /**
    * Get DataPartition
@@ -184,10 +200,10 @@ public interface Manager {
   DataSet queryPermission(ConfigRequest configRequest);
 
   /** login */
-  TSStatus login(String username, String password);
+  TPermissionInfoResp login(String username, String password);
 
   /** Check User Privileges */
-  TSStatus checkUserPrivileges(String username, List<String> paths, int permission);
+  TPermissionInfoResp checkUserPrivileges(String username, List<String> paths, int permission);
 
   /**
    * Register ConfigNode when it is first startup
@@ -202,4 +218,8 @@ public interface Manager {
    * @return status
    */
   TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
+
+  TSStatus createFunction(String udfName, String className, List<String> uris);
+
+  TSStatus dropFunction(String udfName);
 }

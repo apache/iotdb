@@ -19,18 +19,15 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 
 import java.util.List;
 
-public abstract class WritePlanNode extends PlanNode {
+public abstract class WritePlanNode extends PlanNode implements IPartitionRelatedNode {
 
   protected WritePlanNode(PlanNodeId id) {
     super(id);
   }
-
-  public abstract TRegionReplicaSet getRegionReplicaSet();
 
   public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
 }

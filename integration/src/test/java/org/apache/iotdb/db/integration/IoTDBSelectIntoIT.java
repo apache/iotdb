@@ -125,7 +125,7 @@ public class IoTDBSelectIntoIT {
         null);
 
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.datatype"),
+        new PartialPath("root.sg.d1.`datatype`"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
