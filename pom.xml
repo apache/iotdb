@@ -1001,6 +1001,7 @@
                             <indentSize>4</indentSize>
                             <excludes>**/target/**</excludes>
                             <excludes>**/checkstyle.xml</excludes>
+                            <excludes>**/import-control.xml</excludes>
                         </configuration>
                     </execution>
                 </executions>

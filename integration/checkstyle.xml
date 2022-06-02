@@ -26,16 +26,7 @@
     <property name="fileExtensions" value="java"/>
     <module name="BeforeExecutionExclusionFileFilter">
         <property name="fileNamePattern"
-                  value="^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/]session)[\\/].*$"/>
-    </module>
-    <!--    <module name="RegexpOnFilename">-->
-    <!--        <property name="fileNamePattern" value="^.*IT\.java$"/>-->
-    <!--        <property name="match" value="false"/>-->
-    <!--    </module>-->
-    <module name="TreeWalker">
-        <module name="ImportControl">
-            <property name="file" value="integration/import-control.xml"/>
-            <property name="path" value="!(
+                  value="(^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/]session)[\\/].*$)|
                 |^.*IoTDBSchemaTemplateIT\.java$|
                 |^.*IoTDBSeriesReaderIT\.java$|
                 |^.*IoTDBCompactionIT\.java$|
@@ -195,6 +186,10 @@
                 |^.*IoTDBSyncReceiverLoaderIT\.java$|
                 |^.*IoTDBSyncSenderIT\.java$|
                 |^.*IoTDBSyncReceiverIT\.java$|
+                |^.*IoTDBSnapshotIT\.java$|
+                |^.*IoTDBTriggerForwardIT\.java$|
+                |^.*TransportHandlerMock\.java$|
+                |^.*IoTDBSyntaxConventionStringLiteralIT\.java|
                 |^.*IoTDBSyncReceiverCollectorIT\.java$|
                 |^.*SyncTestUtil\.java$|
                 |^.*IoTDBUDTFBuiltinFunctionIT\.java$|
@@ -211,11 +206,27 @@
                 |^.*IoTDBAlignedTimeSeriesCompactionIT\.java$|
                 |^.*IoTDBRestartIT\.java$|
                 |^.*IoTDBSyntaxConventionIT\.java$|
+                |^.*IoTDBSyntaxConventionIdentifierIT\.java$|
+                |^.*IoTDBInsertNullIT\.java$|
                 |^.*IoTDBUDTFNonAlignQueryIT\.java$|
                 |^.*IoTDBSetSystemReadOnlyWritableIT\.java$|
                 |^.*IoTDBContinuousQueryIT\.java$|
-                |^.*IoTDBSizeTieredCompactionIT\.java$|)"/>
+                |^.*IoTDBSizeTieredCompactionIT\.java$"/>
+    </module>
+    <!--    <module name="RegexpOnFilename">-->
+    <!--        <property name="fileNamePattern" value="^.*IT\.java$"/>-->
+    <!--        <property name="match" value="false"/>-->
+    <!--    </module>-->
+    <module name="TreeWalker">
+        <module name="ImportControl">
+            <property name="file" value="integration/import-control.xml"/>
+            <property name="path" value="^.*\.java$"/>
             <message key="import.control.disallowed" value="{0} is not allowed to use in integration test."/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="format" value="getResultSet\(\)"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Statement::getResultSet is not allowed to use in integration test, please use the return value of Statement::executeQuery instead."/>
         </module>
     </module>
 </module>

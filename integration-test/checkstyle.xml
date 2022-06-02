@@ -25,13 +25,18 @@
     <property name="severity" value="error"/>
     <property name="fileExtensions" value="java"/>
     <module name="BeforeExecutionExclusionFileFilter">
-        <property name="fileNamePattern" value="^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/]session)[\\/].*$"/>
+        <property name="fileNamePattern" value="^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/]db[\\/]it[\\/]env)[\\/].*$"/>
     </module>
     <module name="TreeWalker">
         <module name="ImportControl">
             <property name="file" value="integration-test/import-control.xml"/>
             <property name="path" value="^.*IT\.java$"/>
             <message key="import.control.disallowed" value="{0} is not allowed to use in integration test."/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="format" value="getResultSet\(\)"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Statement::getResultSet is not allowed to use in integration test, please use the return value of Statement::executeQuery instead."/>
         </module>
     </module>
 </module>
