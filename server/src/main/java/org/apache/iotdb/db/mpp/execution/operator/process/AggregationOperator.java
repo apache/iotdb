@@ -98,7 +98,13 @@ public class AggregationOperator implements ProcessOperator {
     // update input tsBlock
     curTimeRange = timeRangeIterator.nextTimeRange();
     for (int i = 0; i < inputOperatorsCount; i++) {
+      if (inputTsBlocks[i] != null) {
+        continue;
+      }
       inputTsBlocks[i] = children.get(i).next();
+      if (inputTsBlocks[i] == null) {
+        return null;
+      }
     }
     // consume current input tsBlocks
     for (Aggregator aggregator : aggregators) {
@@ -106,6 +112,9 @@ public class AggregationOperator implements ProcessOperator {
       aggregator.processTsBlocks(inputTsBlocks);
     }
     // output result from aggregator
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      inputTsBlocks[i] = null;
+    }
     return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
