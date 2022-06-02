@@ -18,51 +18,105 @@
  */
 package org.apache.iotdb;
 
+import org.apache.iotdb.jdbc.IoTDBSQLException;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SyntaxConventionRelatedExample {
+  /**
+   * if you want to create a time series named root.sg1.select, a possible SQL statement would be
+   * like: create timeseries root.sg1.select with datatype=FLOAT, encoding=RLE As described before,
+   * when using session API, path is represented using String. The path should be written as
+   * "root.sg1.select".
+   */
+  private static final String ROOT_SG1_KEYWORD_EXAMPLE = "root.sg1.select";
+
+  /**
+   * if you want to create a time series named root.sg1.111, a possible SQL statement would be like:
+   * create timeseries root.sg1.`111` with datatype=FLOAT, encoding=RLE The path should be written
+   * as "root.sg1.`111`".
+   */
+  private static final String ROOT_SG1_DIGITS_EXAMPLE = "root.sg1.`111`";
+
+  /**
+   * if you want to create a time series named root.sg1.`a"b'c``, a possible SQL statement would be
+   * like: create timeseries root.sg1.`a"b'c``` with datatype=FLOAT, encoding=RLE The path should be
+   * written as "root.sg1.`a"b`c```".
+   */
+  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.sg1.`a\"b'c```";
+
+  /**
+   * if you want to create a time series named root.sg1.a, a possible SQL statement would be like:
+   * create timeseries root.sg1.a with datatype=FLOAT, encoding=RLE The path should be written as
+   * "root.sg1.a".
+   */
+  private static final String ROOT_SG1_NORMAL_NODE_EXAMPLE = "root.sg1.a";
+
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
-        DriverManager.getConnection(
-            "jdbc:iotdb://127.0.0.1:6667?version=V_0_13", "root", "root");
+            DriverManager.getConnection(
+                "jdbc:iotdb://127.0.0.1:6667?version=V_0_13", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // set JDBC fetchSize
       statement.setFetchSize(10000);
 
+      // create time series
       try {
         statement.execute("SET STORAGE GROUP TO root.sg1");
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+            String.format(
+                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
+                ROOT_SG1_DIGITS_EXAMPLE));
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+            String.format(
+                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
+                ROOT_SG1_KEYWORD_EXAMPLE));
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+            String.format(
+                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
+                ROOT_SG1_NORMAL_NODE_EXAMPLE));
+        statement.execute(
+            String.format(
+                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
+                ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE));
       } catch (IoTDBSQLException e) {
         System.out.println(e.getMessage());
       }
 
-      for (int i = 0; i <= 100; i++) {
-        statement.addBatch(prepareInsertStatment(i));
+      // show timeseries
+      ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.*");
+      List<String> timeseriesList = new ArrayList<>();
+      while (resultSet.next()) {
+        timeseriesList.add(resultSet.getString("timeseries"));
+      }
+      for (String path : timeseriesList) {
+        for (int i = 0; i <= 10; i++) {
+          statement.addBatch(prepareInsertStatement(i, path));
+        }
       }
       statement.executeBatch();
       statement.clearBatch();
 
-      ResultSet resultSet = statement.executeQuery("select ** from root where time <= 10");
+      resultSet = statement.executeQuery("select ** from root.sg1 where time <= 10");
       outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(**) from root");
-      outputResult(resultSet);
-      resultSet =
-          statement.executeQuery(
-              "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
-      outputResult(resultSet);
+      for (String path : timeseriesList) {
+        // For example, for timeseires root.sg1.`111`, sensor is 111, as described in syntax
+        // convention, it should be written as `111` in SQL
+        // in resultSet of "show timeseries", result is root.sg1.`111`, which means you need not to
+        // worry about dealing with backquotes yourself.
+        resultSet =
+            statement.executeQuery(String.format("select %s from root.sg1", removeDevice(path)));
+        outputResult(resultSet);
+      }
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
     }
@@ -92,15 +146,14 @@ public class SyntaxConventionRelatedExample {
     }
   }
 
-  private static String prepareInsertStatment(int time) {
-    return "insert into root.sg1.d1(timestamp, s1, s2, s3) values("
-        + time
-        + ","
-        + 1
-        + ","
-        + 1
-        + ","
-        + 1
-        + ")";
+  private static String prepareInsertStatement(int time, String path) {
+    // remove device root.sg1
+    path = removeDevice(path);
+    return String.format(
+        "insert into root.sg1(timestamp, %s) values(" + time + "," + 1 + ")", path);
+  }
+
+  private static String removeDevice(String path) {
+    return path.substring(9);
   }
 }

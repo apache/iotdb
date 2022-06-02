@@ -93,7 +93,7 @@ public class SyntaxConventionRelatedExample {
 
     // createTimeSeries
     createTimeSeries();
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.*");
     // the expected paths would be:
     // [root.sg1.select, root.sg1.`111`, root.sg1.`a"b'c```, root.sg1.a]
     // You could see that time series in dataSet are exactly the same as
