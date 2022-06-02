@@ -267,7 +267,9 @@ public class NodeInfo implements SnapshotProcessor {
     }
     systemProperties.setProperty(
         "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
-    systemProperties.store(new FileOutputStream(systemPropertiesFile), "");
+    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
+      systemProperties.store(fileOutputStream, "");
+    }
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
