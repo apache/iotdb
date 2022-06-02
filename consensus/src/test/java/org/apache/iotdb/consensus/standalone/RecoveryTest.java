@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 
 import org.apache.ratis.util.FileUtils;
@@ -45,8 +46,10 @@ public class RecoveryTest {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 ConsensusFactory.StandAloneConsensus,
-                new TEndPoint("0.0.0.0", 9000),
-                new File("target" + java.io.File.separator + "recovery"),
+                ConsensusConfig.newBuilder()
+                    .setThisNode(new TEndPoint("0.0.0.0", 9000))
+                    .setStorageDir("target" + java.io.File.separator + "recovery")
+                    .build(),
                 gid -> new EmptyStateMachine())
             .orElseThrow(
                 () ->

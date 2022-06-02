@@ -18,32 +18,41 @@
  */
 package org.apache.iotdb.confignode.client.handlers;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatPackage;
 
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatHandler.class);
+
   // Update HeartbeatCache when success
-  private final int dataNodeId;
+  private final TDataNodeLocation dataNodeLocation;
   private final HeartbeatCache heartbeatCache;
 
-  public HeartbeatHandler(int dataNodeId, HeartbeatCache heartbeatCache) {
-    this.dataNodeId = dataNodeId;
+  public HeartbeatHandler(TDataNodeLocation dataNodeLocation, HeartbeatCache heartbeatCache) {
+    this.dataNodeLocation = dataNodeLocation;
     this.heartbeatCache = heartbeatCache;
   }
 
   @Override
   public void onComplete(THeartbeatResp tHeartbeatResp) {
     heartbeatCache.cacheHeartBeat(
-        dataNodeId,
+        dataNodeLocation.getDataNodeId(),
         new HeartbeatPackage(tHeartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
   }
 
   @Override
   public void onError(Exception e) {
-    // Just ignore heartbeat error
+    LOGGER.warn(
+        "Heartbeat error on DataNode: {id={}, internalEndPoint={}}",
+        dataNodeLocation.getDataNodeId(),
+        dataNodeLocation.getInternalEndPoint(),
+        e);
   }
 }

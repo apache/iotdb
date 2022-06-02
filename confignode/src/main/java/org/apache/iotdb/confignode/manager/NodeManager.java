@@ -120,6 +120,24 @@ public class NodeManager {
   /**
    * Only leader use this interface
    *
+   * @return The number of online DataNodes
+   */
+  public int getOnlineDataNodeCount() {
+    return nodeInfo.getOnlineDataNodeCount();
+  }
+
+  /**
+   * Only leader use this interface
+   *
+   * @return The number of total cpu cores in online DataNodes
+   */
+  public int getTotalCpuCoreCount() {
+    return nodeInfo.getTotalCpuCoreCount();
+  }
+
+  /**
+   * Only leader use this interface
+   *
    * @param dataNodeId Specific DataNodeId
    * @return All online DataNodes if dataNodeId equals -1. And return the specific DataNode
    *     otherwise.

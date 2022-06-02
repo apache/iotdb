@@ -23,12 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-
-import java.io.File;
 
 /**
  * We can use SchemaRegionConsensusImpl.getInstance() to obtain a consensus layer reference for
@@ -48,8 +47,11 @@ public class SchemaRegionConsensusImpl {
     private static final IConsensus INSTANCE =
         ConsensusFactory.getConsensusImpl(
                 conf.getSchemaRegionConsensusProtocolClass(),
-                new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort()),
-                new File(conf.getSchemaRegionConsensusDir()),
+                ConsensusConfig.newBuilder()
+                    .setThisNode(
+                        new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort()))
+                    .setStorageDir(conf.getSchemaRegionConsensusDir())
+                    .build(),
                 gid ->
                     new SchemaRegionStateMachine(
                         SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
