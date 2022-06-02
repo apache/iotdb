@@ -48,13 +48,14 @@ MQTT 主题与 IoTDB 时间序列相对应。
 ```
 或者
 ```json
-{
+ {
       "device":"root.sg.d1",
       "timestamps":[1586076045524,1586076065526],
       "measurements":["s1","s2"],
       "values":[[0.530635,0.530635], [0.530655,0.530695]]
-  }
+ }
 ```
+或者以上两者的JSON数组形式。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
