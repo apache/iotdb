@@ -112,7 +112,7 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public String getFullPathWithAlias() {
-    return getDeviceIdString() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
+    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 
   public boolean isUnderAlignedEntity() {
@@ -148,8 +148,7 @@ public class MeasurementPath extends PartialPath {
     MeasurementPath newMeasurementPath = null;
     try {
       newMeasurementPath =
-          new MeasurementPath(
-              this.getDeviceIdString(), this.getMeasurement(), this.getMeasurementSchema());
+          new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
       newMeasurementPath.setUnderAlignedEntity(this.isUnderAlignedEntity);
     } catch (IllegalPathException e) {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
@@ -191,8 +190,13 @@ public class MeasurementPath extends PartialPath {
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.getNodes();
-    measurementPath.device = partialPath.getDeviceIdString();
+    measurementPath.device = partialPath.getDevice();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
+  }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    return getDevicePath().concatNode(getTailNode());
   }
 }

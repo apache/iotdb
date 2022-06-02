@@ -99,14 +99,14 @@ public class TriggerExample implements Trigger {
   }
 
   @Override
-  public Double fire(long timestamp, Double value) throws Exception {
+  public Double fire(long timestamp, Double value, PartialPath path) throws Exception {
     tryOpenSinksFirstOnFire();
     windowEvaluationHandler.collect(timestamp, value);
     return value;
   }
 
   @Override
-  public double[] fire(long[] timestamps, double[] values) throws Exception {
+  public double[] fire(long[] timestamps, double[] values, PartialPath path) throws Exception {
     tryOpenSinksFirstOnFire();
     for (int i = 0; i < timestamps.length; ++i) {
       windowEvaluationHandler.collect(timestamps[i], values[i]);

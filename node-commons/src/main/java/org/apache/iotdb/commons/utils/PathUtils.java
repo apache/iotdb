@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.PathParseException;
+import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PathUtils {
@@ -33,66 +36,101 @@ public class PathUtils {
    * @return string array. ex, [root, ln]
    * @throws IllegalPathException if path isn't correct, the exception will throw
    */
-  public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
-    // NodeName is treated as identifier. When parsing identifier, unescapeJava is called.
-    // Therefore we call unescapeJava here.
-    path = StringEscapeUtils.unescapeJava(path);
-    if (path.endsWith(TsFileConstant.PATH_SEPARATOR)) {
+  public static String[] splitPathToDetachedNodes(String path) throws IllegalPathException {
+    if ("".equals(path)) {
+      return new String[] {};
+    }
+    try {
+      return PathNodesGenerator.splitPathToNodes(path);
+    } catch (PathParseException e) {
       throw new IllegalPathException(path);
     }
-    List<String> nodes = new ArrayList<>();
-    int startIndex = 0;
-    int endIndex;
-    int length = path.length();
-    for (int i = 0; i < length; i++) {
-      if (path.charAt(i) == TsFileConstant.PATH_SEPARATOR_CHAR) {
-        String node = path.substring(startIndex, i);
-        if (node.isEmpty()) {
-          throw new IllegalPathException(path);
-        }
-        nodes.add(node);
-        startIndex = i + 1;
-      } else if (path.charAt(i) == TsFileConstant.BACK_QUOTE) {
-        startIndex = i + 1;
-        endIndex = path.indexOf(TsFileConstant.BACK_QUOTE, startIndex);
-        if (endIndex == -1) {
-          // single '`', like root.sg.`s
-          throw new IllegalPathException(path);
-        }
-        while (endIndex != -1 && endIndex != length - 1) {
-          char afterQuote = path.charAt(endIndex + 1);
-          if (afterQuote == TsFileConstant.BACK_QUOTE) {
-            // for example, root.sg.```
-            if (endIndex == length - 2) {
-              throw new IllegalPathException(path);
-            }
-            endIndex = path.indexOf(TsFileConstant.BACK_QUOTE, endIndex + 2);
-          } else if (afterQuote == '.') {
-            break;
-          } else {
-            throw new IllegalPathException(path);
-          }
-        }
-        // replace `` with ` in a quoted identifier
-        String node = path.substring(startIndex, endIndex).replace("``", "`");
-        if (node.isEmpty()) {
-          throw new IllegalPathException(path);
-        }
+  }
 
-        nodes.add(node);
-        // skip the '.' after '`'
-        i = endIndex + 1;
-        startIndex = endIndex + 2;
+  public static void isLegalPath(String path) throws IllegalPathException {
+    try {
+      PathNodesGenerator.splitPathToNodes(path);
+    } catch (PathParseException e) {
+      throw new IllegalPathException(path);
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement can only be a
+   * single node name
+   */
+  public static void isLegalSingleMeasurementLists(List<List<String>> measurementLists)
+      throws MetadataException {
+    if (measurementLists == null) {
+      return;
+    }
+    for (List<String> measurements : measurementLists) {
+      isLegalMeasurements(measurements);
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement can only be a
+   * single node name
+   */
+  public static void isLegalSingleMeasurements(List<String> measurements) throws MetadataException {
+    if (measurements == null) {
+      return;
+    }
+    for (String measurement : measurements) {
+      if (measurement == null) {
+        continue;
+      }
+      if (measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+          && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+        if (checkBackQuotes(measurement.substring(1, measurement.length() - 1))) {
+          continue;
+        } else {
+          throw new IllegalPathException(measurement);
+        }
+      }
+      if (IoTDBConstant.reservedWords.contains(measurement.toUpperCase())
+          || StringUtils.isNumeric(measurement)
+          || !TsFileConstant.NODE_NAME_PATTERN.matcher(measurement).matches()) {
+        throw new IllegalPathException(measurement);
       }
     }
-    // last node
-    if (startIndex <= path.length() - 1) {
-      String node = path.substring(startIndex);
-      if (node.isEmpty()) {
-        throw new IllegalPathException(path);
-      }
-      nodes.add(node);
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement could be like a.b
+   * (more than one node name), in template?
+   */
+  public static void isLegalMeasurementLists(List<List<String>> measurementLists)
+      throws IllegalPathException {
+    if (measurementLists == null) {
+      return;
     }
-    return nodes.toArray(new String[0]);
+    for (List<String> measurementList : measurementLists) {
+      isLegalMeasurements(measurementList);
+    }
+  }
+
+  /**
+   * check whether measurement is legal according to syntax convention measurement could be like a.b
+   * (more than one node name), in template?
+   */
+  public static void isLegalMeasurements(List<String> measurements) throws IllegalPathException {
+    if (measurements == null) {
+      return;
+    }
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        PathUtils.isLegalPath(measurement);
+      }
+    }
+  }
+
+  private static boolean checkBackQuotes(String src) {
+    int num = src.length() - src.replace("`", "").length();
+    if (num % 2 == 1) {
+      return false;
+    }
+    return src.length() == (src.replace("``", "").length() + num);
   }
 }

@@ -20,25 +20,29 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.multileader.thrift.TLogType;
+import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
+import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Arrays;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -47,7 +51,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
       FragmentInstanceManager.getInstance();
 
-  private final DataRegion region;
+  private DataRegion region;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
@@ -61,41 +65,88 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return false;
-  }
-
-  @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
-
-  @Override
-  protected TSStatus write(FragmentInstance fragmentInstance) {
-    PlanNode insertNode = fragmentInstance.getFragment().getRoot();
     try {
-      if (insertNode instanceof InsertRowNode) {
-        region.insert((InsertRowNode) insertNode);
-      } else if (insertNode instanceof InsertTabletNode) {
-        region.insertTablet((InsertTabletNode) insertNode);
-      } else if (insertNode instanceof InsertRowsNode) {
-        region.insert((InsertRowsNode) insertNode);
-      } else if (insertNode instanceof InsertMultiTabletsNode) {
-        region.insertTablets((InsertMultiTabletsNode) (insertNode));
-      } else if (insertNode instanceof InsertRowsOfOneDeviceNode) {
-        region.insert((InsertRowsOfOneDeviceNode) insertNode);
-      } else {
-        logger.error("Unsupported plan node for writing to data region : {}", insertNode);
-        return StatusUtils.UNSUPPORTED_OPERATION;
-      }
-    } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      return new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
     } catch (Exception e) {
-      logger.error("Error in executing plan node: {}", insertNode);
-      return StatusUtils.EXECUTE_STATEMENT_ERROR;
+      logger.error(
+          "Exception occurs when taking snapshot for {}-{} in {}",
+          region.getLogicalStorageGroupName(),
+          region.getDataRegionId(),
+          snapshotDir,
+          e);
+      return false;
     }
-    return StatusUtils.OK;
   }
 
   @Override
-  protected DataSet read(FragmentInstance fragmentInstance) {
-    return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    DataRegion newRegion =
+        new SnapshotLoader(
+                latestSnapshotRootDir.getAbsolutePath(),
+                region.getLogicalStorageGroupName(),
+                region.getDataRegionId())
+            .loadSnapshotForStateMachine();
+    if (newRegion == null) {
+      logger.error("Fail to load snapshot from {}", latestSnapshotRootDir);
+      return;
+    }
+    this.region = newRegion;
+    try {
+      StorageEngineV2.getInstance()
+          .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
+    } catch (Exception e) {
+      logger.error("Exception occurs when replacing data region in storage engine.", e);
+    }
+  }
+
+  @Override
+  public TSStatus write(IConsensusRequest request) {
+    PlanNode planNode;
+    try {
+      if (request instanceof IndexedConsensusRequest) {
+        IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
+        if (indexedConsensusRequest.getType() == TLogType.InsertNode) {
+          planNode =
+              PlanNodeType.deserialize(
+                  ((ByteBufferConsensusRequest) indexedConsensusRequest.getRequest()).getContent());
+        } else {
+          planNode =
+              getFragmentInstance(indexedConsensusRequest.getRequest()).getFragment().getRoot();
+        }
+        if (planNode instanceof InsertNode) {
+          ((InsertNode) planNode)
+              .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
+          ((InsertNode) planNode)
+              .setSafelyDeletedSearchIndex(
+                  ((IndexedConsensusRequest) request).getSafelyDeletedSearchIndex());
+        }
+      } else {
+        planNode = getFragmentInstance(request).getFragment().getRoot();
+      }
+      return write(planNode);
+    } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage(), e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+  }
+
+  protected TSStatus write(PlanNode planNode) {
+    return planNode.accept(new DataExecutionVisitor(), region);
+  }
+
+  @Override
+  public DataSet read(IConsensusRequest request) {
+    if (request instanceof GetConsensusReqReaderPlan) {
+      return region.getWALNode();
+    } else {
+      FragmentInstance fragmentInstance;
+      try {
+        fragmentInstance = getFragmentInstance(request);
+      } catch (IllegalArgumentException e) {
+        logger.error(e.getMessage());
+        return null;
+      }
+      return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+    }
   }
 }

@@ -27,6 +27,8 @@ import java.util.Collections;
 public class HeaderConstant {
 
   // column names for query statement
+  public static final String COLUMN_TIME = "Time";
+  public static final String COLUMN_VALUE = "value";
   public static final String COLUMN_DEVICE = "Device";
 
   // column names for schema statement
@@ -45,6 +47,8 @@ public class HeaderConstant {
   public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
+  public static final String COLUMN_CHILDPATHS = "child paths";
+  public static final String COLUMN_CHILDNODES = "child nodes";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -53,12 +57,26 @@ public class HeaderConstant {
   public static final String COLUMN_COUNT_TIMESERIES = "count(timeseries)";
   public static final String COLUMN_COUNT_STORAGE_GROUP = "count(storage group)";
 
+  // column names for show cluster statement
+  public static final String COLUMN_NODE_ID = "NodeID";
+  public static final String COLUMN_NODE_TYPE = "NodeType";
+  public static final String COLUMN_STATUS = "Status";
+  public static final String COLUMN_HOST_ADDRESS = "HostAdress";
+  public static final String COLUMN_PORT = "Port";
+
+  // column names for show functions statement
+  public static final String COLUMN_FUNCTION_NAME = "function name";
+  public static final String COLUMN_FUNCTION_TYPE = "function type";
+  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
   public static final DatasetHeader showTTLHeader;
+  public static final DatasetHeader showChildPathsHeader;
+  public static final DatasetHeader showChildNodesHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -66,6 +84,15 @@ public class HeaderConstant {
   public static final DatasetHeader countDevicesHeader;
   public static final DatasetHeader countTimeSeriesHeader;
   public static final DatasetHeader countLevelTimeSeriesHeader;
+
+  // dataset header for show cluster statement
+  public static final DatasetHeader showClusterHeader;
+
+  // dataset header for last query
+  public static final DatasetHeader LAST_QUERY_HEADER;
+
+  // dataset header for show functions
+  public static final DatasetHeader SHOW_FUNCTIONS_HEADER;
 
   static {
     countStorageGroupHeader =
@@ -133,6 +160,44 @@ public class HeaderConstant {
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
+            true);
+    showChildPathsHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
+    showChildNodesHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+  }
+
+  static {
+    LAST_QUERY_HEADER =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_TIMESERIES, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT)),
+            false);
+  }
+
+  static {
+    showClusterHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
+  }
+
+  static {
+    SHOW_FUNCTIONS_HEADER =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT)),
             true);
   }
 }

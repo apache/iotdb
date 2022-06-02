@@ -87,6 +87,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @param plan create aligned timeseries plan
    * @throws MetadataException if the device is not aligned, throw it
    */
+  @Override
   public synchronized void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
     DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPrefixPath().toString(), true);
@@ -113,9 +114,9 @@ public class IDTableHashmapImpl implements IDTable {
    * @param plan create timeseries plan
    * @throws MetadataException if the device is aligned, throw it
    */
+  @Override
   public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
-    DeviceEntry deviceEntry =
-        getDeviceEntryWithAlignedCheck(plan.getPath().getDeviceIdString(), false);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPath().getDevice(), false);
     SchemaEntry schemaEntry =
         new SchemaEntry(
             plan.getDataType(),
@@ -135,6 +136,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @return reusable device id
    * @throws MetadataException if insert plan's aligned value is inconsistent with device
    */
+  @Override
   public synchronized IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException {
     PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
@@ -189,7 +191,7 @@ public class IDTableHashmapImpl implements IDTable {
     // set reusable device id
     plan.setDeviceID(deviceEntry.getDeviceID());
     // change device path to device id string for insertion
-    plan.setDevicePath(new PartialPath(deviceEntry.getDeviceID().toStringID()));
+    plan.setDevicePath(new PartialPath(deviceEntry.getDeviceID().toStringID(), false));
 
     return deviceEntry.getDeviceID();
   }
@@ -201,11 +203,11 @@ public class IDTableHashmapImpl implements IDTable {
    * @param measurementMNode the timeseries measurement mnode
    * @throws MetadataException if the timeseries is not exits
    */
+  @Override
   public synchronized void registerTrigger(PartialPath fullPath, IMeasurementMNode measurementMNode)
       throws MetadataException {
     boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry =
-        getDeviceEntryWithAlignedCheck(fullPath.getDeviceIdString(), isAligned);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevice(), isAligned);
 
     deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUsingTrigger();
   }
@@ -217,11 +219,11 @@ public class IDTableHashmapImpl implements IDTable {
    * @param measurementMNode the timeseries measurement mnode
    * @throws MetadataException if the timeseries is not exits
    */
+  @Override
   public synchronized void deregisterTrigger(
       PartialPath fullPath, IMeasurementMNode measurementMNode) throws MetadataException {
     boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry =
-        getDeviceEntryWithAlignedCheck(fullPath.getDeviceIdString(), isAligned);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevice(), isAligned);
 
     deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUnUsingTrigger();
   }
@@ -232,6 +234,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @param timeseriesID timeseries ID of the timeseries
    * @throws MetadataException if the timeseries is not exits
    */
+  @Override
   public synchronized TimeValuePair getLastCache(TimeseriesID timeseriesID)
       throws MetadataException {
     return getSchemaEntry(timeseriesID).getCachedLast();
@@ -246,6 +249,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @param latestFlushedTime last flushed time
    * @throws MetadataException if the timeseries is not exits
    */
+  @Override
   public synchronized void updateLastCache(
       TimeseriesID timeseriesID,
       TimeValuePair pair,
@@ -455,11 +459,13 @@ public class IDTableHashmapImpl implements IDTable {
     return schemaEntry;
   }
 
+  @Override
   @TestOnly
   public Map<IDeviceID, DeviceEntry>[] getIdTables() {
     return idTables;
   }
 
+  @Override
   @TestOnly
   public IDiskSchemaManager getIDiskSchemaManager() {
     return IDiskSchemaManager;

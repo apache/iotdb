@@ -42,26 +42,55 @@ public class CommonConfig {
 
   private String adminPassword = "root";
 
-  private String userFolder = "system" + File.separator + "users";
+  private String userFolder =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "users";
 
-  private String roleFolder = "system" + File.separator + "roles";
+  private String roleFolder =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "roles";
+
+  private String procedureWalFolder =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "procedure";
 
   /** Default system file storage is in local file system (unsupported) */
   private FSType systemFileStorageFs = FSType.LOCAL;
 
-  private CommonConfig() {}
+  /**
+   * default TTL for storage groups that are not set TTL by statements, in ms.
+   *
+   * <p>Notice: if this property is changed, previous created storage group which are not set TTL
+   * will also be affected. Unit: millisecond
+   */
+  private long defaultTTL = Long.MAX_VALUE;
 
-  public static CommonConfig getInstance() {
-    return CommonConfig.CommonConfigHolder.INSTANCE;
+  CommonConfig() {}
+
+  public void updatePath(String homeDir) {
+    userFolder = addHomeDir(userFolder, homeDir);
+    roleFolder = addHomeDir(roleFolder, homeDir);
+    procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
   }
 
-  private static class CommonConfigHolder {
-
-    private CommonConfigHolder() {
-      throw new IllegalAccessError("Utility class");
+  private String addHomeDir(String dir, String homeDir) {
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
+      }
     }
-
-    private static final CommonConfig INSTANCE = new CommonConfig();
+    return dir;
   }
 
   public String getEncryptDecryptProvider() {
@@ -128,11 +157,27 @@ public class CommonConfig {
     this.roleFolder = roleFolder;
   }
 
+  public String getProcedureWalFolder() {
+    return procedureWalFolder;
+  }
+
+  public void setProcedureWalFolder(String procedureWalFolder) {
+    this.procedureWalFolder = procedureWalFolder;
+  }
+
   public FSType getSystemFileStorageFs() {
     return systemFileStorageFs;
   }
 
   public void setSystemFileStorageFs(FSType systemFileStorageFs) {
     this.systemFileStorageFs = systemFileStorageFs;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 }

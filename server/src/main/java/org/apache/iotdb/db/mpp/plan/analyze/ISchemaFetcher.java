@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -33,6 +34,8 @@ public interface ISchemaFetcher {
 
   SchemaTree fetchSchema(PathPatternTree patternTree);
 
+  SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition);
+
   SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned);
 
@@ -41,4 +44,6 @@ public interface ISchemaFetcher {
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned);
+
+  void invalidAllCache();
 }

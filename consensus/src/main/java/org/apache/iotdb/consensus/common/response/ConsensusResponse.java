@@ -22,7 +22,7 @@ package org.apache.iotdb.consensus.common.response;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 
 public abstract class ConsensusResponse {
-  private final ConsensusException exception;
+  protected final ConsensusException exception;
 
   public ConsensusResponse(ConsensusException exception) {
     this.exception = exception;

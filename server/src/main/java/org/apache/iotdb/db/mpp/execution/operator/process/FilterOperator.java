@@ -23,8 +23,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -32,12 +33,18 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class FilterOperator extends TransformOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FilterOperator.class);
 
   private LayerPointReader filterPointReader;
 
@@ -45,6 +52,7 @@ public class FilterOperator extends TransformOperator {
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
+      Map<String, List<InputLocation>> inputLocations,
       Expression filterExpression,
       Expression[] outputExpressions,
       boolean keepNull,
@@ -55,6 +63,7 @@ public class FilterOperator extends TransformOperator {
         operatorContext,
         inputOperator,
         inputDataTypes,
+        inputLocations,
         bindExpressions(filterExpression, outputExpressions),
         keepNull,
         zoneId,
@@ -70,8 +79,12 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void initTransformers() throws QueryProcessException, IOException {
-    super.initTransformers();
+  protected void initTransformers(
+      Map<String, List<InputLocation>> inputLocations,
+      Expression[] outputExpressions,
+      TypeProvider typeProvider)
+      throws QueryProcessException, IOException {
+    super.initTransformers(inputLocations, outputExpressions, typeProvider);
 
     filterPointReader = transformers[transformers.length - 1];
     if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {
@@ -79,18 +92,6 @@ public class FilterOperator extends TransformOperator {
           String.format(
               "Data type of the filter expression should be BOOLEAN, but %s is received.",
               filterPointReader.getDataType()));
-    }
-  }
-
-  @Override
-  protected void readyForFirstIteration() throws QueryProcessException, IOException {
-    iterateFilterReaderToNextValid();
-  }
-
-  private void iterateFilterReaderToNextValid() throws QueryProcessException, IOException {
-    while (filterPointReader.next()
-        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean())) {
-      filterPointReader.readyForNext();
     }
   }
 
@@ -113,49 +114,57 @@ public class FilterOperator extends TransformOperator {
 
     try {
       int rowCount = 0;
-      while (rowCount < FETCH_SIZE && filterPointReader.next()) {
-        final long currentTime = filterPointReader.currentTime();
 
-        boolean hasAtLeastOneValid = false;
-        for (int i = 0; i < outputColumnCount; ++i) {
-          if (currentTime == iterateValueReadersToNextValid(transformers[i], currentTime)) {
-            hasAtLeastOneValid = true;
+      while (rowCount < FETCH_SIZE && !timeHeap.isEmpty()) {
+        final long currentTime = timeHeap.pollFirst();
+
+        if (filterPointReader.next() && filterPointReader.currentTime() == currentTime) {
+          if (!filterPointReader.isCurrentNull() && filterPointReader.currentBoolean()) {
+            // time
+            timeBuilder.writeLong(currentTime);
+
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              collectDataPointAndIterateToNextValid(
+                  transformers[i], columnBuilders[i], currentTime);
+            }
+
+            ++rowCount;
+          } else {
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              skipDataPointAndIterateToNextValid(transformers[i], currentTime);
+            }
           }
-        }
 
-        if (hasAtLeastOneValid) {
-          timeBuilder.writeLong(currentTime);
+          filterPointReader.readyForNext();
+          iterateReaderToNextValid(filterPointReader);
+        } else {
+          // values
           for (int i = 0; i < outputColumnCount; ++i) {
-            collectDataPoint(transformers[i], columnBuilders[i], currentTime);
+            skipDataPointAndIterateToNextValid(transformers[i], currentTime);
           }
-          ++rowCount;
         }
-
-        iterateFilterReaderToNextValid();
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
+
+      tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
+      LOGGER.error("FilterOperator#next()", e);
       throw new RuntimeException(e);
     }
 
     return tsBlockBuilder.build();
   }
 
-  private long iterateValueReadersToNextValid(LayerPointReader reader, long currentTime)
-      throws QueryProcessException, IOException {
-    while (reader.next() && (reader.isCurrentNull() || reader.currentTime() < currentTime)) {
-      reader.readyForNext();
+  private void skipDataPointAndIterateToNextValid(LayerPointReader reader, long currentTime)
+      throws IOException, QueryProcessException {
+    if (!reader.next() || reader.currentTime() != currentTime) {
+      return;
     }
-    return reader.currentTime();
-  }
 
-  @Override
-  public boolean hasNext() {
-    try {
-      return filterPointReader.next();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    reader.readyForNext();
+    iterateReaderToNextValid(reader);
   }
 }

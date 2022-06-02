@@ -51,7 +51,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private List<String> aliasList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
-  private List<Long> tagOffsets;
   private TRegionReplicaSet regionReplicaSet;
 
   public CreateAlignedTimeSeriesNode(
@@ -137,14 +136,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
 
   public void setAttributesList(List<Map<String, String>> attributesList) {
     this.attributesList = attributesList;
-  }
-
-  public List<Long> getTagOffsets() {
-    return tagOffsets;
-  }
-
-  public void setTagOffsets(List<Long> tagOffsets) {
-    this.tagOffsets = tagOffsets;
   }
 
   @Override
@@ -275,7 +266,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
         && Objects.equals(compressors, that.compressors)
-        && Objects.equals(tagOffsets, that.tagOffsets)
         && Objects.equals(aliasList, that.aliasList)
         && Objects.equals(tagsList, that.tagsList)
         && Objects.equals(attributesList, that.attributesList);
@@ -354,7 +344,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         dataTypes,
         encodings,
         compressors,
-        tagOffsets,
         aliasList,
         tagsList,
         attributesList);

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -50,7 +50,7 @@ public class MemMTreeStore implements IMTreeStore {
           new StorageGroupMNode(
               null,
               rootPath.getTailNode(),
-              IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+              CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     } else {
       this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     }

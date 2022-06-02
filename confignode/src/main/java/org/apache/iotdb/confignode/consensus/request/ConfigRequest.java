@@ -22,22 +22,28 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.slf4j.Logger;
@@ -107,9 +113,6 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case SetStorageGroup:
           req = new SetStorageGroupReq();
           break;
-        case DeleteStorageGroup:
-          req = new DeleteStorageGroupReq();
-          break;
         case SetTTL:
           req = new SetTTLReq();
           break;
@@ -152,6 +155,18 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case GetOrCreateDataPartition:
           req = new GetOrCreateDataPartitionReq();
           break;
+        case DeleteProcedure:
+          req = new DeleteProcedureReq();
+          break;
+        case UpdateProcedure:
+          req = new UpdateProcedureReq();
+          break;
+        case PreDeleteStorageGroup:
+          req = new PreDeleteStorageGroupReq();
+          break;
+        case DeleteStorageGroup:
+          req = new DeleteStorageGroupReq();
+          break;
         case ListUser:
         case ListRole:
         case ListUserPrivilege:
@@ -173,6 +188,15 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();
+          break;
+        case CreateFunction:
+          req = new CreateFunctionReq();
+          break;
+        case DropFunction:
+          req = new DropFunctionReq();
+          break;
+        case GetNodePathsPartition:
+          req = new GetNodePathsPartitionReq();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

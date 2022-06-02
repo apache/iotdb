@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -80,6 +84,20 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     List<PartialPath> result = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
       result.addAll(insertTabletStatement.getPaths());
+    }
+    return result;
+  }
+
+  @Override
+  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
+    List<TEndPoint> result = new ArrayList<>();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      TRegionReplicaSet regionReplicaSet =
+          dataPartition.getDataRegionReplicaSetForWriting(
+              insertTabletStatement.devicePath.getFullPath(),
+              StorageEngineV2.getTimePartitionSlot(
+                  insertTabletStatement.getTimes()[insertTabletStatement.getTimes().length - 1]));
+      result.add(regionReplicaSet.getDataNodeLocations().get(0).getExternalEndPoint());
     }
     return result;
   }

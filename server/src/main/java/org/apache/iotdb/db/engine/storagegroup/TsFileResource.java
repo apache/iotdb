@@ -96,9 +96,9 @@ public class TsFileResource {
   /** time index type, V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2 */
   private byte timeIndexType;
 
-  private ModificationFile modFile;
+  private volatile ModificationFile modFile;
 
-  private ModificationFile compactionModFile;
+  private volatile ModificationFile compactionModFile;
 
   protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
 
@@ -131,7 +131,7 @@ public class TsFileResource {
 
   private long ramSize;
 
-  private long tsFileSize = -1L;
+  private volatile long tsFileSize = -1L;
 
   private TsFileProcessor processor;
 
@@ -551,7 +551,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: ", file.toString(), status);
+    return String.format("file is %s, status: %s", file.toString(), status);
   }
 
   @Override
@@ -601,7 +601,8 @@ public class TsFileResource {
           this.status = TsFileResourceStatus.DELETED;
         } else {
           throw new RuntimeException(
-              "Cannot set the status of an unclosed TsFileResource to DELETED");
+              this.file.getAbsolutePath()
+                  + " Cannot set the status of an unclosed TsFileResource to DELETED");
         }
         break;
       case COMPACTING:
@@ -609,7 +610,8 @@ public class TsFileResource {
           this.status = TsFileResourceStatus.COMPACTING;
         } else {
           throw new RuntimeException(
-              "Cannot set the status of TsFileResource to COMPACTING while its status is "
+              this.file.getAbsolutePath()
+                  + " Cannot set the status of TsFileResource to COMPACTING while its status is "
                   + this.status);
         }
         break;
@@ -618,7 +620,8 @@ public class TsFileResource {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
         } else {
           throw new RuntimeException(
-              "Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
+              this.file.getAbsolutePath()
+                  + " Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
                   + this.status);
         }
         break;

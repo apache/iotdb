@@ -26,30 +26,42 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class AuthorInfo {
+public class AuthorInfo implements SnapshotProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorInfo.class);
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private IAuthorizer authorizer;
 
-  {
+  public AuthorInfo() {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
@@ -57,29 +69,40 @@ public class AuthorInfo {
     }
   }
 
-  public TSStatus login(String username, String password) {
+  public TPermissionInfoResp login(String username, String password) {
     boolean status;
     String loginMessage = null;
     TSStatus tsStatus = new TSStatus();
+    TPermissionInfoResp result = new TPermissionInfoResp();
     try {
       status = authorizer.login(username, password);
+      if (status) {
+        // Bring this user's permission information back to the datanode for caching
+        result = getUserPermissionInfo(username);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
+      } else {
+        result.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
+        Map<String, TRoleResp> roleInfo = new HashMap<>();
+        roleInfo.put("", new TRoleResp("", new ArrayList<>()));
+        result.setRoleInfo(roleInfo);
+      }
     } catch (AuthException e) {
-      logger.info("meet error while logging in.", e);
+      logger.error("meet error while logging in.", e);
       status = false;
       loginMessage = e.getMessage();
     }
-    if (status) {
-      tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      tsStatus.setMessage("Login successfully");
-    } else {
+    if (!status) {
       tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
+      result.setStatus(tsStatus);
     }
-    return tsStatus;
+    return result;
   }
 
-  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+  public TPermissionInfoResp checkUserPrivileges(
+      String username, List<String> paths, int permission) {
     boolean status = true;
+    TPermissionInfoResp result = new TPermissionInfoResp();
     try {
       for (String path : paths) {
         if (!checkOnePath(username, path, permission)) {
@@ -90,9 +113,23 @@ public class AuthorInfo {
       status = false;
     }
     if (status) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      try {
+        // Bring this user's permission information back to the datanode for caching
+        result = getUserPermissionInfo(username);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (AuthException e) {
+        result.setStatus(
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage()));
+        return result;
+      }
+      return result;
     } else {
-      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+      result.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
+      Map<String, TRoleResp> roleInfo = new HashMap<>();
+      roleInfo.put("", new TRoleResp("", new ArrayList<>()));
+      result.setRoleInfo(roleInfo);
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR));
+      return result;
     }
   }
 
@@ -331,16 +368,72 @@ public class AuthorInfo {
     }
   }
 
-  private static class AuthorInfoPersistenceHolder {
-
-    private static final AuthorInfo INSTANCE = new AuthorInfo();
-
-    private AuthorInfoPersistenceHolder() {
-      // empty constructor
-    }
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    return authorizer.processTakeSnapshot(snapshotDir);
   }
 
-  public static AuthorInfo getInstance() {
-    return AuthorInfo.AuthorInfoPersistenceHolder.INSTANCE;
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    authorizer.processLoadSnapshot(snapshotDir);
+  }
+
+  @TestOnly
+  public void clear() throws AuthException {
+    File userFolder = new File(commonConfig.getUserFolder());
+    if (userFolder.exists()) {
+      FileUtils.deleteDirectory(userFolder);
+    }
+    File roleFolder = new File(commonConfig.getRoleFolder());
+    if (roleFolder.exists()) {
+      FileUtils.deleteDirectory(roleFolder);
+    }
+    authorizer.reset();
+  }
+
+  /**
+   * Save the user's permission information,Bring back the DataNode for caching
+   *
+   * @param username The username of the user that needs to be cached
+   */
+  public TPermissionInfoResp getUserPermissionInfo(String username) throws AuthException {
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    TUserResp tUserResp = new TUserResp();
+    TRoleResp tRoleResp = new TRoleResp();
+    Map<String, TRoleResp> tRoleRespMap = new HashMap();
+    List<String> userPrivilegeList = new ArrayList<>();
+    List<String> rolePrivilegeList = new ArrayList<>();
+
+    // User permission information
+    User user = authorizer.getUser(username);
+    if (user.getPrivilegeList() != null) {
+      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+        userPrivilegeList.add(pathPrivilege.getPath());
+        String privilegeIdList = pathPrivilege.getPrivileges().toString();
+        userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+      }
+      tUserResp.setUsername(user.getName());
+      tUserResp.setPassword(user.getPassword());
+      tUserResp.setPrivilegeList(userPrivilegeList);
+      tUserResp.setRoleList(user.getRoleList());
+    }
+
+    // Permission information for roles owned by users
+    if (user.getRoleList() != null) {
+      for (String roleName : user.getRoleList()) {
+        Role role = authorizer.getRole(roleName);
+        tRoleResp.setRoleName(roleName);
+        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+          rolePrivilegeList.add(pathPrivilege.getPath());
+          String privilegeIdList = pathPrivilege.getPrivileges().toString();
+          rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+        }
+        tRoleResp.setPrivilegeList(rolePrivilegeList);
+        tRoleRespMap.put(roleName, tRoleResp);
+      }
+    }
+    result.setUserInfo(tUserResp);
+    result.setRoleInfo(tRoleRespMap);
+    return result;
   }
 }

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.api.collector.PointCollector;
+import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -89,7 +89,7 @@ public class UDTFQLB implements UDTF {
         }
       }
       correlation = correlation / n;
-      collector.putDouble(n + shift, correlation);
+      collector.putDouble((long) n + shift, correlation);
       qlb += correlation * correlation / (n - shift) * n * (n + 2);
       ChiSquaredDistribution qlbdist = new ChiSquaredDistribution(shift);
       double qlbprob = 1.0 - qlbdist.cumulativeProbability(qlb);

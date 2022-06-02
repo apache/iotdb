@@ -28,10 +28,13 @@ import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
+import org.apache.ratis.retry.ExponentialBackoffRetry;
+import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class RatisClient {
   private final Logger logger = LoggerFactory.getLogger(RatisClient.class);
@@ -94,6 +97,12 @@ public class RatisClient {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
+                  .setRetryPolicy(
+                      ExponentialBackoffRetry.newBuilder()
+                          .setBaseSleepTime(TimeDuration.valueOf(100, TimeUnit.MILLISECONDS))
+                          .setMaxSleepTime(TimeDuration.valueOf(10, TimeUnit.SECONDS))
+                          .setMaxAttempts(10)
+                          .build())
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));

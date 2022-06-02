@@ -45,11 +45,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-antlr</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-consensus</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -78,6 +73,11 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>influxdb-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>external-pipe-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

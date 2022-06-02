@@ -50,11 +50,11 @@ According to the [sample data](https://github.com/thulab/iotdb/files/4438687/Oth
 
 ### Create User
 
-We use `CREATE USER <userName> <password>` to create users. For example, we can use root user who has all privileges to create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
+We use `CREATE USER <userName> <password>` to create users. For example, we can use root user who has all privileges to create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. It is recommended to wrap the username in backtick(`). The SQL statement is:
 
 ```
-CREATE USER ln_write_user 'write_pwd'
-CREATE USER sgcc_write_user 'write_pwd'
+CREATE USER `ln_write_user` 'write_pwd'
+CREATE USER `sgcc_write_user` 'write_pwd'
 ```
 Then use the following SQL statement to show the user:
 
@@ -64,9 +64,9 @@ LIST USER
 As can be seen from the result shown below, the two users have been created:
 
 ```
-IoTDB> CREATE USER ln_write_user 'write_pwd'
+IoTDB> CREATE USER `ln_write_user` 'write_pwd'
 Msg: The statement is executed successfully.
-IoTDB> CREATE USER sgcc_write_user 'write_pwd'
+IoTDB> CREATE USER `sgcc_write_user` 'write_pwd'
 Msg: The statement is executed successfully.
 IoTDB> LIST USER
 +---------------+
@@ -99,15 +99,15 @@ Now, we use root user to grant the two users write privileges to the correspondi
 We use `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` to grant user privileges. For example:
 
 ```
-GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
-GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
+GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 ```
 The execution result is as follows:
 
 ```
-IoTDB> GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
+IoTDB> GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-IoTDB> GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
 ```
 
@@ -122,16 +122,16 @@ Msg: The statement is executed successfully.
 After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` to revoke the granted user privileges. For example, use root user to revoke the privilege of ln_write_user and sgcc_write_user:
 
 ```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 ```
 
 The execution result is as follows:
 
 ```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
+REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
 ```
 
@@ -149,70 +149,70 @@ Here are all related SQL statements:
 
 ```
 CREATE USER <userName> <password>;  
-Eg: IoTDB > CREATE USER thulab 'pwd';
+Eg: IoTDB > CREATE USER `thulab` 'pwd';
 ```
 
 * Delete User
 
 ```
 DROP USER <userName>;  
-Eg: IoTDB > DROP USER xiaoming;
+Eg: IoTDB > DROP USER `xiaoming`;
 ```
 
 * Create Role
 
 ```
 CREATE ROLE <roleName>;  
-Eg: IoTDB > CREATE ROLE admin;
+Eg: IoTDB > CREATE ROLE `admin`;
 ```
 
 * Delete Role
 
 ```
 DROP ROLE <roleName>;  
-Eg: IoTDB > DROP ROLE admin;
+Eg: IoTDB > DROP ROLE `admin`;
 ```
 
 * Grant User Privileges
 
 ```
 GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * Grant Role Privileges
 
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * Grant User Role
 
 ```
 GRANT <roleName> TO <userName>;  
-Eg: IoTDB > GRANT temprole TO tempuser;
+Eg: IoTDB > GRANT `temprole` TO tempuser;
 ```
 
 * Revoke User Privileges
 
 ```
 REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * Revoke Role Privileges
 
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * Revoke Role From User
 
 ```
 REVOKE <roleName> FROM <userName>;
-Eg: IoTDB > REVOKE temprole FROM tempuser;
+Eg: IoTDB > REVOKE `temprole` FROM tempuser;
 ```
 
 * List Users
@@ -233,49 +233,49 @@ Eg: IoTDB > LIST ROLE
 
 ```
 LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER sgcc_write_user ON root.sgcc.**;
+Eg: IoTDB > LIST PRIVILEGES USER `sgcc_write_user` ON root.sgcc.**;
 ```
 
 * List Privileges of Roles
 
 ```
 LIST ROLE PRIVILEGES <roleName>
-Eg: IoTDB > LIST ROLE PRIVILEGES actor;
+Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
 ```
 
 * List Privileges of Roles(On Specific Path)
 
 ```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE write_role ON root.sgcc.**;
+Eg: IoTDB > LIST PRIVILEGES ROLE `write_role` ON root.sgcc.**;
 ```
 
 * List Privileges of Users
 
 ```
 LIST USER PRIVILEGES <username> ;   
-Eg: IoTDB > LIST USER PRIVILEGES tempuser;
+Eg: IoTDB > LIST USER PRIVILEGES `tempuser`;
 ```
 
 * List Roles of User
 
 ```
 LIST ALL ROLE OF USER <username> ;  
-Eg: IoTDB > LIST ALL ROLE OF USER tempuser;
+Eg: IoTDB > LIST ALL ROLE OF USER `tempuser`;
 ```
 
 * List Users of Role
 
 ```
 LIST ALL USER OF ROLE <roleName>;
-Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
+Eg: IoTDB > LIST ALL USER OF ROLE `roleuser`;
 ```
 
 * Alter Password
 
 ```
 ALTER USER <username> SET PASSWORD <password>;
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
+Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 ```
 
 
@@ -344,3 +344,7 @@ A path pattern's result set contains all the elements of its sub pattern's
 result set. For example, `root.sg.d.*` is a sub pattern of
 `root.sg.*.*`, while `root.sg.**` is not a sub pattern of
 `root.sg.*.*`. When a user is granted privilege on a pattern, the pattern used in his DDL or DML must be a sub pattern of the privilege pattern, which guarantees that the user won't access the timeseries exceed his privilege scope.
+
+### Permission cache
+
+In distributed related permission operations, when changing permissions other than creating users and roles, all the cache information of `dataNode` related to the user (role) will be cleared first. If any `dataNode` cache information is clear and fails, the permission change task will fail.

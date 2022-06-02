@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree.node;
 
-import org.apache.iotdb.db.metadata.tree.ITreeNode;
+import org.apache.iotdb.commons.schema.tree.ITreeNode;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;

@@ -50,8 +50,6 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    // ToDo @xinzhongtianxia consider SHOW LATEST
-
     for (int i = 0; i < children.size(); i++) {
       if (!noMoreTsBlocks[i]) {
         TsBlock tsBlock = children.get(i).next();

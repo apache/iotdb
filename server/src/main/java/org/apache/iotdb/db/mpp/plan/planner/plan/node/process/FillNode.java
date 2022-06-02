@@ -57,6 +57,10 @@ public class FillNode extends ProcessNode {
     return ImmutableList.of(child);
   }
 
+  public PlanNode getChild() {
+    return child;
+  }
+
   @Override
   public void addChild(PlanNode child) {
     this.child = child;
@@ -113,5 +117,9 @@ public class FillNode extends ProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), fillDescriptor, child);
+  }
+
+  public FillDescriptor getFillDescriptor() {
+    return fillDescriptor;
   }
 }

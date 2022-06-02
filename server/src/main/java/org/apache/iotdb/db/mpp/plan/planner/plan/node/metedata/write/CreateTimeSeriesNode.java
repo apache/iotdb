@@ -52,7 +52,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> props = null;
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
-  private long tagOffset = -1;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -144,14 +143,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     this.props = props;
   }
 
-  public long getTagOffset() {
-    return tagOffset;
-  }
-
-  public void setTagOffset(long tagOffset) {
-    this.tagOffset = tagOffset;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
     return new ArrayList<>();
@@ -181,7 +172,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     TSDataType dataType;
     TSEncoding encoding;
     CompressionType compressor;
-    long tagOffset;
     String alias = null;
     Map<String, String> props = null;
     Map<String, String> tags = null;
@@ -198,7 +188,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
     compressor = CompressionType.values()[byteBuffer.get()];
-    tagOffset = byteBuffer.getLong();
 
     // alias
     if (byteBuffer.get() == 1) {
@@ -244,7 +233,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     byteBuffer.put((byte) dataType.ordinal());
     byteBuffer.put((byte) encoding.ordinal());
     byteBuffer.put((byte) compressor.ordinal());
-    byteBuffer.putLong(tagOffset);
 
     // alias
     if (alias != null) {
@@ -301,8 +289,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       return false;
     }
     CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
-    return tagOffset == that.tagOffset
-        && path.equals(that.path)
+    return path.equals(that.path)
         && dataType == that.dataType
         && encoding == that.encoding
         && compressor == that.compressor
@@ -321,7 +308,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TRegionReplicaSet regionReplicaSet =
-        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDeviceIdString());
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDevice());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }

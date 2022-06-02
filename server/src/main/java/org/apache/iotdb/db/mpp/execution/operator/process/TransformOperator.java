@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
-import org.apache.iotdb.db.query.udf.core.layer.EvaluationDAGBuilder;
-import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.query.udf.core.layer.TsBlockInputDataSet;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.builder.EvaluationDAGBuilder;
+import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
+import org.apache.iotdb.db.mpp.transformation.dag.input.TsBlockInputDataSet;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,13 +42,18 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class TransformOperator implements ProcessOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TransformOperator.class);
 
   // TODO: make it configurable
   protected static final int FETCH_SIZE = 10000;
@@ -61,11 +67,11 @@ public class TransformOperator implements ProcessOperator {
 
   protected final OperatorContext operatorContext;
   protected final Operator inputOperator;
-  protected final List<TSDataType> inputDataTypes;
-  protected final Expression[] outputExpressions;
   protected final boolean keepNull;
 
-  protected RawQueryInputLayer inputLayer;
+  protected boolean isFirstIteration;
+
+  protected QueryDataSetInputLayer inputLayer;
   protected UDTFContext udtfContext;
   protected LayerPointReader[] transformers;
   protected TimeSelector timeHeap;
@@ -75,6 +81,7 @@ public class TransformOperator implements ProcessOperator {
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
+      Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
@@ -82,31 +89,33 @@ public class TransformOperator implements ProcessOperator {
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
-    this.inputDataTypes = inputDataTypes;
-    this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
 
+    isFirstIteration = true;
+
     initInputLayer(inputDataTypes);
-    initUdtfContext(zoneId);
-    initTransformers();
-    readyForFirstIteration();
-    updateTypeProvider(typeProvider);
+    initUdtfContext(outputExpressions, zoneId);
+    initTransformers(inputLocations, outputExpressions, typeProvider);
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
     inputLayer =
-        new RawQueryInputLayer(
+        new QueryDataSetInputLayer(
             operatorContext.getOperatorId(),
             udfReaderMemoryBudgetInMB,
             new TsBlockInputDataSet(inputOperator, inputDataTypes));
   }
 
-  private void initUdtfContext(ZoneId zoneId) {
+  private void initUdtfContext(Expression[] outputExpressions, ZoneId zoneId) {
     udtfContext = new UDTFContext(zoneId);
     udtfContext.constructUdfExecutors(outputExpressions);
   }
 
-  protected void initTransformers() throws QueryProcessException, IOException {
+  protected void initTransformers(
+      Map<String, List<InputLocation>> inputLocations,
+      Expression[] outputExpressions,
+      TypeProvider typeProvider)
+      throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     try {
       // This statement must be surrounded by the registration lock.
@@ -116,10 +125,13 @@ public class TransformOperator implements ProcessOperator {
           new EvaluationDAGBuilder(
                   operatorContext.getOperatorId(),
                   inputLayer,
+                  inputLocations,
                   outputExpressions,
+                  typeProvider,
                   udtfContext,
                   udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
               .buildLayerMemoryAssigner()
+              .bindInputLayerColumnIndexWithExpression()
               .buildResultColumnPointReaders()
               .getOutputPointReaders();
     } finally {
@@ -134,7 +146,7 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  private void iterateReaderToNextValid(LayerPointReader reader)
+  protected void iterateReaderToNextValid(LayerPointReader reader)
       throws QueryProcessException, IOException {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
@@ -149,14 +161,18 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  private void updateTypeProvider(TypeProvider typeProvider) {
-    for (int i = 0; i < transformers.length; ++i) {
-      typeProvider.setType(outputExpressions[i].toString(), transformers[i].getDataType());
-    }
-  }
-
   @Override
-  public boolean hasNext() {
+  public final boolean hasNext() {
+    if (isFirstIteration) {
+      try {
+        readyForFirstIteration();
+      } catch (Exception e) {
+        LOGGER.error("TransformOperator#hasNext()", e);
+        throw new RuntimeException(e);
+      }
+      isFirstIteration = false;
+    }
+
     return !timeHeap.isEmpty();
   }
 
@@ -186,55 +202,62 @@ public class TransformOperator implements ProcessOperator {
 
         // values
         for (int i = 0; i < columnCount; ++i) {
-          LayerPointReader reader = transformers[i];
-          collectDataPoint(reader, columnBuilders[i], currentTime);
-          iterateReaderToNextValid(reader);
+          collectDataPointAndIterateToNextValid(transformers[i], columnBuilders[i], currentTime);
         }
 
         ++rowCount;
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
+
+      tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
+      LOGGER.error("TransformOperator#next()", e);
       throw new RuntimeException(e);
     }
 
     return tsBlockBuilder.build();
   }
 
-  protected void collectDataPoint(LayerPointReader reader, ColumnBuilder writer, long currentTime)
+  protected void collectDataPointAndIterateToNextValid(
+      LayerPointReader reader, ColumnBuilder writer, long currentTime)
       throws QueryProcessException, IOException {
-    if (!reader.next() || reader.currentTime() != currentTime || reader.isCurrentNull()) {
+    if (!reader.next() || reader.currentTime() != currentTime) {
       writer.appendNull();
       return;
     }
 
-    TSDataType type = reader.getDataType();
-    switch (type) {
-      case INT32:
-        writer.writeInt(reader.currentInt());
-        break;
-      case INT64:
-        writer.writeLong(reader.currentLong());
-        break;
-      case FLOAT:
-        writer.writeFloat(reader.currentFloat());
-        break;
-      case DOUBLE:
-        writer.writeDouble(reader.currentDouble());
-        break;
-      case BOOLEAN:
-        writer.writeBoolean(reader.currentBoolean());
-        break;
-      case TEXT:
-        writer.writeBinary(reader.currentBinary());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", type));
+    if (reader.isCurrentNull()) {
+      writer.appendNull();
+    } else {
+      TSDataType type = reader.getDataType();
+      switch (type) {
+        case INT32:
+          writer.writeInt(reader.currentInt());
+          break;
+        case INT64:
+          writer.writeLong(reader.currentLong());
+          break;
+        case FLOAT:
+          writer.writeFloat(reader.currentFloat());
+          break;
+        case DOUBLE:
+          writer.writeDouble(reader.currentDouble());
+          break;
+        case BOOLEAN:
+          writer.writeBoolean(reader.currentBoolean());
+          break;
+        case TEXT:
+          writer.writeBinary(reader.currentBinary());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", type));
+      }
     }
 
     reader.readyForNext();
+    iterateReaderToNextValid(reader);
   }
 
   @Override

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -38,10 +39,12 @@ import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -537,6 +540,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   int subSerializeSize(int start, int end) {
     int size = 0;
+    size += Long.BYTES;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
@@ -612,6 +616,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
+    buffer.putLong(searchIndex);
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
@@ -723,6 +728,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void subDeserialize(DataInputStream stream) throws IllegalPathException, IOException {
+    searchIndex = stream.readLong();
     devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
     int measurementSize = stream.readInt();
@@ -824,5 +830,63 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     return true;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertTablet(this, context);
+  }
+
+  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
+    if (measurementIndex >= columns.length) {
+      return null;
+    }
+
+    // get non-null value
+    int lastIdx = rowCount - 1;
+    if (bitMaps != null && bitMaps[measurementIndex] != null) {
+      BitMap bitMap = bitMaps[measurementIndex];
+      while (lastIdx >= 0) {
+        if (!bitMap.isMarked(lastIdx)) {
+          break;
+        }
+        lastIdx--;
+      }
+    }
+    if (lastIdx < 0) {
+      return null;
+    }
+
+    TsPrimitiveType value;
+    switch (dataTypes[measurementIndex]) {
+      case INT32:
+        int[] intValues = (int[]) columns[measurementIndex];
+        value = new TsPrimitiveType.TsInt(intValues[lastIdx]);
+        break;
+      case INT64:
+        long[] longValues = (long[]) columns[measurementIndex];
+        value = new TsPrimitiveType.TsLong(longValues[lastIdx]);
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) columns[measurementIndex];
+        value = new TsPrimitiveType.TsFloat(floatValues[lastIdx]);
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) columns[measurementIndex];
+        value = new TsPrimitiveType.TsDouble(doubleValues[lastIdx]);
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) columns[measurementIndex];
+        value = new TsPrimitiveType.TsBoolean(boolValues[lastIdx]);
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) columns[measurementIndex];
+        value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
+    }
+    return new TimeValuePair(times[lastIdx], value);
   }
 }
