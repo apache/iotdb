@@ -63,7 +63,9 @@ import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -511,9 +513,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.login(username, password);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      return generateEmptyPermissionInfoResp(status);
     }
   }
 
@@ -524,10 +524,18 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      return generateEmptyPermissionInfoResp(status);
     }
+  }
+
+  private TPermissionInfoResp generateEmptyPermissionInfoResp(TSStatus status) {
+    TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
+    permissionInfoResp.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
+    Map<String, TRoleResp> roleInfo = new HashMap<>();
+    roleInfo.put("", new TRoleResp("", new ArrayList<>()));
+    permissionInfoResp.setRoleInfo(roleInfo);
+    permissionInfoResp.setStatus(status);
+    return permissionInfoResp;
   }
 
   @Override
