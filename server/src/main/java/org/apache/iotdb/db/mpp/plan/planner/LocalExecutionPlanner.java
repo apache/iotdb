@@ -827,12 +827,7 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (GroupByLevelDescriptor descriptor : node.getGroupByLevelDescriptors()) {
-        List<String> inputColumnNames = descriptor.getInputColumnNames();
-        List<InputLocation[]> inputLocationList = new ArrayList<>(inputColumnNames.size());
-        inputColumnNames.forEach(
-            inputColumnName ->
-                inputLocationList.add(layout.get(inputColumnName).toArray(new InputLocation[0])));
-
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
@@ -964,20 +959,22 @@ public class LocalExecutionPlanner {
 
     private List<InputLocation[]> calcInputLocationList(
         AggregationDescriptor descriptor, Map<String, List<InputLocation>> layout) {
-      List<String> inputColumnNames = descriptor.getInputColumnNames();
-      // it may include double parts
-      List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
-      inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
-
+      List<List<String>> inputColumnNames = descriptor.getInputColumnNamesList();
       List<InputLocation[]> inputLocationList = new ArrayList<>();
-      for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-        if (inputColumnNames.size() == 1) {
-          inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
-        } else {
-          inputLocationList.add(
-              new InputLocation[] {
-                inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
-              });
+
+      for (List<String> inputColumnNamesOfOneInput : inputColumnNames) {
+        // it may include double parts
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>();
+        inputColumnNamesOfOneInput.forEach(o -> inputLocationParts.add(layout.get(o)));
+        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+          if (inputColumnNamesOfOneInput.size() == 1) {
+            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+                });
+          }
         }
       }
       return inputLocationList;
