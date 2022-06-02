@@ -40,7 +40,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
-  private final List<AggregationDescriptor> aggregationDescriptorList;
+  private List<AggregationDescriptor> aggregationDescriptorList;
 
   // The parameter of `group by time`.
   private final GroupByTimeParameter groupByTimeParameter;
@@ -72,6 +72,10 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
     return aggregationDescriptorList;
+  }
+
+  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
+    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   public GroupByTimeParameter getGroupByTimeParameter() {
@@ -174,5 +178,9 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), aggregationDescriptorList, groupByTimeParameter, child);
+  }
+
+  public String toString() {
+    return String.format("SlidingWindowAggregationNode-%s", getPlanNodeId());
   }
 }

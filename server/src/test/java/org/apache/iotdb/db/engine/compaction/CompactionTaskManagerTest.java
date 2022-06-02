@@ -40,7 +40,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.fail;
 
 public class CompactionTaskManagerTest extends InnerCompactionTest {
   static final Logger logger = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
@@ -120,7 +123,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", manager.getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
   }
@@ -179,7 +182,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", CompactionTaskManager.getInstance().getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
     for (TsFileResource resource : seqResources) {
@@ -232,7 +235,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
           logger.warn("{}", manager.getRunningCompactionTaskList());
         }
         if (waitingTime > MAX_WAITING_TIME) {
-          Assert.fail();
+          fail();
         }
       }
     }
@@ -278,7 +281,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", manager.getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
   }
@@ -313,6 +316,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   public void testRewriteCrossCompactionFileStatus() throws Exception {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    seqResources = seqResources.subList(1, 5);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
@@ -340,7 +344,14 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
 
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    CompactionTaskManager.getInstance().waitAllCompactionFinish();
+    long waitingTime = 0;
+    while (!task.isTaskFinished()) {
+      TimeUnit.MILLISECONDS.sleep(200);
+      waitingTime += 200;
+      if (waitingTime > 10_000) {
+        fail();
+      }
+    }
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());
     }

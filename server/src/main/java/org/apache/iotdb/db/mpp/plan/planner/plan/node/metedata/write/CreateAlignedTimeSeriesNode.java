@@ -51,9 +51,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private List<String> aliasList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
-
-  private List<String> versionList;
-
   private TRegionReplicaSet regionReplicaSet;
 
   public CreateAlignedTimeSeriesNode(
@@ -65,8 +62,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       List<CompressionType> compressors,
       List<String> aliasList,
       List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList,
-      List<String> versionList) {
+      List<Map<String, String>> attributesList) {
     super(id);
     this.devicePath = devicePath;
     this.measurements = measurements;
@@ -76,7 +72,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
     this.aliasList = aliasList;
     this.tagsList = tagsList;
     this.attributesList = attributesList;
-    this.versionList = versionList;
   }
 
   public PartialPath getDevicePath() {
@@ -141,10 +136,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
 
   public void setAttributesList(List<Map<String, String>> attributesList) {
     this.attributesList = attributesList;
-  }
-
-  public List<String> getVersionList() {
-    return versionList;
   }
 
   @Override
@@ -246,11 +237,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       }
     }
 
-    List<String> versionList = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      versionList.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
-
     id = ReadWriteIOUtils.readString(byteBuffer);
 
     return new CreateAlignedTimeSeriesNode(
@@ -262,8 +248,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         compressors,
         aliasList,
         tagsList,
-        attributesList,
-        versionList);
+        attributesList);
   }
 
   @Override
@@ -348,10 +333,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       for (Map<String, String> attributes : attributesList) {
         ReadWriteIOUtils.write(attributes, byteBuffer);
       }
-    }
-
-    for (String version : versionList) {
-      ReadWriteIOUtils.write(version, byteBuffer);
     }
   }
 

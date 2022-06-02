@@ -404,6 +404,13 @@ public class CompactionTaskManager implements IService {
                   + " seconds for all sub compaction tasks to finish.");
         }
       }
+      if (this.subCompactionTaskExecutionPool != null) {
+        subCompactionTaskExecutionPool.shutdownNow();
+        if (!this.subCompactionTaskExecutionPool.awaitTermination(
+            MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new RuntimeException("Failed to shutdown subCompactionTaskExecutionPool");
+        }
+      }
       this.taskExecutionPool =
           (WrappedScheduledExecutorService)
               IoTDBThreadPoolFactory.newScheduledThreadPool(

@@ -91,6 +91,28 @@ public class MetaUtils {
     return result;
   }
 
+  public static List<PartialPath> groupAlignedSeries(List<PartialPath> fullPaths) {
+    List<PartialPath> result = new ArrayList<>();
+    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
+    for (PartialPath path : fullPaths) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result.add(measurementPath);
+      } else {
+        String deviceName = measurementPath.getDevice();
+        if (!deviceToAlignedPathMap.containsKey(deviceName)) {
+          AlignedPath alignedPath = new AlignedPath(measurementPath);
+          deviceToAlignedPathMap.put(deviceName, alignedPath);
+        } else {
+          AlignedPath alignedPath = deviceToAlignedPathMap.get(deviceName);
+          alignedPath.addMeasurement(measurementPath);
+        }
+      }
+    }
+    result.addAll(deviceToAlignedPathMap.values());
+    return result;
+  }
+
   @TestOnly
   public static List<String> getMultiFullPaths(IMNode node) {
     if (node == null) {

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -27,6 +28,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -109,17 +111,18 @@ public class WALNode implements IWALNode {
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   public WALNode(String identifier, String logDirectory) throws FileNotFoundException {
-    this(identifier, logDirectory, 0);
+    this(identifier, logDirectory, 0, 0L);
   }
 
-  public WALNode(String identifier, String logDirectory, int startFileVersion)
+  public WALNode(
+      String identifier, String logDirectory, int startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;
     this.logDirectory = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!this.logDirectory.exists() && this.logDirectory.mkdirs()) {
       logger.info("create folder {} for wal node-{}.", logDirectory, identifier);
     }
-    this.buffer = new WALBuffer(identifier, logDirectory, startFileVersion);
+    this.buffer = new WALBuffer(identifier, logDirectory, startFileVersion, startSearchIndex);
     this.checkpointManager = new CheckpointManager(identifier, logDirectory);
   }
 
@@ -300,11 +303,17 @@ public class WALNode implements IWALNode {
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
       DataRegion dataRegion;
       try {
-        dataRegion =
-            StorageEngine.getInstance()
-                .getProcessorByDataRegionId(
-                    new PartialPath(TsFileUtils.getStorageGroup(oldestTsFile)),
-                    TsFileUtils.getDataRegionId(oldestTsFile));
+        if (config.isMppMode()) {
+          dataRegion =
+              StorageEngineV2.getInstance()
+                  .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
+        } else {
+          dataRegion =
+              StorageEngine.getInstance()
+                  .getProcessorByDataRegionId(
+                      new PartialPath(TsFileUtils.getStorageGroup(oldestTsFile)),
+                      TsFileUtils.getDataRegionId(oldestTsFile));
+        }
       } catch (IllegalPathException | StorageEngineException e) {
         logger.error("Fail to get virtual storage group processor for {}", oldestTsFile, e);
         return;

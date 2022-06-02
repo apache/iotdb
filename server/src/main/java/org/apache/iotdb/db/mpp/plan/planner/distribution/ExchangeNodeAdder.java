@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
@@ -247,6 +248,23 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
             newNode.addChild(child);
           }
         });
+    return newNode;
+  }
+
+  @Override
+  public PlanNode visitSlidingWindowAggregation(
+      SlidingWindowAggregationNode node, NodeGroupContext context) {
+    return processOneChildNode(node, context);
+  }
+
+  private PlanNode processOneChildNode(PlanNode node, NodeGroupContext context) {
+    PlanNode newNode = node.clone();
+    PlanNode child = visit(node.getChildren().get(0), context);
+    newNode.addChild(child);
+    TRegionReplicaSet dataRegion = context.getNodeDistribution(child.getPlanNodeId()).region;
+    context.putNodeDistribution(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, dataRegion));
     return newNode;
   }
 

@@ -31,6 +31,8 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
@@ -64,12 +66,14 @@ public class MultiLeaderConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final MultiLeaderRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
+  private final MultiLeaderConfig config;
 
-  public MultiLeaderConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
-    this.thisNode = thisNode;
-    this.storageDir = storageDir;
+  public MultiLeaderConsensus(ConsensusConfig config, Registry registry) {
+    this.thisNode = config.getThisNode();
+    this.storageDir = new File(config.getStorageDir());
+    this.config = config.getMultiLeaderConfig();
     this.registry = registry;
-    this.service = new MultiLeaderRPCService(thisNode);
+    this.service = new MultiLeaderRPCService(thisNode, config.getMultiLeaderConfig());
   }
 
   @Override
@@ -100,7 +104,8 @@ public class MultiLeaderConsensus implements IConsensus {
                   path.toString(),
                   new Peer(consensusGroupId, thisNode),
                   new ArrayList<>(),
-                  registry.apply(consensusGroupId));
+                  registry.apply(consensusGroupId),
+                  config);
           stateMachineMap.put(consensusGroupId, consensus);
           consensus.start();
         }
@@ -161,7 +166,7 @@ public class MultiLeaderConsensus implements IConsensus {
           }
           MultiLeaderServerImpl impl =
               new MultiLeaderServerImpl(
-                  path, new Peer(groupId, thisNode), peers, registry.apply(groupId));
+                  path, new Peer(groupId, thisNode), peers, registry.apply(groupId), config);
           impl.start();
           return impl;
         });

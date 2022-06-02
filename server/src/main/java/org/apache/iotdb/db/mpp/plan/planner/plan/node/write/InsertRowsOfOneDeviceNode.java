@@ -120,18 +120,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
 
     devicePath = insertRowNodeList.get(0).getDevicePath();
     isAligned = insertRowNodeList.get(0).isAligned;
-    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      List<String> measurements = Arrays.asList(insertRowNode.getMeasurements());
-      Map<String, TSDataType> subMap =
-          measurements.stream()
-              .collect(
-                  Collectors.toMap(
-                      key -> key, key -> insertRowNode.dataTypes[measurements.indexOf(key)]));
-      measurementsAndDataType.putAll(subMap);
-    }
-    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
-    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
+    storeMeasurementsAndDataType();
   }
 
   @Override
@@ -164,6 +153,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
         return false;
       }
     }
+    storeMeasurementsAndDataType();
     return true;
   }
 
@@ -199,6 +189,21 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
       result.add(reducedNode);
     }
     return result;
+  }
+
+  private void storeMeasurementsAndDataType() {
+    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      List<String> measurements = Arrays.asList(insertRowNode.getMeasurements());
+      Map<String, TSDataType> subMap =
+          measurements.stream()
+              .collect(
+                  Collectors.toMap(
+                      key -> key, key -> insertRowNode.getDataTypes()[measurements.indexOf(key)]));
+      measurementsAndDataType.putAll(subMap);
+    }
+    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
+    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
   }
 
   public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
