@@ -52,13 +52,13 @@ public class IoTDBExampleParallel3IT {
         Statement statement = connection.createStatement()) {
 
       statement.execute("set storage group to root.sg");
-      statement.executeQuery("show storage group");
-      ResultSet resultSet = statement.getResultSet();
-      if (resultSet.next()) {
-        String storageGroupPath = resultSet.getString("storage group");
-        Assert.assertEquals("root.sg", storageGroupPath);
-      } else {
-        Assert.fail("This ResultSet is empty.");
+      try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+        if (resultSet.next()) {
+          String storageGroupPath = resultSet.getString("storage group");
+          Assert.assertEquals("root.sg", storageGroupPath);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
       }
     }
   }
@@ -69,13 +69,13 @@ public class IoTDBExampleParallel3IT {
         Statement statement = connection.createStatement()) {
 
       statement.execute("set storage group to root.sg");
-      statement.executeQuery("show storage group");
-      ResultSet resultSet = statement.getResultSet();
-      if (resultSet.next()) {
-        String storageGroupPath = resultSet.getString("storage group");
-        Assert.assertEquals("root.sg", storageGroupPath);
-      } else {
-        Assert.fail("This ResultSet is empty.");
+      try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+        if (resultSet.next()) {
+          String storageGroupPath = resultSet.getString("storage group");
+          Assert.assertEquals("root.sg", storageGroupPath);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
       }
     }
   }
@@ -86,13 +86,13 @@ public class IoTDBExampleParallel3IT {
         Statement statement = connection.createStatement()) {
 
       statement.execute("set storage group to root.sg");
-      statement.executeQuery("show storage group");
-      ResultSet resultSet = statement.getResultSet();
-      if (resultSet.next()) {
-        String storageGroupPath = resultSet.getString("storage group");
-        Assert.assertEquals("root.sg", storageGroupPath);
-      } else {
-        Assert.fail("This ResultSet is empty.");
+      try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+        if (resultSet.next()) {
+          String storageGroupPath = resultSet.getString("storage group");
+          Assert.assertEquals("root.sg", storageGroupPath);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
       }
     }
   }
@@ -103,13 +103,13 @@ public class IoTDBExampleParallel3IT {
         Statement statement = connection.createStatement()) {
 
       statement.execute("set storage group to root.sg");
-      statement.executeQuery("show storage group");
-      ResultSet resultSet = statement.getResultSet();
-      if (resultSet.next()) {
-        String storageGroupPath = resultSet.getString("storage group");
-        Assert.assertEquals("root.sg", storageGroupPath);
-      } else {
-        Assert.fail("This ResultSet is empty.");
+      try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+        if (resultSet.next()) {
+          String storageGroupPath = resultSet.getString("storage group");
+          Assert.assertEquals("root.sg", storageGroupPath);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
       }
     }
   }
