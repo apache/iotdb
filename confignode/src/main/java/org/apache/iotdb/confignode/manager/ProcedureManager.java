@@ -68,7 +68,7 @@ public class ProcedureManager {
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(configNodeConf.getSchemaReplicationFactor());
+        executor.init(configNodeConf.getProcedureCoreWorkerThreadsSize());
         executor.startWorkers();
         executor.startCompletedCleaner(
             configNodeConf.getProcedureCompletedCleanInterval(),
