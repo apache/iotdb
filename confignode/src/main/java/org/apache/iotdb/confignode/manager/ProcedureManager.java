@@ -96,6 +96,8 @@ public class ProcedureManager {
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
     boolean isSucceed = getProcedureStatus(this.executor, procIdList, procedureStatus);
+    // clear the previously deleted regions
+    getConfigManager().getPartitionManager().clearDeletedRegions();
     if (isSucceed) {
       return StatusUtils.OK;
     } else {
