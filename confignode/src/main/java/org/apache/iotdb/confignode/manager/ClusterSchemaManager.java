@@ -99,6 +99,18 @@ public class ClusterSchemaManager {
    * Only leader use this interface.
    *
    * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return Number of Regions currently owned by the specific StorageGroup
+   */
+  public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
+      throws MetadataException {
+    return clusterSchemaInfo.getRegionGroupCount(storageGroup, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param storageGroup StorageGroupName
    * @return the matched StorageGroupSchema
    * @throws MetadataException when the specific StorageGroup doesn't exist
    */
@@ -116,6 +128,18 @@ public class ClusterSchemaManager {
   public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
       List<String> rawPathList) {
     return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
+  }
+
+  /**
+   * Only leader use this interface. Contending the Region allocation particle
+   *
+   * @param storageGroup The specific StorageGroup
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @return True if successfully get the Region allocation particle, false otherwise.
+   */
+  public boolean getRegionAllocationParticle(
+      String storageGroup, TConsensusGroupType consensusGroupType) {
+    return clusterSchemaInfo.getRegionAllocationParticle(storageGroup, consensusGroupType);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {

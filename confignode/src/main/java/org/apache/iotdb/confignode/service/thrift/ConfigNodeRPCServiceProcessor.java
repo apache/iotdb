@@ -179,8 +179,8 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     }
 
     // Mark the StorageGroup as SchemaRegions and DataRegions not yet created
-    storageGroupSchema.setMaximumSchemaRegionCount(-1);
-    storageGroupSchema.setMaximumDataRegionCount(-1);
+    storageGroupSchema.setMaximumSchemaRegionCount(0);
+    storageGroupSchema.setMaximumDataRegionCount(0);
 
     // Initialize RegionGroupId List
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
