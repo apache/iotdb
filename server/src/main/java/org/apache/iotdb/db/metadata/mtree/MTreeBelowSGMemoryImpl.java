@@ -412,6 +412,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    */
   @Override
   public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
+    MetaFormatUtils.checkTimeseries(deviceId);
     String[] nodeNames = deviceId.getNodes();
     IMNode cur = storageGroupMNode;
     IMNode child;
