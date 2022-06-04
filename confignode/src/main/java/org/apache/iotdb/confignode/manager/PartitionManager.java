@@ -402,7 +402,7 @@ public class PartitionManager {
    * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
    * groups periodically.
    */
-  private void clearDeletedRegions() {
+  public void clearDeletedRegions() {
     if (getConsensusManager().isLeader()) {
       final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
       if (!deletedRegionSet.isEmpty()) {
