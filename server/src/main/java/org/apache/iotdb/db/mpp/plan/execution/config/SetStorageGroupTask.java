@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -84,10 +83,13 @@ public class SetStorageGroupTask implements IConfigTask {
       try {
         LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
         localConfigNode.setStorageGroup(setStorageGroupStatement.getStorageGroupPath());
-        localConfigNode.setTTL(
-            setStorageGroupStatement.getStorageGroupPath(), setStorageGroupStatement.getTTL());
+        if (setStorageGroupStatement.getTTL() != null) {
+          localConfigNode.setTTL(
+              setStorageGroupStatement.getStorageGroupPath(), setStorageGroupStatement.getTTL());
+        }
         // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
-      } catch (MetadataException | IOException e) {
+      } catch (Exception e) {
+        e.printStackTrace();
         future.setException(e);
       }
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

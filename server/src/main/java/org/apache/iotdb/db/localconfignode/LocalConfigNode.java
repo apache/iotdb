@@ -217,17 +217,6 @@ public class LocalConfigNode {
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
     }
-
-    if (config.isMppMode() && !config.isClusterMode()) {
-      for (DataRegionId dataRegionId : dataPartitionTable.setStorageGroup(storageGroup)) {
-        try {
-          storageEngine.createDataRegion(dataRegionId, storageGroup.getFullPath(), Long.MAX_VALUE);
-        } catch (DataRegionException e) {
-          // TODO (Fix exception type)
-          throw new MetadataException(e);
-        }
-      }
-    }
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
