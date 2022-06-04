@@ -89,7 +89,6 @@ public class SetStorageGroupTask implements IConfigTask {
         }
         // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
       } catch (Exception e) {
-        e.printStackTrace();
         future.setException(e);
       }
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
