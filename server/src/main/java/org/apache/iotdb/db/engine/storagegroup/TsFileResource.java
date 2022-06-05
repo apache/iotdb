@@ -374,6 +374,10 @@ public class TsFileResource {
     return file;
   }
 
+  public File getIndexFile() {
+    return FSFactoryProducer.getFSFactory().getFile(file.getPath() + TsFileConstant.INDEX_SUFFIX);
+  }
+
   public String getTsFilePath() {
     return file.getPath();
   }
@@ -520,6 +524,12 @@ public class TsFileResource {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
       LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
+    }
+    try {
+      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + TsFileConstant.INDEX_SUFFIX));
+    } catch (IOException e) {
+      LOGGER.error("Index file {} cannot be deleted: {}", file, e.getMessage());
       return false;
     }
     return true;
@@ -864,6 +874,10 @@ public class TsFileResource {
       Files.delete(
           FSFactoryProducer.getFSFactory()
               .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
+              .toPath());
+      Files.delete(
+          FSFactoryProducer.getFSFactory()
+              .getFile(file.toPath() + TsFileConstant.INDEX_SUFFIX)
               .toPath());
     }
   }

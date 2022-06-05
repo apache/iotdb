@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -83,7 +84,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       logger.debug("{} is opened.", file.getName());
     }
     this.file = file;
-    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
+    this.tsFileOutput =
+        FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
+    this.indexFileOutput =
+        FSFactoryProducer.getFileOutputFactory()
+            .getTsFileOutput(file.getPath() + TsFileConstant.INDEX_SUFFIX, false);
 
     // file doesn't exist
     if (file.length() == 0) {
@@ -102,9 +107,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
           crashed = false;
           canWrite = false;
-          out.close();
+          tsFileOutput.close();
+          indexFileOutput.close();
         } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
-          out.close();
+          tsFileOutput.close();
+          indexFileOutput.close();
           throw new NotCompatibleTsFileException(
               String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else {
@@ -112,7 +119,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           canWrite = true;
           // remove broken data
           if (truncate) {
-            out.truncate(truncatedSize);
+            tsFileOutput.truncate(truncatedSize);
           }
         }
       }

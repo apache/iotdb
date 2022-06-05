@@ -108,7 +108,7 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyFirstMask() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     // we have to flush using inner API.
-    writer.getIOWriter().out.write(new byte[] {MetaMarker.CHUNK_HEADER});
+    writer.getIOWriter().tsFileOutput.write(new byte[] {MetaMarker.CHUNK_HEADER});
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
@@ -180,7 +180,7 @@ public class RestorableTsFileIOWriterTest {
     writer.flushAllChunkGroups();
     long pos2 = writer.getIOWriter().getPos();
     // let's delete one byte. the version is broken
-    writer.getIOWriter().out.truncate(pos2 - 1);
+    writer.getIOWriter().tsFileOutput.truncate(pos2 - 1);
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);

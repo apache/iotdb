@@ -91,6 +91,17 @@ public class CompactionUtils {
       FSFactoryProducer.getFSFactory().moveFile(targetResource.getTsFile(), newFile);
     }
 
+    File newIndexFile =
+        new File(
+            targetResource
+                .getIndexFile()
+                .getPath()
+                .replace(tmpFileSuffix, TsFileConstant.TSFILE_SUFFIX));
+    FSFactoryProducer.getFSFactory().deleteIfExists(newIndexFile);
+    if (!newIndexFile.exists()) {
+      FSFactoryProducer.getFSFactory().moveFile(targetResource.getIndexFile(), newIndexFile);
+    }
+
     // serialize xxx.tsfile.resource
     targetResource.setFile(newFile);
     targetResource.serialize();
