@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -80,6 +84,19 @@ public class InsertRowsStatement extends InsertBaseStatement {
     List<PartialPath> result = new ArrayList<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       result.addAll(insertRowStatement.getPaths());
+    }
+    return result;
+  }
+
+  @Override
+  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
+    List<TEndPoint> result = new ArrayList<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      TRegionReplicaSet regionReplicaSet =
+          dataPartition.getDataRegionReplicaSetForWriting(
+              insertRowStatement.devicePath.getFullPath(),
+              StorageEngineV2.getTimePartitionSlot(insertRowStatement.getTime()));
+      result.add(regionReplicaSet.getDataNodeLocations().get(0).getExternalEndPoint());
     }
     return result;
   }

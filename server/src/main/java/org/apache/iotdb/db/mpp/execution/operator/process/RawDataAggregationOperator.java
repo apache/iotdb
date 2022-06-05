@@ -94,30 +94,40 @@ public class RawDataAggregationOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    // 1. Clear previous aggregation result
-    curTimeRange = timeRangeIterator.nextTimeRange();
-    for (Aggregator aggregator : aggregators) {
-      aggregator.reset();
-      aggregator.updateTimeRange(curTimeRange);
+    // Move to next timeRange
+    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+      curTimeRange = timeRangeIterator.nextTimeRange();
+      for (Aggregator aggregator : aggregators) {
+        aggregator.reset();
+        aggregator.updateTimeRange(curTimeRange);
+      }
     }
 
-    // 2. Calculate aggregation result based on current time window
+    // 1. Calculate aggregation result based on current time window
+    boolean canCallNext = true;
     while (!calcFromCacheData(curTimeRange)) {
-      if (child.hasNext()) {
+      preCachedData = null;
+      // child.next can only be invoked once
+      if (child.hasNext() && canCallNext) {
         preCachedData = child.next();
+        canCallNext = false;
+        // if child still has next but can't be invoked now
+      } else if (child.hasNext()) {
+        return null;
       } else {
         break;
       }
     }
 
-    // 3. Update result using aggregators
+    // 2. Update result using aggregators
+    curTimeRange = null;
     return AggregationOperator.updateResultTsBlockFromAggregators(
         tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   @Override
   public boolean hasNext() {
-    return timeRangeIterator.hasNextTimeRange();
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
   @Override

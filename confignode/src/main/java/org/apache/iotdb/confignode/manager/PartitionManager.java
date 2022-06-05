@@ -29,9 +29,8 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -313,7 +312,27 @@ public class PartitionManager {
         storageGroupWithoutRegion.add(storageGroup);
       }
     }
-    getLoadManager().initializeRegions(storageGroupWithoutRegion, consensusGroupType);
+
+    // Calculate the number of Regions
+    // TODO: This is a temporary code, delete it later
+    int regionNum;
+    if (consensusGroupType == TConsensusGroupType.SchemaRegion) {
+      regionNum =
+          Math.max(
+              1,
+              getNodeManager().getOnlineDataNodeCount()
+                  / ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+    } else {
+      regionNum =
+          Math.max(
+              2,
+              (int)
+                  (getNodeManager().getTotalCpuCoreCount()
+                      * 0.3
+                      / ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor()));
+    }
+
+    getLoadManager().initializeRegions(storageGroupWithoutRegion, consensusGroupType, regionNum);
   }
 
   /** Get all allocated RegionReplicaSets */
@@ -359,27 +378,13 @@ public class PartitionManager {
   }
 
   /**
-   * Get ChildPathsPartition
+   * GetNodePathsPartition
    *
-   * @param physicalPlan GetChildNodesPartitionReq
+   * @param physicalPlan GetNodesPathsPartitionReq
    * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
    *     SchemaPartition and matched child paths aboveMtree
    */
-  public DataSet getChildPathsPartition(GetChildPathsPartitionReq physicalPlan) {
-    SchemaNodeManagementResp schemaNodeManagementResp;
-    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-    schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
-    return schemaNodeManagementResp;
-  }
-
-  /**
-   * Get ChildNodesPartition
-   *
-   * @param physicalPlan GetChildNodesPartitionReq
-   * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
-   *     SchemaPartition and matched child nodes aboveMtree
-   */
-  public DataSet getChildNodesPartition(GetChildNodesPartitionReq physicalPlan) {
+  public DataSet getNodePathsPartition(GetNodePathsPartitionReq physicalPlan) {
     SchemaNodeManagementResp schemaNodeManagementResp;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
     schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
@@ -397,7 +402,7 @@ public class PartitionManager {
    * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
    * groups periodically.
    */
-  private void clearDeletedRegions() {
+  public void clearDeletedRegions() {
     if (getConsensusManager().isLeader()) {
       final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
       if (!deletedRegionSet.isEmpty()) {
@@ -413,6 +418,10 @@ public class PartitionManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {

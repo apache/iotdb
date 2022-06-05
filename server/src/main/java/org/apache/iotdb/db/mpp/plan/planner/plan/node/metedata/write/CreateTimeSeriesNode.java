@@ -53,8 +53,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
 
-  private String version;
-
   private TRegionReplicaSet regionReplicaSet;
 
   public CreateTimeSeriesNode(
@@ -66,8 +64,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       Map<String, String> props,
       Map<String, String> tags,
       Map<String, String> attributes,
-      String alias,
-      String version) {
+      String alias) {
     super(id);
     this.path = path;
     this.dataType = dataType;
@@ -80,7 +77,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
-    this.version = version;
   }
 
   public PartialPath getPath() {
@@ -145,10 +141,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
 
   public void setProps(Map<String, String> props) {
     this.props = props;
-  }
-
-  public String getVersion() {
-    return version;
   }
 
   @Override
@@ -226,20 +218,9 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       attributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
-    String version = ReadWriteIOUtils.readString(byteBuffer);
-
     id = ReadWriteIOUtils.readString(byteBuffer);
     return new CreateTimeSeriesNode(
-        new PlanNodeId(id),
-        path,
-        dataType,
-        encoding,
-        compressor,
-        props,
-        tags,
-        attributes,
-        alias,
-        version);
+        new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 
   @Override
@@ -290,8 +271,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributes, byteBuffer);
     }
-
-    ReadWriteIOUtils.write(version, byteBuffer);
   }
 
   @Override

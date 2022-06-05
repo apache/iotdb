@@ -38,6 +38,10 @@ public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
     this.orderByHeat = orderByHeat;
   }
 
+  public boolean isOrderByHeat() {
+    return orderByHeat;
+  }
+
   @Override
   public PlanNode clone() {
     return new SchemaQueryMergeNode(getPlanNodeId(), this.orderByHeat);

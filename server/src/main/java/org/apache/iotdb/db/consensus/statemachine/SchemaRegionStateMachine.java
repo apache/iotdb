@@ -21,11 +21,13 @@ package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,15 +63,26 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  protected TSStatus write(FragmentInstance fragmentInstance) {
+  public TSStatus write(IConsensusRequest request) {
     logger.info("Execute write plan in SchemaRegionStateMachine");
-    PlanNode planNode = fragmentInstance.getFragment().getRoot();
-    TSStatus status = planNode.accept(new SchemaExecutionVisitor(), schemaRegion);
-    return status;
+    try {
+      PlanNode planNode = getFragmentInstance(request).getFragment().getRoot();
+      return planNode.accept(new SchemaExecutionVisitor(), schemaRegion);
+    } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage(), e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
   }
 
   @Override
-  protected DataSet read(FragmentInstance fragmentInstance) {
+  public DataSet read(IConsensusRequest request) {
+    FragmentInstance fragmentInstance;
+    try {
+      fragmentInstance = getFragmentInstance(request);
+    } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage());
+      return null;
+    }
     logger.info(
         "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
         schemaRegion.getSchemaRegionId(),

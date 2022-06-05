@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class InsertTabletStatement extends InsertBaseStatement {
@@ -86,6 +90,16 @@ public class InsertTabletStatement extends InsertBaseStatement {
     }
     result.add(timePartitionSlot);
     return result;
+  }
+
+  @Override
+  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
+    TRegionReplicaSet regionReplicaSet =
+        dataPartition.getDataRegionReplicaSetForWriting(
+            devicePath.getFullPath(),
+            StorageEngineV2.getTimePartitionSlot(times[times.length - 1]));
+    return Collections.singletonList(
+        regionReplicaSet.getDataNodeLocations().get(0).getExternalEndPoint());
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

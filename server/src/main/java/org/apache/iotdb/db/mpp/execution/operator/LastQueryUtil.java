@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.LastValueDescAccumulator;
 import org.apache.iotdb.db.mpp.aggregation.MaxTimeDescAccumulator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -33,9 +35,13 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class LastQueryUtil {
+
+  private static final boolean CACHE_ENABLED =
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
 
   public static TsBlockBuilder createTsBlockBuilder() {
     return new TsBlockBuilder(ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
@@ -67,13 +73,22 @@ public class LastQueryUtil {
   public static List<Aggregator> createAggregators(TSDataType dataType) {
     // max_time, last_value
     List<Aggregator> aggregators = new ArrayList<>(2);
-    aggregators.add(new Aggregator(new MaxTimeDescAccumulator(), AggregationStep.SINGLE));
-    aggregators.add(new Aggregator(new LastValueDescAccumulator(dataType), AggregationStep.SINGLE));
+    aggregators.add(
+        new Aggregator(
+            new MaxTimeDescAccumulator(),
+            AggregationStep.SINGLE,
+            Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)})));
+    aggregators.add(
+        new Aggregator(
+            new LastValueDescAccumulator(dataType),
+            AggregationStep.SINGLE,
+            Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)})));
     return aggregators;
   }
 
   public static boolean needUpdateCache(Filter timeFilter) {
     // Update the cache only when, the filter is gt (greater than) or ge (greater than or equal to)
-    return (timeFilter instanceof GtEq) || (timeFilter instanceof Gt);
+    return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof GtEq)
+        || (timeFilter instanceof Gt);
   }
 }

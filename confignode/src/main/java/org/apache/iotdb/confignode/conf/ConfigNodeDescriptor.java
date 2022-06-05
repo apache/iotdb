@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,9 +129,14 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
-      conf.setDataNodeConsensusProtocolClass(
+      conf.setDataRegionConsensusProtocolClass(
           properties.getProperty(
-              "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass()));
+              "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
+
+      conf.setSchemaRegionConsensusProtocolClass(
+          properties.getProperty(
+              "schema_region_consensus_protocol_class",
+              conf.getSchemaRegionConsensusProtocolClass()));
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(
@@ -195,17 +201,6 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setMaximumSchemaRegionCount(
-          Integer.parseInt(
-              properties.getProperty(
-                  "maximum_schema_region_count",
-                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
-
-      conf.setMaximumDataRegionCount(
-          Integer.parseInt(
-              properties.getProperty(
-                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
-
       conf.setHeartbeatInterval(
           Long.parseLong(
               properties.getProperty(
@@ -245,6 +240,9 @@ public class ConfigNodeDescriptor {
       commonDescriptor
           .getConfig()
           .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+      MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
     }
   }
 

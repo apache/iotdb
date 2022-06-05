@@ -60,14 +60,16 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
     }
   }
 
-  public void registerWALNode(String applicantUniqueId, String logDirectory) {
+  public void registerWALNode(
+      String applicantUniqueId, String logDirectory, int startFileVersion, long startSearchIndex) {
     nodesLock.lock();
     try {
       if (identifier2Nodes.containsKey(applicantUniqueId)) {
         return;
       }
 
-      IWALNode walNode = createWALNode(applicantUniqueId, logDirectory);
+      IWALNode walNode =
+          createWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
       if (walNode instanceof WALNode) {
         // avoid deletion
         ((WALNode) walNode).setSafelyDeletedSearchIndex(Long.MIN_VALUE);

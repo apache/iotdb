@@ -76,11 +76,6 @@ public class AggregationNode extends MultiChildNode {
     this.children = children;
   }
 
-  @Deprecated
-  public AggregationNode(PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
-    this(id, aggregationDescriptorList, null, OrderBy.TIMESTAMP_ASC);
-  }
-
   public List<AggregationDescriptor> getAggregationDescriptorList() {
     return aggregationDescriptorList;
   }

@@ -52,17 +52,39 @@ public class CommonUtils {
         case BOOLEAN:
           return parseBoolean(value);
         case INT32:
-          return Integer.parseInt(StringUtils.trim(value));
+          try {
+            return Integer.parseInt(StringUtils.trim(value));
+          } catch (NumberFormatException e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input " + value + ", registered " + dataType);
+          }
         case INT64:
-          return Long.parseLong(StringUtils.trim(value));
+          try {
+            return Long.parseLong(StringUtils.trim(value));
+          } catch (NumberFormatException e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input " + value + ", registered " + dataType);
+          }
         case FLOAT:
-          float f = Float.parseFloat(value);
+          float f;
+          try {
+            f = Float.parseFloat(value);
+          } catch (NumberFormatException e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input " + value + ", registered " + dataType);
+          }
           if (Float.isInfinite(f)) {
             throw new NumberFormatException("The input float value is Infinity");
           }
           return f;
         case DOUBLE:
-          double d = Double.parseDouble(value);
+          double d;
+          try {
+            d = Double.parseDouble(value);
+          } catch (NumberFormatException e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input " + value + ", registered " + dataType);
+          }
           if (Double.isInfinite(d)) {
             throw new NumberFormatException("The input double value is Infinity");
           }

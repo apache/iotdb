@@ -287,11 +287,11 @@ Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS 
 Below are basic constraints of identifiers, specific identifiers may have other constraints, for example, `user` should consists of more than 4 characters. 
 
 - Permitted characters in unquoted identifiers:
-  - [0-9 a-z A-Z _ : @ # $ { }] (letters, digits, some special characters)
+  - [0-9 a-z A-Z _ ] (letters, digits and underscore)
   - ['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)
 - Identifiers may begin with a digit, unquoted identifiers can not consists of solely digits.
 - Identifiers are case sensitive.
-- Key words can be  used as an identifier.
+- Key words can be used as an identifier.
 
 **You need to quote the identifier with back quote(`) in the following cases:**
 

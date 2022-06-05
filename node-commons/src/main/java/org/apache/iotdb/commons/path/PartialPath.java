@@ -547,4 +547,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     partialPath.fullPath = path.getFullPath();
     return partialPath;
   }
+
+  public PartialPath transformToPartialPath() {
+    return this;
+  }
 }

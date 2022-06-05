@@ -274,6 +274,37 @@ session.execute_non_query_statement(sql)
 ```
 
 
+### Schema Template
+#### Create Schema Template
+The step for creating a metadata template is as follows
+1. Create the template class
+2. Adding child Node，InternalNode and MeasurementNode can be chose
+3. Execute create schema template function
+
+```python
+template = Template(name="treeTemplate_python", share_time=True)
+
+i_node_gps = InternalNode(name="GPS", share_time=False)
+i_node_v = InternalNode(name="vehicle", share_time=True)
+m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+
+i_node_gps.add_child(m_node_x)
+i_node_gps.add_child(m_node_x)
+i_node_v.add_child(m_node_x)
+
+template.add_template(i_node_gps)
+template.add_template(i_node_v)
+template.add_template(m_node_x)
+
+session.create_schema_template(template)
+```
+#### Drop Schema Template
+Delete an existing metadata template，dropping an already set template is not supported
+```python
+session.drop_schema_template("template_python")
+```
+
+
 ### Pandas Support
 
 To easily transform a query result to a [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)

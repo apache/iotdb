@@ -99,6 +99,7 @@ public class NodeInfoTest {
         new TEndPoint("127.0.0.1", 6600 + flag),
         new TEndPoint("127.0.0.1", 7700 + flag),
         new TEndPoint("127.0.0.1", 8800 + flag),
-        new TEndPoint("127.0.0.1", 9900 + flag));
+        new TEndPoint("127.0.0.1", 9900 + flag),
+        new TEndPoint("127.0.0.1", 11000 + flag));
   }
 }

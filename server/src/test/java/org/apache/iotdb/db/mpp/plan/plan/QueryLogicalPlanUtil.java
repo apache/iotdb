@@ -153,11 +153,6 @@ public class QueryLogicalPlanUtil {
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
-        new AlignedSeriesScanNode(
-            queryId.genPlanNodeId(),
-            (AlignedPath) schemaMap.get("root.sg.d2.a"),
-            OrderBy.TIMESTAMP_ASC));
-    sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
@@ -171,6 +166,11 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
+            OrderBy.TIMESTAMP_ASC));
+    sourceNodeList.add(
+        new AlignedSeriesScanNode(
+            queryId.genPlanNodeId(),
+            (AlignedPath) schemaMap.get("root.sg.d2.a"),
             OrderBy.TIMESTAMP_ASC));
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, sourceNodeList);
@@ -626,7 +626,9 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))));
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -714,8 +716,8 @@ public class QueryLogicalPlanUtil {
         new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
-    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 3, 2));
+    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 3, 2));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -830,7 +832,7 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            OrderBy.TIMESTAMP_DESC);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -857,7 +859,9 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))));
+                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
+            null,
+            OrderBy.TIMESTAMP_DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
