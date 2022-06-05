@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.plan.distribution;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -46,6 +47,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -53,6 +56,19 @@ import java.util.Arrays;
 import static org.junit.Assert.assertEquals;
 
 public class DistributionPlannerBasicTest {
+
+  private static final boolean isClusterMode =
+      IoTDBDescriptor.getInstance().getConfig().isClusterMode();
+
+  @BeforeClass
+  public static void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(isClusterMode);
+  }
 
   @Test
   public void testSingleSeriesScan() throws IllegalPathException {
