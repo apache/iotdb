@@ -333,7 +333,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (ignoreNotExists) {
         return null;
       }
-      throw new IOException("Device {" + path.getDevice() + "} is not in tsFileMetaData");
+      logger.warn("Device {} is not in {}", path.getDevice(), file);
+      return null;
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
