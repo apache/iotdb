@@ -425,7 +425,7 @@ public class SchemaFile implements ISchemaFile {
    * @param key key of the entry
    * @param ptr pointer of the entry
    */
-  private synchronized void insertIndexEntry(int treeTraceIndex, String key, int ptr)
+  private void insertIndexEntry(int treeTraceIndex, String key, int ptr)
       throws MetadataException, IOException {
     ISchemaPage iPage = getPageInstance(treeTrace.get()[treeTraceIndex]);
     if (iPage.getAsInternalPage().insertRecord(key, ptr) < INTERNAL_SPLIT_VALVE) {
@@ -489,14 +489,37 @@ public class SchemaFile implements ISchemaFile {
     }
 
     long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName);
-    if (actualSegAddr < 0) {
-      // no target child
-      return null;
+    IMNode child =
+        getPageInstance(getPageIndex(actualSegAddr))
+            .getAsSegmentedPage()
+            .read(getSegIndex(actualSegAddr), childName);
+
+    // seek for alias if parent is entity, TODO: improve efficiency
+    if (child == null && parent.isEntity()) {
+      return getChildWithAlias(parent, childName);
+    }
+    return child;
+  }
+
+  private IMNode getChildWithAlias(IMNode par, String alias) throws IOException, MetadataException {
+    long srtAddr = getNodeAddress(par);
+    ISchemaPage page = getPageInstance(getPageIndex(srtAddr));
+
+    while (page.getAsSegmentedPage() == null) {
+      page = getPageInstance(getPageIndex(page.getAsInternalPage().getNextSegAddress()));
     }
 
-    return getPageInstance(getPageIndex(actualSegAddr))
-        .getAsSegmentedPage()
-        .read(getSegIndex(actualSegAddr), childName);
+    IMNode res = page.getAsSegmentedPage().readByAlias(getSegIndex(srtAddr), alias);
+
+    // TODO: now it traverses all segments, improve with another index struct
+    while (res == null && page.getAsSegmentedPage().getNextSegAddress(getSegIndex(srtAddr)) >= 0) {
+      page =
+          getPageInstance(
+              getPageIndex(page.getAsSegmentedPage().getNextSegAddress(getSegIndex(srtAddr))));
+      res = page.getAsSegmentedPage().readByAlias(getSegIndex(srtAddr), alias);
+    }
+
+    return res;
   }
 
   @Override
@@ -802,19 +825,12 @@ public class SchemaFile implements ISchemaFile {
     return addPageToCache(lastPageIndex, page);
   }
 
-  // TODO: improve concurrency control
-  private synchronized ISchemaPage replacePageInCache(ISchemaPage page) {
-    evictLock.lock();
-    try {
-      if (page.getPageIndex() == ROOT_INDEX) {
-        this.rootPage = page;
-      }
-
-      dirtyPages.put(page.getPageIndex(), page);
-      return addPageToCache(page.getPageIndex(), page);
-    } finally {
-      evictLock.unlock();
+  private ISchemaPage replacePageInCache(ISchemaPage page) {
+    if (page.getPageIndex() == ROOT_INDEX) {
+      this.rootPage = page;
     }
+    dirtyPages.put(page.getPageIndex(), page);
+    return addPageToCache(page.getPageIndex(), page);
   }
 
   private ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) {

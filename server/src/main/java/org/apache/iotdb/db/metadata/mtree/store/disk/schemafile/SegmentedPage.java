@@ -94,6 +94,11 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
+  public IMNode readByAlias(short segIdx, String alias) throws MetadataException {
+    return getSegment(segIdx).getRecordByAlias(alias);
+  }
+
+  @Override
   public void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
     ISegment<ByteBuffer, IMNode> seg = getSegment(segIdx);
     try {

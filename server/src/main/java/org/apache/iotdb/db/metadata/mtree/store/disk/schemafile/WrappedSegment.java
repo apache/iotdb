@@ -230,10 +230,6 @@ public class WrappedSegment implements ISegment<ByteBuffer, IMNode> {
     // actual index of key just smaller than the insert, -2 for null key
     int pos = key != null ? binaryInsertPairList(keyAddressList, key) - 1 : -2;
 
-    // if (pos == -1) {
-    //   throw new MetadataException("The key occurs split cannot be the smallest within segment.");
-    // }
-
     int sp; // virtual index to split
     if (monotonic) {
       // new entry into part with more space
@@ -334,10 +330,6 @@ public class WrappedSegment implements ISegment<ByteBuffer, IMNode> {
     int index = getRecordIndexByKey(key);
 
     if (index < 0) {
-      index = getRecordIndexByAlias(key);
-    }
-
-    if (index < 0) {
       return null;
     }
 
@@ -349,6 +341,20 @@ public class WrappedSegment implements ISegment<ByteBuffer, IMNode> {
     roBuffer.limit(offset + len);
 
     return RecordUtils.buffer2Node(keyAddressList.get(index).left, roBuffer);
+  }
+
+  @Override
+  public IMNode getRecordByAlias(String alias) throws MetadataException {
+    int ix = getRecordIndexByAlias(alias);
+
+    if (ix < 0) {
+      return null;
+    }
+
+    ByteBuffer rBuffer = this.buffer.asReadOnlyBuffer();
+    short offset = getOffsetByKeyIndex(ix);
+    rBuffer.clear().position(offset).limit(offset + RecordUtils.getRecordLength(rBuffer));
+    return RecordUtils.buffer2Node(keyAddressList.get(ix).left, rBuffer);
   }
 
   @Override
@@ -416,12 +422,12 @@ public class WrappedSegment implements ISegment<ByteBuffer, IMNode> {
     }
 
     // update alias-key list accordingly
-    if (oriAlias != null && !oriAlias.equals("")) {
+    if (oriAlias != null) {
       aliasKeyList.remove(binarySearchPairList(aliasKeyList, oriAlias));
 
       uBuffer.clear();
       String alias = RecordUtils.getRecordAlias(uBuffer);
-      if (alias != null && !alias.equals("")) {
+      if (alias != null) {
         aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
       }
     }
@@ -432,6 +438,8 @@ public class WrappedSegment implements ISegment<ByteBuffer, IMNode> {
   @Override
   public int removeRecord(String key) {
     int idx = getRecordIndexByKey(key);
+
+    // deletion only seeks for name of IMNode
     if (idx < 0) {
       return -1;
     }

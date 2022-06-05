@@ -127,6 +127,11 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   }
 
   @Override
+  public Integer getRecordByAlias(String alias) {
+    return null;
+  }
+
+  @Override
   public boolean hasRecordKey(String key) {
     int pos = getIndexByKey(key);
     return (pos != 0) && key.equals(getKeyByIndex(pos));

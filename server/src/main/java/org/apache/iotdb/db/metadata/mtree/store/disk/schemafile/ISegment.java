@@ -51,12 +51,18 @@ public interface ISegment<T, R> {
   int removeRecord(String key);
 
   /**
-   * get a MNode by its name or alias
+   * Get a record by its name
    *
-   * @param key name or alias of the target node
-   * @return node instance
+   * @return index entry if {@link InternalPage}, otherwise IMNode
    */
   R getRecordByKey(String key) throws MetadataException;
+
+  /**
+   * Get a record by its alias
+   *
+   * @return null if {@link InternalPage}, otherwise IMNode
+   */
+  R getRecordByAlias(String alias) throws MetadataException;
 
   boolean hasRecordKey(String key);
 
@@ -65,8 +71,8 @@ public interface ISegment<T, R> {
   Queue<R> getAllRecords() throws MetadataException;
 
   /**
-   * Records are always sync with buffer, but header and key-address list are not. This method sync
-   * these values to the buffer.
+   * Records are always sync with buffer, but members in header are not. This method sync these
+   * values to the buffer.
    */
   void syncBuffer();
 

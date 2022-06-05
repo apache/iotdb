@@ -415,9 +415,9 @@ public class SchemaFileTest {
     ICachedMNodeContainer.getCachedMNodeContainer(root).updateMNode("aa0");
 
     sf.writeMNode(root);
-    printSF(sf);
     Assert.assertEquals(
         "updatedupdatednode", sf.getChildNode(root, "aa0").getAsMeasurementMNode().getAlias());
+    Assert.assertEquals("aa0", sf.getChildNode(root, "updatedupdatednode").getName());
 
     root.getChildren().clear();
 
@@ -547,8 +547,14 @@ public class SchemaFileTest {
             "e5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5"
                 + "malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkks"));
     sf.writeMNode(ent5);
-    printSF(sf);
     Assert.assertEquals(20, getSegment(sf, getSegAddrInContainer(ent5)).getAllRecords().size());
+    Assert.assertEquals(
+        "e5extm",
+        sf.getChildNode(
+                ent5,
+                "e5malaikkkkkse5malaikkkkkse5malaikkkkkse5ma"
+                    + "laikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkkse5malaikkkkks")
+            .getName());
 
     ent5.getChildren().clear();
     addNodeToUpdateBuffer(ent5, getMeasurementNode(ent5, "e5extm", null));
@@ -710,6 +716,10 @@ public class SchemaFileTest {
     Assert.assertEquals(
         "aliaslasialsaialiaslasialsai",
         sf2.getChildNode(d010, "splitover").getAsMeasurementMNode().getAlias());
+
+    Assert.assertEquals(
+        "splitover", sf2.getChildNode(d010, "aliaslasialsaialiaslasialsai").getName());
+
     Assert.assertEquals(0, d010cs);
     Assert.assertTrue(checkSet.isEmpty());
     sf2.close();

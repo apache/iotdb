@@ -41,6 +41,8 @@ public interface ISegmentedPage {
 
   IMNode read(short segIdx, String key) throws MetadataException;
 
+  IMNode readByAlias(short segIdx, String alias) throws MetadataException;
+
   /**
    * The record is definitely inside specified segment. {@link WrappedSegment} will compare existed
    * and updated buffer to decide whether to update in place.
