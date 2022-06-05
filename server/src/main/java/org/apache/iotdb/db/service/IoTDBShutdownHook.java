@@ -20,6 +20,7 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -42,7 +43,11 @@ public class IoTDBShutdownHook extends Thread {
     }
 
     // == flush data to Tsfile and remove WAL log files
-    StorageEngine.getInstance().syncCloseAllProcessor();
+    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      StorageEngineV2.getInstance().syncCloseAllProcessor();
+    } else {
+      StorageEngine.getInstance().syncCloseAllProcessor();
+    }
     WALManager.getInstance().deleteOutdatedWALFiles();
 
     if (logger.isInfoEnabled()) {

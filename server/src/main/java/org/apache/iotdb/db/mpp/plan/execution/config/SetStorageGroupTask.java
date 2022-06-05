@@ -88,10 +88,11 @@ public class SetStorageGroupTask implements IConfigTask {
               setStorageGroupStatement.getStorageGroupPath(), setStorageGroupStatement.getTTL());
         }
         // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } catch (Exception e) {
+        LOGGER.error("Failed to set storage group, caused by ", e);
         future.setException(e);
       }
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.

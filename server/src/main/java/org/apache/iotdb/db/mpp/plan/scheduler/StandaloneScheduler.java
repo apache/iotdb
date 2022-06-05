@@ -21,15 +21,21 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -43,9 +49,12 @@ public class StandaloneScheduler implements IScheduler {
 
   private static final StorageEngineV2 STORAGE_ENGINE = StorageEngineV2.getInstance();
 
-  private static final LocalSchemaProcessor SCHEMA_ENGINE = LocalSchemaProcessor.getInstance();
+  private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterScheduler.class);
+  private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
+      FragmentInstanceManager.getInstance();
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneScheduler.class);
 
   private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
@@ -74,6 +83,7 @@ public class StandaloneScheduler implements IScheduler {
     this.queryType = queryType;
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
+    this.stateMachine = stateMachine;
     this.stateTracker =
         new FixedRateFragInsStateTracker(
             stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
@@ -84,16 +94,71 @@ public class StandaloneScheduler implements IScheduler {
 
   @Override
   public void start() {
+    stateMachine.transitionToDispatching();
+    LOGGER.info("{} transit to DISPATCHING", getLogHeader());
     // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
     // TODO: Other QueryTypes
-    if (queryType == QueryType.WRITE) {
-
-      return;
+    switch (queryType) {
+      case READ:
+        try {
+          for (FragmentInstance fragmentInstance : instances) {
+            ConsensusGroupId groupId =
+                ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                    fragmentInstance.getRegionReplicaSet().getRegionId());
+            if (groupId instanceof DataRegionId) {
+              // STORAGE_ENGINE.read(fragmentInstance);
+            } else {
+              SCHEMA_ENGINE.read((SchemaRegionId) groupId, fragmentInstance);
+              // stateMachine.
+            }
+          }
+        } catch (Exception e) {
+          stateMachine.transitionToFailed(e);
+        }
+        break;
+      case WRITE:
+        try {
+          for (FragmentInstance fragmentInstance : instances) {
+            PlanNode planNode = fragmentInstance.getFragment().getRoot();
+            ConsensusGroupId groupId =
+                ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                    fragmentInstance.getRegionReplicaSet().getRegionId());
+            // TODO: (SchemaValidate)
+            if (groupId instanceof DataRegionId) {
+              STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
+            } else {
+              SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
+            }
+          }
+          stateMachine.transitionToFinished();
+        } catch (Exception e) {
+          stateMachine.transitionToFailed(e);
+        }
+        return;
     }
+    // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
+    // QueryState to Running
+    stateMachine.transitionToRunning();
+    LOGGER.info("{} transit to RUNNING", getLogHeader());
+    instances.forEach(
+        instance -> {
+          stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
+        });
+
+    // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
+    this.stateTracker.start();
+    LOGGER.info("{} state tracker starts", getLogHeader());
   }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
+    // practice ?
+    dispatcher.abort();
+    stateTracker.abort();
+    // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
+    queryTerminator.terminate();
+  }
 
   @Override
   public Duration getTotalCpuTime() {
@@ -110,4 +175,8 @@ public class StandaloneScheduler implements IScheduler {
 
   @Override
   public void cancelFragment(PlanFragmentId planFragmentId) {}
+
+  private String getLogHeader() {
+    return String.format("Query[%s]", queryContext.getQueryId());
+  }
 }

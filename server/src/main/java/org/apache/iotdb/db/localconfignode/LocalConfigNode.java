@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.localconfignode;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,6 +49,7 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -83,21 +88,25 @@ public class LocalConfigNode {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private volatile boolean initialized = false;
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  private IStorageGroupSchemaManager storageGroupSchemaManager =
+  private final IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
-  private TemplateManager templateManager = TemplateManager.getInstance();
-  private SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private LocalSchemaPartitionTable schemaPartitionTable = LocalSchemaPartitionTable.getInstance();
+  private final TemplateManager templateManager = TemplateManager.getInstance();
+  private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
+  private final LocalSchemaPartitionTable schemaPartitionTable = LocalSchemaPartitionTable.getInstance();
 
-  private StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  private LocalDataPartitionTable dataPartitionTable = LocalDataPartitionTable.getInstance();
+  private final LocalDataPartitionTable dataPartitionTable = LocalDataPartitionTable.getInstance();
+
+  private final SeriesPartitionExecutor executor =
+      SeriesPartitionExecutor.getSeriesPartitionExecutor(
+          config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
 
   private LocalConfigNode() {
     String schemaDir = config.getSchemaDir();
@@ -801,4 +810,80 @@ public class LocalConfigNode {
   }
 
   // endregion
+
+  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getSchemaPartition(
+      PathPatternTree patternTree) {
+    List<String> devicePaths = patternTree.findAllDevicePaths();
+    List<PartialPath> storageGroups = storageGroupSchemaManager.getAllStorageGroupPaths();
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
+
+    boolean getAll = false;
+    Set<String> getAllSet = new HashSet<>();
+    for (String devicePath : devicePaths) {
+      boolean matchStorageGroup = false;
+      for (PartialPath storageGroup : storageGroups) {
+        if (devicePath.startsWith(storageGroup + ".")) {
+          matchStorageGroup = true;
+          if (devicePath.contains("*")) {
+            // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
+            getAllSet.add(storageGroup.getFullPath());
+          } else {
+            // Get the specific SchemaPartition
+            partitionSlotsMap
+                .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
+                .put(executor.getSeriesPartitionSlot(devicePath), null);
+          }
+          break;
+        }
+      }
+      if (!matchStorageGroup && devicePath.contains("**")) {
+        // Get all SchemaPartitions if there exists one devicePath that contains "**"
+        getAll = true;
+      }
+    }
+
+    if (getAll) {
+      partitionSlotsMap = new HashMap<>();
+    } else {
+      for (String storageGroup : getAllSet) {
+        partitionSlotsMap.put(storageGroup, new HashMap<>());
+      }
+    }
+
+    // TODO: Delete or hide this LOGGER before officially release.
+    logger.info(
+        "GetSchemaPartition interface receive devicePaths: {}, return SchemaPartition: {}",
+        devicePaths,
+        partitionSlotsMap);
+
+    return partitionSlotsMap;
+  }
+
+  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getOrCreateSchemaPartition(
+      PathPatternTree patternTree) throws MetadataException {
+    List<String> devicePaths = patternTree.findAllDevicePaths();
+    List<PartialPath> storageGroups = storageGroupSchemaManager.getAllStorageGroupPaths();
+
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
+
+    for (String devicePath : devicePaths) {
+      if (!devicePath.contains("*")) {
+        // Only check devicePaths that without "*"
+        for (PartialPath storageGroup : storageGroups) {
+          if (devicePath.startsWith(storageGroup + ".")) {
+            SchemaRegionId regionId =
+                getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(devicePath));
+            partitionSlotsMap
+                .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
+                .put(
+                    executor.getSeriesPartitionSlot(devicePath),
+                    new TRegionReplicaSet(
+                        new TConsensusGroupId(regionId.getType(), regionId.getId()), null));
+            break;
+          }
+        }
+      }
+    }
+    return partitionSlotsMap;
+  }
 }

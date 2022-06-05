@@ -58,12 +58,20 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-    return null;
+    patternTree.constructTree();
+    return new SchemaPartition(
+        localConfigNode.getSchemaPartition(patternTree),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
-    return null;
+    patternTree.constructTree();
+    return new SchemaPartition(
+        localConfigNode.getOrCreateSchemaPartition(patternTree),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   @Override
