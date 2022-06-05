@@ -31,11 +31,12 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -50,9 +51,6 @@ public class StandaloneScheduler implements IScheduler {
   private static final StorageEngineV2 STORAGE_ENGINE = StorageEngineV2.getInstance();
 
   private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
-
-  private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
-      FragmentInstanceManager.getInstance();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneScheduler.class);
 
@@ -123,7 +121,9 @@ public class StandaloneScheduler implements IScheduler {
             ConsensusGroupId groupId =
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());
-            // TODO: (SchemaValidate)
+            if (planNode instanceof InsertNode) {
+              SchemaValidator.validate((InsertNode) planNode);
+            }
             if (groupId instanceof DataRegionId) {
               STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
             } else {

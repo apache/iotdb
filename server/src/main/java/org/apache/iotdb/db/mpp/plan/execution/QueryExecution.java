@@ -387,7 +387,9 @@ public class QueryExecution implements IQueryExecution {
         }
       } else {
         // single device
-        tsstatus.setRedirectNode(redirectNodeList.get(0));
+        if (config.isClusterMode()) {
+          tsstatus.setRedirectNode(redirectNodeList.get(0));
+        }
       }
     }
 

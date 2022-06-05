@@ -25,9 +25,12 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +53,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
+    patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
     SchemaTree schemaTree = new SchemaTree();
     List<PartialPath> partialPathList = patternTree.splitToPathList();
@@ -76,7 +80,10 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
-    return null;
+    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
+    deviceToMeasurementMap.put(devicePath, Arrays.asList(measurements));
+    // todo implement auto create schema
+    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
   }
 
   @Override
@@ -95,4 +102,28 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public void invalidAllCache() {}
+
+  private Pair<List<String>, List<TSDataType>> checkMissingMeasurements(
+      SchemaTree schemaTree,
+      PartialPath devicePath,
+      String[] measurements,
+      TSDataType[] tsDataTypes) {
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    if (deviceSchemaInfo == null) {
+      return new Pair<>(Arrays.asList(measurements), Arrays.asList(tsDataTypes));
+    }
+
+    List<String> missingMeasurements = new ArrayList<>();
+    List<TSDataType> dataTypesOfMissingMeasurement = new ArrayList<>();
+    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    for (int i = 0; i < measurements.length; i++) {
+      if (schemaList.get(i) == null) {
+        missingMeasurements.add(measurements[i]);
+        dataTypesOfMissingMeasurement.add(tsDataTypes[i]);
+      }
+    }
+
+    return new Pair<>(missingMeasurements, dataTypesOfMissingMeasurement);
+  }
 }

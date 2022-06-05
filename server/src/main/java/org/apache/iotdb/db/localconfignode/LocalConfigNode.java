@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
@@ -98,7 +99,8 @@ public class LocalConfigNode {
       StorageGroupSchemaManager.getInstance();
   private final TemplateManager templateManager = TemplateManager.getInstance();
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private final LocalSchemaPartitionTable schemaPartitionTable = LocalSchemaPartitionTable.getInstance();
+  private final LocalSchemaPartitionTable schemaPartitionTable =
+      LocalSchemaPartitionTable.getInstance();
 
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
@@ -860,29 +862,34 @@ public class LocalConfigNode {
   }
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getOrCreateSchemaPartition(
-      PathPatternTree patternTree) throws MetadataException {
+      PathPatternTree patternTree) {
     List<String> devicePaths = patternTree.findAllDevicePaths();
     List<PartialPath> storageGroups = storageGroupSchemaManager.getAllStorageGroupPaths();
 
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
 
-    for (String devicePath : devicePaths) {
-      if (!devicePath.contains("*")) {
-        // Only check devicePaths that without "*"
-        for (PartialPath storageGroup : storageGroups) {
-          if (devicePath.startsWith(storageGroup + ".")) {
-            SchemaRegionId regionId =
-                getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(devicePath));
-            partitionSlotsMap
-                .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
-                .put(
-                    executor.getSeriesPartitionSlot(devicePath),
-                    new TRegionReplicaSet(
-                        new TConsensusGroupId(regionId.getType(), regionId.getId()), null));
-            break;
+    try {
+      for (String devicePath : devicePaths) {
+        if (!devicePath.contains("*")) {
+          // Only check devicePaths that without "*"
+          for (PartialPath storageGroup : storageGroups) {
+            if (devicePath.startsWith(storageGroup + ".")) {
+              SchemaRegionId regionId =
+                  getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(devicePath));
+              partitionSlotsMap
+                  .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
+                  .put(
+                      executor.getSeriesPartitionSlot(devicePath),
+                      new TRegionReplicaSet(
+                          new TConsensusGroupId(regionId.getType(), regionId.getId()), null));
+              break;
+            }
           }
         }
       }
+    } catch (MetadataException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
     return partitionSlotsMap;
   }
