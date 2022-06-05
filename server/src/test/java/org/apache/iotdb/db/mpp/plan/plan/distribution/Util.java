@@ -47,6 +47,8 @@ import java.util.Set;
 public class Util {
   public static Analysis constructAnalysis() throws IllegalPathException {
 
+    // TODO:(should be fixed if started as standalone mode)
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
     SeriesPartitionExecutor executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
