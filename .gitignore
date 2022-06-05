@@ -3,6 +3,7 @@
 **/logs/*
 **/lib/**
 **/data/**
+**/raft/**
 
 # Python runtime file
 **/__pycache__/**
@@ -40,7 +41,6 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.gz
 *.tar.gz
 *.tar
-*.tokens
 #src/test/resources/logback.xml
 
 ### CSV ###
@@ -52,7 +52,6 @@ grafana/.mvn/
 
 grafana/logs/
 *.log
-
 
 ### STS ###
 .apt_generated
@@ -114,3 +113,4 @@ node3/
 antlr/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+*.tokens
