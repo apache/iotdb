@@ -902,6 +902,9 @@ public class IoTDBDescriptor {
       // update all data seriesPath
       conf.updatePath();
       commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+      MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
     }
   }
 

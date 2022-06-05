@@ -147,10 +147,10 @@ public class MetricConfig {
     }
   }
 
-  /** the host of iotdb instance that is monitored */
-  private String instanceHost = "127.0.0.1";
+  /** the address of iotdb instance that is monitored */
+  private String rpcAddress = "0.0.0.0";
   /** the port of iotdb instance that is monitored */
-  private Integer instancePort = 6667;
+  private Integer rpcPort = 6667;
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
@@ -160,6 +160,11 @@ public class MetricConfig {
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
     ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
+  }
+
+  public void updateRpcInstance(String rpcAddress, int rpcPort) {
+    this.rpcAddress = rpcAddress;
+    this.rpcPort = rpcPort;
   }
 
   public Boolean getEnableMetric() {
@@ -226,20 +231,12 @@ public class MetricConfig {
     this.ioTDBReporterConfig = ioTDBReporterConfig;
   }
 
-  public String getInstanceHost() {
-    return instanceHost;
+  public String getRpcAddress() {
+    return rpcAddress;
   }
 
-  public void setInstanceHost(String instanceHost) {
-    this.instanceHost = instanceHost;
-  }
-
-  public Integer getInstancePort() {
-    return instancePort;
-  }
-
-  public void setInstancePort(Integer instancePort) {
-    this.instancePort = instancePort;
+  public Integer getRpcPort() {
+    return rpcPort;
   }
 
   @Override

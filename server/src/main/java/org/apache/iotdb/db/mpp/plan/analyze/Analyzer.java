@@ -77,6 +77,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -131,6 +132,14 @@ public class Analyzer {
     public Analysis visitNode(StatementNode node, MPPQueryContext context) {
       throw new UnsupportedOperationException(
           "Unsupported statement type: " + node.getClass().getName());
+    }
+
+    @Override
+    public Analysis visitExplain(ExplainStatement explainStatement, MPPQueryContext context) {
+      Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
+      analysis.setStatement(explainStatement);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
     }
 
     @Override
@@ -220,10 +229,10 @@ public class Analyzer {
                   .distinct()
                   .collect(Collectors.toList());
           for (String deviceName : deviceToMeasurementsMap.keySet()) {
-            List<String> measurementsUnderDeivce =
+            List<String> measurementsUnderDevice =
                 new ArrayList<>(deviceToMeasurementsMap.get(deviceName));
             List<Integer> indexes = new ArrayList<>();
-            for (String measurement : measurementsUnderDeivce) {
+            for (String measurement : measurementsUnderDevice) {
               indexes.add(
                   allMeasurements.indexOf(measurement) + 1); // add 1 to skip the device column
             }
@@ -240,8 +249,8 @@ public class Analyzer {
           Map<String, Set<Expression>> deviceToAggregationTransformExpressions = new HashMap<>();
           for (String deviceName : deviceToTransformExpressions.keySet()) {
             Set<Expression> transformExpressions = deviceToTransformExpressions.get(deviceName);
-            Set<Expression> aggregationExpressions = new HashSet<>();
-            Set<Expression> aggregationTransformExpressions = new HashSet<>();
+            Set<Expression> aggregationExpressions = new LinkedHashSet<>();
+            Set<Expression> aggregationTransformExpressions = new LinkedHashSet<>();
 
             boolean isHasRawDataInputAggregation = false;
             if (queryStatement.isAggregationQuery()) {

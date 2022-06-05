@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -36,6 +37,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -47,6 +49,7 @@ import java.util.List;
 /** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactionExecutor {
   private String device;
+  private PartialPath series;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private TsFileIOWriter fileWriter;
   private TsFileResource targetResource;
@@ -80,10 +83,27 @@ public class SingleSeriesCompactionExecutor {
       TsFileIOWriter fileWriter,
       TsFileResource targetResource) {
     this.device = series.getDevice();
+    this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = measurementSchema;
     this.chunkWriter = new ChunkWriterImpl(this.schema);
+    this.cachedChunk = null;
+    this.cachedChunkMetadata = null;
+    this.targetResource = targetResource;
+  }
+
+  public SingleSeriesCompactionExecutor(
+      PartialPath series,
+      LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
+      TsFileIOWriter fileWriter,
+      TsFileResource targetResource) {
+    this.device = series.getDevice();
+    this.series = series;
+    this.readerAndChunkMetadataList = readerAndChunkMetadataList;
+    this.fileWriter = fileWriter;
+    this.schema = null;
+    this.chunkWriter = null;
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
@@ -101,6 +121,9 @@ public class SingleSeriesCompactionExecutor {
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
+        if (this.chunkWriter == null) {
+          constructChunkWriterFromReadChunk(currentChunk);
+        }
         CompactionMetricsManager.recordReadInfo(
             currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
@@ -133,6 +156,17 @@ public class SingleSeriesCompactionExecutor {
     }
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
+  }
+
+  private void constructChunkWriterFromReadChunk(Chunk chunk) {
+    ChunkHeader chunkHeader = chunk.getHeader();
+    this.schema =
+        new MeasurementSchema(
+            series.getMeasurement(),
+            chunkHeader.getDataType(),
+            chunkHeader.getEncodingType(),
+            chunkHeader.getCompressionType());
+    this.chunkWriter = new ChunkWriterImpl(this.schema);
   }
 
   private long getChunkSize(Chunk chunk) {

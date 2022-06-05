@@ -126,12 +126,6 @@ public class ConfigNodeConf {
   /** Default number of DataRegion replicas */
   private int dataReplicationFactor = 3;
 
-  /** The maximum number of SchemaRegions of each StorageGroup */
-  private int maximumSchemaRegionCount = 4;
-
-  /** The maximum number of DataRegions of each StorageGroup */
-  private int maximumDataRegionCount = 20;
-
   /** Procedure Evict ttl */
   private int procedureCompletedEvictTTL = 800;
 
@@ -391,22 +385,6 @@ public class ConfigNodeConf {
 
   public void setDataReplicationFactor(int dataReplicationFactor) {
     this.dataReplicationFactor = dataReplicationFactor;
-  }
-
-  public int getMaximumSchemaRegionCount() {
-    return maximumSchemaRegionCount;
-  }
-
-  public void setMaximumSchemaRegionCount(int maximumSchemaRegionCount) {
-    this.maximumSchemaRegionCount = maximumSchemaRegionCount;
-  }
-
-  public int getMaximumDataRegionCount() {
-    return maximumDataRegionCount;
-  }
-
-  public void setMaximumDataRegionCount(int maximumDataRegionCount) {
-    this.maximumDataRegionCount = maximumDataRegionCount;
   }
 
   public int getProcedureCompletedEvictTTL() {

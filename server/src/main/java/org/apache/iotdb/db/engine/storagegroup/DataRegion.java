@@ -63,6 +63,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -876,6 +877,7 @@ public class DataRegion {
           "Fail to insert measurements {} caused by {}",
           insertRowNode.getFailedMeasurements(),
           insertRowNode.getFailedMessages());
+      checkFailedMeasurements(insertRowNode);
     }
   }
 
@@ -1005,7 +1007,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, TriggerExecutionException {
+      throws BatchProcessException, TriggerExecutionException, WriteProcessException {
 
     writeLock("insertTablet");
     try {
@@ -1097,6 +1099,7 @@ public class DataRegion {
           "Fail to insert measurements {} caused by {}",
           insertTabletNode.getFailedMeasurements(),
           insertTabletNode.getFailedMessages());
+      checkFailedMeasurements(insertTabletNode);
     }
   }
 
@@ -3472,7 +3475,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | BatchProcessException e) {
+      } catch (TriggerExecutionException | BatchProcessException | WriteProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -3482,6 +3485,14 @@ public class DataRegion {
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
     }
+  }
+
+  private void checkFailedMeasurements(InsertNode node) throws WriteProcessException {
+    List<Exception> exceptions = node.getFailedExceptions();
+    throw new WriteProcessException(
+        "failed to insert measurements "
+            + node.getFailedMeasurements()
+            + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : ""));
   }
 
   @TestOnly
@@ -3623,6 +3634,7 @@ public class DataRegion {
     return idTable;
   }
 
+  /** This method could only be used in multi-leader consensus */
   public IWALNode getWALNode() {
     if (!config
         .getDataRegionConsensusProtocolClass()

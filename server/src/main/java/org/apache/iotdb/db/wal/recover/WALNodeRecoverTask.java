@@ -23,8 +23,10 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -52,8 +54,6 @@ public class WALNodeRecoverTask implements Runnable {
   private final CountDownLatch allNodesRecoveredLatch;
   /** version id of first valid .wal file */
   private int firstValidVersionId = Integer.MAX_VALUE;
-  /** version id of last .wal file */
-  private int lastVersionId = -1;
 
   private Map<Integer, MemTableInfo> memTableId2Info;
   private Map<Integer, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
@@ -95,17 +95,52 @@ public class WALNodeRecoverTask implements Runnable {
           "Successfully recover WAL node in the directory {}, so delete these wal files.",
           logDirectory);
     } else {
+      // delete checkpoint info to avoid repeated recover
       File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
       for (File checkpointFile : checkpointFiles) {
         checkpointFile.delete();
       }
+      // recover version id and search index
+      long[] indexInfo = recoverLastSearchIndex();
+      int lastVersionId = (int) indexInfo[0];
+      long lastSearchIndex = indexInfo[1];
       WALManager.getInstance()
           .registerWALNode(
-              logDirectory.getName(), logDirectory.getAbsolutePath(), lastVersionId + 1);
+              logDirectory.getName(),
+              logDirectory.getAbsolutePath(),
+              lastVersionId + 1,
+              lastSearchIndex);
       logger.info(
           "Successfully recover WAL node in the directory {}, add this node to WALManger.",
           logDirectory);
     }
+  }
+
+  private long[] recoverLastSearchIndex() {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length == 0) {
+      return new long[] {0L, 0L};
+    }
+    // get last search index from last wal file
+    WALFileUtils.ascSortByVersionId(walFiles);
+    File lastWALFile = walFiles[walFiles.length - 1];
+    int lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
+    long lastSearchIndex = WALFileUtils.parseStartSearchIndex(lastWALFile.getName());
+    try (WALReader walReader = new WALReader(lastWALFile)) {
+      while (walReader.hasNext()) {
+        WALEntry walEntry = walReader.next();
+        if (walEntry.getType() == WALEntryType.INSERT_TABLET_NODE
+            || walEntry.getType() == WALEntryType.INSERT_ROW_NODE) {
+          InsertNode insertNode = (InsertNode) walEntry.getValue();
+          if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
+            lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
+          }
+        }
+      }
+    } catch (Exception e) {
+      logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);
+    }
+    return new long[] {lastVersionId, lastSearchIndex};
   }
 
   private void recoverInfoFromCheckpoints() {
@@ -159,10 +194,6 @@ public class WALNodeRecoverTask implements Runnable {
     }
     // asc sort by version id
     WALFileUtils.ascSortByVersionId(walFiles);
-    // update last version id
-    if (walFiles.length != 0) {
-      lastVersionId = WALFileUtils.parseVersionId(walFiles[walFiles.length - 1].getName());
-    }
     // read .wal files and redo logs
     for (File walFile : walFiles) {
       try (WALReader walReader = new WALReader(walFile)) {
