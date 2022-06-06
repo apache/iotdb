@@ -42,7 +42,7 @@ public class CopySetRegionAllocator implements IRegionAllocator {
 
   private int maxId = 0;
   private int intersectionSize = 0;
-  private List<TDataNodeLocation> weightList;
+  private final List<TDataNodeLocation> weightList;
 
   public CopySetRegionAllocator() {
     this.weightList = new ArrayList<>();
