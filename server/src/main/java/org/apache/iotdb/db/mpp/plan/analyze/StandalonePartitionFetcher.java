@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -25,14 +29,22 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +63,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   private final SeriesPartitionExecutor executor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
+
 
   private static final class StandalonePartitionFetcherHolder {
     private static final StandalonePartitionFetcher INSTANCE = new StandalonePartitionFetcher();
@@ -156,9 +169,40 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   private Map<String, String> getDeviceToStorageGroup(
       List<String> devicePaths, boolean isAutoCreate) throws MetadataException {
     Map<String, String> deviceToStorageGroup = new HashMap<>();
-    for (String device : devicePaths) {
-      deviceToStorageGroup.put(
-          device, localConfigNode.getBelongedStorageGroup(new PartialPath(device)).getFullPath());
+    // miss when devicePath contains *
+    for (String devicePath : devicePaths) {
+      if (devicePath.contains("*")) {
+        return deviceToStorageGroup;
+      }
+    }
+    try {
+      deviceToStorageGroup = new HashMap<>();
+      List<PartialPath> allStorageGroups = localConfigNode.getAllStorageGroupPaths();
+      for (String devicePath : devicePaths) {
+        for (PartialPath storageGroup : allStorageGroups) {
+          if (devicePath.startsWith(storageGroup.getFullPath() + ".")) {
+            deviceToStorageGroup.put(devicePath, storageGroup.getFullPath());
+          }
+        }
+      }
+      if (isAutoCreate) {
+        // try to auto create storage group
+        Set<PartialPath> storageGroupNamesNeedCreated = new HashSet<>();
+        for (String devicePath : devicePaths) {
+          if (!deviceToStorageGroup.containsKey(devicePath)) {
+            PartialPath storageGroupNameNeedCreated =
+                MetaUtils.getStorageGroupPathByLevel(
+                    new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
+            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated);
+          }
+        }
+        for (PartialPath storageGroupName : storageGroupNamesNeedCreated) {
+          localConfigNode.setStorageGroup(storageGroupName);
+        }
+      }
+    } catch (MetadataException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
     return deviceToStorageGroup;
   }

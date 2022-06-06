@@ -901,27 +901,22 @@ public class LocalConfigNode {
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getOrCreateSchemaPartition(
       PathPatternTree patternTree) {
     List<String> devicePaths = patternTree.findAllDevicePaths();
-    List<PartialPath> storageGroups = storageGroupSchemaManager.getAllStorageGroupPaths();
-
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
 
     try {
       for (String devicePath : devicePaths) {
+        // Only check devicePaths that without "*"
         if (!devicePath.contains("*")) {
-          // Only check devicePaths that without "*"
-          for (PartialPath storageGroup : storageGroups) {
-            if (devicePath.startsWith(storageGroup + ".")) {
-              SchemaRegionId regionId =
-                  getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(devicePath));
-              partitionSlotsMap
-                  .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
-                  .put(
-                      executor.getSeriesPartitionSlot(devicePath),
-                      new TRegionReplicaSet(
-                          new TConsensusGroupId(regionId.getType(), regionId.getId()), null));
-              break;
-            }
-          }
+          PartialPath device = new PartialPath(devicePath);
+          PartialPath storageGroup = ensureStorageGroup(device);
+          SchemaRegionId regionId =
+              getBelongedSchemaRegionIdWithAutoCreate(device);
+          partitionSlotsMap
+              .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
+              .put(
+                  executor.getSeriesPartitionSlot(devicePath),
+                  new TRegionReplicaSet(
+                      new TConsensusGroupId(regionId.getType(), regionId.getId()), null));
         }
       }
     } catch (MetadataException e) {

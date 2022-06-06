@@ -289,6 +289,9 @@ public class StorageEngineV2 implements IService {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();
     Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
+    if (sgDirs == null) {
+      return localDataRegionInfo;
+    }
     for (File sgDir : sgDirs) {
       if (!sgDir.isDirectory()) {
         continue;
