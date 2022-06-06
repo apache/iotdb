@@ -43,7 +43,8 @@ public class IoTDBShutdownHook extends Thread {
     }
 
     // == flush data to Tsfile and remove WAL log files
-    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()
+        && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       StorageEngineV2.getInstance().syncCloseAllProcessor();
     } else {
       StorageEngine.getInstance().syncCloseAllProcessor();
