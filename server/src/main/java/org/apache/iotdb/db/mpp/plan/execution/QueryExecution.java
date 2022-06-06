@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -371,8 +372,12 @@ public class QueryExecution implements IQueryExecution {
     // collect redirect info to client for writing
     if (analysis.getStatement() instanceof InsertBaseStatement) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
-      List<TEndPoint> redirectNodeList =
-          insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
+      List<TEndPoint> redirectNodeList;
+      if (config.isClusterMode()) {
+        redirectNodeList = insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
+      } else {
+        redirectNodeList = Collections.EMPTY_LIST;
+      }
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {
         // multiple devices

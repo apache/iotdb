@@ -155,10 +155,8 @@ public class StandaloneScheduler implements IScheduler {
   public void stop() {
     // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
     // practice ?
-    dispatcher.abort();
     stateTracker.abort();
     // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
-    queryTerminator.terminate();
   }
 
   @Override

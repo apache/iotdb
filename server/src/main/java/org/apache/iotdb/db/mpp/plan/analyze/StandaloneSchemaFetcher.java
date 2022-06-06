@@ -47,10 +47,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -98,10 +96,6 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
-    //    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
-    //    deviceToMeasurementMap.put(devicePath, Arrays.asList(measurements));
-    //    // todo implement auto create schema
-    //    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
     SchemaTree schemaTree = new SchemaTree();
 
     PathPatternTree patternTree = new PathPatternTree(devicePath, measurements);
@@ -134,16 +128,52 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePath,
-      List<String[]> measurements,
-      List<TSDataType[]> tsDataTypes,
-      List<Boolean> aligned) {
-    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
-    for (int i = 0; i < devicePath.size(); i++) {
-      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<Boolean> isAlignedList) {
+    //    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
+    //    for (int i = 0; i < devicePath.size(); i++) {
+    //      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
+    //    }
+    //    // todo implement auto create schema
+    //    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
+
+    SchemaTree schemaTree = new SchemaTree();
+    PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < devicePathList.size(); i++) {
+      patternTree.appendPaths(devicePathList.get(i), Arrays.asList(measurementsList.get(i)));
     }
-    // todo implement auto create schema
-    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
+
+    if (patternTree.isEmpty()) {
+      return schemaTree;
+    }
+
+    SchemaTree fetchedSchemaTree;
+
+    if (!config.isAutoCreateSchemaEnabled()) {
+      fetchedSchemaTree =
+          fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
+      schemaTree.mergeSchemaTree(fetchedSchemaTree);
+      return schemaTree;
+    }
+
+    fetchedSchemaTree =
+        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
+    schemaTree.mergeSchemaTree(fetchedSchemaTree);
+
+    SchemaTree missingSchemaTree;
+    for (int i = 0; i < devicePathList.size(); i++) {
+      missingSchemaTree =
+          checkAndAutoCreateMissingMeasurements(
+              schemaTree,
+              devicePathList.get(i),
+              measurementsList.get(i),
+              tsDataTypesList.get(i),
+              isAlignedList.get(i));
+      schemaTree.mergeSchemaTree(missingSchemaTree);
+    }
+    return schemaTree;
   }
 
   @Override
