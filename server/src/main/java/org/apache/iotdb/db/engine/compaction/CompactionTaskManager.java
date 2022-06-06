@@ -116,7 +116,13 @@ public class CompactionTaskManager implements IService {
       // if there is thread space available in the taskExecutionPool, put the compaction task thread
       // into the taskExecutionPool and perform the compaction.
       compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
-          this::submitTaskFromTaskQueue,
+          () -> {
+            try {
+              submitTaskFromTaskQueue();
+            } catch (Throwable t) {
+              logger.error("Schedule {} failed", ThreadName.COMPACTION_SERVICE.getName(), t);
+            }
+          },
           TASK_SUBMIT_INTERVAL,
           TASK_SUBMIT_INTERVAL,
           TimeUnit.MILLISECONDS);
