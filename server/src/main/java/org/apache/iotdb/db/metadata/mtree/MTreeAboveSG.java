@@ -445,7 +445,7 @@ public class MTreeAboveSG {
    *
    * @param path a full path or a prefix path
    */
-  public void checkStorageGroupAlreadySet(PartialPath path) throws MetadataException {
+  public void checkStorageGroupAlreadySet(PartialPath path) throws StorageGroupAlreadySetException {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
