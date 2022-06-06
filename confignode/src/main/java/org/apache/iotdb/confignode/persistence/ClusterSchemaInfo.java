@@ -204,9 +204,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .getStorageGroupSchema()
             .setTTL(req.getTTL());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        result.setMessage("StorageGroup does not exist");
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setMessage("StorageGroup does not exist");
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
