@@ -74,7 +74,6 @@ public class IoTDBTtlIT {
         statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
-        assertEquals("StorageGroup does not exist", e.getMessage());
       }
 
       long now = System.currentTimeMillis();
