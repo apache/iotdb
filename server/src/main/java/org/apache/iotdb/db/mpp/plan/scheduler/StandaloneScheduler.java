@@ -132,6 +132,7 @@ public class StandaloneScheduler implements IScheduler {
           }
           stateMachine.transitionToFinished();
         } catch (Exception e) {
+          LOGGER.error("Execute write operation error ", e);
           stateMachine.transitionToFailed(e);
         }
         return;

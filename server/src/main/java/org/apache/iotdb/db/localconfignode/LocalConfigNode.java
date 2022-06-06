@@ -909,8 +909,7 @@ public class LocalConfigNode {
         if (!devicePath.contains("*")) {
           PartialPath device = new PartialPath(devicePath);
           PartialPath storageGroup = ensureStorageGroup(device);
-          SchemaRegionId regionId =
-              getBelongedSchemaRegionIdWithAutoCreate(device);
+          SchemaRegionId regionId = getBelongedSchemaRegionIdWithAutoCreate(device);
           partitionSlotsMap
               .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
               .put(
