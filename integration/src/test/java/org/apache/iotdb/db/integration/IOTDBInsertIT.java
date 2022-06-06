@@ -79,6 +79,7 @@ public class IOTDBInsertIT {
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.f1 WITH DATATYPE=FLOAT, ENCODING=PLAIN");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.d1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.hardware WITH DATATYPE=TEXT, ENCODING=PLAIN");
   }
 
   private static void insertData() throws SQLException {
@@ -155,6 +156,32 @@ public class IOTDBInsertIT {
   public void testInsertWithException5() throws SQLException {
     Statement st1 = connection.createStatement();
     st1.execute("insert into root.t1.wf01.wt01(status, temperature) values(true, 20.1, false)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithException7() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(2,1)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithException8() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(2,false)");
+  }
+
+  @Test
+  public void testTEXTNormalInsert() throws SQLException {
+    Statement st0 = connection.createStatement();
+    st0.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(4,'a')");
+    st0.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(5,\"b\")");
+    st0.close();
+    Statement st1 = connection.createStatement();
+    ResultSet rs1 = st1.executeQuery("select count(hardware) from root.t1.wf01.wt01");
+    rs1.next();
+    long countStatus = rs1.getLong(1);
+    Assert.assertTrue(countStatus == 2);
+    st1.close();
   }
 
   @Test

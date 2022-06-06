@@ -69,15 +69,12 @@ public class CommonUtils {
           return d;
         case TEXT:
           if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(value);
-            } else {
-              return new Binary(value.substring(1, value.length() - 1));
-            }
+                  || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+            return new Binary(value.substring(1, value.length() - 1));
+          } else {
+            throw new QueryProcessException("The data type of TEXT should be a sequence of bytes or characters, enclosed within either single quote (') or double quote (\") characters.");
           }
 
-          return new Binary(value);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
