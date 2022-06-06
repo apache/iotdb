@@ -100,7 +100,11 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    return getDataPartition(sgNameToQueryParamsMap);
+    try {
+      return localConfigNode.getOrCreateDataPartition(sgNameToQueryParamsMap);
+    } catch (MetadataException | DataRegionException e) {
+      throw new StatementAnalyzeException("An error occurred when executing getDataPartition()");
+    }
   }
 
   @Override
@@ -109,8 +113,8 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
     try {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
           splitDataPartitionQueryParam(dataPartitionQueryParams, true);
-      return getDataPartition(splitDataPartitionQueryParams);
-    } catch (Exception e) {
+      return getOrCreateDataPartition(splitDataPartitionQueryParams);
+    } catch (MetadataException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }

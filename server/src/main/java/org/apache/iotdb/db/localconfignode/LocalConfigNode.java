@@ -804,11 +804,36 @@ public class LocalConfigNode {
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    if (dataRegionId == null) {
+      throw new DataRegionException(
+          String.format(
+              "Storage group %s has not been prepared well. Data region for %s has not been allocated or is not initialized.",
+              storageGroup, path));
+    }
+    DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
+    if (dataRegion == null) {
+      throw new DataRegionException(
+          String.format(
+              "Storage group %s has not been prepared well. Data region for %s is not initialized.",
+              storageGroup, path));
+    }
+    return dataRegionId;
+  }
+
+  // This interface involves storage group and data region auto creation
+  public DataRegionId getBelongedDataRegionRegionIdWithAutoCreate(PartialPath path)
+      throws MetadataException, DataRegionException {
+    PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
+    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    if (dataRegionId == null) {
+      dataPartitionTable.setStorageGroup(storageGroup);
+      dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
     if (dataRegion == null) {
       storageEngine.createDataRegion(dataRegionId, storageGroup.getFullPath(), Long.MAX_VALUE);
     }
-    return dataPartitionTable.getDataRegionId(storageGroup, path);
+    return dataRegionId;
   }
 
   public List<DataRegionId> getDataRegionIdsByStorageGroup(PartialPath storageGroup) {
@@ -903,7 +928,6 @@ public class LocalConfigNode {
   // endregion
 
   // region Interfaces for StandalonePartitionFetcher
-
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
       throws MetadataException, DataRegionException {
@@ -920,6 +944,46 @@ public class LocalConfigNode {
         // for each device
         String deviceId = dataPartitionQueryParam.getDevicePath();
         DataRegionId dataRegionId = getBelongedDataRegionRegionId(new PartialPath(deviceId));
+        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+            new HashMap<>();
+        for (TTimePartitionSlot timePartitionSlot :
+            dataPartitionQueryParam.getTimePartitionSlotList()) {
+          // for each time partition
+          timePartitionToRegionsMap.put(
+              timePartitionSlot,
+              Collections.singletonList(
+                  new TRegionReplicaSet(
+                      new TConsensusGroupId(dataRegionId.getType(), dataRegionId.getId()),
+                      Collections.EMPTY_LIST)));
+        }
+        deviceToRegionsMap.put(
+            executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
+      }
+      dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
+    }
+    return new DataPartition(
+        dataPartitionMap,
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+  }
+
+  public DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
+      throws MetadataException, DataRegionException {
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = new HashMap<>();
+    for (Map.Entry<String, List<DataPartitionQueryParam>> sgEntry :
+        sgNameToQueryParamsMap.entrySet()) {
+      // for each sg
+      String storageGroupName = sgEntry.getKey();
+      List<DataPartitionQueryParam> dataPartitionQueryParams = sgEntry.getValue();
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          deviceToRegionsMap = new HashMap<>();
+      for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+        // for each device
+        String deviceId = dataPartitionQueryParam.getDevicePath();
+        DataRegionId dataRegionId =
+            getBelongedDataRegionRegionIdWithAutoCreate(new PartialPath(deviceId));
         Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
             new HashMap<>();
         for (TTimePartitionSlot timePartitionSlot :

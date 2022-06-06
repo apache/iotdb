@@ -85,6 +85,9 @@ public class LocalDataPartitionTable {
   }
 
   public DataRegionId getDataRegionId(PartialPath storageGroup, PartialPath path) {
+    if (!table.containsKey(storageGroup)) {
+      return null;
+    }
     return calculateDataRegionId(storageGroup, path);
   }
 
@@ -118,9 +121,6 @@ public class LocalDataPartitionTable {
   // This method may be extended to implement multi dataRegion for one storageGroup
   // todo keep consistent with the partition method of config node in new cluster
   private DataRegionId calculateDataRegionId(PartialPath storageGroup, PartialPath path) {
-    if (!table.containsKey(storageGroup)) {
-      setStorageGroup(storageGroup);
-    }
     return table.get(storageGroup).iterator().next();
   }
 }
