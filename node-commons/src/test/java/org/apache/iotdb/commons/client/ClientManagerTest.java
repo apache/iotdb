@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
-import org.apache.iotdb.commons.client.mock.MockInternalRPCServiceProcessor;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -36,6 +36,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 
+import static org.mockito.Mockito.mock;
+
 public class ClientManagerTest {
 
   private final TEndPoint endPoint = new TEndPoint("localhost", 9003);
@@ -45,7 +47,7 @@ public class ClientManagerTest {
   @Before
   public void setUp() throws StartupException {
     service = new MockInternalRPCService(endPoint);
-    service.initSyncedServiceImpl(new MockInternalRPCServiceProcessor());
+    service.initSyncedServiceImpl(mock(InternalService.Iface.class));
     service.start();
   }
 

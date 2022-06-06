@@ -28,10 +28,14 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 
+import org.apache.thrift.server.TServerEventHandler;
+
+import static org.mockito.Mockito.mock;
+
 public class MockInternalRPCService extends ThriftService implements MockInternalRPCServiceMBean {
 
   private final TEndPoint thisNode;
-  private MockInternalRPCServiceProcessor internalServiceImpl;
+  private InternalService.Iface mockedProcessor;
 
   public MockInternalRPCService(TEndPoint thisNode) {
     this.thisNode = thisNode;
@@ -43,17 +47,17 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
   }
 
   @Override
-  public void initSyncedServiceImpl(Object internalServiceImpl) {
-    this.internalServiceImpl = (MockInternalRPCServiceProcessor) internalServiceImpl;
+  public void initSyncedServiceImpl(Object mockedProcessor) {
+    this.mockedProcessor = (InternalService.Iface) mockedProcessor;
     super.mbeanName =
         String.format(
             "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
-    super.initSyncedServiceImpl(this.internalServiceImpl);
+    super.initSyncedServiceImpl(this.mockedProcessor);
   }
 
   @Override
   public void initTProcessor() {
-    processor = new InternalService.Processor<>(internalServiceImpl);
+    processor = new InternalService.Processor<>(mockedProcessor);
   }
 
   @Override
@@ -68,7 +72,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
               getBindPort(),
               65535,
               60,
-              new MockInternalServiceThriftHandler(),
+              mock(TServerEventHandler.class),
               false);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
