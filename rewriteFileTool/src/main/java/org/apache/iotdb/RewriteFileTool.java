@@ -30,6 +30,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -43,6 +44,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -74,22 +76,23 @@ public class RewriteFileTool {
 
   private static final String HostIP = "localhost";
   private static final String rpcPort = "6667";
-  private static final String user = "root";
-  private static final String password = "root";
+  private static String user = "root";
+  private static String password = "root";
 
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private static final long MAX_TABLET_SIZE = 1024 * 1024;
 
-  private static PrintWriter pw;
+  private static PrintWriter writer;
 
   /**
    * -b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path
-   * of output log]
+   * of output log] -u=[username, default="root"] -pw=[password, default="root"]
    */
   public static void main(String[] args) throws IOException {
     if (!checkArgs(args)) {
       System.exit(1);
     }
-    pw = new PrintWriter(new FileWriter(outputLogFilePath));
+    writer = new PrintWriter(new FileWriter(outputLogFilePath));
     try {
       if (validationFilePath != null) {
         readValidationFile(validationFilePath);
@@ -101,7 +104,7 @@ public class RewriteFileTool {
       printBoth(e.getMessage());
       e.printStackTrace();
     } finally {
-      pw.close();
+      writer.close();
     }
   }
 
@@ -140,9 +143,7 @@ public class RewriteFileTool {
   }
 
   public static void unloadAndReWriteWrongTsFile(String filename, Session session) {
-    printBoth(String.format("Start moving %s to backup dir.", filename));
     try {
-      session.executeNonQueryStatement(String.format("move '%s' '%s'", filename, backUpDirPath));
       String[] dirs = filename.split("/");
       String targetFilePath = backUpDirPath + File.separator + dirs[dirs.length - 1];
       File targetFile = new File(targetFilePath);
@@ -151,9 +152,15 @@ public class RewriteFileTool {
       if (modsFile.exists()) {
         fsFactory.moveFile(modsFile, new File(targetFilePath + ModificationFile.FILE_SUFFIX));
       }
+      if (targetFile.exists()) {
+        printBoth(String.format("%s is already in the backup dir. Don't need to move.", filename));
+      } else {
+        printBoth(String.format("Start moving %s to backup dir.", filename));
+        session.executeNonQueryStatement(String.format("move '%s' '%s'", filename, backUpDirPath));
+      }
       printBoth(String.format("Finish unloading %s.", filename));
 
-      // rewriteFile
+      // try to rewriteFile
       printBoth(String.format("Start rewriting %s to iotdb.", filename));
       if (targetFile.exists()) {
         rewriteWrongTsFile(targetFilePath, session);
@@ -230,17 +237,46 @@ public class RewriteFileTool {
               } else {
                 maxRow = batchData.length();
               }
+
               Tablet tablet =
                   new Tablet(curDevice, Collections.singletonList(measurementSchema), maxRow);
-              int rowIndex = 0;
+              long curTabletSize = 0;
               while (batchData.hasCurrent()) {
-                tablet.addTimestamp(rowIndex, batchData.currentTime());
-                tablet.addValue(measurement, rowIndex, batchData.currentValue());
+                tablet.addTimestamp(tablet.rowSize, batchData.currentTime());
+                tablet.addValue(measurement, tablet.rowSize, batchData.currentValue());
+                tablet.rowSize++;
+                // calculate curTabletSize based on timestamp and value
+                curTabletSize += 8;
+                switch (header.getDataType()) {
+                  case BOOLEAN:
+                    curTabletSize += 1;
+                    break;
+                  case INT32:
+                  case FLOAT:
+                    curTabletSize += 4;
+                    break;
+                  case INT64:
+                  case DOUBLE:
+                    curTabletSize += 8;
+                    break;
+                  case TEXT:
+                    curTabletSize += 4 + ((Binary) batchData.currentValue()).getLength();
+                    break;
+                  default:
+                    throw new UnSupportedDataTypeException(
+                        String.format("Data type %s is not supported.", header.getDataType()));
+                }
+                // if curTabletSize is over the threshold
+                if (curTabletSize >= MAX_TABLET_SIZE) {
+                  session.insertTablet(tablet);
+                  curTabletSize = 0;
+                  tablet.reset();
+                }
                 batchData.next();
-                rowIndex++;
               }
-              tablet.rowSize = rowIndex;
-              session.insertTablet(tablet);
+              if (tablet.rowSize > 0) {
+                session.insertTablet(tablet);
+              }
               dataSize -= pageHeader.getSerializedPageSize();
             }
             break;
@@ -269,7 +305,7 @@ public class RewriteFileTool {
 
   private static boolean checkArgs(String[] args) {
     String paramConfig =
-        "-b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path of output log]";
+        "-b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path of output log] -u=[username, default=\"root\"] -pw=[password, default=\"root\"]";
     for (String arg : args) {
       if (arg.startsWith("-b")) {
         backUpDirPath = arg.substring(arg.indexOf('=') + 1);
@@ -279,6 +315,10 @@ public class RewriteFileTool {
         tsfileListPath = arg.substring(arg.indexOf('=') + 1);
       } else if (arg.startsWith("-o")) {
         outputLogFilePath = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-u")) {
+        user = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-pw")) {
+        password = arg.substring(arg.indexOf('=') + 1);
       } else {
         System.out.println("Param incorrect!" + paramConfig);
         return false;
@@ -295,7 +335,7 @@ public class RewriteFileTool {
 
   private static void printBoth(String msg) {
     System.out.println(msg);
-    pw.println(msg);
+    writer.println(msg);
   }
 
   private static List<TimeRange> getOldSortedDeleteIntervals(
