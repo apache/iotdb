@@ -61,12 +61,15 @@ public class GroupByLevelController {
    */
   private final Map<String, String> aliasToColumnMap;
 
-  public GroupByLevelController(int[] levels) {
+  private final TypeProvider typeProvider;
+
+  public GroupByLevelController(int[] levels, TypeProvider typeProvider) {
     this.levels = levels;
     this.groupedPathMap = new LinkedHashMap<>();
     this.rawPathToGroupedPathMap = new HashMap<>();
     this.columnToAliasMap = new HashMap<>();
     this.aliasToColumnMap = new HashMap<>();
+    this.typeProvider = typeProvider;
   }
 
   public void control(Expression expression, String alias) {
@@ -77,6 +80,7 @@ public class GroupByLevelController {
 
     PartialPath rawPath = ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
     PartialPath groupedPath = generatePartialPathByLevel(rawPath.getNodes(), levels);
+    typeProvider.setType(groupedPath.getFullPath(), rawPath.getSeriesType());
 
     Expression rawPathExpression = new TimeSeriesOperand(rawPath);
     Expression groupedPathExpression = new TimeSeriesOperand(groupedPath);
