@@ -49,11 +49,13 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -225,10 +227,11 @@ public class StorageEngineV2 implements IService {
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.DATA_REGION_RECOVER_SERVICE.getName());
 
-    /*    List<IStorageGroupMNode> sgNodes = LocalSchemaProcessor.getInstance().getAllStorageGroupNodes();
+    List<IStorageGroupMNode> sgNodes = LocalSchemaProcessor.getInstance().getAllStorageGroupNodes();
     // init wal recover manager
     WALRecoverManager.getInstance()
-        .setAllDataRegionScannedLatch(new CountDownLatch(sgNodes.size() * config.getDataRegionNum()));*/
+        .setAllDataRegionScannedLatch(
+            new CountDownLatch(sgNodes.size() * config.getDataRegionNum()));
 
     List<Future<Void>> futures = new LinkedList<>();
     asyncRecover(recoveryThreadPool, futures);
@@ -577,7 +580,7 @@ public class StorageEngineV2 implements IService {
   public TSStatus operatorFlush(TFlushReq req) throws StorageGroupNotSetException {
     if (req.storageGroups == null) {
       StorageEngineV2.getInstance().syncCloseAllProcessor();
-      // WALManager.getInstance().deleteOutdatedWALFiles();
+      WALManager.getInstance().deleteOutdatedWALFiles();
     } else {
       for (String storageGroup : req.storageGroups) {
         if (req.isSeq == null) {

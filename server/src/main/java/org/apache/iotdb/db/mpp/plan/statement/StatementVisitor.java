@@ -244,6 +244,7 @@ public abstract class StatementVisitor<R, C> {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   public R visitExplain(ExplainStatement explainStatement, C context) {
     return visitStatement(explainStatement, context);
   }
@@ -251,11 +252,13 @@ public abstract class StatementVisitor<R, C> {
 =======
 <<<<<<< HEAD
 >>>>>>> 5f3f23d84e (add flush)
+=======
+>>>>>>> ecd8c35f58 (add flush)
   public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {
     return visitStatement(deleteDataStatement, context);
-=======
+  }
+
   public R visitFlush(FlushStatement flushStatement, C context) {
     return visitStatement(flushStatement, context);
->>>>>>> b2c63d030d (add flush)
   }
 }
