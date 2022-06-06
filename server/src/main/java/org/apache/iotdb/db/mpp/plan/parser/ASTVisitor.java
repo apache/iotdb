@@ -99,11 +99,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
-<<<<<<< HEAD
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
-=======
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
->>>>>>> 5f3f23d84e (add flush)
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;

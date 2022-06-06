@@ -55,11 +55,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
-<<<<<<< HEAD
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
-=======
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
->>>>>>> 5f3f23d84e (add flush)
 
 /**
  * This class provides a visitor of {@link org.apache.iotdb.db.mpp.plan.statement.StatementNode},
@@ -243,17 +240,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showChildNodesStatement, context);
   }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   public R visitExplain(ExplainStatement explainStatement, C context) {
     return visitStatement(explainStatement, context);
   }
 
-=======
-<<<<<<< HEAD
->>>>>>> 5f3f23d84e (add flush)
-=======
->>>>>>> ecd8c35f58 (add flush)
   public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {
     return visitStatement(deleteDataStatement, context);
   }
