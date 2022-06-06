@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 
 public class IsNullTransformer extends UnaryTransformer {
-  boolean isNot;
+  private final boolean isNot;
 
   public IsNullTransformer(LayerPointReader layerPointReader, boolean isNot) {
     super(layerPointReader);
