@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.ArrayList;
@@ -49,10 +50,20 @@ public class LocalDataPartitionTable {
     return LocalDataPartitionTableHolder.INSTANCE;
   }
 
-  public synchronized void init(Map<PartialPath, List<DataRegionId>> recoveredLocalDataRegionInfo) {
+  public synchronized void init(Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo)
+      throws IllegalPathException {
     table = new ConcurrentHashMap<>();
     dataRegionIdGenerator = new AtomicInteger(0);
-    // TODO:(recovery)
+    for (String storageGroup : recoveredLocalDataRegionInfo.keySet()) {
+      List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
+      table.put(new PartialPath(storageGroup), dataRegionIdList);
+      for (DataRegionId dataRegionId : recoveredLocalDataRegionInfo.get(storageGroup)) {
+        dataRegionIdList.add(dataRegionId);
+        if (dataRegionId.getId() >= dataRegionIdGenerator.get()) {
+          dataRegionIdGenerator.set(dataRegionId.getId() + 1);
+        }
+      }
+    }
   }
 
   public synchronized void clear() {

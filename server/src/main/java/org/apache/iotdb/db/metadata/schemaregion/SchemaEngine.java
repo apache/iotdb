@@ -30,7 +30,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
@@ -60,21 +59,19 @@ public class SchemaEngine {
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
 
-  private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
-      FragmentInstanceManager.getInstance();
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   public void write(SchemaRegionId schemaRegionId, PlanNode planNode) {
     planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
   }
 
+  // TODO:to be implemented
   public DataSet read(SchemaRegionId schemaRegionId, FragmentInstance fragmentInstance) {
     logger.info(
         "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
         schemaRegionId,
         fragmentInstance.getId());
-    return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(
-        fragmentInstance, schemaRegionMap.get(schemaRegionId));
+    return null;
   }
 
   private static class SchemaEngineManagerHolder {

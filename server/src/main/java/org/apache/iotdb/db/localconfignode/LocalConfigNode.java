@@ -153,7 +153,6 @@ public class LocalConfigNode {
 
       Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo = schemaEngine.init();
       schemaPartitionTable.init(recoveredLocalSchemaRegionInfo);
-      dataPartitionTable.init(null);
 
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
@@ -164,6 +163,13 @@ public class LocalConfigNode {
             config.getSyncMlogPeriodInMs(),
             config.getSyncMlogPeriodInMs(),
             TimeUnit.MILLISECONDS);
+      }
+
+      // TODO: the judgment should be removed after old standalone removed
+      if (config.isMppMode() && !config.isClusterMode()) {
+        Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo =
+            storageEngine.getLocalDataRegionInfo();
+        dataPartitionTable.init(recoveredLocalDataRegionInfo);
       }
     } catch (MetadataException | IOException e) {
       logger.error(

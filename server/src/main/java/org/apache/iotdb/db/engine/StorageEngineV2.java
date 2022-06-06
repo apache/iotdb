@@ -255,23 +255,25 @@ public class StorageEngineV2 implements IService {
 
   private void asyncRecover(ExecutorService pool, List<Future<Void>> futures) {
 
-    Map<String, List<String>> localDataRegionInfo = getLocalDataRegionInfo();
+    Map<String, List<DataRegionId>> localDataRegionInfo = getLocalDataRegionInfo();
+    localDataRegionInfo.values().forEach(list -> recoverDataRegionNum += list.size());
     readyDataRegionNum = new AtomicInteger(0);
     // init wal recover manager
     WALRecoverManager.getInstance()
         .setAllDataRegionScannedLatch(new CountDownLatch(recoverDataRegionNum));
-    for (Map.Entry<String, List<String>> entry : localDataRegionInfo.entrySet()) {
+    for (Map.Entry<String, List<DataRegionId>> entry : localDataRegionInfo.entrySet()) {
       String sgName = entry.getKey();
-      for (String dataRegionId : entry.getValue()) {
+      for (DataRegionId dataRegionId : entry.getValue()) {
         Callable<Void> recoverDataRegionTask =
             () -> {
               DataRegion dataRegion = null;
               try {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
               } catch (DataRegionException e) {
-                logger.error("Failed to recover data region {}[{}]", sgName, dataRegionId, e);
+                logger.error(
+                    "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
               }
-              dataRegionMap.put(new DataRegionId(Integer.parseInt(dataRegionId)), dataRegion);
+              dataRegionMap.put(dataRegionId, dataRegion);
               logger.info(
                   "Data regions have been recovered {}/{}",
                   readyDataRegionNum.incrementAndGet(),
@@ -283,22 +285,21 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  private Map<String, List<String>> getLocalDataRegionInfo() {
+  public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();
-    Map<String, List<String>> localDataRegionInfo = new HashMap<>();
+    Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
     for (File sgDir : sgDirs) {
       if (!sgDir.isDirectory()) {
         continue;
       }
       String sgName = sgDir.getName();
-      List<String> dataRegionIdList = new ArrayList<>();
+      List<DataRegionId> dataRegionIdList = new ArrayList<>();
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
           continue;
         }
-        dataRegionIdList.add(dataRegionDir.getName());
-        recoverDataRegionNum++;
+        dataRegionIdList.add(new DataRegionId(Integer.parseInt(dataRegionDir.getName())));
       }
       localDataRegionInfo.put(sgName, dataRegionIdList);
     }
@@ -472,7 +473,8 @@ public class StorageEngineV2 implements IService {
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
   public DataRegion buildNewDataRegion(
-      String logicalStorageGroupName, String dataRegionId, long ttl) throws DataRegionException {
+      String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
+      throws DataRegionException {
     DataRegion dataRegion;
     logger.info(
         "construct a data region instance, the storage group is {}, Thread is {}",
@@ -481,7 +483,7 @@ public class StorageEngineV2 implements IService {
     dataRegion =
         new DataRegion(
             systemDir + File.separator + logicalStorageGroupName,
-            dataRegionId,
+            String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
     dataRegion.setDataTTL(ttl);
@@ -596,7 +598,7 @@ public class StorageEngineV2 implements IService {
             regionId,
             x -> {
               try {
-                return buildNewDataRegion(sg, String.valueOf(x.getId()), ttl);
+                return buildNewDataRegion(sg, x, ttl);
               } catch (DataRegionException e) {
                 exceptionAtomicReference.set(e);
               }

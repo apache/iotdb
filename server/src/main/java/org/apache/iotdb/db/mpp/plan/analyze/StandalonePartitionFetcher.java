@@ -33,6 +33,9 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +44,7 @@ import java.util.Map;
 public class StandalonePartitionFetcher implements IPartitionFetcher {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final Logger logger = LoggerFactory.getLogger(StandalonePartitionFetcher.class);
   private final LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
@@ -88,6 +92,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
     try {
       return localConfigNode.getDataPartition(sgNameToQueryParamsMap);
     } catch (MetadataException | DataRegionException e) {
+      logger.error("Meet error when get DataPartition", e);
       throw new StatementAnalyzeException("An error occurred when executing getDataPartition()");
     }
   }

@@ -147,6 +147,7 @@ public class FragmentInstanceManager {
                 return createFragmentInstanceExecution(
                     scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
+                logger.error("Execute error caused by ", t);
                 stateMachine.failed(t);
                 return null;
               }
