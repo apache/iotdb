@@ -365,7 +365,9 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       LOGGER.error(e.getMessage());
     }
     PermissionInfoResp dataSet = (PermissionInfoResp) configManager.queryPermission(plan);
-    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
+    TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
+    resp.setAuthorizerInfo(dataSet.getPermissionInfo());
+    return resp;
   }
 
   @Override
