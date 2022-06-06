@@ -609,8 +609,7 @@ public class LocalConfigNode {
     return result;
   }
 
-  public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup)
-      throws MetadataException {
+  public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
     return schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup);
   }
 
@@ -813,7 +812,8 @@ public class LocalConfigNode {
     if (dataRegionId == null) {
       throw new DataRegionException(
           String.format(
-              "Storage group %s has not been prepared well. Data region for %s has not been allocated or is not initialized.",
+              "Storage group %s has not been prepared well. "
+                  + "Data region for %s has not been allocated or is not initialized.",
               storageGroup, path));
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
@@ -954,7 +954,7 @@ public class LocalConfigNode {
               Collections.singletonList(
                   new TRegionReplicaSet(
                       new TConsensusGroupId(dataRegionId.getType(), dataRegionId.getId()),
-                      Collections.EMPTY_LIST)));
+                      Collections.emptyList())));
         }
         deviceToRegionsMap.put(
             executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
@@ -994,7 +994,7 @@ public class LocalConfigNode {
               Collections.singletonList(
                   new TRegionReplicaSet(
                       new TConsensusGroupId(dataRegionId.getType(), dataRegionId.getId()),
-                      Collections.EMPTY_LIST)));
+                      Collections.emptyList())));
         }
         deviceToRegionsMap.put(
             executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);

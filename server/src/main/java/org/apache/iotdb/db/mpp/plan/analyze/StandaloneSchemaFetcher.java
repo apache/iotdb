@@ -132,13 +132,6 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
       List<Boolean> isAlignedList) {
-    //    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
-    //    for (int i = 0; i < devicePath.size(); i++) {
-    //      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
-    //    }
-    //    // todo implement auto create schema
-    //    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
-
     SchemaTree schemaTree = new SchemaTree();
     PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < devicePathList.size(); i++) {

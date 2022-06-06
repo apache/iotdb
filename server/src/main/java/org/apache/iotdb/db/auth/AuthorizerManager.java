@@ -437,8 +437,7 @@ public class AuthorizerManager implements IAuthorizer {
               TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
         }
       } catch (AuthException e) {
-        return RpcUtils.getStatus(
-            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
+        return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
       }
     }
     authReadWriteLock.readLock().lock();

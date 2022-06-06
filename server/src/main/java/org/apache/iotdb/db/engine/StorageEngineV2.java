@@ -285,6 +285,7 @@ public class StorageEngineV2 implements IService {
     }
   }
 
+  /** get StorageGroup -> DataRegionIdList map from data/system directory. */
   public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();

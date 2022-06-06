@@ -131,7 +131,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   @Override
   public void invalidAllCache() {}
 
-  /** split data partition query param by storage group */
+  /** Split data partition query param by storage group. */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate)
       throws MetadataException {
@@ -146,16 +146,15 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       String devicePath = dataPartitionQueryParam.getDevicePath();
       if (deviceToStorageGroup.containsKey(devicePath)) {
         String storageGroup = deviceToStorageGroup.get(devicePath);
-        if (!result.containsKey(storageGroup)) {
-          result.put(storageGroup, new ArrayList<>());
-        }
+        result.computeIfAbsent(storageGroup, v -> new ArrayList<>());
         result.get(storageGroup).add(dataPartitionQueryParam);
       }
     }
     return result;
   }
 
-  /** get deviceToStorageGroup map */
+  /** get deviceToStorageGroup map. */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Map<String, String> getDeviceToStorageGroup(
       List<String> devicePaths, boolean isAutoCreate) throws MetadataException {
     Map<String, String> deviceToStorageGroup = new HashMap<>();

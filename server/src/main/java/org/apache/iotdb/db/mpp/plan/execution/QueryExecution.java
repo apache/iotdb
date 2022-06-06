@@ -360,6 +360,7 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
     TSStatusCode statusCode =
         // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING
@@ -376,7 +377,7 @@ public class QueryExecution implements IQueryExecution {
       if (config.isClusterMode()) {
         redirectNodeList = insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
       } else {
-        redirectNodeList = Collections.EMPTY_LIST;
+        redirectNodeList = Collections.emptyList();
       }
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {

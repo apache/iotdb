@@ -54,12 +54,11 @@ public class LocalDataPartitionTable {
   public synchronized void init(Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo)
       throws IllegalPathException {
     table = new ConcurrentHashMap<>();
-    for (String storageGroup : recoveredLocalDataRegionInfo.keySet()) {
+    for (Map.Entry<String, List<DataRegionId>> entry : recoveredLocalDataRegionInfo.entrySet()) {
+      String storageGroup = entry.getKey();
       List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
       table.put(new PartialPath(storageGroup), dataRegionIdList);
-      for (DataRegionId dataRegionId : recoveredLocalDataRegionInfo.get(storageGroup)) {
-        dataRegionIdList.add(dataRegionId);
-      }
+      dataRegionIdList.addAll(entry.getValue());
     }
   }
 

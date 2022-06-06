@@ -90,6 +90,7 @@ public class StandaloneScheduler implements IScheduler {
             executor, queryContext.getQueryId(), instances, internalServiceClientManager);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void start() {
     stateMachine.transitionToDispatching();
@@ -136,15 +137,16 @@ public class StandaloneScheduler implements IScheduler {
           stateMachine.transitionToFailed(e);
         }
         return;
+      default:
+        return;
     }
     // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
     // QueryState to Running
     stateMachine.transitionToRunning();
     LOGGER.info("{} transit to RUNNING", getLogHeader());
     instances.forEach(
-        instance -> {
-          stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
-        });
+        instance ->
+            stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING));
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();
