@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.engine;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
@@ -39,23 +37,16 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -65,7 +56,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -496,52 +486,15 @@ public class StorageEngineV2 implements IService {
     return dataRegion;
   }
 
+  /** Write data into DataRegion. For standalone mode only. */
+  public void write(DataRegionId groupId, PlanNode planNode) {
+    planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
+  }
+
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
     dataRegionMap.clear();
-  }
-
-  /**
-   * insert an InsertRowNode to a storage group.
-   *
-   * @param insertRowNode
-   */
-  // TODO:(New insert)
-  public void insert(DataRegionId dataRegionId, InsertRowNode insertRowNode)
-      throws StorageEngineException, MetadataException {
-    if (enableMemControl) {
-      try {
-        blockInsertionIfReject(null);
-      } catch (WriteProcessException e) {
-        throw new StorageEngineException(e);
-      }
-    }
-
-    DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-
-    try {
-      dataRegion.insert(insertRowNode);
-    } catch (WriteProcessException e) {
-      throw new StorageEngineException(e);
-    }
-  }
-
-  /** insert an InsertTabletNode to a storage group */
-  // TODO:(New insert)
-  public void insertTablet(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
-      throws StorageEngineException, BatchProcessException, WriteProcessException {
-    if (enableMemControl) {
-      try {
-        blockInsertionIfReject(null);
-      } catch (WriteProcessRejectException e) {
-        TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
-        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
-        throw new BatchProcessException(results);
-      }
-    }
-    DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-    dataRegion.insertTablet(insertTabletNode);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
@@ -637,10 +590,6 @@ public class StorageEngineV2 implements IService {
 
   public TsFileFlushPolicy getFileFlushPolicy() {
     return fileFlushPolicy;
-  }
-
-  public void write(DataRegionId groupId, PlanNode planNode) {
-    planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
   }
 
   static class InstanceHolder {
