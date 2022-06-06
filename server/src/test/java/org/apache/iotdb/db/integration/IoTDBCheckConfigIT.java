@@ -74,6 +74,12 @@ public class IoTDBCheckConfigIT {
               throw new AccessControlException("Wrong system config");
             }
           }
+
+          public void checkPermission(Permission permission, Object context) {
+            if (permission.getName().startsWith("exitVM")) {
+              throw new AccessControlException("Wrong system config");
+            }
+          }
         };
     System.setSecurityManager(securityManager);
     bytes = new ByteArrayOutputStream();
