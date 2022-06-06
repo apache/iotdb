@@ -65,16 +65,16 @@ public class ClusterSchemaManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
     TSStatus result;
-    if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
+    try {
+      clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupReq.getSchema().getName());
+    } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
-      result.setMessage(
-          String.format(
-              "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
-    } else {
-      // Persist StorageGroupSchema
-      result = getConsensusManager().write(setStorageGroupReq).getStatus();
+      result.setMessage(metadataException.getMessage());
+      return result;
     }
+    // Persist StorageGroupSchema
+    result = getConsensusManager().write(setStorageGroupReq).getStatus();
     return result;
   }
 
