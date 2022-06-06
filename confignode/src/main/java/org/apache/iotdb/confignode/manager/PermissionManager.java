@@ -129,7 +129,7 @@ public class PermissionManager {
           return status;
         }
       } catch (IOException | TException e) {
-        logger.error("Failed to initialize cache, the error is {}", e);
+        logger.error("Failed to initialize cache, the error is {}", e.getMessage());
         return RpcUtils.getStatus(
             TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR,
             "Failed to initialize cache, the error is " + e.getMessage());
