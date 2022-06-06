@@ -40,10 +40,10 @@ public class TimeRangeIteratorFactory {
       boolean isIntervalByMonth,
       boolean isSlidingStepByMonth,
       boolean leftCRightO,
-      boolean isPreAggr) {
+      boolean outputPartialTimeWindow) {
     long tmpInterval = isIntervalByMonth ? interval * MS_TO_MONTH : interval;
     long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
-    if (isPreAggr && tmpInterval > tmpSlidingStep) {
+    if (outputPartialTimeWindow && tmpInterval > tmpSlidingStep) {
       if (!isIntervalByMonth && !isSlidingStepByMonth) {
         return new PreAggrWindowIterator(
             startTime, endTime, interval, slidingStep, isAscending, leftCRightO);

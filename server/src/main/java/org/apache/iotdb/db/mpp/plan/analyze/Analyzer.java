@@ -655,7 +655,8 @@ public class Analyzer {
         Set<Expression> transformExpressions,
         Map<Expression, Expression> rawPathToGroupedPathMap) {
       GroupByLevelController groupByLevelController =
-          new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
+          new GroupByLevelController(
+              queryStatement.getGroupByLevelComponent().getLevels(), typeProvider);
       for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
         groupByLevelController.control(measurementWithAlias.left, measurementWithAlias.right);
       }

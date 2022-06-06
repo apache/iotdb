@@ -145,20 +145,19 @@ public class AggregationDescriptorTest {
 
   @Test
   public void testInputColumnNames() {
-    List<String> expectedInputColumnNames =
+    List<List<List<String>>> expectedInputColumnNames =
         Arrays.asList(
-            "root.sg.d1.s1",
-            "count(root.sg.d1.s1)",
-            "sum(root.sg.d1.s1)",
-            "last_value(root.sg.d1.s1)",
-            "max_time(root.sg.d1.s1)",
-            "max_value(root.sg.d1.s1)");
+            Collections.singletonList(Collections.singletonList("root.sg.d1.s1")),
+            Collections.singletonList(Collections.singletonList("root.sg.d1.s1")),
+            Collections.singletonList(Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)")),
+            Collections.singletonList(
+                Arrays.asList("last_value(root.sg.d1.s1)", "max_time(root.sg.d1.s1)")),
+            Collections.singletonList(Collections.singletonList("max_value(root.sg.d1.s1)")),
+            Collections.singletonList(Collections.singletonList("count(root.sg.d1.s1)")));
     Assert.assertEquals(
         expectedInputColumnNames,
         aggregationDescriptorList.stream()
-            .map(AggregationDescriptor::getInputColumnNames)
-            .flatMap(List::stream)
-            .distinct()
+            .map(AggregationDescriptor::getInputColumnNamesList)
             .collect(Collectors.toList()));
   }
 
@@ -177,18 +176,24 @@ public class AggregationDescriptorTest {
 
   @Test
   public void testInputColumnNamesInGroupByLevel() {
-    List<String> expectedInputColumnNames =
+    List<List<List<String>>> expectedInputColumnNames =
         Arrays.asList(
-            "count(root.sg.d2.s1)",
-            "count(root.sg.d1.s1)",
-            "sum(root.sg.d1.s1)",
-            "sum(root.sg.d2.s1)");
+            Arrays.asList(
+                Collections.singletonList("count(root.sg.d2.s1)"),
+                Collections.singletonList("count(root.sg.d1.s1)")),
+            Arrays.asList(
+                Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)"),
+                Arrays.asList("count(root.sg.d2.s1)", "sum(root.sg.d2.s1)")),
+            Arrays.asList(
+                Collections.singletonList("count(root.sg.d2.s1)"),
+                Collections.singletonList("count(root.sg.d1.s1)")),
+            Arrays.asList(
+                Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)"),
+                Arrays.asList("count(root.sg.d2.s1)", "sum(root.sg.d2.s1)")));
     Assert.assertEquals(
         expectedInputColumnNames,
         groupByLevelDescriptorList.stream()
-            .map(GroupByLevelDescriptor::getInputColumnNames)
-            .flatMap(List::stream)
-            .distinct()
+            .map(GroupByLevelDescriptor::getInputColumnNamesList)
             .collect(Collectors.toList()));
   }
 
