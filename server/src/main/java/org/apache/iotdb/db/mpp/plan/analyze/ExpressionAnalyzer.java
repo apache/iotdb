@@ -42,7 +42,9 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -595,6 +597,8 @@ public class ExpressionAnalyzer {
                 ((InExpression) predicate).isNotIn()),
             false);
       }
+      return new Pair<>(null, true);
+    } else if (predicate instanceof LikeExpression || predicate instanceof RegularExpression) {
       return new Pair<>(null, true);
     } else {
       throw new IllegalArgumentException(
