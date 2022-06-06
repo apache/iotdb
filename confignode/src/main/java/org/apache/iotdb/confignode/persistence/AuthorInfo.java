@@ -65,7 +65,7 @@ public class AuthorInfo implements SnapshotProcessor {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      logger.error("get user or role permissionInfo failed because {}", e.getMessage());
+      logger.error("get user or role permissionInfo failed because ", e);
     }
   }
 
@@ -84,7 +84,7 @@ public class AuthorInfo implements SnapshotProcessor {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
-      logger.error("meet error {} while logging in.", e.getMessage());
+      logger.error("meet error while logging in.", e);
       status = false;
       loginMessage = e.getMessage();
     }
@@ -131,11 +131,7 @@ public class AuthorInfo implements SnapshotProcessor {
         return true;
       }
     } catch (AuthException e) {
-      logger.error(
-          "Error {} occurs when checking the seriesPath {} for user {}",
-          e.getMessage(),
-          path,
-          username);
+      logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
       throw new AuthException(e);
     }
     return false;
