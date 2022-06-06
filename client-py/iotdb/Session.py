@@ -1183,7 +1183,7 @@ class Session(object):
         create schema template, users using this method should use the template class as an argument
         :param template: The template contain multiple child node(see Template.py)
         """
-        bytes_array = template.serialize()
+        bytes_array = template.serialize
         request = TSCreateSchemaTemplateReq(
             self.__session_id, template.get_name(), bytes_array
         )

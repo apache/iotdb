@@ -42,5 +42,5 @@ class TemplateNode(object):
     def is_share_time(self):
         return False
 
-    def serialize(self, buffer):
+    def serialize(self, *args, **kwargs):
         ...
