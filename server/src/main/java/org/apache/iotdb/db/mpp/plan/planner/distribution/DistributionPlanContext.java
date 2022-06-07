@@ -24,10 +24,12 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 public class DistributionPlanContext {
   protected boolean isRoot;
   protected MPPQueryContext queryContext;
+  protected boolean forceAddParent;
 
   protected DistributionPlanContext(MPPQueryContext queryContext) {
     this.isRoot = true;
     this.queryContext = queryContext;
+    this.forceAddParent = false;
   }
 
   protected DistributionPlanContext copy() {
@@ -37,5 +39,9 @@ public class DistributionPlanContext {
   protected DistributionPlanContext setRoot(boolean isRoot) {
     this.isRoot = isRoot;
     return this;
+  }
+
+  protected void setForceAddParent(boolean forceAddParent) {
+    this.forceAddParent = forceAddParent;
   }
 }
