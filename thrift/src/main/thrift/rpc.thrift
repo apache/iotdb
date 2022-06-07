@@ -401,6 +401,11 @@ struct TSUnsetSchemaTemplateReq {
   3: required string templateName
 }
 
+struct TSSetUsingTemplateReq {
+  1: required i64 sessionId
+  2: required string dstPath
+}
+
 struct TSDropSchemaTemplateReq {
   1: required i64 sessionId
   2: required string templateName
@@ -494,6 +499,8 @@ service TSIService {
   common.TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 
   common.TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
+
+  common.TSStatus setUsingTemplate(1:TSSetUsingTemplateReq req);
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 }

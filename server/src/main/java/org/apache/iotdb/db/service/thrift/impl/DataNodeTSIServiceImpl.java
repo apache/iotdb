@@ -99,6 +99,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 
 import org.apache.thrift.TException;
@@ -1184,6 +1185,11 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public TSStatus setUsingTemplate(TSSetUsingTemplateReq req) throws TException {
     throw new UnsupportedOperationException();
   }
 

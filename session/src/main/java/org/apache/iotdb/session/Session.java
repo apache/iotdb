@@ -43,6 +43,7 @@ import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
@@ -2373,6 +2374,14 @@ public class Session {
     req.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
     TSQueryTemplateResp resp = defaultSessionConnection.querySchemaTemplate(req);
     return resp.getMeasurements();
+  }
+
+  /** Set designated path using template, act like the sql-statement with same syntax. */
+  public void createTimeseriesOfTemplateOnPath(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSSetUsingTemplateReq request = new TSSetUsingTemplateReq();
+    request.setDstPath(path);
+    defaultSessionConnection.setUsingTemplate(request);
   }
 
   public void unsetSchemaTemplate(String prefixPath, String templateName)

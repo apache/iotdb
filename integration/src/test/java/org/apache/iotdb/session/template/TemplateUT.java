@@ -374,6 +374,49 @@ public class TemplateUT {
     }
   }
 
+  @Test
+  public void testActivateTemplate()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    Template temp1 = getTemplate("template1");
+
+    assertEquals("[]", session.showAllTemplates().toString());
+
+    session.createSchemaTemplate(temp1);
+
+    session.setSchemaTemplate("template1", "root.sg.v1");
+
+    try {
+      session.createTimeseriesOfTemplateOnPath("root.sg.v2");
+      fail();
+    } catch (Exception e) {
+      assertEquals("303: Path [root.sg.v2] has not been set any template.", e.getMessage());
+    }
+
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.d1");
+    assertEquals("[root.sg.v1.d1]", session.showPathsTemplateUsingOn("template1").toString());
+
+    assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                "Time",
+                "root.sg.v1.d1.x",
+                "root.sg.v1.d1.y",
+                "root.sg.v1.d1.GPS.x",
+                "root.sg.v1.d1.GPS.y",
+                "root.sg.v1.d1.vehicle.x",
+                "root.sg.v1.d1.vehicle.y",
+                "root.sg.v1.d1.vehicle.GPS.x",
+                "root.sg.v1.d1.vehicle.GPS.y")),
+        new HashSet<>(session.executeQueryStatement("SELECT * FROM root.**").getColumnNames()));
+
+    try {
+      session.unsetSchemaTemplate("root.sg.v1", "template1");
+      fail();
+    } catch (Exception e) {
+      assertEquals("326: Template is in use on root.sg.v1.d1", e.getMessage());
+    }
+  }
+
   private Template getTemplate(String name) throws StatementExecutionException {
     Template sessionTemplate = new Template(name, true);
     TemplateNode iNodeGPS = new InternalNode("GPS", false);
