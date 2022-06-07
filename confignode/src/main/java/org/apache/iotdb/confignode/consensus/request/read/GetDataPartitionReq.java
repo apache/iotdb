@@ -27,11 +27,14 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 
 /** Get or create DataPartition by the specific partitionSlotsMap. */
@@ -107,6 +110,31 @@ public class GetDataPartitionReq extends ConfigRequest {
                             timePartitionSlot, buffer));
               }));
         }));
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
+
+    stream.writeInt(partitionSlotsMap.size());
+    for (Entry<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> entry :
+        partitionSlotsMap.entrySet()) {
+      String storageGroup = entry.getKey();
+      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesPartitionTimePartitionSlots =
+          entry.getValue();
+      BasicStructureSerDeUtil.write(storageGroup, stream);
+      stream.writeInt(seriesPartitionTimePartitionSlots.size());
+      for (Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> e :
+          seriesPartitionTimePartitionSlots.entrySet()) {
+        TSeriesPartitionSlot seriesPartitionSlot = e.getKey();
+        List<TTimePartitionSlot> timePartitionSlots = e.getValue();
+        ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, stream);
+        stream.writeInt(timePartitionSlots.size());
+        timePartitionSlots.forEach(
+            timePartitionSlot ->
+                ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timePartitionSlot, stream));
+      }
+    }
   }
 
   @Override

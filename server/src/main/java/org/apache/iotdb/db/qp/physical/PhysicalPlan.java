@@ -74,6 +74,7 @@ import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -179,6 +180,18 @@ public abstract class PhysicalPlan implements IConsensusRequest {
   @Override
   public void serializeRequest(ByteBuffer buffer) {
     serialize(buffer);
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when serializing this physical plan.", e);
+      throw new RuntimeException(e);
+    }
   }
 
   public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {

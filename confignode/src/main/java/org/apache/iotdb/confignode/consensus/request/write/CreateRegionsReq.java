@@ -24,11 +24,13 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.TreeMap;
 
@@ -65,6 +67,22 @@ public class CreateRegionsReq extends ConfigRequest {
               regionReplicaSet ->
                   ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer));
         });
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.CreateRegions.ordinal());
+
+    stream.writeInt(regionMap.size());
+    for (Entry<String, List<TRegionReplicaSet>> entry : regionMap.entrySet()) {
+      String storageGroup = entry.getKey();
+      List<TRegionReplicaSet> regionReplicaSets = entry.getValue();
+      BasicStructureSerDeUtil.write(storageGroup, stream);
+      stream.writeInt(regionReplicaSets.size());
+      regionReplicaSets.forEach(
+          regionReplicaSet ->
+              ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream));
+    }
   }
 
   @Override

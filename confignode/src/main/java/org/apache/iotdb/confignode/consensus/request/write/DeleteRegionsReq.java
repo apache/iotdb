@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -53,6 +54,16 @@ public class DeleteRegionsReq extends ConfigRequest {
     buffer.putInt(consensusGroupIds.size());
     for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
       ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
+    }
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.DeleteRegions.ordinal());
+
+    stream.writeInt(consensusGroupIds.size());
+    for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
+      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
     }
   }
 

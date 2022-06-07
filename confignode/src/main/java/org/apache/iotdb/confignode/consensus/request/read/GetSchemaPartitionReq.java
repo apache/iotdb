@@ -24,12 +24,14 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 
 /** Get or create SchemaPartition by the specific partitionSlotsMap. */
@@ -70,6 +72,22 @@ public class GetSchemaPartitionReq extends ConfigRequest {
                   ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(
                       seriesPartitionSlot, buffer));
         });
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
+
+    stream.writeInt(partitionSlotsMap.size());
+    for (Entry<String, List<TSeriesPartitionSlot>> entry : partitionSlotsMap.entrySet()) {
+      String storageGroup = entry.getKey();
+      List<TSeriesPartitionSlot> seriesPartitionSlots = entry.getValue();
+      BasicStructureSerDeUtil.write(storageGroup, stream);
+      stream.writeInt(seriesPartitionSlots.size());
+      seriesPartitionSlots.forEach(
+          seriesPartitionSlot ->
+              ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, stream));
+    }
   }
 
   @Override

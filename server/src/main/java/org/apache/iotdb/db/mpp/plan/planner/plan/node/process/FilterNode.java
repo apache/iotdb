@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Objects;
@@ -74,6 +76,18 @@ public class FilterNode extends TransformNode {
     Expression.serialize(predicate, byteBuffer);
     ReadWriteIOUtils.write(keepNull, byteBuffer);
     ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.FILTER.serialize(stream);
+    ReadWriteIOUtils.write(outputExpressions.length, stream);
+    for (Expression expression : outputExpressions) {
+      Expression.serialize(expression, stream);
+    }
+    Expression.serialize(predicate, stream);
+    ReadWriteIOUtils.write(keepNull, stream);
+    ReadWriteIOUtils.write(zoneId.getId(), stream);
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {

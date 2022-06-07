@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
@@ -177,6 +178,60 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
     // has lock
     byteBuffer.put(this.hasLock() ? (byte) 1 : (byte) 0);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    // procid
+    stream.writeLong(this.procId);
+    // state
+    stream.writeInt(this.state.ordinal());
+    // submit time
+    stream.writeLong(this.submittedTime);
+    // last updated
+    stream.writeLong(this.lastUpdate);
+    // parent id
+    stream.writeLong(this.parentProcId);
+    // time out
+    stream.writeLong(this.timeout);
+    // stack indexes
+    if (stackIndexes != null) {
+      stream.writeInt(stackIndexes.length);
+      for (int index : stackIndexes) {
+        stream.writeInt(index);
+      }
+    } else {
+      stream.writeInt(-1);
+    }
+
+    // exceptions
+    if (hasException()) {
+      stream.write((byte) 1);
+      String exceptionClassName = exception.getClass().getName();
+      byte[] exceptionClassNameBytes = exceptionClassName.getBytes(StandardCharsets.UTF_8);
+      stream.writeInt(exceptionClassNameBytes.length);
+      stream.write(exceptionClassNameBytes);
+      String message = this.exception.getMessage();
+      if (message != null) {
+        byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
+        stream.writeInt(messageBytes.length);
+        stream.write(messageBytes);
+      } else {
+        stream.writeInt(-1);
+      }
+    } else {
+      stream.write((byte) 0);
+    }
+
+    // result
+    if (result != null) {
+      stream.writeInt(result.length);
+      stream.write(result);
+    } else {
+      stream.writeInt(-1);
+    }
+
+    // has lock
+    stream.write(this.hasLock() ? (byte) 1 : (byte) 0);
   }
 
   public void deserialize(ByteBuffer byteBuffer) {

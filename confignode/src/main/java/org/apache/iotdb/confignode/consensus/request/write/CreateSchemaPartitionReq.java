@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 
 /** Create SchemaPartition by assignedSchemaPartition */
@@ -64,6 +66,25 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
                 ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
               });
         });
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.CreateSchemaPartition.ordinal());
+
+    stream.writeInt(assignedSchemaPartition.size());
+    for (Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> entry :
+        assignedSchemaPartition.entrySet()) {
+      String storageGroup = entry.getKey();
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> partitionSlots = entry.getValue();
+      BasicStructureSerDeUtil.write(storageGroup, stream);
+      stream.writeInt(partitionSlots.size());
+      partitionSlots.forEach(
+          (seriesPartitionSlot, regionReplicaSet) -> {
+            ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, stream);
+            ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream);
+          });
+    }
   }
 
   @Override

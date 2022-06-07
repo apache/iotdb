@@ -24,4 +24,6 @@ import java.nio.ByteBuffer;
 public interface IConsensusRequest {
 
   void serializeRequest(ByteBuffer buffer);
+
+  ByteBuffer serializeToByteBuffer();
 }

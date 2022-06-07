@@ -22,7 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -46,9 +48,16 @@ public class ApplyConfigNodeReq extends ConfigRequest {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.ApplyConfigNode.ordinal());
+    ReadWriteIOUtils.write(ConfigRequestType.ApplyConfigNode.ordinal(), buffer);
 
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, buffer);
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(ConfigRequestType.ApplyConfigNode.ordinal(), stream);
+
+    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
   }
 
   @Override

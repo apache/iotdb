@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -47,6 +48,12 @@ public class DropFunctionReq extends ConfigRequest {
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(getType().ordinal());
     ReadWriteIOUtils.write(functionName, buffer);
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
+    ReadWriteIOUtils.write(functionName, stream);
   }
 
   @Override

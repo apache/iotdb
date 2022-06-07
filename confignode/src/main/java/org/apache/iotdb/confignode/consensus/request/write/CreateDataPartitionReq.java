@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -76,6 +77,33 @@ public class CreateDataPartitionReq extends ConfigRequest {
           buffer.putInt(regionReplicaSetEntry.getValue().size());
           for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
             ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
+          }
+        }
+      }
+    }
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.CreateDataPartition.ordinal());
+
+    stream.writeInt(assignedDataPartition.size());
+    for (Map.Entry<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        seriesPartitionTimePartitionEntry : assignedDataPartition.entrySet()) {
+      BasicStructureSerDeUtil.write(seriesPartitionTimePartitionEntry.getKey(), stream);
+      stream.writeInt(seriesPartitionTimePartitionEntry.getValue().size());
+      for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
+        ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(timePartitionEntry.getKey(), stream);
+        stream.writeInt(timePartitionEntry.getValue().size());
+        for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetEntry :
+            timePartitionEntry.getValue().entrySet()) {
+          ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(
+              regionReplicaSetEntry.getKey(), stream);
+          stream.writeInt(regionReplicaSetEntry.getValue().size());
+          for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
+            ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream);
           }
         }
       }

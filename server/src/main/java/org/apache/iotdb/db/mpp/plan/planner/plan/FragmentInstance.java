@@ -29,12 +29,20 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
+
+  private final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
 
   private final FragmentInstanceId id;
   private final QueryType type;
@@ -159,6 +167,31 @@ public class FragmentInstance implements IConsensusRequest {
     ReadWriteIOUtils.write(hostDataNode != null, buffer);
     if (hostDataNode != null) {
       ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, buffer);
+    }
+  }
+
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      id.serialize(outputStream);
+      fragment.serialize(outputStream);
+      ReadWriteIOUtils.write(timeFilter != null, outputStream);
+      if (timeFilter != null) {
+        timeFilter.serialize(outputStream);
+      }
+      ReadWriteIOUtils.write(type.ordinal(), outputStream);
+      ReadWriteIOUtils.write(regionReplicaSet != null, outputStream);
+      if (regionReplicaSet != null) {
+        ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, outputStream);
+      }
+      ReadWriteIOUtils.write(hostDataNode != null, outputStream);
+      if (hostDataNode != null) {
+        ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
+      }
+      return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when serializing this FragmentInstance.", e);
+      throw new RuntimeException(e);
     }
   }
 

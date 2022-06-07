@@ -38,7 +38,8 @@ public class ByteBufferConsensusRequest implements IConsensusRequest {
   @Override
   public void serializeRequest(ByteBuffer buffer) {}
 
-  public ByteBuffer getContent() {
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
     return byteBuffer;
   }
 }

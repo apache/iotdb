@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -56,6 +57,14 @@ public class SetDataReplicationFactorReq extends ConfigRequest {
 
     BasicStructureSerDeUtil.write(storageGroup, buffer);
     buffer.putInt(dataReplicationFactor);
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
+
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.writeInt(dataReplicationFactor);
   }
 
   @Override

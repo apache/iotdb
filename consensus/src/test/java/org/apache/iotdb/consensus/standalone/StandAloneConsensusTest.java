@@ -78,6 +78,13 @@ public class StandAloneConsensusTest {
     public void serializeRequest(ByteBuffer buffer) {
       buffer.putInt(num);
     }
+
+    @Override
+    public ByteBuffer serializeToByteBuffer() {
+      ByteBuffer buffer = ByteBuffer.allocate(4).putInt(num);
+      buffer.flip();
+      return buffer;
+    }
   }
 
   private static class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
@@ -97,7 +104,7 @@ public class StandAloneConsensusTest {
     @Override
     public TSStatus write(IConsensusRequest request) {
       if (request instanceof ByteBufferConsensusRequest) {
-        return new TSStatus(((ByteBufferConsensusRequest) request).getContent().getInt());
+        return new TSStatus(request.serializeToByteBuffer().getInt());
       } else if (request instanceof TestEntry) {
         return new TSStatus(
             direction ? ((TestEntry) request).num + 1 : ((TestEntry) request).num - 1);

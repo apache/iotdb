@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Objects;
@@ -147,6 +149,25 @@ public class AuthorReq extends ConfigRequest {
       }
     }
     BasicStructureSerDeUtil.write(nodeName, buffer);
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), stream);
+    BasicStructureSerDeUtil.write(userName, stream);
+    BasicStructureSerDeUtil.write(roleName, stream);
+    BasicStructureSerDeUtil.write(password, stream);
+    BasicStructureSerDeUtil.write(newPassword, stream);
+    if (permissions == null) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      stream.writeInt(permissions.size());
+      for (int permission : permissions) {
+        stream.writeInt(permission);
+      }
+    }
+    BasicStructureSerDeUtil.write(nodeName, stream);
   }
 
   @Override
