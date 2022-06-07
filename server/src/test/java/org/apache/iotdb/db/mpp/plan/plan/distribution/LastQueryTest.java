@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.plan.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -33,9 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -45,19 +42,6 @@ import java.util.List;
 import java.util.Set;
 
 public class LastQueryTest {
-
-  private static final boolean isClusterMode =
-      IoTDBDescriptor.getInstance().getConfig().isClusterMode();
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(isClusterMode);
-  }
 
   @Test
   public void testLastQuery1Series1Region() throws IllegalPathException {

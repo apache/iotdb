@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.plan.plan.distribution;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -53,9 +52,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -70,20 +67,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AggregationDistributionTest {
-
-  private static final boolean isClusterMode =
-      IoTDBDescriptor.getInstance().getConfig().isClusterMode();
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(isClusterMode);
-  }
-
   @Test
   public void testTimeJoinAggregationSinglePerRegion() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
