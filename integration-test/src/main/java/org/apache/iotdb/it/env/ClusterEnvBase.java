@@ -137,7 +137,6 @@ public abstract class ClusterEnvBase implements BaseEnv {
           ResultSet resultSet = statement.getResultSet();
           if (resultSet.next()) {
             statement.execute("DELETE STORAGE GROUP root.*");
-            logger.info("init done");
             break;
           }
         }
