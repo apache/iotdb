@@ -80,6 +80,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -97,6 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 /** Analyze the statement and generate Analysis. */
@@ -581,12 +583,7 @@ public class Analyzer {
       }
       if (queryStatement.isGroupByTime()) {
         GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
-        Filter groupByFilter =
-            new GroupByFilter(
-                groupByTimeComponent.getInterval(),
-                groupByTimeComponent.getSlidingStep(),
-                groupByTimeComponent.getStartTime(),
-                groupByTimeComponent.getEndTime());
+        Filter groupByFilter = initGroupByFilter(groupByTimeComponent);
         if (globalTimeFilter == null) {
           globalTimeFilter = groupByFilter;
         } else {
@@ -1388,6 +1385,25 @@ public class Analyzer {
       analysis.setDataPartitionInfo(dataPartition);
 
       return analysis;
+    }
+  }
+
+  private GroupByFilter initGroupByFilter(GroupByTimeComponent groupByTimeComponent) {
+    if (groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth()) {
+      return new GroupByMonthFilter(
+          groupByTimeComponent.getInterval(),
+          groupByTimeComponent.getSlidingStep(),
+          groupByTimeComponent.getStartTime(),
+          groupByTimeComponent.getEndTime(),
+          groupByTimeComponent.isSlidingStepByMonth(),
+          groupByTimeComponent.isIntervalByMonth(),
+          TimeZone.getTimeZone("+00:00"));
+    } else {
+      return new GroupByFilter(
+          groupByTimeComponent.getInterval(),
+          groupByTimeComponent.getSlidingStep(),
+          groupByTimeComponent.getStartTime(),
+          groupByTimeComponent.getEndTime());
     }
   }
 }
