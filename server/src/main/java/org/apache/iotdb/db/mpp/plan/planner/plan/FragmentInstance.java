@@ -70,6 +70,11 @@ public class FragmentInstance implements IConsensusRequest {
     // instance
     if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
+    } else {
+      // Although the logic to set hostDataNode for standalone is the same as
+      // cluster mode currently, it may be made different in later change.
+      // So we keep the conditions here.
+      this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
     }
   }
 

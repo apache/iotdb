@@ -25,12 +25,15 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
@@ -105,15 +108,21 @@ public class StandaloneScheduler implements IScheduler {
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());
             if (groupId instanceof DataRegionId) {
-              // STORAGE_ENGINE.read(fragmentInstance);
+              DataRegion region =
+                  StorageEngineV2.getInstance().getDataRegion((DataRegionId) groupId);
+              FragmentInstanceManager.getInstance()
+                  .execDataQueryFragmentInstance(fragmentInstance, region);
             } else {
-              SCHEMA_ENGINE.read((SchemaRegionId) groupId, fragmentInstance);
-              // stateMachine.
+              ISchemaRegion region =
+                  SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) groupId);
+              FragmentInstanceManager.getInstance()
+                  .execSchemaQueryFragmentInstance(fragmentInstance, region);
             }
           }
         } catch (Exception e) {
           stateMachine.transitionToFailed(e);
         }
+        stateMachine.transitionToRunning();
         break;
       case WRITE:
         try {

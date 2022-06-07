@@ -75,11 +75,16 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     List<PartialPath> partialPathList = patternTree.splitToPathList();
     try {
       for (PartialPath path : partialPathList) {
-        String storageGroup = localConfigNode.getBelongedStorageGroup(path).getFullPath();
-        storageGroupSet.add(storageGroup);
-        SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(path);
-        ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-        schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+        List<PartialPath> storageGroups = localConfigNode.getBelongedStorageGroups(path);
+        for (PartialPath storageGroupPath : storageGroups) {
+          String storageGroup = storageGroupPath.getFullPath();
+          storageGroupSet.add(storageGroup);
+          SchemaRegionId schemaRegionId =
+              localConfigNode.getBelongedSchemaRegionId(storageGroupPath);
+          ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+          schemaTree.appendMeasurementPaths(
+              schemaRegion.getMeasurementPaths(storageGroupPath, true));
+        }
       }
     } catch (MetadataException e) {
       throw new RuntimeException(e);

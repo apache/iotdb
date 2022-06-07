@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -54,6 +57,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -94,7 +98,7 @@ public class LocalConfigNode {
   private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
+  private static final long STANDALONE_MOCK_TIME_SLOT_START_TIME = 0L;
   private volatile boolean initialized = false;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -540,6 +544,7 @@ public class LocalConfigNode {
   // endregion
 
   // region Interfaces for SchemaRegionId Management
+
   /**
    * Get the target SchemaRegionIds, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
@@ -798,6 +803,7 @@ public class LocalConfigNode {
   // endregion
 
   // region Interfaces for DataRegionId Management
+
   /**
    * Get the target DataRegionIds, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
@@ -852,50 +858,32 @@ public class LocalConfigNode {
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getSchemaPartition(
       PathPatternTree patternTree) {
-    List<String> devicePaths = patternTree.findAllDevicePaths();
-    List<PartialPath> storageGroups = storageGroupSchemaManager.getAllStorageGroupPaths();
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
 
-    boolean getAll = false;
-    Set<String> getAllSet = new HashSet<>();
-    for (String devicePath : devicePaths) {
-      boolean matchStorageGroup = false;
-      for (PartialPath storageGroup : storageGroups) {
-        if (devicePath.startsWith(storageGroup + ".")) {
-          matchStorageGroup = true;
-          if (devicePath.contains("*")) {
-            // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
-            getAllSet.add(storageGroup.getFullPath());
-          } else {
-            // Get the specific SchemaPartition
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
+    patternTree.constructTree();
+    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    try {
+      for (PartialPath path : partialPathList) {
+        List<PartialPath> storageGroups = getBelongedStorageGroups(path);
+        for (PartialPath storageGroupPath : storageGroups) {
+          String storageGroup = storageGroupPath.getFullPath();
+          SchemaRegionId schemaRegionId = getBelongedSchemaRegionId(storageGroupPath);
+          ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+          Set<PartialPath> devices = schemaRegion.getMatchedDevices(storageGroupPath, true);
+          for (PartialPath device : devices) {
             partitionSlotsMap
-                .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
-                .put(executor.getSeriesPartitionSlot(devicePath), null);
+                .computeIfAbsent(storageGroup, key -> new HashMap<>())
+                .put(
+                    executor.getSeriesPartitionSlot(device.getDevice()),
+                    genStandaloneRegionReplicaSet(
+                        TConsensusGroupType.SchemaRegion, schemaRegionId.getId()));
           }
-          break;
         }
       }
-      if (!matchStorageGroup && devicePath.contains("**")) {
-        // Get all SchemaPartitions if there exists one devicePath that contains "**"
-        getAll = true;
-      }
+      return partitionSlotsMap;
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
     }
-
-    if (getAll) {
-      partitionSlotsMap = new HashMap<>();
-    } else {
-      for (String storageGroup : getAllSet) {
-        partitionSlotsMap.put(storageGroup, new HashMap<>());
-      }
-    }
-
-    // TODO: Delete or hide this LOGGER before officially release.
-    logger.info(
-        "GetSchemaPartition interface receive devicePaths: {}, return SchemaPartition: {}",
-        devicePaths,
-        partitionSlotsMap);
-
-    return partitionSlotsMap;
   }
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getOrCreateSchemaPartition(
@@ -941,21 +929,17 @@ public class LocalConfigNode {
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           deviceToRegionsMap = new HashMap<>();
       for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-        // for each device
         String deviceId = dataPartitionQueryParam.getDevicePath();
         DataRegionId dataRegionId = getBelongedDataRegionRegionId(new PartialPath(deviceId));
         Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
             new HashMap<>();
-        for (TTimePartitionSlot timePartitionSlot :
-            dataPartitionQueryParam.getTimePartitionSlotList()) {
-          // for each time partition
-          timePartitionToRegionsMap.put(
-              timePartitionSlot,
-              Collections.singletonList(
-                  new TRegionReplicaSet(
-                      new TConsensusGroupId(dataRegionId.getType(), dataRegionId.getId()),
-                      Collections.emptyList())));
-        }
+
+        timePartitionToRegionsMap.put(
+            new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
+            Collections.singletonList(
+                genStandaloneRegionReplicaSet(
+                    TConsensusGroupType.DataRegion, dataRegionId.getId())));
+
         deviceToRegionsMap.put(
             executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
       }
@@ -965,6 +949,21 @@ public class LocalConfigNode {
         dataPartitionMap,
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+  }
+
+  private TRegionReplicaSet genStandaloneRegionReplicaSet(TConsensusGroupType type, int id) {
+    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(type, id));
+    regionReplicaSet.setDataNodeLocations(
+        Collections.singletonList(
+            new TDataNodeLocation(
+                IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+                new TEndPoint(),
+                DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT,
+                DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                new TEndPoint(),
+                new TEndPoint())));
+    return regionReplicaSet;
   }
 
   public DataPartition getOrCreateDataPartition(
