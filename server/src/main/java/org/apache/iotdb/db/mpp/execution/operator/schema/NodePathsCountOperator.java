@@ -28,6 +28,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import static java.util.Objects.requireNonNull;
 
 public class NodePathsCountOperator implements ProcessOperator {
@@ -35,11 +38,13 @@ public class NodePathsCountOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private final Operator child;
   private boolean isFinished;
+  private final Set<String> nodePaths;
 
   public NodePathsCountOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.child = requireNonNull(child, "child operator is null");
-    isFinished = false;
+    this.isFinished = false;
+    this.nodePaths = new HashSet<>();
   }
 
   @Override
@@ -48,26 +53,39 @@ public class NodePathsCountOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    return child.isBlocked();
-  }
-
-  @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlock block = child.next();
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.countNodesHeader.getRespDataTypes());
 
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(block.getPositionCount());
+    tsBlockBuilder.getColumnBuilder(0).writeInt(nodePaths.size());
     tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
   }
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return !isFinished;
+  }
+
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    ListenableFuture<Void> blocked = child.isBlocked();
+    while (child.hasNext() && blocked.isDone()) {
+      TsBlock tsBlock = child.next();
+      if (null != tsBlock && !tsBlock.isEmpty()) {
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          String path = tsBlock.getColumn(0).getBinary(i).toString();
+          nodePaths.add(path);
+        }
+      }
+      blocked = child.isBlocked();
+    }
+    if (!blocked.isDone()) {
+      return blocked;
+    }
+    return NOT_BLOCKED;
   }
 
   @Override
@@ -77,6 +95,6 @@ public class NodePathsCountOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return isFinished || child.isFinished();
+    return isFinished;
   }
 }

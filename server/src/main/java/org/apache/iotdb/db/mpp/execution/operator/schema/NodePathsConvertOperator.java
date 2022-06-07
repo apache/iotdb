@@ -41,12 +41,10 @@ public class NodePathsConvertOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final Operator child;
-  private boolean isFinished;
 
   public NodePathsConvertOperator(OperatorContext operatorContext, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.child = requireNonNull(child, "child operator is null");
-    isFinished = false;
   }
 
   @Override
@@ -61,7 +59,6 @@ public class NodePathsConvertOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    isFinished = true;
     TsBlock block = child.next();
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
@@ -95,6 +92,6 @@ public class NodePathsConvertOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return isFinished || child.isFinished();
+    return child.isFinished();
   }
 }
