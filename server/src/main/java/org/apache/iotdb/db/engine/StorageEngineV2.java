@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -325,8 +326,12 @@ public class StorageEngineV2 implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ttlCheckThread.scheduleAtFixedRate(
-        this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ttlCheckThread,
+        this::checkTTL,
+        TTL_CHECK_INTERVAL,
+        TTL_CHECK_INTERVAL,
+        TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
 
     startTimedService();
@@ -352,7 +357,8 @@ public class StorageEngineV2 implements IService {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
-      seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
           config.getSeqMemtableFlushCheckInterval(),
@@ -364,7 +370,8 @@ public class StorageEngineV2 implements IService {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
-      unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
           config.getUnseqMemtableFlushCheckInterval(),

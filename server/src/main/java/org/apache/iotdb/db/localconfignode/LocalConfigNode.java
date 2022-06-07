@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -143,8 +144,8 @@ public class LocalConfigNode {
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
             IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-
-        timedForceMLogThread.scheduleAtFixedRate(
+        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            timedForceMLogThread,
             this::forceMlog,
             config.getSyncMlogPeriodInMs(),
             config.getSyncMlogPeriodInMs(),
