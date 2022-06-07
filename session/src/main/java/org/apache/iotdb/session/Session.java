@@ -2369,7 +2369,7 @@ public class Session {
     defaultSessionConnection.unsetSchemaTemplate(request);
   }
 
-  /** Set designated path using template, act like the sql-statement with same syntax. */
+  /** Set designated path using template, act like the sql-statement with same name and syntax. */
   public void createTimeseriesOfTemplateOnPath(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     TSSetUsingTemplateReq request = new TSSetUsingTemplateReq();
