@@ -25,9 +25,12 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
-
-/** The parameter of `GROUP BY TIME` */
+/**
+ * The parameter of `GROUP BY TIME`.
+ *
+ * <p>Remember: interval and slidingStep is always in timestamp unit before transforming to
+ * timeRangeIterator even if it's by month unit.
+ */
 public class GroupByTimeParameter {
 
   // [startTime, endTime)
@@ -138,9 +141,7 @@ public class GroupByTimeParameter {
   }
 
   public boolean hasOverlap() {
-    long tmpInterval = isIntervalByMonth ? interval * MS_TO_MONTH : interval;
-    long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
-    return tmpInterval > tmpSlidingStep;
+    return interval > slidingStep;
   }
 
   public void serialize(ByteBuffer buffer) {
