@@ -135,4 +135,8 @@ public class ConstantInputReader implements LayerPointReader {
   public boolean isCurrentNull() {
     return false;
   }
+
+  public ConstantOperand getConstantOperand() {
+    return expression;
+  }
 }

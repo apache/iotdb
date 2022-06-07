@@ -28,11 +28,11 @@ import java.io.IOException;
 
 public abstract class BinaryTransformer extends Transformer {
 
-  protected final LayerPointReader leftPointReader;
-  protected final LayerPointReader rightPointReader;
+  protected LayerPointReader leftPointReader;
+  protected LayerPointReader rightPointReader;
 
-  protected final TSDataType leftPointReaderDataType;
-  protected final TSDataType rightPointReaderDataType;
+  protected TSDataType leftPointReaderDataType;
+  protected TSDataType rightPointReaderDataType;
 
   protected final boolean isLeftPointReaderConstant;
   protected final boolean isRightPointReaderConstant;

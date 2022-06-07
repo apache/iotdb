@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.input.ConstantInputReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -41,6 +43,7 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
       LayerPointReader leftPointReader, LayerPointReader rightPointReader)
       throws UnSupportedDataTypeException {
     super(leftPointReader, rightPointReader);
+    transformFloatConstant();
     evaluator =
         TSDataType.TEXT.equals(leftPointReaderDataType)
             ? constructTextEvaluator()
@@ -50,6 +53,47 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
   protected abstract Evaluator constructNumberEvaluator();
 
   protected abstract Evaluator constructTextEvaluator();
+
+  /**
+   * When LayerPointReader returns float, constant layerPointReader should be cast to float.
+   * Otherwise, precision error could occur. For example, when comparing s1 >= 3.33, if s1 is float
+   * and its value is 3.33, s1 >= 3.33 would return false because 3.33f would be
+   * 3.3299999237060547d.
+   */
+  protected void transformFloatConstant() {
+    if (isLeftPointReaderConstant) {
+      if (!isRightPointReaderConstant) {
+        if (rightPointReaderDataType.equals(TSDataType.FLOAT)) {
+          try {
+            ConstantOperand floatConstant =
+                new ConstantOperand(
+                    TSDataType.FLOAT,
+                    ((ConstantInputReader) leftPointReader).getConstantOperand().getValueString());
+            leftPointReader = new ConstantInputReader(floatConstant);
+            leftPointReaderDataType = TSDataType.FLOAT;
+          } catch (QueryProcessException ignored) {
+            // expect no exception since LayerPointReader has been initialized once
+          }
+        }
+      }
+    }
+    if (isRightPointReaderConstant) {
+      if (!isLeftPointReaderConstant) {
+        if (leftPointReaderDataType.equals(TSDataType.FLOAT)) {
+          try {
+            ConstantOperand floatConstant =
+                new ConstantOperand(
+                    TSDataType.FLOAT,
+                    ((ConstantInputReader) rightPointReader).getConstantOperand().getValueString());
+            rightPointReader = new ConstantInputReader(floatConstant);
+            rightPointReaderDataType = TSDataType.FLOAT;
+          } catch (QueryProcessException ignored) {
+            // expect no exception since LayerPointReader has been initialized once
+          }
+        }
+      }
+    }
+  }
 
   protected static int compare(CharSequence cs1, CharSequence cs2) {
     if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
