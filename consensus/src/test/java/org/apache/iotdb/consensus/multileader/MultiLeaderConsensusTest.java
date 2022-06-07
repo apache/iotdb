@@ -311,12 +311,6 @@ public class MultiLeaderConsensusTest {
     }
 
     @Override
-    public void serializeRequest(ByteBuffer buffer) {
-      buffer.putInt(num);
-      peer.serialize(buffer);
-    }
-
-    @Override
     public ByteBuffer serializeToByteBuffer() {
       try (PublicBAOS publicBAOS = new PublicBAOS();
           DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {

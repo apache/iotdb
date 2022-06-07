@@ -75,11 +75,6 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public void serializeRequest(ByteBuffer buffer) {
-      buffer.putInt(num);
-    }
-
-    @Override
     public ByteBuffer serializeToByteBuffer() {
       ByteBuffer buffer = ByteBuffer.allocate(4).putInt(num);
       buffer.flip();

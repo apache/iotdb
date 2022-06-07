@@ -69,11 +69,6 @@ public abstract class ConfigRequest implements IConsensusRequest {
     return this.type;
   }
 
-  @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serialize(buffer);
-  }
-
   public final void serialize(ByteBuffer buffer) {
     buffer.mark();
     try {

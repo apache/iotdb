@@ -178,11 +178,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serialize(buffer);
-  }
-
-  @Override
   public ByteBuffer serializeToByteBuffer() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

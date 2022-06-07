@@ -151,7 +151,6 @@ public class FragmentInstance implements IConsensusRequest {
     return fragmentInstance;
   }
 
-  @Override
   public void serializeRequest(ByteBuffer buffer) {
     id.serialize(buffer);
     fragment.serialize(buffer);

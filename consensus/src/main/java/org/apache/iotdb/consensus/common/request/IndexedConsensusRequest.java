@@ -46,11 +46,6 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    request.serializeRequest(buffer);
-  }
-
-  @Override
   public ByteBuffer serializeToByteBuffer() {
     return request.serializeToByteBuffer();
   }

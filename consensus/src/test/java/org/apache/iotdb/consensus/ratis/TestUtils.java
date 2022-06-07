@@ -65,11 +65,6 @@ public class TestUtils {
     }
 
     @Override
-    public void serializeRequest(ByteBuffer buffer) {
-      buffer.putInt(cmd);
-    }
-
-    @Override
     public ByteBuffer serializeToByteBuffer() {
       ByteBuffer buffer = ByteBuffer.allocate(4).putInt(cmd);
       buffer.flip();

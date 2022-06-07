@@ -182,7 +182,6 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
    * Deserialize via {@link
    * org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)}
    */
-  @Override
   public void serializeRequest(ByteBuffer buffer) {
     serializeAttributes(buffer);
     getPlanNodeId().serialize(buffer);
