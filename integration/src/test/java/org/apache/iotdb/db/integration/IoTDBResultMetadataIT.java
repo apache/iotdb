@@ -51,7 +51,7 @@ public class IoTDBResultMetadataIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create timeseries root.sg.dev.status with datatype=text,encoding=PLAIN;");
-      statement.execute("insert into root.sg.dev(time,status) values(1,3.14);");
+      statement.execute("insert into root.sg.dev(time,status) values(1,'3.14');");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -173,8 +173,8 @@ public class IOTDBInsertIT {
   @Test
   public void testTEXTNormalInsert() throws SQLException {
     Statement st0 = connection.createStatement();
-    st0.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(4,'a')");
-    st0.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(5,\"b\")");
+    st0.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(4,'2')");
+    st0.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(5,\"true\")");
     st0.close();
     Statement st1 = connection.createStatement();
     ResultSet rs1 = st1.executeQuery("select count(hardware) from root.t1.wf01.wt01");
