@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -34,18 +35,19 @@ import java.util.Objects;
 /** Create SchemaPartition by assignedSchemaPartition */
 public class CreateSchemaPartitionReq extends ConfigRequest {
 
-  private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition;
+  // TODO: Replace this field whit new SchemaPartition
+  private Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> assignedSchemaPartition;
 
   public CreateSchemaPartitionReq() {
     super(ConfigRequestType.CreateSchemaPartition);
   }
 
-  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getAssignedSchemaPartition() {
+  public Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> getAssignedSchemaPartition() {
     return assignedSchemaPartition;
   }
 
   public void setAssignedSchemaPartition(
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition) {
+      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> assignedSchemaPartition) {
     this.assignedSchemaPartition = assignedSchemaPartition;
   }
 
@@ -59,9 +61,9 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
           BasicStructureSerDeUtil.write(storageGroup, buffer);
           buffer.putInt(partitionSlots.size());
           partitionSlots.forEach(
-              (seriesPartitionSlot, regionReplicaSet) -> {
+              (seriesPartitionSlot, consensusGroupId) -> {
                 ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
-                ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
+                ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
               });
         });
   }
@@ -80,7 +82,7 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
             ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
         assignedSchemaPartition
             .get(storageGroup)
-            .put(seriesPartitionSlot, ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer));
+            .put(seriesPartitionSlot, ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
       }
     }
   }

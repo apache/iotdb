@@ -18,40 +18,40 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class DeleteStorageGroupReq extends ConfigRequest {
 
-  private TStorageGroupSchema storageGroup;
+  private String name;
 
   public DeleteStorageGroupReq() {
     super(ConfigRequestType.DeleteStorageGroup);
   }
 
-  public DeleteStorageGroupReq(TStorageGroupSchema storageGroup) {
+  public DeleteStorageGroupReq(String name) {
     this();
-    this.storageGroup = storageGroup;
+    this.name = name;
   }
 
-  public TStorageGroupSchema getStorageGroup() {
-    return storageGroup;
+  public String getName() {
+    return name;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(ConfigRequestType.DeleteStorageGroup.ordinal());
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroup, buffer);
+    BasicStructureSerDeUtil.write(name, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    storageGroup = ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer);
+    name = BasicStructureSerDeUtil.readString(buffer);
   }
 
   @Override
@@ -59,11 +59,11 @@ public class DeleteStorageGroupReq extends ConfigRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DeleteStorageGroupReq that = (DeleteStorageGroupReq) o;
-    return storageGroup.equals(that.storageGroup);
+    return name.equals(that.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup);
+    return Objects.hash(name);
   }
 }

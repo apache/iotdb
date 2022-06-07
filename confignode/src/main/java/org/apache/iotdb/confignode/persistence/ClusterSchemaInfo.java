@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -28,7 +25,6 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -38,11 +34,9 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +48,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,16 +68,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
   private final MTreeAboveSG mTree;
 
-  // Particle for allocating the first Region
-  private final Set<String> schemaRegionParticles;
-  private final Set<String> dataRegionParticles;
-
   private final String snapshotFileName = "cluster_schema.bin";
 
   public ClusterSchemaInfo() throws IOException {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
-    schemaRegionParticles = Collections.synchronizedSet(new HashSet<>());
-    dataRegionParticles = Collections.synchronizedSet(new HashSet<>());
 
     try {
       mTree = new MTreeAboveSG();
@@ -95,10 +82,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Persistence new StorageGroupSchema
+   * Cache StorageGroupSchema
    *
    * @param req SetStorageGroupReq
-   * @return SUCCESS_STATUS if the StorageGroup is set successfully. PERSISTENCE_FAILURE if fail to
+   * @return SUCCESS_STATUS if the StorageGroup is set successfully. CACHE_FAILURE if fail to
    *     set StorageGroup in MTreeAboveSG.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
@@ -115,17 +102,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getStorageGroupNodeByStorageGroupPath(partialPathName)
           .setStorageGroupSchema(storageGroupSchema);
 
-      // Mark the new StorageGroup as without Region
-      schemaRegionParticles.add(storageGroupSchema.getName());
-      dataRegionParticles.add(storageGroupSchema.getName());
-
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-
-      LOGGER.info("Successfully set StorageGroup: {}", storageGroupSchema);
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode())
+          .setCode(TSStatusCode.CACHE_FAILURE.getStatusCode())
           .setMessage("Error StorageGroup name");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -148,10 +129,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
       mTree.deleteStorageGroup(partialPathName);
 
-      // Clean the unready set
-      schemaRegionParticles.remove(storageGroupSchema.getName());
-      dataRegionParticles.remove(storageGroupSchema.getName());
-
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.warn("Storage group not exist", e);
@@ -161,51 +138,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
-    return result;
-  }
-
-  /**
-   * Persistence new RegionGroupIds on specific StorageGroupSchema
-   *
-   * @param req CreateRegionsReq
-   * @return SUCCESS_STATUS if the new RegionGroupIds is persistence successfully.
-   *     PERSISTENCE_FAILURE if fail to find StorageGroup in MTreeAboveSG.
-   */
-  public TSStatus createRegions(CreateRegionsReq req) {
-    TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
-
-    try {
-      for (Map.Entry<String, List<TRegionReplicaSet>> reqEntry : req.getRegionMap().entrySet()) {
-        PartialPath partialPathName = new PartialPath(reqEntry.getKey());
-        TStorageGroupSchema storageGroupSchema =
-            mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
-        reqEntry
-            .getValue()
-            .forEach(
-                regionReplicaSet -> {
-                  switch (regionReplicaSet.getRegionId().getType()) {
-                    case SchemaRegion:
-                      storageGroupSchema
-                          .getSchemaRegionGroupIds()
-                          .add(regionReplicaSet.getRegionId());
-                      break;
-                    case DataRegion:
-                      storageGroupSchema
-                          .getDataRegionGroupIds()
-                          .add(regionReplicaSet.getRegionId());
-                      break;
-                  }
-                });
-      }
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      result.setCode(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode());
-    } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
-    }
-
     return result;
   }
 
@@ -420,6 +352,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return schemaMap;
   }
 
+
+
   /**
    * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup.
    *
@@ -428,31 +362,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return All SchemaRegionGroupIds when type is SchemaRegion, and all DataRegionGroupIds when
    *     type is DataRegion
    */
-  public List<TConsensusGroupId> getRegionGroupIds(String storageGroup, TConsensusGroupType type) {
-    List<TConsensusGroupId> result;
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      StorageGroupMNode mNode =
-          (StorageGroupMNode)
-              mTree.getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup));
-      switch (type) {
-        case SchemaRegion:
-          result = mNode.getStorageGroupSchema().getSchemaRegionGroupIds();
-          break;
-        case DataRegion:
-          result = mNode.getStorageGroupSchema().getDataRegionGroupIds();
-          break;
-        default:
-          result = new ArrayList<>();
-      }
-    } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      return new ArrayList<>();
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
+
+
 
   /**
    * Return the number of Regions currently owned by the specific StorageGroup
@@ -461,25 +372,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param type SchemaRegion or DataRegion
    * @return Number of Regions currently owned by the specific StorageGroup
    */
-  public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
-      throws MetadataException {
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      StorageGroupMNode mNode =
-          (StorageGroupMNode)
-              mTree.getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup));
-      switch (type) {
-        case SchemaRegion:
-          return mNode.getStorageGroupSchema().getSchemaRegionGroupIdsSize();
-        case DataRegion:
-          return mNode.getStorageGroupSchema().getDataRegionGroupIdsSize();
-        default:
-          return 0;
-      }
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-  }
+
+
 
   /**
    * Contending the Region allocation particle
@@ -488,31 +382,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return True if successfully get the Region allocation particle, false otherwise.
    */
-  public boolean getRegionAllocationParticle(
-      String storageGroup, TConsensusGroupType consensusGroupType) {
-    switch (consensusGroupType) {
-      case SchemaRegion:
-        synchronized (schemaRegionParticles) {
-          if (schemaRegionParticles.contains(storageGroup)) {
-            schemaRegionParticles.remove(storageGroup);
-            return true;
-          } else {
-            return false;
-          }
-        }
-      case DataRegion:
-        synchronized (dataRegionParticles) {
-          if (dataRegionParticles.contains(storageGroup)) {
-            dataRegionParticles.remove(storageGroup);
-            return true;
-          } else {
-            return false;
-          }
-        }
-      default:
-        return false;
-    }
-  }
+
+
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
@@ -531,22 +402,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
           BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-
-        // Take snapshot for particles
-        synchronized (schemaRegionParticles) {
-          synchronized (dataRegionParticles) {
-            ReadWriteIOUtils.write(schemaRegionParticles.size(), outputStream);
-            for (String schemaRegionParticle : schemaRegionParticles) {
-              ReadWriteIOUtils.write(schemaRegionParticle, outputStream);
-            }
-
-            ReadWriteIOUtils.write(dataRegionParticles.size(), outputStream);
-            for (String dataRegionParticle : dataRegionParticles) {
-              ReadWriteIOUtils.write(dataRegionParticle, outputStream);
-            }
-          }
-        }
-
         // Take snapshot for MTree
         mTree.serialize(outputStream);
         outputStream.flush();
@@ -579,24 +434,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.writeLock().lock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
-
-      // Load snapshot of particles
-      synchronized (schemaRegionParticles) {
-        synchronized (dataRegionParticles) {
-          int particleNum = ReadWriteIOUtils.readInt(bufferedInputStream);
-          schemaRegionParticles.clear();
-          for (int i = 0; i < particleNum; i++) {
-            schemaRegionParticles.add(ReadWriteIOUtils.readString(bufferedInputStream));
-          }
-
-          particleNum = ReadWriteIOUtils.readInt(bufferedInputStream);
-          dataRegionParticles.clear();
-          for (int i = 0; i < particleNum; i++) {
-            dataRegionParticles.add(ReadWriteIOUtils.readString(bufferedInputStream));
-          }
-        }
-      }
-
       // Load snapshot of MTree
       mTree.clear();
       mTree.deserialize(bufferedInputStream);
@@ -646,16 +483,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return matchedNamesInNextLevel;
-  }
-
-  @TestOnly
-  public Set<String> getSchemaRegionParticles() {
-    return schemaRegionParticles;
-  }
-
-  @TestOnly
-  public Set<String> getDataRegionParticles() {
-    return dataRegionParticles;
   }
 
   @TestOnly

@@ -130,13 +130,7 @@ public class ConfigRequestSerDeTest {
 
   @Test
   public void DeleteStorageGroupReqTest() throws IOException {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    storageGroupSchema.setName("root.sg");
-    storageGroupSchema.addToSchemaRegionGroupIds(
-        new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
-    storageGroupSchema.addToSchemaRegionGroupIds(
-        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
-    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq(storageGroupSchema);
+    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq("root.sg");
     req0.serialize(buffer);
     buffer.flip();
     DeleteStorageGroupReq req1 = (DeleteStorageGroupReq) ConfigRequest.Factory.create(buffer);
@@ -256,14 +250,12 @@ public class ConfigRequestSerDeTest {
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
-    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
-    regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
+    TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0);
 
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> assignedSchemaPartition =
         new HashMap<>();
     assignedSchemaPartition.put(storageGroup, new HashMap<>());
-    assignedSchemaPartition.get(storageGroup).put(seriesPartitionSlot, regionReplicaSet);
+    assignedSchemaPartition.get(storageGroup).put(seriesPartitionSlot, consensusGroupId);
 
     CreateSchemaPartitionReq req0 = new CreateSchemaPartitionReq();
     req0.setAssignedSchemaPartition(assignedSchemaPartition);

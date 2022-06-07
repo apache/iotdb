@@ -52,7 +52,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -142,7 +142,11 @@ public class ConfigRequestExecutor {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodeReq) req);
       case SetStorageGroup:
-        return clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
+        TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        return partitionInfo.setStorageGroup((SetStorageGroupReq) req);
       case DeleteStorageGroup:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
@@ -157,13 +161,7 @@ public class ConfigRequestExecutor {
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
       case CreateRegions:
-        TSStatus status = clusterSchemaInfo.createRegions((CreateRegionsReq) req);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
-        }
         return partitionInfo.createRegions((CreateRegionsReq) req);
-      case DeleteRegions:
-        return partitionInfo.deleteRegions((DeleteRegionsReq) req);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:

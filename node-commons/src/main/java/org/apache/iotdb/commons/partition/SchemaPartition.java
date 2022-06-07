@@ -137,64 +137,6 @@ public class SchemaPartition extends Partition {
     }
   }
 
-  /**
-   * Get SchemaPartition by storageGroup name
-   *
-   * @param matchedStorageGroup List<String>
-   * @return Subset of current SchemaPartition which contains matchedStorageGroup
-   */
-  public SchemaPartition getSchemaPartition(List<String> matchedStorageGroup) {
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
-    matchedStorageGroup.forEach(
-        (storageGroup) -> {
-          if (schemaPartitionMap.containsKey(storageGroup)) {
-            result.put(storageGroup, new HashMap<>(schemaPartitionMap.get(storageGroup)));
-          }
-        });
-    return new SchemaPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
-  }
-
-  /**
-   * Filter out unassigned PartitionSlots
-   *
-   * @param partitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
-   * @return Map<String, List < SeriesPartitionSlot>>, unassigned PartitionSlots
-   */
-  public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlot(
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
-    Map<String, List<TSeriesPartitionSlot>> result = new HashMap<>();
-
-    partitionSlotsMap.forEach(
-        (storageGroup, seriesPartitionSlots) -> {
-          // Compare StorageGroup
-          if (!schemaPartitionMap.containsKey(storageGroup)) {
-            result.put(storageGroup, partitionSlotsMap.get(storageGroup));
-          } else {
-            seriesPartitionSlots.forEach(
-                seriesPartitionSlot -> {
-                  // Compare SeriesPartitionSlot
-                  if (!schemaPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
-                    result
-                        .computeIfAbsent(storageGroup, key -> new ArrayList<>())
-                        .add(seriesPartitionSlot);
-                  }
-                });
-          }
-        });
-
-    return result;
-  }
-
-  /** Create a SchemaPartition by ConfigNode */
-  public void createSchemaPartition(
-      String storageGroup,
-      TSeriesPartitionSlot seriesPartitionSlot,
-      TRegionReplicaSet regionReplicaSet) {
-    schemaPartitionMap
-        .computeIfAbsent(storageGroup, key -> new HashMap<>())
-        .put(seriesPartitionSlot, regionReplicaSet);
-  }
-
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(schemaPartitionMap.size(), outputStream);

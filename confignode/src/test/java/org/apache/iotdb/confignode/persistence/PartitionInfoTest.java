@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
