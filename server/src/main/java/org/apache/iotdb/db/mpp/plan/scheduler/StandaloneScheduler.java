@@ -122,7 +122,15 @@ public class StandaloneScheduler implements IScheduler {
         } catch (Exception e) {
           stateMachine.transitionToFailed(e);
         }
+        // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
         stateMachine.transitionToRunning();
+        LOGGER.info("{} transit to RUNNING", getLogHeader());
+        instances.forEach(
+            instance ->
+                stateMachine.initialFragInstanceState(
+                    instance.getId(), FragmentInstanceState.RUNNING));
+        this.stateTracker.start();
+        LOGGER.info("{} state tracker starts", getLogHeader());
         break;
       case WRITE:
         try {
@@ -145,21 +153,7 @@ public class StandaloneScheduler implements IScheduler {
           LOGGER.error("Execute write operation error ", e);
           stateMachine.transitionToFailed(e);
         }
-        return;
-      default:
-        return;
     }
-    // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
-    // QueryState to Running
-    stateMachine.transitionToRunning();
-    LOGGER.info("{} transit to RUNNING", getLogHeader());
-    instances.forEach(
-        instance ->
-            stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING));
-
-    // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
-    this.stateTracker.start();
-    LOGGER.info("{} state tracker starts", getLogHeader());
   }
 
   @Override
