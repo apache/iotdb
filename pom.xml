@@ -999,9 +999,11 @@
                         <configuration>
                             <!-- configure your formatting preferences here (see link below) -->
                             <indentSize>4</indentSize>
-                            <excludes>**/target/**</excludes>
-                            <excludes>**/checkstyle.xml</excludes>
-                            <excludes>**/import-control.xml</excludes>
+                            <excludes>
+                                <exclude>**/target/**</exclude>
+                                <exclude>**/checkstyle.xml</exclude>
+                                <exclude>**/import-control.xml</exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
