@@ -21,15 +21,13 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -85,7 +83,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -419,19 +416,29 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
-    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> INTERNAL_SERVICE_CLIENT_MANAGER =
-        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-            .createClientManager(
-                new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
-    TSStatus tsStatus = new TSStatus();
-    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
-      TEndPoint internalEndPoint = dataNodeInfo.getLocation().getInternalEndPoint();
-      try {
-        tsStatus = INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(internalEndPoint).flush(req);
-      } catch (IOException e) {
-        LOGGER.error("Can't connect to DataNode {}", e);
+
+    if (req.storageGroups != null) {
+      List<PartialPath> noExistSg =
+          configManager.checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
+      if (!noExistSg.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
+        // throw new StorageGroupNotSetException(sb.subSequence(0, sb.length() - 1).toString(),
+        // true);
       }
+    }
+
+    List<TDataNodeInfo> onlineDataNodes;
+    if (req.isLocal) {
+      onlineDataNodes = configManager.getNodeManager().getOnlineDataNodes(req.dataNodeId);
+    } else {
+      onlineDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
+    }
+    TSStatus tsStatus = new TSStatus();
+    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+      tsStatus =
+          SyncDataNodeClientPool.getInstance()
+              .flush(dataNodeInfo.getLocation().getInternalEndPoint(), req);
     }
     return tsStatus;
   }

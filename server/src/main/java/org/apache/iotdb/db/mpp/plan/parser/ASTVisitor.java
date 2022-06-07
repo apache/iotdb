@@ -2200,7 +2200,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     flushStatement.setStorageGroupPartitionIds(storageGroupPartitionIds);
-    flushStatement.setSync(false);
     return flushStatement;
   }
 }

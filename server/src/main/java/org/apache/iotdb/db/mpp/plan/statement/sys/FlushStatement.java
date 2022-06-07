@@ -51,8 +51,6 @@ public class FlushStatement extends Statement implements IConfigStatement {
   // being null indicates flushing both seq and unseq data
   private Boolean isSeq;
 
-  private boolean isSync;
-
   private boolean isLocal;
 
   public FlushStatement(StatementType flushType) {
@@ -74,14 +72,6 @@ public class FlushStatement extends Statement implements IConfigStatement {
 
   public void setSeq(Boolean seq) {
     isSeq = seq;
-  }
-
-  public boolean isSync() {
-    return isSync;
-  }
-
-  public void setSync(boolean sync) {
-    isSync = sync;
   }
 
   public boolean isLocal() {

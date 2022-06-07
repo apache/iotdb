@@ -93,7 +93,8 @@ struct TDataNodeInfo {
 }
 
 struct TFlushReq{
-   1: optional list<string> storageGroups
+   1: required bool isLocal
    2: optional string isSeq
-   3: required bool isSync
+   3: optional list<string> storageGroups
+   4: optional i32 dataNodeId
 }

@@ -629,4 +629,21 @@ public class ConfigManager implements Manager {
   public ProcedureManager getProcedureManager() {
     return procedureManager;
   }
+
+  /**
+   * @param storageGroups the storage groups to check
+   * @return List of PartialPath the storage groups that not exist
+   */
+  public List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
+    List<PartialPath> noExistSg = new ArrayList<>();
+    if (storageGroups == null) {
+      return noExistSg;
+    }
+    for (PartialPath storageGroup : storageGroups) {
+      if (!clusterSchemaManager.getStorageGroupNames().contains(storageGroup)) {
+        noExistSg.add(storageGroup);
+      }
+    }
+    return noExistSg;
+  }
 }

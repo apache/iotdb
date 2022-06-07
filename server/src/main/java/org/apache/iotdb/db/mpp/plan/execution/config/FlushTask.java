@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -69,19 +69,15 @@ public class FlushTask implements IConfigTask {
     if (flushStatement.isSeq() != null) {
       tFlushReq.setIsSeq(flushStatement.isSeq().toString());
     }
-    tFlushReq.setIsSync(flushStatement.isSync());
+    tFlushReq.setIsLocal(flushStatement.isLocal());
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    tFlushReq.setDataNodeId(config.getDataNodeId());
     try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
-      if (flushStatement.isLocal()) {
-        tsStatus = StorageEngineV2.getInstance().operatorFlush(tFlushReq);
-      } else {
-        tsStatus = client.flush(tFlushReq);
-      }
+      tsStatus = client.flush(tFlushReq);
       // Get response or throw exception
     } catch (IOException | TException e) {
       logger.error("Failed to connect to config node.");
-      future.setException(e);
-    } catch (StorageGroupNotSetException e) {
       future.setException(e);
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
