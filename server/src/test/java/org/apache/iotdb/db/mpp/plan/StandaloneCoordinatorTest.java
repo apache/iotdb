@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
@@ -42,8 +43,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.time.ZoneId;
@@ -58,19 +61,22 @@ public class StandaloneCoordinatorTest {
   private static Coordinator coordinator;
   private static ISchemaFetcher schemaFetcher;
   private static IPartitionFetcher partitionFetcher;
-  private static DataBlockService dataBlockService;
+  private static DataBlockService dataBlockService = DataBlockService.getInstance();
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpBeforeClass() throws Exception {
     conf.setMppMode(true);
     conf.setDataNodeId(0);
     coordinator = Coordinator.getInstance();
     schemaFetcher = StandaloneSchemaFetcher.getInstance();
     partitionFetcher = StandalonePartitionFetcher.getInstance();
+    dataBlockService.startService();
+  }
+
+  @Before
+  public void setUp() throws Exception {
     configNode = LocalConfigNode.getInstance();
-    dataBlockService = DataBlockService.getInstance();
     configNode.init();
-    dataBlockService.initTProcessor();
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(0));
     WALRecoverManager.getInstance().recover();
   }
@@ -78,9 +84,18 @@ public class StandaloneCoordinatorTest {
   @After
   public void tearDown() throws Exception {
     WALRecoverManager.getInstance().clear();
-    dataBlockService.stop();
+    DriverScheduler manager = DriverScheduler.getInstance();
+    manager.getQueryMap().clear();
+    manager.getBlockedTasks().clear();
+    manager.getReadyQueue().clear();
+    manager.getTimeoutQueue().clear();
     configNode.clear();
     EnvironmentUtils.cleanAllDir();
+  }
+
+  @AfterClass
+  public static void tearDownAfterClass() throws Exception {
+    dataBlockService.stopService();
     conf.setDataNodeId(-1);
     conf.setMppMode(false);
   }

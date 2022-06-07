@@ -23,14 +23,12 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 import org.slf4j.Logger;
@@ -63,15 +61,6 @@ public class SchemaEngine {
 
   public void write(SchemaRegionId schemaRegionId, PlanNode planNode) {
     planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
-  }
-
-  // TODO:to be implemented
-  public DataSet read(SchemaRegionId schemaRegionId, FragmentInstance fragmentInstance) {
-    logger.info(
-        "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
-        schemaRegionId,
-        fragmentInstance.getId());
-    return null;
   }
 
   private static class SchemaEngineManagerHolder {
