@@ -82,7 +82,6 @@ public class StandaloneCoordinatorTest {
     configNode = LocalConfigNode.getInstance();
     configNode.init();
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(0));
-    WALRecoverManager.getInstance().recover();
   }
 
   @After

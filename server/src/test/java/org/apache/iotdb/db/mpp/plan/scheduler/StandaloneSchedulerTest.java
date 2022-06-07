@@ -48,7 +48,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -85,9 +84,7 @@ public class StandaloneSchedulerTest {
     conf.setWalMode(WALMode.DISABLE);
     configNode = LocalConfigNode.getInstance();
     configNode.init();
-    WALManager.getInstance().start();
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(0));
-    WALRecoverManager.getInstance().recover();
   }
 
   @After
