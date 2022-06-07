@@ -811,7 +811,7 @@ public class LocalConfigNode {
    * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
    * thrown.
    */
-  public DataRegionId getBelongedDataRegionRegionId(PartialPath path)
+  public DataRegionId getBelongedDataRegionId(PartialPath path)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
@@ -833,7 +833,7 @@ public class LocalConfigNode {
   }
 
   // This interface involves storage group and data region auto creation
-  public DataRegionId getBelongedDataRegionRegionIdWithAutoCreate(PartialPath path)
+  public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath path)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
@@ -930,7 +930,7 @@ public class LocalConfigNode {
           deviceToRegionsMap = new HashMap<>();
       for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
         String deviceId = dataPartitionQueryParam.getDevicePath();
-        DataRegionId dataRegionId = getBelongedDataRegionRegionId(new PartialPath(deviceId));
+        DataRegionId dataRegionId = getBelongedDataRegionId(new PartialPath(deviceId));
         Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
             new HashMap<>();
 
@@ -982,7 +982,7 @@ public class LocalConfigNode {
         // for each device
         String deviceId = dataPartitionQueryParam.getDevicePath();
         DataRegionId dataRegionId =
-            getBelongedDataRegionRegionIdWithAutoCreate(new PartialPath(deviceId));
+            getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
         Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
             new HashMap<>();
         for (TTimePartitionSlot timePartitionSlot :
