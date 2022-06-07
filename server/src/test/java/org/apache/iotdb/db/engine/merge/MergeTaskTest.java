@@ -125,14 +125,14 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testMergeEndTime() throws Exception {
-    List<TsFileResource> testSeqResources = seqResources.subList(0, 3);
+    List<TsFileResource> testSeqResources = seqResources.subList(0, 5);
     List<TsFileResource> testUnseqResource = unseqResources.subList(5, 6);
     MergeTask mergeTask =
         new MergeTask(
             new MergeResource(testSeqResources, testUnseqResource),
             tempSGDir.getPath(),
             (k, v, l) -> {
-              assertEquals(499, k.get(2).getEndTime("root.mergeTest.device1"));
+              assertEquals(499, k.get(4).getEndTime("root.mergeTest.device1"));
             },
             "test",
             false,
@@ -646,7 +646,7 @@ public class MergeTaskTest extends MergeTest {
             tempSGDir.getPath(),
             (k, v, l) -> {
               try (TsFileSequenceReader reader =
-                  new TsFileSequenceReader(k.get(2).getTsFilePath())) {
+                  new TsFileSequenceReader(k.get(0).getTsFilePath())) {
                 List<ChunkMetadata> chunkMetadataList =
                     reader.getChunkMetadataList(
                         new PartialPath(deviceIds[0], measurementSchemas[2].getMeasurementId()));

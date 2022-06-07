@@ -20,7 +20,6 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
@@ -75,66 +74,7 @@ public class MergeOverLapTest extends MergeTest {
     FileUtils.deleteDirectory(tempSGDir);
   }
 
-  @Override
-  void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
-    for (int i = 0; i < seqFileNum; i++) {
-      File file =
-          new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
-      TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
-      tsFileResource.setMinPlanIndex(i);
-      tsFileResource.setMaxPlanIndex(i);
-      seqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum, 0);
-    }
-    for (int i = 0; i < unseqFileNum; i++) {
-      File file =
-          new File(
-              TestConstant.OUTPUT_DATA_DIR.concat(
-                  (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + (10000 + i)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile"));
-      TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setClosed(true);
-      tsFileResource.setMaxPlanIndex(i + seqFileNum);
-      tsFileResource.setMinPlanIndex(i + seqFileNum);
-      unseqResources.add(tsFileResource);
-      prepareUnseqFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
-    }
-    File file =
-        new File(
-            TestConstant.OUTPUT_DATA_DIR.concat(
-                unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setClosed(true);
-    tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
-    tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
-    unseqResources.add(tsFileResource);
-    prepareUnseqFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
-  }
-
-  private void prepareUnseqFile(
+  protected void prepareUnseqFile(
       TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());

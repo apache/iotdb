@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.PreviewIterator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -1481,6 +1482,88 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
       }
     };
+  }
+
+  public class DeviceChunkMetaListIterator
+      implements PreviewIterator<Pair<String, List<ChunkMetadata>>> {
+
+    private String device;
+    Queue<Pair<Long, Long>> leafMeasurementNodePositions;
+    Queue<Pair<String, List<ChunkMetadata>>> currentEntryQueue;
+
+    public DeviceChunkMetaListIterator(String device) throws IOException {
+      this.device = device;
+      init();
+    }
+
+    private void init() throws IOException {
+      readFileMetadata();
+
+      MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
+      Pair<MetadataIndexEntry, Long> metadataIndexPair =
+          getMetadataAndEndOffset(metadataIndexNode, device, true, true);
+
+      if (metadataIndexPair == null) {
+        return;
+      }
+
+      leafMeasurementNodePositions = new LinkedList<>();
+      ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+      collectEachLeafMeasurementNodeOffsetRange(buffer, leafMeasurementNodePositions);
+      currentEntryQueue = new LinkedList<>();
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (currentEntryQueue != null && !currentEntryQueue.isEmpty()) {
+        return true;
+      }
+      if (leafMeasurementNodePositions == null || leafMeasurementNodePositions.isEmpty()) {
+        return false;
+      }
+
+      Pair<Long, Long> startEndPair = leafMeasurementNodePositions.remove();
+      try {
+        ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
+        while (nextBuffer.hasRemaining()) {
+          TimeseriesMetadata timeseriesMetadata =
+              TimeseriesMetadata.deserializeFrom(nextBuffer, true);
+          currentEntryQueue.add(
+              new Pair<>(
+                  timeseriesMetadata.getMeasurementId(),
+                  timeseriesMetadata.getChunkMetadataList()));
+        }
+      } catch (IOException e) {
+        throw new TsFileRuntimeException(
+            "Error occurred while reading a time series metadata block.");
+      }
+
+      return !currentEntryQueue.isEmpty();
+    }
+
+    public Pair<String, List<ChunkMetadata>> next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      return currentEntryQueue.poll();
+    }
+
+    @Override
+    public Pair<String, List<ChunkMetadata>> previewNext() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      return currentEntryQueue.peek();
+    }
+  }
+
+  /**
+   * @return An iterator of entry ( measurement -> chunk metadata list ). When traversing it, you
+   *     will get chunk metadata lists according to the lexicographic order of the measurements.
+   */
+  public PreviewIterator<Pair<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListIterator(
+      String device) throws IOException {
+    return new DeviceChunkMetaListIterator(device);
   }
 
   private void collectEachLeafMeasurementNodeOffsetRange(
