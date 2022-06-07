@@ -161,7 +161,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
     TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
 
-    // Set default configurations
+    // Set default configurations if necessary
     if (!storageGroupSchema.isSetTTL()) {
       storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     }
@@ -177,14 +177,10 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       storageGroupSchema.setTimePartitionInterval(
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
-    if (!storageGroupSchema.isSetMaximumSchemaRegionCount()) {
-      storageGroupSchema.setMaximumSchemaRegionCount(
-          ConfigNodeDescriptor.getInstance().getConf().getMaximumSchemaRegionCount());
-    }
-    if (!storageGroupSchema.isSetMaximumDataRegionCount()) {
-      storageGroupSchema.setMaximumDataRegionCount(
-          ConfigNodeDescriptor.getInstance().getConf().getMaximumDataRegionCount());
-    }
+
+    // Mark the StorageGroup as SchemaRegions and DataRegions not yet created
+    storageGroupSchema.setMaximumSchemaRegionCount(0);
+    storageGroupSchema.setMaximumDataRegionCount(0);
 
     // Initialize RegionGroupId List
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
@@ -369,7 +365,9 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       LOGGER.error(e.getMessage());
     }
     PermissionInfoResp dataSet = (PermissionInfoResp) configManager.queryPermission(plan);
-    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
+    TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
+    resp.setAuthorizerInfo(dataSet.getPermissionInfo());
+    return resp;
   }
 
   @Override

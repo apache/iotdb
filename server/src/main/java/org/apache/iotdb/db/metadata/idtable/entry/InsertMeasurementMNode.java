@@ -97,16 +97,6 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {}
 
   @Override
-  public String getVersion() {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
-
-  @Override
-  public void setVersion(String version) {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
-
-  @Override
   public IMeasurementSchema getSchema() {
     return schema;
   }

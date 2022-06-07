@@ -40,7 +40,6 @@ public class MeasurementGroup {
   private List<Map<String, String>> propsList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
-  private List<String> versionList = new ArrayList<>();
 
   public List<String> getMeasurements() {
     return measurements;
@@ -78,21 +77,15 @@ public class MeasurementGroup {
     return attributesList;
   }
 
-  public List<String> getVersionList() {
-    return versionList;
-  }
-
   public void addMeasurement(
       String measurement,
       TSDataType dataType,
       TSEncoding encoding,
-      CompressionType compressionType,
-      String version) {
+      CompressionType compressionType) {
     measurements.add(measurement);
     dataTypes.add(dataType);
     encodings.add(encoding);
     compressors.add(compressionType);
-    versionList.add(version);
   }
 
   public void addAlias(String alias) {
@@ -180,10 +173,6 @@ public class MeasurementGroup {
         ReadWriteIOUtils.write(attributes, byteBuffer);
       }
     }
-
-    for (String version : versionList) {
-      ReadWriteIOUtils.write(version, byteBuffer);
-    }
   }
 
   public void deserialize(ByteBuffer byteBuffer) {
@@ -237,10 +226,6 @@ public class MeasurementGroup {
         }
       }
     }
-
-    for (int i = 0; i < size; i++) {
-      versionList.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
   }
 
   @Override
@@ -255,8 +240,7 @@ public class MeasurementGroup {
         && Objects.equals(aliasList, that.aliasList)
         && Objects.equals(propsList, that.propsList)
         && Objects.equals(tagsList, that.tagsList)
-        && Objects.equals(attributesList, that.attributesList)
-        && Objects.equals(versionList, that.versionList);
+        && Objects.equals(attributesList, that.attributesList);
   }
 
   @Override
@@ -269,7 +253,6 @@ public class MeasurementGroup {
         aliasList,
         propsList,
         tagsList,
-        attributesList,
-        versionList);
+        attributesList);
   }
 }

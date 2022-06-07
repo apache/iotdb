@@ -275,9 +275,9 @@ public class SchemaTreeTest {
 
     MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
     MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
-    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema1, null);
+    SchemaMeasurementNode s1 = new SchemaMeasurementNode("s1", schema1);
     d1.addChild("s1", s1);
-    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema2, null);
+    SchemaMeasurementNode s2 = new SchemaMeasurementNode("s2", schema2);
     s2.setAlias("status");
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
@@ -313,7 +313,7 @@ public class SchemaTreeTest {
     SchemaNode s;
     for (int i = 0; i < 5; i++) {
       a = new SchemaEntityNode("a");
-      s = new SchemaMeasurementNode("s", schema, null);
+      s = new SchemaMeasurementNode("s", schema);
       a.addChild("s", s);
       parent.addChild("a", a);
       parent = a;
@@ -333,7 +333,7 @@ public class SchemaTreeTest {
 
     for (int i = 0; i < 2; i++) {
       c = new SchemaEntityNode("c");
-      c.addChild("s1", new SchemaMeasurementNode("s1", schema, null));
+      c.addChild("s1", new SchemaMeasurementNode("s1", schema));
       parent.addChild("c", c);
       parent = c;
     }
@@ -528,22 +528,6 @@ public class SchemaTreeTest {
   }
 
   @Test
-  public void testPruneMeasurement() throws Exception {
-    SchemaNode root = generateSchemaTree();
-    SchemaTree schemaTree = new SchemaTree(root);
-
-    Pair<List<MeasurementPath>, Integer> result =
-        schemaTree.searchMeasurementPaths(new PartialPath("root.sg.d1.s2"));
-    Assert.assertEquals(1, result.left.size());
-    Assert.assertEquals("root.sg.d1.s2", result.left.get(0).getFullPath());
-
-    schemaTree.pruneSingleMeasurement(new PartialPath("root.sg.d1.s2"));
-
-    result = schemaTree.searchMeasurementPaths(new PartialPath("root.sg.d1.s2"));
-    Assert.assertTrue(result.left.isEmpty());
-  }
-
-  @Test
   public void testMergeSchemaTree() throws Exception {
     SchemaTree schemaTree = new SchemaTree();
     for (SchemaTree tree : generateSchemaTrees()) {
@@ -551,6 +535,19 @@ public class SchemaTreeTest {
     }
 
     testSchemaTree(schemaTree.getRoot());
+  }
+
+  @Test
+  public void testMergeSchemaTreeAndSearchDeviceSchemaInfo() throws Exception {
+    SchemaTree schemaTree = new SchemaTree();
+    for (SchemaTree tree : generateSchemaTrees()) {
+      schemaTree.mergeSchemaTree(tree);
+    }
+    PartialPath devicePath = new PartialPath("root.sg.d99999");
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
   }
 
   private List<SchemaTree> generateSchemaTrees() throws Exception {

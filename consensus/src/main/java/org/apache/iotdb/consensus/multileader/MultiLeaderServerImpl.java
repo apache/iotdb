@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
@@ -55,9 +56,14 @@ public class MultiLeaderServerImpl {
   private final List<Peer> configuration;
   private final IndexController controller;
   private final LogDispatcher logDispatcher;
+  private final MultiLeaderConfig config;
 
   public MultiLeaderServerImpl(
-      String storageDir, Peer thisNode, List<Peer> configuration, IStateMachine stateMachine) {
+      String storageDir,
+      Peer thisNode,
+      List<Peer> configuration,
+      IStateMachine stateMachine,
+      MultiLeaderConfig config) {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
@@ -69,7 +75,8 @@ public class MultiLeaderServerImpl {
     } else {
       persistConfiguration();
     }
-    logDispatcher = new LogDispatcher(this);
+    this.config = config;
+    this.logDispatcher = new LogDispatcher(this);
   }
 
   public IStateMachine getStateMachine() {
@@ -182,5 +189,9 @@ public class MultiLeaderServerImpl {
 
   public IndexController getController() {
     return controller;
+  }
+
+  public MultiLeaderConfig getConfig() {
+    return config;
   }
 }

@@ -116,9 +116,15 @@ public class FunctionExpression extends Expression {
 
   public FunctionExpression(ByteBuffer byteBuffer) {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
-    functionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+
+    Map<String, String> deserializedFunctionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    functionAttributes =
+        deserializedFunctionAttributes != null
+            ? deserializedFunctionAttributes
+            : new LinkedHashMap<>();
+
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Expression> expressions = new ArrayList<>();
+    expressions = new ArrayList<>();
     for (int i = 0; i < expressionSize; i++) {
       expressions.add(Expression.deserialize(byteBuffer));
     }

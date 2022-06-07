@@ -349,8 +349,10 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitSchemaQueryOrderByHeat(
         SchemaQueryOrderByHeatNode node, LocalExecutionPlanContext context) {
-      Operator left = node.getLeft().accept(this, context);
-      Operator right = node.getRight().accept(this, context);
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
 
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
@@ -358,7 +360,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SchemaQueryOrderByHeatOperator.class.getSimpleName());
 
-      return new SchemaQueryOrderByHeatOperator(operatorContext, left, right);
+      return new SchemaQueryOrderByHeatOperator(operatorContext, children);
     }
 
     @Override
@@ -825,12 +827,7 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (GroupByLevelDescriptor descriptor : node.getGroupByLevelDescriptors()) {
-        List<String> inputColumnNames = descriptor.getInputColumnNames();
-        List<InputLocation[]> inputLocationList = new ArrayList<>(inputColumnNames.size());
-        inputColumnNames.forEach(
-            inputColumnName ->
-                inputLocationList.add(layout.get(inputColumnName).toArray(new InputLocation[0])));
-
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
@@ -838,7 +835,7 @@ public class LocalExecutionPlanner {
                     context
                         .getTypeProvider()
                         // get the type of first inputExpression
-                        .getType(descriptor.getInputExpressions().get(0).toString()),
+                        .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
                     ascending),
                 descriptor.getStep(),
                 inputLocationList));
@@ -849,7 +846,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               AggregationOperator.class.getSimpleName());
       return new AggregationOperator(
-          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter(), false);
     }
 
     @Override
@@ -956,26 +953,33 @@ public class LocalExecutionPlanner {
                 node.getPlanNodeId(),
                 AggregationOperator.class.getSimpleName());
         return new AggregationOperator(
-            operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+            operatorContext,
+            aggregators,
+            children,
+            ascending,
+            node.getGroupByTimeParameter(),
+            true);
       }
     }
 
     private List<InputLocation[]> calcInputLocationList(
         AggregationDescriptor descriptor, Map<String, List<InputLocation>> layout) {
-      List<String> inputColumnNames = descriptor.getInputColumnNames();
-      // it may include double parts
-      List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
-      inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
-
+      List<List<String>> inputColumnNames = descriptor.getInputColumnNamesList();
       List<InputLocation[]> inputLocationList = new ArrayList<>();
-      for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-        if (inputColumnNames.size() == 1) {
-          inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
-        } else {
-          inputLocationList.add(
-              new InputLocation[] {
-                inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
-              });
+
+      for (List<String> inputColumnNamesOfOneInput : inputColumnNames) {
+        // it may include double parts
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>();
+        inputColumnNamesOfOneInput.forEach(o -> inputLocationParts.add(layout.get(o)));
+        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+          if (inputColumnNamesOfOneInput.size() == 1) {
+            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+                });
+          }
         }
       }
       return inputLocationList;

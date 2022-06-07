@@ -16,13 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.utils;
 
-import java.util.UUID;
+package org.apache.iotdb.commons.client.mock;
 
-public class TimeseriesVersionUtil {
-
-  public static String generateVersion() {
-    return UUID.randomUUID().toString();
-  }
-}
+public interface MockInternalRPCServiceMBean {}

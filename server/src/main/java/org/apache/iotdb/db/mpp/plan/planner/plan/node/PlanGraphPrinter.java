@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 
 import org.apache.commons.lang3.Validate;
 
@@ -81,7 +82,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitAlignedSeriesScan(AlignedSeriesScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("AlignedSeriesScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getAlignedPath()));
+    boxValue.add(
+        String.format(
+            "Series: %s%s",
+            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
     boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
     return render(node, boxValue, context);
   }
@@ -92,6 +96,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesAggregationScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
+      AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
+      boxValue.add(
+          String.format(
+              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+    }
     boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
     return render(node, boxValue, context);
   }
@@ -101,7 +111,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       AlignedSeriesAggregationScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("AlignedSeriesAggregationScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getAlignedPath()));
+    boxValue.add(
+        String.format(
+            "Series: %s%s",
+            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
+    for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
+      AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
+      boxValue.add(
+          String.format(
+              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+    }
     boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
     return render(node, boxValue, context);
   }
@@ -149,6 +168,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitGroupByLevel(GroupByLevelNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("GroupByLevel-%s", node.getPlanNodeId().getId()));
+    for (int i = 0; i < node.getGroupByLevelDescriptors().size(); i++) {
+      AggregationDescriptor descriptor = node.getGroupByLevelDescriptors().get(i);
+      boxValue.add(
+          String.format(
+              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+      boxValue.add(String.format("  Output: %s", descriptor.getOutputColumnNames()));
+      boxValue.add(String.format("  Input: %s", descriptor.getInputExpressions()));
+    }
     return render(node, boxValue, context);
   }
 
@@ -157,6 +184,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       SlidingWindowAggregationNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SlidingWindowAggregation-%s", node.getPlanNodeId().getId()));
+    for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
+      AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
+      boxValue.add(
+          String.format(
+              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+    }
     return render(node, boxValue, context);
   }
 
@@ -172,6 +205,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitRowBasedSeriesAggregate(AggregationNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
+    for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
+      AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
+      boxValue.add(
+          String.format(
+              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+    }
     return render(node, boxValue, context);
   }
 

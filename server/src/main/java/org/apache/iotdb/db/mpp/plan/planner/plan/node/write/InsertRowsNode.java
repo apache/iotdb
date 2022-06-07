@@ -184,7 +184,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public List<TSDataType[]> getDataTypesList() {
     List<TSDataType[]> dataTypesList = new ArrayList<>();
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      dataTypesList.add(insertRowNode.dataTypes);
+      dataTypesList.add(insertRowNode.getDataTypes());
     }
     return dataTypesList;
   }
