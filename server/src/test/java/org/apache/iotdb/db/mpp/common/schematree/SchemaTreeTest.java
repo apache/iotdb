@@ -537,6 +537,19 @@ public class SchemaTreeTest {
     testSchemaTree(schemaTree.getRoot());
   }
 
+  @Test
+  public void testMergeSchemaTreeAndSearchDeviceSchemaInfo() throws Exception {
+    SchemaTree schemaTree = new SchemaTree();
+    for (SchemaTree tree : generateSchemaTrees()) {
+      schemaTree.mergeSchemaTree(tree);
+    }
+    PartialPath devicePath = new PartialPath("root.sg.d99999");
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
+  }
+
   private List<SchemaTree> generateSchemaTrees() throws Exception {
     List<SchemaTree> schemaTreeList = new ArrayList<>();
     SchemaTree schemaTree;
