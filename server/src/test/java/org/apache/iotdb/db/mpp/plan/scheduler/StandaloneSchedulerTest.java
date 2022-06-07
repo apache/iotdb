@@ -48,7 +48,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -72,23 +74,27 @@ import java.util.concurrent.ExecutorService;
 
 public class StandaloneSchedulerTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+
+  private WALMode walMode = conf.getWalMode();
   static LocalConfigNode configNode;
 
   @Before
   public void setUp() throws Exception {
     conf.setMppMode(true);
     conf.setDataNodeId(0);
+    conf.setWalMode(WALMode.DISABLE);
     configNode = LocalConfigNode.getInstance();
     configNode.init();
+    WALManager.getInstance().start();
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(0));
     WALRecoverManager.getInstance().recover();
   }
 
   @After
   public void tearDown() throws Exception {
-    WALRecoverManager.getInstance().clear();
     configNode.clear();
     EnvironmentUtils.cleanAllDir();
+    conf.setWalMode(walMode);
     conf.setDataNodeId(-1);
     conf.setMppMode(false);
   }

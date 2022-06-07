@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,6 +58,8 @@ public class StandaloneCoordinatorTest {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
+  private static WALMode walMode = conf.getWalMode();
+
   private static LocalConfigNode configNode;
   private static Coordinator coordinator;
   private static ISchemaFetcher schemaFetcher;
@@ -67,6 +70,7 @@ public class StandaloneCoordinatorTest {
   public static void setUpBeforeClass() throws Exception {
     conf.setMppMode(true);
     conf.setDataNodeId(0);
+    conf.setWalMode(WALMode.DISABLE);
     coordinator = Coordinator.getInstance();
     schemaFetcher = StandaloneSchemaFetcher.getInstance();
     partitionFetcher = StandalonePartitionFetcher.getInstance();
@@ -96,6 +100,7 @@ public class StandaloneCoordinatorTest {
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
     dataBlockService.stopService();
+    conf.setWalMode(walMode);
     conf.setDataNodeId(-1);
     conf.setMppMode(false);
   }
