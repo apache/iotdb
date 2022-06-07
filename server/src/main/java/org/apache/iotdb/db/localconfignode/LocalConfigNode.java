@@ -897,13 +897,13 @@ public class LocalConfigNode {
         if (!devicePath.contains("*")) {
           PartialPath device = new PartialPath(devicePath);
           PartialPath storageGroup = ensureStorageGroup(device);
-          SchemaRegionId regionId = getBelongedSchemaRegionIdWithAutoCreate(device);
+          SchemaRegionId schemaRegionId = getBelongedSchemaRegionIdWithAutoCreate(device);
           partitionSlotsMap
               .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
               .put(
                   executor.getSeriesPartitionSlot(devicePath),
-                  new TRegionReplicaSet(
-                      new TConsensusGroupId(regionId.getType(), regionId.getId()), null));
+                  genStandaloneRegionReplicaSet(
+                      TConsensusGroupType.SchemaRegion, schemaRegionId.getId()));
         }
       }
     } catch (MetadataException e) {
@@ -991,9 +991,8 @@ public class LocalConfigNode {
           timePartitionToRegionsMap.put(
               timePartitionSlot,
               Collections.singletonList(
-                  new TRegionReplicaSet(
-                      new TConsensusGroupId(dataRegionId.getType(), dataRegionId.getId()),
-                      Collections.emptyList())));
+                  genStandaloneRegionReplicaSet(
+                      TConsensusGroupType.DataRegion, dataRegionId.getId())));
         }
         deviceToRegionsMap.put(
             executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
