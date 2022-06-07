@@ -115,6 +115,10 @@ public class SchemaTree {
       cur = cur.getChild(nodes[i]);
     }
 
+    if (cur == null) {
+      return null;
+    }
+
     List<SchemaMeasurementNode> measurementNodeList = new ArrayList<>();
     SchemaNode node;
     for (String measurement : measurements) {
