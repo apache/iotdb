@@ -157,25 +157,25 @@ struct TAuthorizerReq {
 
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: required map<string, list<string>> authorizerInfo
+  2: optional map<string, list<string>> authorizerInfo
 }
 
-struct TUserResp{
+struct TUserResp {
   1: required string username
   2: required string password
   3: required list<string> privilegeList
   4: required list<string> roleList
 }
 
-struct TRoleResp{
+struct TRoleResp {
   1: required string roleName
   2: required list<string> privilegeList
 }
 
-struct TPermissionInfoResp{
-  1: required TUserResp userInfo
-  2: required map<string, TRoleResp> roleInfo
-  3: required common.TSStatus status
+struct TPermissionInfoResp {
+  1: required common.TSStatus status
+  2: optional TUserResp userInfo
+  3: optional map<string, TRoleResp> roleInfo
 }
 
 struct TLoginReq {
@@ -183,7 +183,7 @@ struct TLoginReq {
   2: required string password
 }
 
-struct TCheckUserPrivilegesReq{
+struct TCheckUserPrivilegesReq {
   1: required string username;
   2: required list<string> paths
   3: required i32 permission

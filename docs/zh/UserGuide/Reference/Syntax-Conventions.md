@@ -603,7 +603,7 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 
 ## Session、TsFile API
 
-在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. 以创建时间序列 createTimeseries 为例：
 
