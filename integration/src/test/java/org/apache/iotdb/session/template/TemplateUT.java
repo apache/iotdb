@@ -392,6 +392,10 @@ public class TemplateUT {
       assertEquals("303: Path [root.sg.v2] has not been set any template.", e.getMessage());
     }
 
+    assertEquals(
+        new HashSet<>(Collections.singletonList("Time")),
+        new HashSet<>(session.executeQueryStatement("SELECT * FROM root.**").getColumnNames()));
+
     session.createTimeseriesOfTemplateOnPath("root.sg.v1.d1");
     assertEquals("[root.sg.v1.d1]", session.showPathsTemplateUsingOn("template1").toString());
 
