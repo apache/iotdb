@@ -26,7 +26,7 @@
     <property name="fileExtensions" value="java"/>
     <module name="BeforeExecutionExclusionFileFilter">
         <property name="fileNamePattern"
-                    value="(^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/]session)[\\/].*$)|
+                  value="(^.*([\\/]src[\\/]main|[\\/]src[\\/]test[\\/]java[\\/]org[\\/]apache[\\/]iotdb[\\/]session)[\\/].*$)|
                 |^.*IoTDBSchemaTemplateIT\.java$|
                 |^.*IoTDBSeriesReaderIT\.java$|
                 |^.*IoTDBCompactionIT\.java$|
