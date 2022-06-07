@@ -1783,6 +1783,10 @@ public class MTree implements Serializable {
                 return true;
               }
 
+              if (node.isMeasurement()) {
+                return false;
+              }
+
               // if node not set template, go on traversing
               if (node.getSchemaTemplate() != null) {
                 // if set template, and equals to target or target for all, add to result
