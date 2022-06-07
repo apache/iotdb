@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -416,15 +417,15 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
-
     if (req.storageGroups != null) {
       List<PartialPath> noExistSg =
           configManager.checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
       if (!noExistSg.isEmpty()) {
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
-        // throw new StorageGroupNotSetException(sb.subSequence(0, sb.length() - 1).toString(),
-        // true);
+        return RpcUtils.getStatus(
+            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            "storageGroup" + sb.subSequence(0, sb.length() - 1).toString() + "does not exist");
       }
     }
 

@@ -640,7 +640,7 @@ public class ConfigManager implements Manager {
       return noExistSg;
     }
     for (PartialPath storageGroup : storageGroups) {
-      if (!clusterSchemaManager.getStorageGroupNames().contains(storageGroup)) {
+      if (!clusterSchemaManager.getStorageGroupNames().contains(storageGroup.toString())) {
         noExistSg.add(storageGroup);
       }
     }

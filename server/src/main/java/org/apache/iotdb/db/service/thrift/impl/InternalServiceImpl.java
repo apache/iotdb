@@ -45,7 +45,6 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -361,13 +360,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
-    TSStatus tsStatus;
-    try {
-      tsStatus = StorageEngineV2.getInstance().operatorFlush(req);
-    } catch (StorageGroupNotSetException e) {
-      tsStatus = RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST);
-    }
-    return tsStatus;
+    return StorageEngineV2.getInstance().operatorFlush(req);
   }
 
   @Override

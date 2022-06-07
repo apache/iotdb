@@ -45,7 +45,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -568,7 +567,7 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  public TSStatus operatorFlush(TFlushReq req) throws StorageGroupNotSetException {
+  public TSStatus operatorFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngineV2.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().deleteOutdatedWALFiles();
