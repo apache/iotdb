@@ -444,14 +444,27 @@ public class LogicalPlanner {
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+
+      // If there is only one region, we can push down the offset and limit operation to
+      // source operator.
+      boolean canPushDownOffsetLimit =
+          analysis.getSchemaPartitionInfo() != null
+              && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+
+      int limit = showTimeSeriesStatement.getLimit();
+      int offset = showTimeSeriesStatement.getOffset();
+      if (!canPushDownOffsetLimit) {
+        limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
+        offset = 0;
+      }
       planBuilder =
           planBuilder
               .planTimeSeriesSchemaSource(
                   showTimeSeriesStatement.getPathPattern(),
                   showTimeSeriesStatement.getKey(),
                   showTimeSeriesStatement.getValue(),
-                  showTimeSeriesStatement.getLimit(),
-                  showTimeSeriesStatement.getOffset(),
+                  limit,
+                  offset,
                   showTimeSeriesStatement.isOrderByHeat(),
                   showTimeSeriesStatement.isContains(),
                   showTimeSeriesStatement.isPrefixPath())
@@ -466,27 +479,52 @@ public class LogicalPlanner {
                 .getRoot();
         planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
       }
-      return planBuilder
-          .planOffset(showTimeSeriesStatement.getOffset())
-          .planLimit(showTimeSeriesStatement.getLimit())
-          .getRoot();
+
+      if (!canPushDownOffsetLimit) {
+        return planBuilder
+            .planOffset(showTimeSeriesStatement.getOffset())
+            .planLimit(showTimeSeriesStatement.getLimit())
+            .getRoot();
+      }
+
+      return planBuilder.getRoot();
     }
 
     @Override
     public PlanNode visitShowDevices(
         ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      return planBuilder
-          .planDeviceSchemaSource(
-              showDevicesStatement.getPathPattern(),
-              showDevicesStatement.getLimit(),
-              showDevicesStatement.getOffset(),
-              showDevicesStatement.isPrefixPath(),
-              showDevicesStatement.hasSgCol())
-          .planSchemaQueryMerge(false)
-          .planOffset(showDevicesStatement.getOffset())
-          .planLimit(showDevicesStatement.getLimit())
-          .getRoot();
+
+      // If there is only one region, we can push down the offset and limit operation to
+      // source operator.
+      boolean canPushDownOffsetLimit =
+          analysis.getSchemaPartitionInfo() != null
+              && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+
+      int limit = showDevicesStatement.getLimit();
+      int offset = showDevicesStatement.getOffset();
+      if (!canPushDownOffsetLimit) {
+        limit = showDevicesStatement.getLimit() + showDevicesStatement.getOffset();
+        offset = 0;
+      }
+
+      planBuilder =
+          planBuilder
+              .planDeviceSchemaSource(
+                  showDevicesStatement.getPathPattern(),
+                  limit,
+                  offset,
+                  showDevicesStatement.isPrefixPath(),
+                  showDevicesStatement.hasSgCol())
+              .planSchemaQueryMerge(false);
+
+      if (!canPushDownOffsetLimit) {
+        return planBuilder
+            .planOffset(showDevicesStatement.getOffset())
+            .planLimit(showDevicesStatement.getLimit())
+            .getRoot();
+      }
+      return planBuilder.getRoot();
     }
 
     @Override
