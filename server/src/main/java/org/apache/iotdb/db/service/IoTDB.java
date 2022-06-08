@@ -42,8 +42,6 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
-import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -51,7 +49,6 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -160,18 +157,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SenderService.getInstance());
     registerManager.register(WALManager.getInstance());
 
-    // in mpp mode we need to start some other services
-    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      registerManager.register(StorageEngineV2.getInstance());
-      registerManager.register(DataBlockService.getInstance());
-      registerManager.register(InternalService.getInstance());
-      registerManager.register(DriverScheduler.getInstance());
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
-    } else {
-      registerManager.register(StorageEngine.getInstance());
-    }
+    registerManager.register(StorageEngine.getInstance());
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
@@ -196,9 +182,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info(
         "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
 
-    while (IoTDBDescriptor.getInstance().getConfig().isMppMode()
-        ? !StorageEngineV2.getInstance().isAllSgReady()
-        : !StorageEngine.getInstance().isAllSgReady()) {
+    while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -209,11 +193,7 @@ public class IoTDB implements IoTDBMBean {
     }
 
     registerManager.register(UpgradeSevice.getINSTANCE());
-    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
-    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
-    if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      registerManager.register(SettleService.getINSTANCE());
-    }
+    registerManager.register(SettleService.getINSTANCE());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
