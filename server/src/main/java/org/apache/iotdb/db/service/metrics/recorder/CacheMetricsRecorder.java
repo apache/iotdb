@@ -43,7 +43,7 @@ public class CacheMetricsRecorder {
             .getMetricManager()
             .count(
                 1,
-                Metric.CACHE.name(),
+                Metric.CACHE.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 name,
@@ -54,7 +54,7 @@ public class CacheMetricsRecorder {
           .getMetricManager()
           .count(
               1,
-              Metric.CACHE.name(),
+              Metric.CACHE.toString(),
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               name,
