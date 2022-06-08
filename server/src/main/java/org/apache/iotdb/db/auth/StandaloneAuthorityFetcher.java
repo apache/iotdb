@@ -1,0 +1,131 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.auth;
+
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import com.google.common.util.concurrent.SettableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
+
+  private static final Logger logger = LoggerFactory.getLogger(StandaloneAuthorityFetcher.class);
+
+  private static final class StandaloneAuthorityFetcherHolder {
+    private static final StandaloneAuthorityFetcher INSTANCE = new StandaloneAuthorityFetcher();
+
+    private StandaloneAuthorityFetcherHolder() {}
+  }
+
+  public static StandaloneAuthorityFetcher getInstance() {
+    return StandaloneAuthorityFetcher.StandaloneAuthorityFetcherHolder.INSTANCE;
+  }
+
+  @Override
+  public TSStatus checkUser(String username, String password) {
+    boolean loginStatus = false;
+    String loginMessage = null;
+    try {
+      loginStatus = BasicAuthorizer.getInstance().login(username, password);
+    } catch (AuthException e) {
+      logger.info("meet error while logging in.", e);
+      loginMessage = e.getMessage();
+    }
+    if (loginStatus) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, loginMessage);
+    }
+  }
+
+  @Override
+  public TSStatus checkUserPrivileges(String username, List<String> allPath, int permission) {
+    boolean checkStatus = true;
+    String checkMessage = null;
+    for (String path : allPath) {
+      try {
+        if (!checkOnePath(username, path, permission)) {
+          checkStatus = false;
+        }
+      } catch (AuthException e) {
+        checkStatus = false;
+      }
+    }
+    if (checkStatus) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR, checkMessage);
+    }
+  }
+
+  private static boolean checkOnePath(String username, String path, int permission)
+      throws AuthException {
+    try {
+      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path;
+      if (BasicAuthorizer.getInstance().checkUserPrivileges(username, fullPath, permission)) {
+        return true;
+      }
+    } catch (AuthException e) {
+      logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
+      throw new AuthException(e);
+    }
+    return false;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> operatePermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      LocalConfigNode.getInstance().operatorPermission(authorizerReq);
+    } catch (AuthException e) {
+      future.setException(e);
+    }
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> queryPermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    Map<String, List<String>> authorizerResp = new HashMap<>();
+    try {
+      authorizerResp = LocalConfigNode.getInstance().queryPermission(authorizerReq);
+    } catch (AuthException e) {
+      future.setException(e);
+    }
+    return AuthorizerManager.getInstance().buildTSBlock(authorizerResp);
+  }
+}

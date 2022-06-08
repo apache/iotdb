@@ -29,6 +29,8 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 =======
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -47,7 +49,6 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -134,7 +135,7 @@ public class LocalConfigNode {
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
 
-  private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private IAuthorizer iAuthorizer;
 
   private LocalConfigNode() {
     String schemaDir = config.getSchemaDir();
@@ -145,6 +146,11 @@ public class LocalConfigNode {
       } else {
         logger.error("create system folder {} failed.", schemaFolder.getAbsolutePath());
       }
+    }
+    try {
+      iAuthorizer = BasicAuthorizer.getInstance();
+    } catch (AuthException e) {
+      logger.error(e.getMessage());
     }
   }
 
@@ -1040,45 +1046,45 @@ public class LocalConfigNode {
     String nodeName = authorizerReq.getNodeName();
     switch (authorType) {
       case UPDATE_USER:
-        authorizerManager.updateUserPassword(userName, newPassword);
+        iAuthorizer.updateUserPassword(userName, newPassword);
         break;
       case CREATE_USER:
-        authorizerManager.createUser(userName, password);
+        iAuthorizer.createUser(userName, password);
         break;
       case CREATE_ROLE:
-        authorizerManager.createRole(roleName);
+        iAuthorizer.createRole(roleName);
         break;
       case DROP_USER:
-        authorizerManager.deleteUser(userName);
+        iAuthorizer.deleteUser(userName);
         break;
       case DROP_ROLE:
-        authorizerManager.deleteRole(roleName);
+        iAuthorizer.deleteRole(roleName);
         break;
       case GRANT_ROLE:
         for (int i : permissions) {
-          authorizerManager.grantPrivilegeToRole(roleName, nodeName, i);
+          iAuthorizer.grantPrivilegeToRole(roleName, nodeName, i);
         }
         break;
       case GRANT_USER:
         for (int i : permissions) {
-          authorizerManager.grantPrivilegeToUser(userName, nodeName, i);
+          iAuthorizer.grantPrivilegeToUser(userName, nodeName, i);
         }
         break;
       case GRANT_ROLE_TO_USER:
-        authorizerManager.grantRoleToUser(roleName, userName);
+        iAuthorizer.grantRoleToUser(roleName, userName);
         break;
       case REVOKE_USER:
         for (int i : permissions) {
-          authorizerManager.revokePrivilegeFromUser(userName, nodeName, i);
+          iAuthorizer.revokePrivilegeFromUser(userName, nodeName, i);
         }
         break;
       case REVOKE_ROLE:
         for (int i : permissions) {
-          authorizerManager.revokePrivilegeFromRole(roleName, nodeName, i);
+          iAuthorizer.revokePrivilegeFromRole(roleName, nodeName, i);
         }
         break;
       case REVOKE_ROLE_FROM_USER:
-        authorizerManager.revokeRoleFromUser(roleName, userName);
+        iAuthorizer.revokeRoleFromUser(roleName, userName);
         break;
       default:
         throw new AuthException("Unsupported operation " + authorType);
@@ -1108,14 +1114,14 @@ public class LocalConfigNode {
   }
 
   public Map<String, List<String>> executeListRole() {
-    List<String> roleList = authorizerManager.listAllRoles();
+    List<String> roleList = iAuthorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
     return permissionInfo;
   }
 
   public Map<String, List<String>> executeListUser() {
-    List<String> userList = authorizerManager.listAllUsers();
+    List<String> userList = iAuthorizer.listAllUsers();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
     return permissionInfo;
@@ -1126,7 +1132,7 @@ public class LocalConfigNode {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     Role role;
     try {
-      role = authorizerManager.getRole(authorizerReq.getRoleName());
+      role = iAuthorizer.getRole(authorizerReq.getRoleName());
       if (role == null) {
         throw new AuthException("No such role : " + authorizerReq.getRoleName());
       }
@@ -1134,9 +1140,9 @@ public class LocalConfigNode {
       throw new AuthException(e);
     }
     List<String> roleUsersList = new ArrayList<>();
-    List<String> userList = authorizerManager.listAllUsers();
+    List<String> userList = iAuthorizer.listAllUsers();
     for (String userN : userList) {
-      User userObj = authorizerManager.getUser(userN);
+      User userObj = iAuthorizer.getUser(userN);
       if (userObj != null && userObj.hasRole(authorizerReq.getRoleName())) {
         roleUsersList.add(userN);
       }
@@ -1150,7 +1156,7 @@ public class LocalConfigNode {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     User user;
     try {
-      user = authorizerManager.getUser(authorizerReq.getUserName());
+      user = iAuthorizer.getUser(authorizerReq.getUserName());
       if (user == null) {
         throw new AuthException("No such user : " + authorizerReq.getUserName());
       }
@@ -1171,7 +1177,7 @@ public class LocalConfigNode {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     Role role;
     try {
-      role = authorizerManager.getRole(authorizerReq.getRoleName());
+      role = iAuthorizer.getRole(authorizerReq.getRoleName());
       if (role == null) {
         throw new AuthException("No such role : " + authorizerReq.getRoleName());
       }
@@ -1195,7 +1201,7 @@ public class LocalConfigNode {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     User user;
     try {
-      user = authorizerManager.getUser(authorizerReq.getUserName());
+      user = iAuthorizer.getUser(authorizerReq.getUserName());
       if (user == null) {
         throw new AuthException("No such user : " + authorizerReq.getUserName());
       }
@@ -1218,7 +1224,7 @@ public class LocalConfigNode {
         }
       }
       for (String roleN : user.getRoleList()) {
-        Role role = authorizerManager.getRole(roleN);
+        Role role = iAuthorizer.getRole(roleN);
         if (roleN == null) {
           continue;
         }
