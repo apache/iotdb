@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionTest;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -83,6 +84,7 @@ public class StandaloneSchedulerTest {
     configNode = LocalConfigNode.getInstance();
     configNode.init();
     WALManager.getInstance().start();
+    FlushManager.getInstance().start();
     StorageEngineV2.getInstance().start();
   }
 
@@ -91,6 +93,7 @@ public class StandaloneSchedulerTest {
     configNode.clear();
     WALManager.getInstance().stop();
     StorageEngineV2.getInstance().stop();
+    FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);
     conf.setMppMode(false);

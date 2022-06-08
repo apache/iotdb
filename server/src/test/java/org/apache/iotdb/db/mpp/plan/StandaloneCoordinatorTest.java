@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
@@ -69,6 +70,7 @@ public class StandaloneCoordinatorTest {
     configNode = LocalConfigNode.getInstance();
     configNode.init();
     WALManager.getInstance().start();
+    FlushManager.getInstance().start();
     StorageEngineV2.getInstance().start();
   }
 
@@ -77,6 +79,7 @@ public class StandaloneCoordinatorTest {
     configNode.clear();
     WALManager.getInstance().stop();
     StorageEngineV2.getInstance().stop();
+    FlushManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     conf.setDataNodeId(-1);
     conf.setMppMode(false);
