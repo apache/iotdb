@@ -36,8 +36,7 @@ public class FragmentInstanceId {
     this.queryId = fragmentId.getQueryId();
     this.fragmentId = fragmentId;
     this.instanceId = instanceId;
-    this.fullId =
-        String.format("%s.%d.%s", fragmentId.getQueryId().getId(), fragmentId.getId(), instanceId);
+    this.fullId = createFullId(fragmentId.getQueryId().getId(), fragmentId.getId(), instanceId);
   }
 
   public String getFullId() {
@@ -98,5 +97,9 @@ public class FragmentInstanceId {
   @Override
   public int hashCode() {
     return Objects.hash(fullId, queryId, fragmentId, instanceId);
+  }
+
+  public static String createFullId(String queryId, int fragmentId, String instanceId) {
+    return String.format("%s.%d.%s", queryId, fragmentId, instanceId);
   }
 }
