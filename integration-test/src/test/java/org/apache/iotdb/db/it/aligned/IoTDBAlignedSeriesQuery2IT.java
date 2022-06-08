@@ -27,9 +27,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 
-/** Let One chunk has more than one page. */
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBRawQueryWithoutValueFilter3IT extends IoTDBRawQueryWithoutValueFilterIT {
+public class IoTDBAlignedSeriesQuery2IT extends IoTDBAlignedSeriesQueryIT {
 
   private static int numOfPointsPerPage;
 
@@ -39,6 +38,7 @@ public class IoTDBRawQueryWithoutValueFilter3IT extends IoTDBRawQueryWithoutValu
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
     numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
+
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);

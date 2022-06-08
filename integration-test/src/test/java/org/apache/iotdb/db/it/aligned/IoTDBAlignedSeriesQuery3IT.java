@@ -28,7 +28,7 @@ import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBRawQueryWithValueFilter2IT extends IoTDBRawQueryWithValueFilterIT {
+public class IoTDBAlignedSeriesQuery3IT extends IoTDBAlignedSeriesQueryIT {
 
   private static int numOfPointsPerPage;
 
@@ -48,7 +48,7 @@ public class IoTDBRawQueryWithValueFilter2IT extends IoTDBRawQueryWithValueFilte
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);

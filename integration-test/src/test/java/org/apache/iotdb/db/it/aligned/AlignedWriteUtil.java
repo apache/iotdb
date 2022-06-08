@@ -34,6 +34,7 @@ import static org.junit.Assert.fail;
  */
 public class AlignedWriteUtil {
 
+  // TODO add flush command when it's supported in new cluster
   private static final String[] sqls =
       new String[] {
         "SET STORAGE GROUP TO root.sg1",
@@ -131,17 +132,18 @@ public class AlignedWriteUtil {
         "insert into root.sg1.d2(time, s2, s5) values(40, 40, 'non_aligned_test40')",
       };
 
-  public static void insertData() throws ClassNotFoundException {
+  public static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       // create aligned and non-aligned time series
+      // TODO change it to executeBatch way when it's supported in new cluster
       for (String sql : sqls) {
         statement.execute(sql);
       }
     } catch (Exception e) {
       e.printStackTrace();
-      fail();
+      fail(e.getMessage());
     }
   }
 }
