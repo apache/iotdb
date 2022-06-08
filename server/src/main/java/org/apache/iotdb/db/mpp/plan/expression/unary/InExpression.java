@@ -63,11 +63,7 @@ public class InExpression extends UnaryExpression {
 
   @Override
   public TSDataType inferTypes(TypeProvider typeProvider) {
-    final String expressionString = toString();
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      typeProvider.setType(expressionString, expression.inferTypes(typeProvider));
-    }
-    return typeProvider.getType(expressionString);
+    return TSDataType.BOOLEAN;
   }
 
   @Override
