@@ -27,7 +27,6 @@ import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
@@ -36,8 +35,11 @@ import com.codahale.metrics.jvm.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.management.ManagementFactory;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToLongFunction;
@@ -396,31 +398,6 @@ public class DropwizardMetricManager implements MetricManager {
 
   public MetricRegistry getMetricRegistry() {
     return metricRegistry;
-  }
-
-  @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    if (!isEnable()) {
-      return;
-    }
-    switch (metric) {
-      case JVM:
-        enableJvmMetrics();
-        break;
-      default:
-        logger.warn("Unsupported metric type {}", metric);
-    }
-  }
-
-  private void enableJvmMetrics() {
-    if (!isEnable()) {
-      return;
-    }
-    metricRegistry.registerAll(new JvmAttributeGaugeSet());
-    metricRegistry.registerAll(new GarbageCollectorMetricSet());
-    metricRegistry.registerAll(new ClassLoadingGaugeSet());
-    metricRegistry.registerAll(new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
-    metricRegistry.registerAll(new CachedThreadStatesGaugeSet(5, TimeUnit.MILLISECONDS));
   }
 
   @Override

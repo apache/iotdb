@@ -25,13 +25,15 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
   /** enable publishing data. */
   private Boolean enableMetric = false;
+
+  /** Is stat performance of sub-module enable */
+  private Boolean enablePerformanceStat = false;
 
   /** The of monitor frame */
   private MonitorType monitorType = MonitorType.MICROMETER;
@@ -43,7 +45,7 @@ public class MetricConfig {
   private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
   private List<PredefinedMetric> predefinedMetrics =
-      Collections.singletonList(PredefinedMetric.JVM);
+      Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
 
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";
@@ -156,6 +158,14 @@ public class MetricConfig {
 
   public void setEnableMetric(Boolean enableMetric) {
     this.enableMetric = enableMetric;
+  }
+
+  public Boolean getEnablePerformanceStat() {
+    return enablePerformanceStat;
+  }
+
+  public void setEnablePerformanceStat(Boolean enablePerformanceStat) {
+    this.enablePerformanceStat = enablePerformanceStat;
   }
 
   public MonitorType getMonitorType() {

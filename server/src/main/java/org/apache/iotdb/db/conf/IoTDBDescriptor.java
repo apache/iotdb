@@ -566,13 +566,6 @@ public class IoTDBDescriptor {
                   "mtree_snapshot_threshold_time",
                   Integer.toString(conf.getMtreeSnapshotThresholdTime()))));
 
-      conf.setEnablePerformanceStat(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
       int maxConcurrentClientNum =
           Integer.parseInt(
               properties.getProperty(

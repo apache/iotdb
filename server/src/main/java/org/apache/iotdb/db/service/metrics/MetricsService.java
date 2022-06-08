@@ -20,22 +20,22 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.service.metrics.predefined.FileMetrics;
+import org.apache.iotdb.db.service.metrics.predefined.ProcessMetrics;
+import org.apache.iotdb.db.service.metrics.predefined.SystemMetrics;
 import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.jvm.JvmMetrics;
+import org.apache.iotdb.metrics.predefined.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.stream.Stream;
 
 public class MetricsService extends MetricService implements MetricsServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
@@ -77,91 +77,29 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   }
 
   @Override
-  public void collectFileSystemInfo() {
-    logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
-    String walDir = DirectoryManager.getInstance().getWALFolder();
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        walDir,
-        FileUtils::getDirSize,
-        Tag.NAME.toString(),
-        "wal");
-
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      return FileUtils.getDirSize(dir);
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "seq");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      return FileUtils.getDirSize(dir);
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "unseq");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        walDir,
-        value -> {
-          File walFolder = new File(value);
-          if (walFolder.exists() && walFolder.isDirectory()) {
-            return org.apache.commons.io.FileUtils.listFiles(new File(value), null, true).size();
-          }
-          return 0L;
-        },
-        Tag.NAME.toString(),
-        "wal");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "seq");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "unseq");
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+    IMetricSet metricSet;
+    switch (metric) {
+      case JVM:
+        metricSet = new JvmMetrics();
+        break;
+      case LOGBACK:
+        metricSet = new LogbackMetrics();
+        break;
+      case FILE:
+        metricSet = new FileMetrics();
+        break;
+      case PROCESS:
+        metricSet = new ProcessMetrics();
+        break;
+      case SYSTEM:
+        metricSet = new SystemMetrics();
+        break;
+      default:
+        logger.error("Unknown predefined metrics: {}", metric);
+        return;
+    }
+    metricSet.bindTo(metricManager);
   }
 
   @Override

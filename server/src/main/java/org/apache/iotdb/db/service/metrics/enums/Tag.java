@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,18 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics;
+package org.apache.iotdb.db.service.metrics.enums;
 
-import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
-
-public class DoNothingMetricService extends MetricService {
-
-  @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {}
+public enum Tag {
+  TYPE,
+  NAME,
+  STATUS;
 
   @Override
-  protected void reloadProperties(ReloadLevel reloadLevel) {
-    // do nothing
+  public String toString() {
+    return super.toString().toLowerCase();
   }
 }
