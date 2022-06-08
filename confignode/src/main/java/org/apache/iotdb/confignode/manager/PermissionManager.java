@@ -103,32 +103,12 @@ public class PermissionManager {
     req.setUsername(username);
     req.setRoleName(roleName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
-<<<<<<< HEAD
-      TEndPoint internalEndPoint = dataNodeInfo.getLocation().getInternalEndPoint();
-      try {
-        status =
-            INTERNAL_SERVICE_CLIENT_MANAGER
-                .borrowClient(internalEndPoint)
-                .invalidatePermissionCache(req);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          status.setMessage(
-              "datanode cache initialization failed, ip: "
-                  + internalEndPoint.getIp()
-                  + ", port: "
-                  + internalEndPoint.getPort());
-          return status;
-        }
-      } catch (IOException | TException e) {
-        logger.error("Failed to initialize cache, the error is ", e);
-        return RpcUtils.getStatus(
-            TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR,
-            "Failed to initialize cache, the error is " + e.getMessage());
-      }
-=======
       status =
           SyncDataNodeClientPool.getInstance()
               .invalidatePermissionCache(dataNodeInfo.getLocation().getInternalEndPoint(), req);
->>>>>>> b285b1360b (changed some code)
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
     }
     return status;
   }
