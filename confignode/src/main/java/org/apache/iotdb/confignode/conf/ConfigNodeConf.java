@@ -62,7 +62,7 @@ public class ConfigNodeConf {
   private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
