@@ -54,18 +54,15 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public TSStatus checkUser(String username, String password) {
-    boolean loginStatus = false;
-    String loginMessage = null;
     try {
-      loginStatus = BasicAuthorizer.getInstance().login(username, password);
+      if (BasicAuthorizer.getInstance().login(username, password)) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else {
+        return RpcUtils.getStatus(
+            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
+      }
     } catch (AuthException e) {
-      logger.info("meet error while logging in.", e);
-      loginMessage = e.getMessage();
-    }
-    if (loginStatus) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, loginMessage);
+      return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
     }
   }
 

@@ -376,19 +376,6 @@ public class AuthorizerManager implements IAuthorizer {
 
   /** Check the user */
   public TSStatus checkUser(String username, String password) throws ConfigNodeConnectionException {
-    // TODO:(Local AuthCheck)
-    if (!conf.getConfig().isClusterMode()) {
-      try {
-        if (login(username, password)) {
-          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-        } else {
-          return RpcUtils.getStatus(
-              TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
-        }
-      } catch (AuthException e) {
-        return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
-      }
-    }
     authReadWriteLock.readLock().lock();
     try {
       return authorityFetcher.checkUser(username, password);

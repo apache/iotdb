@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.localconfignode;
 
-<<<<<<< HEAD
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -27,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-=======
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
@@ -35,7 +33,6 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
->>>>>>> 6a3e6908f3 (add permission operate to LocalConfigNode)
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -69,12 +66,9 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-<<<<<<< HEAD
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
-=======
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
->>>>>>> 6a3e6908f3 (add permission operate to LocalConfigNode)
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -880,7 +874,6 @@ public class LocalConfigNode {
 
   // endregion
 
-<<<<<<< HEAD
   // region Interfaces for StandaloneSchemaFetcher
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getSchemaPartition(
@@ -1033,7 +1026,7 @@ public class LocalConfigNode {
   }
 
   // endregion
-=======
+
   // author
   public void operatorPermission(TAuthorizerReq authorizerReq) throws AuthException {
     AuthorOperator.AuthorType authorType =
@@ -1241,5 +1234,4 @@ public class LocalConfigNode {
     permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
     return permissionInfo;
   }
->>>>>>> 6a3e6908f3 (add permission operate to LocalConfigNode)
 }
