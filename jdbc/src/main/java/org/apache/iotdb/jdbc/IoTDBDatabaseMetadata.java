@@ -2766,12 +2766,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public boolean storesUpperCaseIdentifiers() {
-    return true;
+    return false;
   }
 
   @Override
   public boolean storesUpperCaseQuotedIdentifiers() {
-    return true;
+    return false;
   }
 
   @Override

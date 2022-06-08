@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
@@ -65,16 +66,20 @@ public class ClusterSchemaManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
     TSStatus result;
-    if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
+    try {
+      clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupReq.getSchema().getName());
+    } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
-      result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
-      result.setMessage(
-          String.format(
-              "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
-    } else {
-      // Persist StorageGroupSchema
-      result = getConsensusManager().write(setStorageGroupReq).getStatus();
+      if (metadataException instanceof IllegalPathException) {
+        result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+      } else {
+        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+      }
+      result.setMessage(metadataException.getMessage());
+      return result;
     }
+    // Persist StorageGroupSchema
+    result = getConsensusManager().write(setStorageGroupReq).getStatus();
     return result;
   }
 
