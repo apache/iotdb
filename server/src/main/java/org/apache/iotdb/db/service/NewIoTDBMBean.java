@@ -17,31 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.distribution;
+package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.commons.exception.ShutdownException;
 
-public class DistributionPlanContext {
-  protected boolean isRoot;
-  protected MPPQueryContext queryContext;
-  protected boolean forceAddParent;
+@FunctionalInterface
+public interface NewIoTDBMBean {
 
-  protected DistributionPlanContext(MPPQueryContext queryContext) {
-    this.isRoot = true;
-    this.queryContext = queryContext;
-    this.forceAddParent = false;
-  }
-
-  protected DistributionPlanContext copy() {
-    return new DistributionPlanContext(queryContext);
-  }
-
-  protected DistributionPlanContext setRoot(boolean isRoot) {
-    this.isRoot = isRoot;
-    return this;
-  }
-
-  protected void setForceAddParent(boolean forceAddParent) {
-    this.forceAddParent = forceAddParent;
-  }
+  void stop() throws ShutdownException;
 }

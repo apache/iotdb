@@ -17,31 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.distribution;
+package org.apache.iotdb.db.mpp.plan.constant;
 
-import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-public class DistributionPlanContext {
-  protected boolean isRoot;
-  protected MPPQueryContext queryContext;
-  protected boolean forceAddParent;
+public class DataNodeEndPoints {
+  public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
+      new TEndPoint(
+          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
+          IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
 
-  protected DistributionPlanContext(MPPQueryContext queryContext) {
-    this.isRoot = true;
-    this.queryContext = queryContext;
-    this.forceAddParent = false;
-  }
-
-  protected DistributionPlanContext copy() {
-    return new DistributionPlanContext(queryContext);
-  }
-
-  protected DistributionPlanContext setRoot(boolean isRoot) {
-    this.isRoot = isRoot;
-    return this;
-  }
-
-  protected void setForceAddParent(boolean forceAddParent) {
-    this.forceAddParent = forceAddParent;
-  }
+  public static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
+      new TEndPoint(
+          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
+          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 }

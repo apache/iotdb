@@ -131,7 +131,7 @@ public class ConfigNodeStartupCheck {
    *
    * @return True if confignode-system.properties doesn't exist.
    */
-  private boolean isFirstStart() throws IOException, StartupException {
+  private boolean isFirstStart() throws IOException {
     // If systemDir does not exist, create systemDir
     File systemDir = new File(conf.getSystemDir());
     createDirIfEmpty(systemDir);
@@ -143,18 +143,6 @@ public class ConfigNodeStartupCheck {
     // Check if system properties file exists
     boolean isFirstStart;
     if (!systemPropertiesFile.exists()) {
-      // Create the system properties file when first start the ConfigNode
-      if (systemPropertiesFile.createNewFile()) {
-        LOGGER.info(
-            "System properties file {} for ConfigNode is created.",
-            systemPropertiesFile.getAbsolutePath());
-      } else {
-        LOGGER.error(
-            "Can't create the system properties file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
-            systemPropertiesFile.getAbsolutePath());
-        throw new StartupException("Can't create system properties file");
-      }
-
       isFirstStart = true;
     } else {
       // Load system properties file
@@ -219,7 +207,21 @@ public class ConfigNodeStartupCheck {
    * There are some special parameters that can't be changed after a ConfigNode first started.
    * Therefore, store them in confignode-system.properties during the first startup
    */
-  private void writeSystemProperties() {
+  private void writeSystemProperties() throws IOException, StartupException {
+    // Create the system properties file if necessary
+    if (!systemPropertiesFile.exists()) {
+      if (systemPropertiesFile.createNewFile()) {
+        LOGGER.info(
+            "System properties file {} for ConfigNode is created.",
+            systemPropertiesFile.getAbsolutePath());
+      } else {
+        LOGGER.error(
+            "Can't create the system properties file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
+            systemPropertiesFile.getAbsolutePath());
+        throw new StartupException("Can't create system properties file");
+      }
+    }
+
     // Startup configuration
     systemProperties.setProperty("rpc_address", String.valueOf(conf.getRpcAddress()));
     systemProperties.setProperty("rpc_port", String.valueOf(conf.getRpcPort()));
@@ -246,13 +248,21 @@ public class ConfigNodeStartupCheck {
     try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
       systemProperties.store(fileOutputStream, "");
     } catch (IOException e) {
+      if (!systemPropertiesFile.delete()) {
+        LOGGER.error(
+            "Automatically deleting {} failed, please remove it manually.",
+            systemPropertiesFile.getAbsolutePath());
+      }
+
       LOGGER.error(
           "Can't store system properties file {}.", systemPropertiesFile.getAbsolutePath());
+      throw e;
     }
   }
 
   /** Ensure that special parameters are consistent with each startup except the first one */
-  private void checkSystemProperties() throws ConfigurationException {
+  private void checkSystemProperties()
+      throws ConfigurationException, IOException, StartupException {
     boolean needReWrite = false;
 
     // Startup configuration

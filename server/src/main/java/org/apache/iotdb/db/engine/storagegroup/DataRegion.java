@@ -521,7 +521,13 @@ public class DataRegion {
                 + "-"
                 + dataRegionId);
     timedCompactionScheduleTask.scheduleWithFixedDelay(
-        this::executeCompaction,
+        () -> {
+          try {
+            executeCompaction();
+          } catch (Throwable t) {
+            logger.error("Schedule {} failed", ThreadName.COMPACTION_SCHEDULE.getName(), t);
+          }
+        },
         COMPACTION_TASK_SUBMIT_DELAY,
         IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
         TimeUnit.MILLISECONDS);
