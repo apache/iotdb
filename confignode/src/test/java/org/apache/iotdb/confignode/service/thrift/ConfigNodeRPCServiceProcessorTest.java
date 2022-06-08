@@ -297,8 +297,8 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertNotNull(storageGroupSchema);
     Assert.assertEquals(sg0, storageGroupSchema.getName());
     Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
-    Assert.assertEquals(3, storageGroupSchema.getSchemaReplicationFactor());
-    Assert.assertEquals(3, storageGroupSchema.getDataReplicationFactor());
+    Assert.assertEquals(1, storageGroupSchema.getSchemaReplicationFactor());
+    Assert.assertEquals(1, storageGroupSchema.getDataReplicationFactor());
     Assert.assertEquals(604800, storageGroupSchema.getTimePartitionInterval());
     storageGroupSchema = schemaMap.get(sg1);
     Assert.assertNotNull(storageGroupSchema);
@@ -316,9 +316,9 @@ public class ConfigNodeRPCServiceProcessorTest {
     // test StorageGroup setter interfaces
     status = processor.setTTL(new TSetTTLReq(sg1, Long.MAX_VALUE));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 3));
+    status = processor.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 1));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.setDataReplicationFactor(new TSetDataReplicationFactorReq(sg1, 3));
+    status = processor.setDataReplicationFactor(new TSetDataReplicationFactorReq(sg1, 1));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.setTimePartitionInterval(new TSetTimePartitionIntervalReq(sg1, 604800L));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -332,8 +332,8 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertNotNull(storageGroupSchema);
     Assert.assertEquals(sg1, storageGroupSchema.getName());
     Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
-    Assert.assertEquals(3, storageGroupSchema.getSchemaReplicationFactor());
-    Assert.assertEquals(3, storageGroupSchema.getDataReplicationFactor());
+    Assert.assertEquals(1, storageGroupSchema.getSchemaReplicationFactor());
+    Assert.assertEquals(1, storageGroupSchema.getDataReplicationFactor());
     Assert.assertEquals(604800, storageGroupSchema.getTimePartitionInterval());
   }
 
@@ -542,9 +542,9 @@ public class ConfigNodeRPCServiceProcessorTest {
                   .get(0)
                   .getRegionId()
                   .getType());
-          // Including three RegionReplica
+          // Including one RegionReplica
           Assert.assertEquals(
-              3,
+              1,
               dataPartitionMap
                   .get(storageGroup)
                   .get(seriesPartitionSlot)
