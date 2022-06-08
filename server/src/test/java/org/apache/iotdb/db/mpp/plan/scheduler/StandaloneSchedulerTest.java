@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
@@ -89,6 +90,8 @@ public class StandaloneSchedulerTest {
 
   @After
   public void tearDown() throws Exception {
+    WALRecoverManager.getInstance().clear();
+    DriverScheduler.getInstance().clearResource();
     configNode.clear();
     EnvironmentUtils.cleanAllDir();
     conf.setWalMode(walMode);

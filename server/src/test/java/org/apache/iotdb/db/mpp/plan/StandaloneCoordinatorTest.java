@@ -87,11 +87,7 @@ public class StandaloneCoordinatorTest {
   @After
   public void tearDown() throws Exception {
     WALRecoverManager.getInstance().clear();
-    DriverScheduler manager = DriverScheduler.getInstance();
-    manager.getQueryMap().clear();
-    manager.getBlockedTasks().clear();
-    manager.getReadyQueue().clear();
-    manager.getTimeoutQueue().clear();
+    DriverScheduler.getInstance().clearResource();
     configNode.clear();
     EnvironmentUtils.cleanAllDir();
   }

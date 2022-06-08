@@ -222,23 +222,31 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @TestOnly
-  public IndexedBlockingQueue<DriverTask> getReadyQueue() {
+  IndexedBlockingQueue<DriverTask> getReadyQueue() {
     return readyQueue;
   }
 
   @TestOnly
-  public IndexedBlockingQueue<DriverTask> getTimeoutQueue() {
+  IndexedBlockingQueue<DriverTask> getTimeoutQueue() {
     return timeoutQueue;
   }
 
   @TestOnly
-  public Set<DriverTask> getBlockedTasks() {
+  Set<DriverTask> getBlockedTasks() {
     return blockedTasks;
   }
 
   @TestOnly
-  public Map<QueryId, Set<DriverTask>> getQueryMap() {
+  Map<QueryId, Set<DriverTask>> getQueryMap() {
     return queryMap;
+  }
+
+  @TestOnly
+  public void clearResource() {
+    getQueryMap().clear();
+    getBlockedTasks().clear();
+    getReadyQueue().clear();
+    getTimeoutQueue().clear();
   }
 
   @TestOnly
