@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
-public interface LayerRowReader {
+public interface LayerRowReader extends YieldableReader {
 
   boolean next() throws IOException, QueryProcessException;
 

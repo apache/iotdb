@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.mpp.transformation.dag.input;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
-import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 
 import java.util.List;
@@ -45,16 +46,30 @@ public class TsBlockInputDataSet implements IUDFInputDataSet {
 
   @Override
   public boolean hasNextRowInObjects() {
-    if (tsBlockRowIterator != null && tsBlockRowIterator.hasNext()) {
-      return true;
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public YieldableState canYieldNextRowInObjects() {
+    if (tsBlockRowIterator == null) {
+      if (!operator.hasNext()) {
+        return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      }
+      final TsBlock tsBlock = operator.next();
+      if (tsBlock == null) {
+        return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+      }
+      tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
     }
 
-    if (!operator.hasNext()) {
-      return false;
+    if (tsBlockRowIterator.hasNext()) {
+      return YieldableState.YIELDABLE;
+    } else {
+      tsBlockRowIterator = null;
+      return operator.hasNext()
+          ? YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA
+          : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
     }
-
-    tsBlockRowIterator = operator.next().getTsBlockRowIterator();
-    return true;
   }
 
   @Override

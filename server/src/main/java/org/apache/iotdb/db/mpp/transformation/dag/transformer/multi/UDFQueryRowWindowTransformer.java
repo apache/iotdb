@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.multi;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowWindowReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 
 import java.io.IOException;
@@ -33,6 +34,17 @@ public class UDFQueryRowWindowTransformer extends UDFQueryTransformer {
       LayerRowWindowReader layerRowWindowReader, UDTFExecutor executor) {
     super(executor);
     this.layerRowWindowReader = layerRowWindowReader;
+  }
+
+  @Override
+  protected YieldableState tryExecuteUDFOnce() throws QueryProcessException, IOException {
+    final YieldableState yieldableState = layerRowWindowReader.yield();
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return yieldableState;
+    }
+    executor.execute(layerRowWindowReader.currentWindow());
+    layerRowWindowReader.readyForNext();
+    return YieldableState.YIELDABLE;
   }
 
   @Override

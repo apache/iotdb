@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
@@ -53,6 +54,24 @@ public abstract class Transformer implements LayerPointReader {
 
   /** if this method returns true, at least one of the cached field should be set */
   protected abstract boolean cacheValue() throws QueryProcessException, IOException;
+
+  @Override
+  public final YieldableState yield() throws IOException, QueryProcessException {
+    if (hasCachedValue) {
+      return YieldableState.YIELDABLE;
+    }
+
+    final YieldableState yieldableState = yieldValue();
+    if (YieldableState.YIELDABLE == yieldableState) {
+      hasCachedValue = true;
+    }
+    return yieldableState;
+  }
+
+  /**
+   * if this method returns YieldableState.YIELDABLE, at least one of the cached field should be set
+   */
+  protected abstract YieldableState yieldValue() throws QueryProcessException, IOException;
 
   @Override
   public final void readyForNext() {

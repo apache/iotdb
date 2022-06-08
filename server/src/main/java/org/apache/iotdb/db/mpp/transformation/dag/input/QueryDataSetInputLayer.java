@@ -22,11 +22,11 @@ package org.apache.iotdb.db.mpp.transformation.dag.input;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.SafetyLine;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.mpp.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.UDFRawQueryInputDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -149,6 +149,43 @@ public class QueryDataSetInputLayer {
     }
 
     @Override
+    public YieldableState yield() throws IOException, QueryProcessException {
+      if (hasCachedRowRecord) {
+        return YieldableState.YIELDABLE;
+      }
+
+      for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
+        Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
+        // If any field in the current row are null, we should treat this row as valid.
+        // Because in a GROUP BY time query, we must return every time window record even if there's
+        // no data.
+        // Under the situation, if hasCachedRowRecord is false, this row will be skipped and the
+        // result is not as our expected.
+        if (rowRecordCandidate[columnIndex] != null || rowRecordList.fieldsHasAnyNull(i)) {
+          hasCachedRowRecord = true;
+          cachedRowRecord = rowRecordCandidate;
+          currentRowIndex = i;
+          return YieldableState.YIELDABLE;
+        }
+      }
+
+      YieldableState yieldableState;
+      while (YieldableState.YIELDABLE.equals(
+          yieldableState = queryDataSet.canYieldNextRowInObjects())) {
+        Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
+        rowRecordList.put(rowRecordCandidate);
+        if (rowRecordCandidate[columnIndex] != null
+            || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
+          hasCachedRowRecord = true;
+          cachedRowRecord = rowRecordCandidate;
+          currentRowIndex = rowRecordList.size() - 1;
+          return YieldableState.YIELDABLE;
+        }
+      }
+      return yieldableState;
+    }
+
+    @Override
     public boolean next() throws IOException, QueryProcessException {
       if (hasCachedRowRecord) {
         return true;
@@ -228,6 +265,32 @@ public class QueryDataSetInputLayer {
   }
 
   private class TimePointReader extends AbstractLayerPointReader {
+
+    @Override
+    public YieldableState yield() throws IOException, QueryProcessException {
+      if (hasCachedRowRecord) {
+        return YieldableState.YIELDABLE;
+      }
+
+      final int nextIndex = currentRowIndex + 1;
+      if (nextIndex < rowRecordList.size()) {
+        hasCachedRowRecord = true;
+        cachedRowRecord = rowRecordList.getRowRecord(nextIndex);
+        currentRowIndex = nextIndex;
+        return YieldableState.YIELDABLE;
+      }
+
+      final YieldableState yieldableState = queryDataSet.canYieldNextRowInObjects();
+      if (YieldableState.YIELDABLE == yieldableState) {
+        Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
+        rowRecordList.put(rowRecordCandidate);
+
+        hasCachedRowRecord = true;
+        cachedRowRecord = rowRecordCandidate;
+        currentRowIndex = rowRecordList.size() - 1;
+      }
+      return yieldableState;
+    }
 
     @Override
     public boolean next() throws QueryProcessException, IOException {
