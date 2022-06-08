@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-include "common.thrift"
+include "../../../../thrift-commons/src/main/thrift/common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
 
@@ -64,7 +64,7 @@ struct TSExecuteStatementResp {
   8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
   9: optional map<string, i32> columnNameIndexMap
   10: optional list<string> sgColumns
-  11: optional list<byte> aliasColumns
+  11: optional binary aliasColumns
   12: optional TSTracingInfo tracingInfo
 }
 
