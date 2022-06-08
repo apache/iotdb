@@ -82,7 +82,7 @@ public class NewIoTDB implements NewIoTDBMBean {
       System.exit(1);
     }
     NewIoTDB daemon = NewIoTDB.getInstance();
-    IoTDBDescriptor.getInstance().getConfig().setMppMode(true);
+    config.setMppMode(true);
     daemon.active();
   }
 
