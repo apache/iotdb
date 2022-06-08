@@ -118,10 +118,6 @@ public class DeleteRegionNode extends WritePlanNode implements IConsensusRequest
     ReadWriteIOUtils.write(consensusGroupId.getId(), stream);
   }
 
-  public void serializeRequest(ByteBuffer buffer) {
-    super.serialize(buffer);
-  }
-
   @Override
   public ByteBuffer serializeToByteBuffer() {
     try (PublicBAOS publicBAOS = new PublicBAOS();

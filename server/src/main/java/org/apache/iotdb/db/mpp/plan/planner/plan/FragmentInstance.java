@@ -152,24 +152,6 @@ public class FragmentInstance implements IConsensusRequest {
     return fragmentInstance;
   }
 
-  public void serializeRequest(ByteBuffer buffer) {
-    id.serialize(buffer);
-    fragment.serialize(buffer);
-    ReadWriteIOUtils.write(timeFilter != null, buffer);
-    if (timeFilter != null) {
-      timeFilter.serialize(buffer);
-    }
-    ReadWriteIOUtils.write(type.ordinal(), buffer);
-    ReadWriteIOUtils.write(regionReplicaSet != null, buffer);
-    if (regionReplicaSet != null) {
-      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
-    }
-    ReadWriteIOUtils.write(hostDataNode != null, buffer);
-    if (hostDataNode != null) {
-      ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, buffer);
-    }
-  }
-
   public ByteBuffer serializeToByteBuffer() {
     try (PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {

@@ -32,10 +32,12 @@ import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.ratis.Utils;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,7 +48,6 @@ import java.util.List;
 public class MultiLeaderServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
-  private static final int DEFAULT_CONFIGURATION_BUFFER_SIZE = 1024 * 4;
 
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderServerImpl.class);
 
@@ -119,15 +120,15 @@ public class MultiLeaderServerImpl {
   }
 
   public void persistConfiguration() {
-    ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_CONFIGURATION_BUFFER_SIZE);
-    buffer.putInt(configuration.size());
-    for (Peer peer : configuration) {
-      peer.serialize(buffer);
-    }
-    try {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      outputStream.writeInt(configuration.size());
+      for (Peer peer : configuration) {
+        peer.serialize(outputStream);
+      }
       Files.write(
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath()),
-          buffer.array());
+          publicBAOS.getBuf());
     } catch (IOException e) {
       logger.error("Unexpected error occurs when persisting configuration", e);
     }

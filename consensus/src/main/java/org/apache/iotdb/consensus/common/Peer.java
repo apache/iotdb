@@ -46,12 +46,6 @@ public class Peer {
     return endpoint;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
-        groupId.convertToTConsensusGroupId(), buffer);
-    ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, buffer);
-  }
-
   public void serialize(DataOutputStream stream) {
     ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
         groupId.convertToTConsensusGroupId(), stream);

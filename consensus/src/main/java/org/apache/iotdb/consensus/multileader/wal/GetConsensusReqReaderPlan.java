@@ -27,6 +27,7 @@ public class GetConsensusReqReaderPlan implements IConsensusRequest {
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
+    // do not need any data, we will use instanceOf
     return ByteBuffer.wrap(new byte[0]);
   }
 }

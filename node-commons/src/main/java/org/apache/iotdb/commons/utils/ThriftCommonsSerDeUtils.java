@@ -44,12 +44,6 @@ public class ThriftCommonsSerDeUtils {
     // Empty constructor
   }
 
-  private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
-      throws TTransportException {
-    TTransport transport = new TByteBuffer(buffer);
-    return new TBinaryProtocol(transport);
-  }
-
   private static TBinaryProtocol generateWriteProtocol(DataOutputStream stream)
       throws TTransportException {
     TTransport transport = new TIOStreamTransport(stream);
@@ -60,14 +54,6 @@ public class ThriftCommonsSerDeUtils {
       throws TTransportException {
     TTransport transport = new TByteBuffer(buffer);
     return new TBinaryProtocol(transport);
-  }
-
-  public static void serializeTEndPoint(TEndPoint endPoint, ByteBuffer buffer) {
-    try {
-      endPoint.write(generateWriteProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TEndPoint failed: ", e);
-    }
   }
 
   public static void serializeTEndPoint(TEndPoint endPoint, DataOutputStream stream) {
@@ -86,15 +72,6 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TEndPoint failed: ", e);
     }
     return endPoint;
-  }
-
-  public static void serializeTDataNodeLocation(
-      TDataNodeLocation dataNodeLocation, ByteBuffer buffer) {
-    try {
-      dataNodeLocation.write(generateWriteProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TDataNodeLocation failed: ", e);
-    }
   }
 
   public static void serializeTDataNodeLocation(
@@ -173,15 +150,6 @@ public class ThriftCommonsSerDeUtils {
   }
 
   public static void serializeTConsensusGroupId(
-      TConsensusGroupId consensusGroupId, ByteBuffer buffer) {
-    try {
-      consensusGroupId.write(generateWriteProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TConsensusGroupId failed: ", e);
-    }
-  }
-
-  public static void serializeTConsensusGroupId(
       TConsensusGroupId consensusGroupId, DataOutputStream stream) {
     try {
       consensusGroupId.write(generateWriteProtocol(stream));
@@ -198,15 +166,6 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TConsensusGroupId failed: ", e);
     }
     return consensusGroupId;
-  }
-
-  public static void serializeTRegionReplicaSet(
-      TRegionReplicaSet regionReplicaSet, ByteBuffer buffer) {
-    try {
-      regionReplicaSet.write(generateWriteProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TRegionReplicaSet failed: ", e);
-    }
   }
 
   public static void serializeTRegionReplicaSet(
