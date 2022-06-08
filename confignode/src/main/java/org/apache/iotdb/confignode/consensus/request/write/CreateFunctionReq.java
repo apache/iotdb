@@ -59,20 +59,6 @@ public class CreateFunctionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
-
-    ReadWriteIOUtils.write(functionName, buffer);
-    ReadWriteIOUtils.write(className, buffer);
-
-    final int size = uris.size();
-    ReadWriteIOUtils.write(size, buffer);
-    for (String uri : uris) {
-      ReadWriteIOUtils.write(uri, buffer);
-    }
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
 

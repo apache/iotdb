@@ -58,13 +58,6 @@ public class PreDeleteStorageGroupReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.PreDeleteStorageGroup.ordinal());
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
-    buffer.put(preDeleteType.getType());
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.PreDeleteStorageGroup.ordinal());
     BasicStructureSerDeUtil.write(storageGroup, stream);

@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 
 public abstract class ConfigRequest implements IConsensusRequest {
@@ -69,24 +68,6 @@ public abstract class ConfigRequest implements IConsensusRequest {
     return this.type;
   }
 
-  public final void serialize(ByteBuffer buffer) {
-    buffer.mark();
-    try {
-      serializeImpl(buffer);
-    } catch (UnsupportedOperationException e) {
-      // ignore and throw
-      throw e;
-    } catch (BufferOverflowException e) {
-      buffer.reset();
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Rollback buffer entry because error occurs when serializing this physical plan.", e);
-      buffer.reset();
-      throw e;
-    }
-  }
-
   @Override
   public ByteBuffer serializeToByteBuffer() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -98,8 +79,6 @@ public abstract class ConfigRequest implements IConsensusRequest {
       throw new RuntimeException(e);
     }
   }
-
-  protected abstract void serializeImpl(ByteBuffer buffer);
 
   protected abstract void serializeImpl(DataOutputStream stream) throws IOException;
 

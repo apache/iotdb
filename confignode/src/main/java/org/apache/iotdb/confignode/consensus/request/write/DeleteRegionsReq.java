@@ -48,16 +48,6 @@ public class DeleteRegionsReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteRegions.ordinal());
-
-    buffer.putInt(consensusGroupIds.size());
-    for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
-      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
-    }
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.DeleteRegions.ordinal());
 

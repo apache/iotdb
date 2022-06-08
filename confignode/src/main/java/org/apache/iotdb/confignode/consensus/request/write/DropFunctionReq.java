@@ -45,12 +45,6 @@ public class DropFunctionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
-    ReadWriteIOUtils.write(functionName, buffer);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
     ReadWriteIOUtils.write(functionName, stream);

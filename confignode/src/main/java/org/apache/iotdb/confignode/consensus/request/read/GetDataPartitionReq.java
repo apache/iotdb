@@ -92,27 +92,6 @@ public class GetDataPartitionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
-
-    buffer.putInt(partitionSlotsMap.size());
-    partitionSlotsMap.forEach(
-        ((storageGroup, seriesPartitionTimePartitionSlots) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          buffer.putInt(seriesPartitionTimePartitionSlots.size());
-          seriesPartitionTimePartitionSlots.forEach(
-              ((seriesPartitionSlot, timePartitionSlots) -> {
-                ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
-                buffer.putInt(timePartitionSlots.size());
-                timePartitionSlots.forEach(
-                    timePartitionSlot ->
-                        ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(
-                            timePartitionSlot, buffer));
-              }));
-        }));
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
 

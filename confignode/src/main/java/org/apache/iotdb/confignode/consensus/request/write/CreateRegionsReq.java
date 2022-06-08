@@ -55,21 +55,6 @@ public class CreateRegionsReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.CreateRegions.ordinal());
-
-    buffer.putInt(regionMap.size());
-    regionMap.forEach(
-        (storageGroup, regionReplicaSets) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          buffer.putInt(regionReplicaSets.size());
-          regionReplicaSets.forEach(
-              regionReplicaSet ->
-                  ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer));
-        });
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.CreateRegions.ordinal());
 

@@ -128,58 +128,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected abstract boolean abort(Env env);
 
-  public void serialize(ByteBuffer byteBuffer) {
-    // procid
-    byteBuffer.putLong(this.procId);
-    // state
-    byteBuffer.putInt(this.state.ordinal());
-    // submit time
-    byteBuffer.putLong(this.submittedTime);
-    // last updated
-    byteBuffer.putLong(this.lastUpdate);
-    // parent id
-    byteBuffer.putLong(this.parentProcId);
-    // time out
-    byteBuffer.putLong(this.timeout);
-    // stack indexes
-    if (stackIndexes != null) {
-      byteBuffer.putInt(stackIndexes.length);
-      Arrays.stream(stackIndexes).forEach(byteBuffer::putInt);
-    } else {
-      byteBuffer.putInt(-1);
-    }
-
-    // exceptions
-    if (hasException()) {
-      byteBuffer.put((byte) 1);
-      String exceptionClassName = exception.getClass().getName();
-      byte[] exceptionClassNameBytes = exceptionClassName.getBytes(StandardCharsets.UTF_8);
-      byteBuffer.putInt(exceptionClassNameBytes.length);
-      byteBuffer.put(exceptionClassNameBytes);
-      String message = this.exception.getMessage();
-      if (message != null) {
-        byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
-        byteBuffer.putInt(messageBytes.length);
-        byteBuffer.put(messageBytes);
-      } else {
-        byteBuffer.putInt(-1);
-      }
-    } else {
-      byteBuffer.put((byte) 0);
-    }
-
-    // result
-    if (result != null) {
-      byteBuffer.putInt(result.length);
-      byteBuffer.put(result);
-    } else {
-      byteBuffer.putInt(-1);
-    }
-
-    // has lock
-    byteBuffer.put(this.hasLock() ? (byte) 1 : (byte) 0);
-  }
-
   public void serialize(DataOutputStream stream) throws IOException {
     // procid
     stream.writeLong(this.procId);

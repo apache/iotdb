@@ -44,12 +44,6 @@ public class DeleteProcedureReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteProcedure.ordinal());
-    buffer.putLong(procId);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.DeleteProcedure.ordinal());
     stream.writeLong(procId);

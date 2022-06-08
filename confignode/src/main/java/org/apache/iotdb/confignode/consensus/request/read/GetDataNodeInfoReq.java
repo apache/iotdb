@@ -45,12 +45,6 @@ public class GetDataNodeInfoReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.GetDataNodeInfo.ordinal());
-    buffer.putInt(dataNodeID);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.GetDataNodeInfo.ordinal());
     stream.writeInt(dataNodeID);

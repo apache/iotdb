@@ -57,33 +57,6 @@ public class CreateDataPartitionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.CreateDataPartition.ordinal());
-
-    buffer.putInt(assignedDataPartition.size());
-    for (Map.Entry<
-            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        seriesPartitionTimePartitionEntry : assignedDataPartition.entrySet()) {
-      BasicStructureSerDeUtil.write(seriesPartitionTimePartitionEntry.getKey(), buffer);
-      buffer.putInt(seriesPartitionTimePartitionEntry.getValue().size());
-      for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
-        ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(timePartitionEntry.getKey(), buffer);
-        buffer.putInt(timePartitionEntry.getValue().size());
-        for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetEntry :
-            timePartitionEntry.getValue().entrySet()) {
-          ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(
-              regionReplicaSetEntry.getKey(), buffer);
-          buffer.putInt(regionReplicaSetEntry.getValue().size());
-          for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
-            ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
-          }
-        }
-      }
-    }
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.CreateDataPartition.ordinal());
 

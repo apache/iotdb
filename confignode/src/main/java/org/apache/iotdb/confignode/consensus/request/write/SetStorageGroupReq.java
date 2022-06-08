@@ -47,12 +47,6 @@ public class SetStorageGroupReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.SetStorageGroup.ordinal());
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(schema, buffer);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.SetStorageGroup.ordinal());
     ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(schema, stream);

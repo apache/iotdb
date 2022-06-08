@@ -59,22 +59,6 @@ public class GetSchemaPartitionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
-
-    buffer.putInt(partitionSlotsMap.size());
-    partitionSlotsMap.forEach(
-        (storageGroup, seriesPartitionSlots) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          buffer.putInt(seriesPartitionSlots.size());
-          seriesPartitionSlots.forEach(
-              seriesPartitionSlot ->
-                  ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(
-                      seriesPartitionSlot, buffer));
-        });
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
 

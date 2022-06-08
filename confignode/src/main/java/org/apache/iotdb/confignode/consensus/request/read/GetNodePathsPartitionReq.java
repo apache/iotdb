@@ -54,12 +54,6 @@ public class GetNodePathsPartitionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    partialPath.serialize(buffer);
-    buffer.putInt(level);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     partialPath.serialize(stream);
     stream.writeInt(level);

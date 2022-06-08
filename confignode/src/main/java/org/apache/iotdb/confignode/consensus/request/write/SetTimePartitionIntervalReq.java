@@ -52,14 +52,6 @@ public class SetTimePartitionIntervalReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
-
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
-    buffer.putLong(timePartitionInterval);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
 

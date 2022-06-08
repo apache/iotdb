@@ -47,13 +47,6 @@ public class ApplyConfigNodeReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(ConfigRequestType.ApplyConfigNode.ordinal(), buffer);
-
-    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, buffer);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(ConfigRequestType.ApplyConfigNode.ordinal(), stream);
 

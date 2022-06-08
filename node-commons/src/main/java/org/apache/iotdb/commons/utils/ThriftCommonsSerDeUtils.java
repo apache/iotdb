@@ -116,14 +116,6 @@ public class ThriftCommonsSerDeUtils {
     return dataNodeLocation;
   }
 
-  public static void serializeTDataNodeInfo(TDataNodeInfo dataNodeInfo, ByteBuffer buffer) {
-    try {
-      dataNodeInfo.write(generateWriteProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TDataNodeInfo failed: ", e);
-    }
-  }
-
   public static void serializeTDataNodeInfo(TDataNodeInfo dataNodeInfo, DataOutputStream stream) {
     try {
       dataNodeInfo.write(generateWriteProtocol(stream));
@@ -143,15 +135,6 @@ public class ThriftCommonsSerDeUtils {
   }
 
   public static void serializeTSeriesPartitionSlot(
-      TSeriesPartitionSlot seriesPartitionSlot, ByteBuffer buffer) {
-    try {
-      seriesPartitionSlot.write(generateWriteProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TSeriesPartitionSlot failed: ", e);
-    }
-  }
-
-  public static void serializeTSeriesPartitionSlot(
       TSeriesPartitionSlot seriesPartitionSlot, DataOutputStream stream) {
     try {
       seriesPartitionSlot.write(generateWriteProtocol(stream));
@@ -168,15 +151,6 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TSeriesPartitionSlot failed: ", e);
     }
     return seriesPartitionSlot;
-  }
-
-  public static void serializeTTimePartitionSlot(
-      TTimePartitionSlot timePartitionSlot, ByteBuffer buffer) {
-    try {
-      timePartitionSlot.write(generateWriteProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TTimePartitionSlot failed: ", e);
-    }
   }
 
   public static void serializeTTimePartitionSlot(

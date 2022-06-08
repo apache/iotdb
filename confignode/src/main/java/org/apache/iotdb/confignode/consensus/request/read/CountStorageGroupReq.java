@@ -55,16 +55,6 @@ public class CountStorageGroupReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
-
-    buffer.putInt(storageGroupPattern.length);
-    for (String node : storageGroupPattern) {
-      BasicStructureSerDeUtil.write(node, buffer);
-    }
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
 

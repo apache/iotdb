@@ -46,12 +46,6 @@ public class RegisterDataNodeReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.RegisterDataNode.ordinal());
-    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, buffer);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.RegisterDataNode.ordinal());
     ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, stream);

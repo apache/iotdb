@@ -52,23 +52,6 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.CreateSchemaPartition.ordinal());
-
-    buffer.putInt(assignedSchemaPartition.size());
-    assignedSchemaPartition.forEach(
-        (storageGroup, partitionSlots) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          buffer.putInt(partitionSlots.size());
-          partitionSlots.forEach(
-              (seriesPartitionSlot, regionReplicaSet) -> {
-                ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
-                ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
-              });
-        });
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.CreateSchemaPartition.ordinal());
 

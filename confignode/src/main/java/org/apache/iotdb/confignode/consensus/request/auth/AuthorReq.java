@@ -133,25 +133,6 @@ public class AuthorReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), buffer);
-    BasicStructureSerDeUtil.write(userName, buffer);
-    BasicStructureSerDeUtil.write(roleName, buffer);
-    BasicStructureSerDeUtil.write(password, buffer);
-    BasicStructureSerDeUtil.write(newPassword, buffer);
-    if (permissions == null) {
-      buffer.put((byte) 0);
-    } else {
-      buffer.put((byte) 1);
-      buffer.putInt(permissions.size());
-      for (int permission : permissions) {
-        buffer.putInt(permission);
-      }
-    }
-    BasicStructureSerDeUtil.write(nodeName, buffer);
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), stream);
     BasicStructureSerDeUtil.write(userName, stream);

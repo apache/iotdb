@@ -46,14 +46,6 @@ public class UpdateProcedureReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.UpdateProcedure.ordinal());
-    if (procedure != null) {
-      procedure.serialize(buffer);
-    }
-  }
-
-  @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.UpdateProcedure.ordinal());
     if (procedure != null) {
