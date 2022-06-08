@@ -1954,7 +1954,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new UnsupportedOperationException();
     }
 
-    if (context.uaryBeforeIsNullExpression != null) {
+    if (context.unaryBeforeIsNullExpression != null) {
       return parseIsNullExpression(context, inWithoutNull);
     }
 
@@ -2032,8 +2032,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean inWithoutNull) {
     return new IsNullExpression(
-        parseExpression(context.uaryBeforeIsNullExpression, inWithoutNull),
-        context.OPERATOR_ISNOTNULL() != null);
+        parseExpression(context.unaryBeforeIsNullExpression, inWithoutNull),
+        context.OPERATOR_NOT() != null);
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
