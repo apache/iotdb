@@ -29,6 +29,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang.Validate;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -110,6 +112,15 @@ public class FragmentSinkNode extends SinkNode {
     ReadWriteIOUtils.write(downStreamEndpoint.getPort(), byteBuffer);
     downStreamInstanceId.serialize(byteBuffer);
     downStreamPlanNodeId.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.FRAGMENT_SINK.serialize(stream);
+    ReadWriteIOUtils.write(downStreamEndpoint.getIp(), stream);
+    ReadWriteIOUtils.write(downStreamEndpoint.getPort(), stream);
+    downStreamInstanceId.serialize(stream);
+    downStreamPlanNodeId.serialize(stream);
   }
 
   @Override

@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -147,6 +149,29 @@ public class DeviceViewNode extends MultiChildNode {
       ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
       for (Integer index : entry.getValue()) {
         ReadWriteIOUtils.write(index, byteBuffer);
+      }
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DEVICE_VIEW.serialize(stream);
+    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), stream);
+    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), stream);
+    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
+    for (String column : outputColumnNames) {
+      ReadWriteIOUtils.write(column, stream);
+    }
+    ReadWriteIOUtils.write(devices.size(), stream);
+    for (String deviceName : devices) {
+      ReadWriteIOUtils.write(deviceName, stream);
+    }
+    ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
+    for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue().size(), stream);
+      for (Integer index : entry.getValue()) {
+        ReadWriteIOUtils.write(index, stream);
       }
     }
   }

@@ -17,26 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.request;
+package org.apache.iotdb.db.exception.runtime;
 
-import java.nio.ByteBuffer;
+public class SerializationRunTimeException extends RuntimeException {
 
-/*
-In general, for the requests from the leader, we can directly strong-cast the class to reduce
-the cost of deserialization during the execution of the leader state machine. For the requests
-received by the followers, the responsibility of deserialization can generally be transferred
-to the state machine layer
-*/
-public class ByteBufferConsensusRequest implements IConsensusRequest {
-
-  private final ByteBuffer byteBuffer;
-
-  public ByteBufferConsensusRequest(ByteBuffer byteBuffer) {
-    this.byteBuffer = byteBuffer;
-  }
-
-  @Override
-  public ByteBuffer serializeToByteBuffer() {
-    return byteBuffer;
+  public SerializationRunTimeException(Throwable e) {
+    super("Unexpected error occurs in serialization", e);
   }
 }

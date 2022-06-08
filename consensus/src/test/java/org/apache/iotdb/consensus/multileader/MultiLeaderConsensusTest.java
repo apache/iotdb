@@ -36,6 +36,7 @@ import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -45,6 +46,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -309,9 +311,15 @@ public class MultiLeaderConsensusTest {
     }
 
     @Override
-    public void serializeRequest(ByteBuffer buffer) {
-      buffer.putInt(num);
-      peer.serialize(buffer);
+    public ByteBuffer serializeToByteBuffer() {
+      try (PublicBAOS publicBAOS = new PublicBAOS();
+          DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+        outputStream.writeInt(num);
+        peer.serialize(outputStream);
+        return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
@@ -361,7 +369,7 @@ public class MultiLeaderConsensusTest {
     public synchronized TSStatus write(IConsensusRequest request) {
       IConsensusRequest innerRequest = ((IndexedConsensusRequest) request).getRequest();
       if (innerRequest instanceof ByteBufferConsensusRequest) {
-        ByteBuffer buffer = ((ByteBufferConsensusRequest) innerRequest).getContent();
+        ByteBuffer buffer = innerRequest.serializeToByteBuffer();
         requestSet.add(
             new IndexedConsensusRequest(
                 ((IndexedConsensusRequest) request).getSearchIndex(),

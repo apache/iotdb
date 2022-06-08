@@ -34,8 +34,7 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
   protected FragmentInstance getFragmentInstance(IConsensusRequest request) {
     FragmentInstance instance;
     if (request instanceof ByteBufferConsensusRequest) {
-      instance =
-          FragmentInstance.deserializeFrom(((ByteBufferConsensusRequest) request).getContent());
+      instance = FragmentInstance.deserializeFrom(request.serializeToByteBuffer());
     } else if (request instanceof FragmentInstance) {
       instance = (FragmentInstance) request;
     } else {

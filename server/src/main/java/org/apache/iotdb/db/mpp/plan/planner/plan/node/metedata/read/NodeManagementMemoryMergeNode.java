@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
@@ -87,6 +89,16 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     int size = data.size();
     ReadWriteIOUtils.write(size, byteBuffer);
     data.forEach(node -> ReadWriteIOUtils.write(node, byteBuffer));
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE.serialize(stream);
+    int size = data.size();
+    ReadWriteIOUtils.write(size, stream);
+    for (String node : data) {
+      ReadWriteIOUtils.write(node, stream);
+    }
   }
 
   public static NodeManagementMemoryMergeNode deserialize(ByteBuffer byteBuffer) {
