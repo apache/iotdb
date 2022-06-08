@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
@@ -36,18 +33,18 @@ import java.util.Objects;
 public class CreateSchemaPartitionReq extends ConfigRequest {
 
   // TODO: Replace this field whit new SchemaPartition
-  private Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> assignedSchemaPartition;
+  private Map<String, SchemaPartitionTable> assignedSchemaPartition;
 
   public CreateSchemaPartitionReq() {
     super(ConfigRequestType.CreateSchemaPartition);
   }
 
-  public Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> getAssignedSchemaPartition() {
+  public Map<String, SchemaPartitionTable> getAssignedSchemaPartition() {
     return assignedSchemaPartition;
   }
 
   public void setAssignedSchemaPartition(
-      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> assignedSchemaPartition) {
+      Map<String, SchemaPartitionTable> assignedSchemaPartition) {
     this.assignedSchemaPartition = assignedSchemaPartition;
   }
 
@@ -57,14 +54,9 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
 
     buffer.putInt(assignedSchemaPartition.size());
     assignedSchemaPartition.forEach(
-        (storageGroup, partitionSlots) -> {
+        (storageGroup, schemaPartitionTable) -> {
           BasicStructureSerDeUtil.write(storageGroup, buffer);
-          buffer.putInt(partitionSlots.size());
-          partitionSlots.forEach(
-              (seriesPartitionSlot, consensusGroupId) -> {
-                ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
-                ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
-              });
+          schemaPartitionTable.serialize(buffer);
         });
   }
 
@@ -72,18 +64,12 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     assignedSchemaPartition = new HashMap<>();
 
-    int storageGroupNum = buffer.getInt();
-    for (int i = 0; i < storageGroupNum; i++) {
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      assignedSchemaPartition.put(storageGroup, new HashMap<>());
-      int seriesPartitionSlotNum = buffer.getInt();
-      for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-        assignedSchemaPartition
-            .get(storageGroup)
-            .put(seriesPartitionSlot, ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
-      }
+      SchemaPartitionTable schemaPartitionTable = new SchemaPartitionTable();
+      schemaPartitionTable.deserialize(buffer);
+      assignedSchemaPartition.put(storageGroup, schemaPartitionTable);
     }
   }
 

@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -85,8 +86,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Cache StorageGroupSchema
    *
    * @param req SetStorageGroupReq
-   * @return SUCCESS_STATUS if the StorageGroup is set successfully. CACHE_FAILURE if fail to
-   *     set StorageGroup in MTreeAboveSG.
+   * @return SUCCESS_STATUS if the StorageGroup is set successfully. CACHE_FAILURE if fail to set
+   *     StorageGroup in MTreeAboveSG.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
     TSStatus result = new TSStatus();
@@ -125,8 +126,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.writeLock().lock();
     try {
       // Delete StorageGroup
-      TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
-      PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
+      String storageGroup = req.getName();
+      PartialPath partialPathName = new PartialPath(storageGroup);
       mTree.deleteStorageGroup(partialPathName);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -316,15 +317,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    *
    * @param storageGroup StorageGroupName
    * @return The specific StorageGroupSchema
-   * @throws MetadataException from MTree
+   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
    */
   public TStorageGroupSchema getMatchedStorageGroupSchemaByName(String storageGroup)
-      throws MetadataException {
+      throws StorageGroupNotExistsException {
     storageGroupReadWriteLock.readLock().lock();
     try {
       return mTree
           .getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup))
           .getStorageGroupSchema();
+    } catch (MetadataException e) {
+      throw new StorageGroupNotExistsException(storageGroup);
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -351,39 +354,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
     return schemaMap;
   }
-
-
-
-  /**
-   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   * @return All SchemaRegionGroupIds when type is SchemaRegion, and all DataRegionGroupIds when
-   *     type is DataRegion
-   */
-
-
-
-  /**
-   * Return the number of Regions currently owned by the specific StorageGroup
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   * @return Number of Regions currently owned by the specific StorageGroup
-   */
-
-
-
-  /**
-   * Contending the Region allocation particle
-   *
-   * @param storageGroup The specific StorageGroup
-   * @param consensusGroupType SchemaRegion or DataRegion
-   * @return True if successfully get the Region allocation particle, false otherwise.
-   */
-
-
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
@@ -459,7 +429,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath partialPath) {
     Pair<Set<String>, Set<PartialPath>> matchedPathsInNextLevel =
-        new Pair(new HashSet<>(), new HashSet<>());
+        new Pair<>(new HashSet<>(), new HashSet<>());
     storageGroupReadWriteLock.readLock().lock();
     try {
       matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath);
@@ -473,7 +443,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath partialPath) {
     Pair<Set<String>, Set<PartialPath>> matchedNamesInNextLevel =
-        new Pair(new HashSet<>(), new HashSet<>());
+        new Pair<>(new HashSet<>(), new HashSet<>());
     storageGroupReadWriteLock.readLock().lock();
     try {
       matchedNamesInNextLevel = mTree.getChildNodeNameInNextLevel(partialPath);

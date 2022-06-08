@@ -90,18 +90,18 @@ public class SyncDataNodeClientPool {
     Map<TDataNodeLocation, List<TConsensusGroupId>> regionLocationMap = new HashMap<>();
     synchronized (deletedRegionSet) {
       deletedRegionSet.forEach(
-        (tRegionReplicaSet) -> {
-          final List<TDataNodeLocation> dataNodeLocations =
-            tRegionReplicaSet.getDataNodeLocations();
-          regionLocationMap
-            .computeIfAbsent(dataNodeLocations.get(0), k -> new ArrayList<>())
-            .add(tRegionReplicaSet.getRegionId());
-        });
+          (tRegionReplicaSet) -> {
+            final List<TDataNodeLocation> dataNodeLocations =
+                tRegionReplicaSet.getDataNodeLocations();
+            regionLocationMap
+                .computeIfAbsent(dataNodeLocations.get(0), k -> new ArrayList<>())
+                .add(tRegionReplicaSet.getRegionId());
+          });
       LOGGER.info("Current regionLocationMap {} ", regionLocationMap);
       regionLocationMap.forEach(
-        (dataNodeLocation, regionIds) -> {
-          deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet);
-        });
+          (dataNodeLocation, regionIds) -> {
+            deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet);
+          });
     }
   }
 

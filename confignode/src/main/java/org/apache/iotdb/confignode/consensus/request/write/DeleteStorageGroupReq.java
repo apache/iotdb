@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 

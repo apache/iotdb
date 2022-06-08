@@ -29,6 +29,9 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -119,9 +122,7 @@ public class ConfigRequestSerDeTest {
                 .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
-                .setTimePartitionInterval(604800)
-                .setSchemaRegionGroupIds(new ArrayList<>())
-                .setDataRegionGroupIds(new ArrayList<>()));
+                .setTimePartitionInterval(604800));
     req0.serialize(buffer);
     buffer.flip();
     SetStorageGroupReq req1 = (SetStorageGroupReq) ConfigRequest.Factory.create(buffer);
@@ -229,8 +230,8 @@ public class ConfigRequestSerDeTest {
   @Test
   public void DeleteRegionsPlanTest() throws IOException {
     DeleteRegionsReq req0 = new DeleteRegionsReq();
-    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
-    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
+    req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
 
     req0.serialize(buffer);
     buffer.flip();
@@ -252,10 +253,10 @@ public class ConfigRequestSerDeTest {
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0);
 
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> assignedSchemaPartition =
-        new HashMap<>();
-    assignedSchemaPartition.put(storageGroup, new HashMap<>());
-    assignedSchemaPartition.get(storageGroup).put(seriesPartitionSlot, consensusGroupId);
+    Map<String, SchemaPartitionTable> assignedSchemaPartition = new HashMap<>();
+    Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new HashMap<>();
+    schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
+    assignedSchemaPartition.put(storageGroup, new SchemaPartitionTable(schemaPartitionMap));
 
     CreateSchemaPartitionReq req0 = new CreateSchemaPartitionReq();
     req0.setAssignedSchemaPartition(assignedSchemaPartition);
@@ -315,19 +316,15 @@ public class ConfigRequestSerDeTest {
     regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
 
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        assignedDataPartition = new HashMap<>();
-    assignedDataPartition.put(storageGroup, new HashMap<>());
-    assignedDataPartition.get(storageGroup).put(seriesPartitionSlot, new HashMap<>());
-    assignedDataPartition
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .put(timePartitionSlot, new ArrayList<>());
-    assignedDataPartition
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .get(timePartitionSlot)
-        .add(regionReplicaSet);
+    Map<String, DataPartitionTable> assignedDataPartition = new HashMap<>();
+    Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap = new HashMap<>();
+    Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap = new HashMap<>();
+
+    seriesPartitionMap.put(
+        timePartitionSlot,
+        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0)));
+    dataPartitionMap.put(seriesPartitionSlot, new SeriesPartitionTable(seriesPartitionMap));
+    assignedDataPartition.put(storageGroup, new DataPartitionTable(dataPartitionMap));
 
     CreateDataPartitionReq req0 = new CreateDataPartitionReq();
     req0.setAssignedDataPartition(assignedDataPartition);
@@ -580,10 +577,6 @@ public class ConfigRequestSerDeTest {
     DeleteStorageGroupProcedure procedure = new DeleteStorageGroupProcedure();
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
     storageGroupSchema.setName("root.sg");
-    storageGroupSchema.setSchemaRegionGroupIds(
-        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0)));
-    storageGroupSchema.setDataRegionGroupIds(
-        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1)));
     procedure.setDeleteSgSchema(storageGroupSchema);
     UpdateProcedureReq updateProcedureReq = new UpdateProcedureReq();
     updateProcedureReq.setProcedure(procedure);
@@ -600,14 +593,6 @@ public class ConfigRequestSerDeTest {
     DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
     TStorageGroupSchema tStorageGroupSchema = new TStorageGroupSchema();
     tStorageGroupSchema.setName("root.sg");
-    List<TConsensusGroupId> dataRegionIds = new ArrayList<>();
-    List<TConsensusGroupId> schemaRegionIds = new ArrayList<>();
-    TConsensusGroupId dataRegionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
-    dataRegionIds.add(dataRegionId);
-    TConsensusGroupId schemaRegionId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2);
-    schemaRegionIds.add(schemaRegionId);
-    tStorageGroupSchema.setDataRegionGroupIds(dataRegionIds);
-    tStorageGroupSchema.setSchemaRegionGroupIds(schemaRegionIds);
     deleteStorageGroupProcedure.setDeleteSgSchema(tStorageGroupSchema);
     req0.setProcedure(deleteStorageGroupProcedure);
     req0.serialize(buffer);

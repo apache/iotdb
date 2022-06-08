@@ -18,40 +18,31 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /** Create DataPartition by assignedDataPartition */
 public class CreateDataPartitionReq extends ConfigRequest {
 
-  private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-      assignedDataPartition;
+  private Map<String, DataPartitionTable> assignedDataPartition;
 
   public CreateDataPartitionReq() {
     super(ConfigRequestType.CreateDataPartition);
   }
 
-  public Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-      getAssignedDataPartition() {
+  public Map<String, DataPartitionTable> getAssignedDataPartition() {
     return assignedDataPartition;
   }
 
-  public void setAssignedDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          assignedDataPartition) {
+  public void setAssignedDataPartition(Map<String, DataPartitionTable> assignedDataPartition) {
     this.assignedDataPartition = assignedDataPartition;
   }
 
@@ -60,58 +51,23 @@ public class CreateDataPartitionReq extends ConfigRequest {
     buffer.putInt(ConfigRequestType.CreateDataPartition.ordinal());
 
     buffer.putInt(assignedDataPartition.size());
-    for (Map.Entry<
-            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        seriesPartitionTimePartitionEntry : assignedDataPartition.entrySet()) {
-      BasicStructureSerDeUtil.write(seriesPartitionTimePartitionEntry.getKey(), buffer);
-      buffer.putInt(seriesPartitionTimePartitionEntry.getValue().size());
-      for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
-        ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(timePartitionEntry.getKey(), buffer);
-        buffer.putInt(timePartitionEntry.getValue().size());
-        for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetEntry :
-            timePartitionEntry.getValue().entrySet()) {
-          ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(
-              regionReplicaSetEntry.getKey(), buffer);
-          buffer.putInt(regionReplicaSetEntry.getValue().size());
-          for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
-            ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
-          }
-        }
-      }
-    }
+    assignedDataPartition.forEach(
+        (storageGroup, dataPartitionTable) -> {
+          BasicStructureSerDeUtil.write(storageGroup, buffer);
+          dataPartitionTable.serialize(buffer);
+        });
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     assignedDataPartition = new HashMap<>();
-    int storageGroupNum = buffer.getInt();
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroupName = BasicStructureSerDeUtil.readString(buffer);
-      assignedDataPartition.put(storageGroupName, new HashMap<>());
-      int seriesPartitionSlotNum = buffer.getInt();
-      for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-        assignedDataPartition.get(storageGroupName).put(seriesPartitionSlot, new HashMap<>());
-        int timePartitionSlotNum = buffer.getInt();
-        for (int k = 0; k < timePartitionSlotNum; k++) {
-          TTimePartitionSlot timePartitionSlot =
-              ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
-          assignedDataPartition
-              .get(storageGroupName)
-              .get(seriesPartitionSlot)
-              .put(timePartitionSlot, new ArrayList<>());
-          int regionReplicaSetNum = buffer.getInt();
-          for (int l = 0; l < regionReplicaSetNum; l++) {
-            assignedDataPartition
-                .get(storageGroupName)
-                .get(seriesPartitionSlot)
-                .get(timePartitionSlot)
-                .add(ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer));
-          }
-        }
-      }
+
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
+      DataPartitionTable dataPartitionTable = new DataPartitionTable();
+      dataPartitionTable.deserialize(buffer);
+      assignedDataPartition.put(storageGroup, dataPartitionTable);
     }
   }
 

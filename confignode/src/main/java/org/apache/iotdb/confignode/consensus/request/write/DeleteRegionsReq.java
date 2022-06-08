@@ -54,11 +54,13 @@ public class DeleteRegionsReq extends ConfigRequest {
     buffer.putInt(ConfigRequestType.DeleteRegions.ordinal());
 
     buffer.putInt(deleteRegionMap.size());
-    deleteRegionMap.forEach((storageGroup, regionIds) -> {
-      BasicStructureSerDeUtil.write(storageGroup, buffer);
-      buffer.putInt(regionIds.size());
-      regionIds.forEach(regionId -> ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, buffer));
-    });
+    deleteRegionMap.forEach(
+        (storageGroup, regionIds) -> {
+          BasicStructureSerDeUtil.write(storageGroup, buffer);
+          buffer.putInt(regionIds.size());
+          regionIds.forEach(
+              regionId -> ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, buffer));
+        });
   }
 
   @Override

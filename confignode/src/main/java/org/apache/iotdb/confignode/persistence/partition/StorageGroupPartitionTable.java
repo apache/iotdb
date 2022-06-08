@@ -19,25 +19,40 @@
 package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TProtocol;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupPartitionTable {
 
-  // StorageGroupName
-  private final String name;
-
   // Total number of SeriesPartitionSlots occupied by schema,
   // determines whether a new Region needs to be created
   private final AtomicInteger seriesPartitionSlotsCount;
+
+  // Allocation particle
+  private final AtomicBoolean schemaRegionParticle;
+  private final AtomicBoolean dataRegionParticle;
 
   // Region
   private final Map<TConsensusGroupId, RegionInfo> regionInfoMap;
@@ -46,10 +61,13 @@ public class StorageGroupPartitionTable {
   // DataPartition
   private final DataPartitionTable dataPartitionTable;
 
-  public StorageGroupPartitionTable(String name) {
-    this.name = name;
+  public StorageGroupPartitionTable() {
     this.seriesPartitionSlotsCount = new AtomicInteger(0);
+
+    this.schemaRegionParticle = new AtomicBoolean(true);
+    this.dataRegionParticle = new AtomicBoolean(true);
     this.regionInfoMap = new ConcurrentHashMap<>();
+
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
   }
@@ -60,10 +78,11 @@ public class StorageGroupPartitionTable {
    * @param replicaSets List<TRegionReplicaSet>
    */
   public void createRegions(List<TRegionReplicaSet> replicaSets) {
-    replicaSets.forEach(replicaSet -> regionInfoMap.put(replicaSet.getRegionId(), new RegionInfo(replicaSet)));
+    replicaSets.forEach(
+        replicaSet -> regionInfoMap.put(replicaSet.getRegionId(), new RegionInfo(replicaSet)));
   }
 
-  /** @return All Regions' RegionReplicaSet */
+  /** @return All Regions' RegionReplicaSet within one StorageGroup */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
 
@@ -75,67 +94,221 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Thread-safely get SchemaPartition within the specific StorageGroup
-   * TODO: Remove mapping process
+   * Get the number of Regions currently owned by this StorageGroup
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return The number of Regions currently owned by this StorageGroup
+   */
+  public int getRegionCount(TConsensusGroupType type) {
+    AtomicInteger result = new AtomicInteger(0);
+    regionInfoMap
+        .values()
+        .forEach(
+            regionInfo -> {
+              if (regionInfo.getId().getType().equals(type)) {
+                result.getAndIncrement();
+              }
+            });
+    return result.getAndIncrement();
+  }
+
+  /**
+   * Only leader use this interface. Contending the Region allocation particle
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return True when successfully get the allocation particle, false otherwise
+   */
+  public boolean getRegionAllocationParticle(TConsensusGroupType type) {
+    switch (type) {
+      case SchemaRegion:
+        return schemaRegionParticle.getAndSet(false);
+      case DataRegion:
+        return dataRegionParticle.getAndSet(false);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Thread-safely get SchemaPartition within the specific StorageGroup TODO: Remove mapping process
    *
    * @param partitionSlots SeriesPartitionSlots
    * @param schemaPartition Where the results are stored
    */
-  public void getSchemaPartition(List<TSeriesPartitionSlot> partitionSlots, Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaPartition) {
+  public void getSchemaPartition(
+      List<TSeriesPartitionSlot> partitionSlots,
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaPartition) {
     // Get RegionIds
-    SchemaPartitionTable regionIdsMap = schemaPartitionTable.getSchemaPartition(partitionSlots);
+    SchemaPartitionTable regionIds = schemaPartitionTable.getSchemaPartition(partitionSlots);
     // Map to RegionReplicaSets
-    regionIdsMap.forEach((seriesPartitionSlot, consensusGroupId) ->
-      schemaPartition.put(seriesPartitionSlot, regionInfoMap.get(consensusGroupId).getReplicaSet()));
+    regionIds
+        .getSchemaPartitionMap()
+        .forEach(
+            (seriesPartitionSlot, consensusGroupId) ->
+                schemaPartition.put(
+                    seriesPartitionSlot, regionInfoMap.get(consensusGroupId).getReplicaSet()));
   }
 
   /**
-   * Thread-safely get DataPartition within the specific StorageGroup
-   * TODO: Remove mapping process
+   * Thread-safely get DataPartition within the specific StorageGroup TODO: Remove mapping process
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartition Where the results are stored
    */
-  public void getDataPartition(Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
-                               Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dataPartition) {
+  public void getDataPartition(
+      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dataPartition) {
     // Get RegionIds
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>> regionIdsMap = dataPartitionTable.getDataPartition(partitionSlots);
+    DataPartitionTable regionIds = dataPartitionTable.getDataPartition(partitionSlots);
     // Map to RegionReplicaSets
-    regionIdsMap.forEach(((seriesPartitionSlot, timePartitionSlotsMap) -> {
-      dataPartition.put(seriesPartitionSlot, new ConcurrentHashMap<>());
-      timePartitionSlotsMap.forEach(((timePartitionSlot, consensusGroupIds) -> {
-        dataPartition.get(seriesPartitionSlot).put(timePartitionSlot, new Vector<>());
-        consensusGroupIds.forEach(consensusGroupId -> dataPartition.get(seriesPartitionSlot).get(timePartitionSlot).add(regionInfoMap.get(consensusGroupId).getReplicaSet()));
-      }));
-    }));
+    regionIds
+        .getDataPartitionMap()
+        .forEach(
+            ((seriesPartitionSlot, seriesPartition) -> {
+              dataPartition.put(seriesPartitionSlot, new ConcurrentHashMap<>());
+              seriesPartition
+                  .getSeriesPartitionMap()
+                  .forEach(
+                      ((timePartitionSlot, consensusGroupIds) -> {
+                        dataPartition
+                            .get(seriesPartitionSlot)
+                            .put(timePartitionSlot, new Vector<>());
+                        consensusGroupIds.forEach(
+                            consensusGroupId ->
+                                dataPartition
+                                    .get(seriesPartitionSlot)
+                                    .get(timePartitionSlot)
+                                    .add(regionInfoMap.get(consensusGroupId).getReplicaSet()));
+                      }));
+            }));
   }
 
   /**
    * Thread-safely create SchemaPartition within the specific StorageGroup
    *
-   * @param assignedSchemaPartition Map<TSeriesPartitionSlot, TConsensusGroupId>, assigned result
+   * @param assignedSchemaPartition Assigned result
    */
-  public void createSchemaPartition(Map<TSeriesPartitionSlot, TConsensusGroupId> assignedSchemaPartition) {
+  public void createSchemaPartition(SchemaPartitionTable assignedSchemaPartition) {
     // Cache assigned result
-    Map<TConsensusGroupId, AtomicInteger> deltaMap = schemaPartitionTable.createSchemaPartition(assignedSchemaPartition);
+    Map<TConsensusGroupId, AtomicInteger> deltaMap =
+        schemaPartitionTable.createSchemaPartition(assignedSchemaPartition);
 
     // Add counter
     AtomicInteger total = new AtomicInteger(0);
-    deltaMap.forEach(((consensusGroupId, delta) -> {
-      total.getAndAdd(delta.get());
-      regionInfoMap.get(consensusGroupId).addCounter(delta.get());
-    }));
+    deltaMap.forEach(
+        ((consensusGroupId, delta) -> {
+          total.getAndAdd(delta.get());
+          regionInfoMap.get(consensusGroupId).addCounter(delta.get());
+        }));
     seriesPartitionSlotsCount.getAndAdd(total.get());
   }
 
   /**
-   * Only Leader use this interface
-   * Thread-safely filter no assigned SchemaPartitionSlots within the specific StorageGroup
+   * Thread-safely create DataPartition within the specific StorageGroup
+   *
+   * @param assignedDataPartition Assigned result
+   */
+  public void createDataPartition(DataPartitionTable assignedDataPartition) {
+    // Cache assigned result
+    Map<TConsensusGroupId, AtomicInteger> deltaMap =
+        dataPartitionTable.createDataPartition(assignedDataPartition);
+
+    // Add counter
+    AtomicInteger total = new AtomicInteger(0);
+    deltaMap.forEach(
+        ((consensusGroupId, delta) -> {
+          total.getAndAdd(delta.get());
+          regionInfoMap.get(consensusGroupId).addCounter(delta.get());
+        }));
+  }
+
+  /**
+   * Only Leader use this interface. Thread-safely filter unassigned SchemaPartitionSlots within the
+   * specific StorageGroup
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
-   * @param unAssignedPartitions Where the results are stored
+   * @return Unassigned PartitionSlots
    */
-  public void filterNoAssignedSchemaPartitionSlots(List<TSeriesPartitionSlot> partitionSlots, Vector<TSeriesPartitionSlot> unAssignedPartitions) {
-    schemaPartitionTable.filterNoAssignedSchemaPartitionSlots(partitionSlots, unAssignedPartitions);
+  public List<TSeriesPartitionSlot> filterUnassignedSchemaPartitionSlots(
+      List<TSeriesPartitionSlot> partitionSlots) {
+    return schemaPartitionTable.filterUnassignedSchemaPartitionSlots(partitionSlots);
+  }
+
+  /**
+   * Only Leader use this interface. Thread-safely filter unassigned DataPartitionSlots within the
+   * specific StorageGroup
+   *
+   * @param partitionSlots List<TSeriesPartitionSlot>
+   * @return Unassigned PartitionSlots
+   */
+  public Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> filterUnassignedDataPartitionSlots(
+      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots) {
+    return dataPartitionTable.filterUnassignedDataPartitionSlots(partitionSlots);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return Regions that sorted by the number of allocated slots
+   */
+  public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(TConsensusGroupType type) {
+    List<Pair<Long, TConsensusGroupId>> result = new Vector<>();
+
+    regionInfoMap.forEach(
+        (consensusGroupId, regionInfo) -> {
+          if (consensusGroupId.getType().equals(type)) {
+            result.add(new Pair<>(regionInfo.getCounter(), consensusGroupId));
+          }
+        });
+
+    result.sort(Comparator.comparingLong(Pair::getLeft));
+    return result;
+  }
+
+  public void serialize(OutputStream outputStream, TProtocol protocol)
+      throws IOException, TException {
+    ReadWriteIOUtils.write(seriesPartitionSlotsCount.get(), outputStream);
+
+    ReadWriteIOUtils.write(regionInfoMap.size(), outputStream);
+    for (Map.Entry<TConsensusGroupId, RegionInfo> regionInfoEntry : regionInfoMap.entrySet()) {
+      regionInfoEntry.getKey().write(protocol);
+      regionInfoEntry.getValue().serialize(outputStream, protocol);
+    }
+
+    schemaPartitionTable.serialize(outputStream, protocol);
+    dataPartitionTable.serialize(outputStream, protocol);
+  }
+
+  public void deserialize(InputStream inputStream, TProtocol protocol)
+      throws IOException, TException {
+    seriesPartitionSlotsCount.set(ReadWriteIOUtils.readInt(inputStream));
+
+    int length = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < length; i++) {
+      TConsensusGroupId consensusGroupId = new TConsensusGroupId();
+      consensusGroupId.read(protocol);
+      RegionInfo regionInfo = new RegionInfo();
+      regionInfo.deserialize(inputStream, protocol);
+      regionInfoMap.put(consensusGroupId, regionInfo);
+    }
+
+    schemaPartitionTable.deserialize(inputStream, protocol);
+    dataPartitionTable.deserialize(inputStream, protocol);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    StorageGroupPartitionTable that = (StorageGroupPartitionTable) o;
+    return regionInfoMap.equals(that.regionInfoMap)
+        && schemaPartitionTable.equals(that.schemaPartitionTable)
+        && dataPartitionTable.equals(that.dataPartitionTable);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(regionInfoMap, schemaPartitionTable, dataPartitionTable);
   }
 }

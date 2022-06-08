@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -56,15 +58,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
@@ -81,11 +80,10 @@ public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
 
-  // Map<StorageGroupName, StorageGroupPartitionInfo>
-  private final ConcurrentHashMap<String, StorageGroupPartitionTable> storageGroupPartitionTables;
-
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
+  // Map<StorageGroupName, StorageGroupPartitionInfo>
+  private final ConcurrentHashMap<String, StorageGroupPartitionTable> storageGroupPartitionTables;
 
   // preDeleted TODO: Combine it with Partition.class
   private final Set<String> preDeletedStorageGroup;
@@ -104,10 +102,9 @@ public class PartitionInfo implements SnapshotProcessor {
     return nextRegionGroupId.getAndIncrement();
   }
 
-  @TestOnly
-  public Integer getNextRegionGroupId() {
-    return nextRegionGroupId.get();
-  }
+  // ======================================================
+  // Consensus read/write interfaces
+  // ======================================================
 
   /**
    * Thread-safely create new StorageGroupPartitionInfo
@@ -116,7 +113,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return SUCCESS_STATUS if the new StorageGroupPartitionInfo is created successfully.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
-    storageGroupPartitionTables.put(req.getSchema().getName(), new StorageGroupPartitionTable(req.getSchema().getName()));
+    storageGroupPartitionTables.put(req.getSchema().getName(), new StorageGroupPartitionTable());
 
     LOGGER.info("Successfully set StorageGroup: {}", req.getSchema());
 
@@ -133,11 +130,15 @@ public class PartitionInfo implements SnapshotProcessor {
     TSStatus result;
     AtomicInteger maxRegionId = new AtomicInteger(Integer.MIN_VALUE);
 
-    req.getRegionMap().forEach((storageGroup, regionReplicaSets) -> {
-      storageGroupPartitionTables.get(storageGroup).createRegions(regionReplicaSets);
-      regionReplicaSets.forEach(regionReplicaSet ->
-        maxRegionId.set(Math.max(maxRegionId.get(), regionReplicaSet.getRegionId().getId())));
-    });
+    req.getRegionMap()
+        .forEach(
+            (storageGroup, regionReplicaSets) -> {
+              storageGroupPartitionTables.get(storageGroup).createRegions(regionReplicaSets);
+              regionReplicaSets.forEach(
+                  regionReplicaSet ->
+                      maxRegionId.set(
+                          Math.max(maxRegionId.get(), regionReplicaSet.getRegionId().getId())));
+            });
 
     if (nextRegionGroupId.get() < maxRegionId.get()) {
       // In this case, at least one Region is created by the leader ConfigNode,
@@ -157,7 +158,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus preDeleteStorageGroup(PreDeleteStorageGroupReq preDeleteStorageGroupReq) {
     final PreDeleteStorageGroupReq.PreDeleteType preDeleteType =
-      preDeleteStorageGroupReq.getPreDeleteType();
+        preDeleteStorageGroupReq.getPreDeleteType();
     final String storageGroup = preDeleteStorageGroupReq.getStorageGroup();
     switch (preDeleteType) {
       case EXECUTE:
@@ -197,19 +198,51 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public DataSet getSchemaPartition(GetSchemaPartitionReq req) {
     // TODO: Replace this map whit new SchemaPartition
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartition = new ConcurrentHashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartition =
+        new ConcurrentHashMap<>();
 
-    req.getPartitionSlotsMap().forEach((storageGroup, partitionSlots) -> {
-        schemaPartition.put(storageGroup, new ConcurrentHashMap<>());
-        storageGroupPartitionTables.get(storageGroup).getSchemaPartition(partitionSlots, schemaPartition.get(storageGroup));
-      });
+    if (req.getPartitionSlotsMap().size() == 0) {
+      // Return all SchemaPartitions when the queried PartitionSlots are empty
+      storageGroupPartitionTables.forEach(
+          (storageGroup, storageGroupPartitionTable) -> {
+            if (!preDeletedStorageGroup.contains(storageGroup)) {
+              schemaPartition.put(storageGroup, new ConcurrentHashMap<>());
+              storageGroupPartitionTable.getSchemaPartition(
+                  new ArrayList<>(), schemaPartition.get(storageGroup));
+
+              if (schemaPartition.get(storageGroup).size() == 0) {
+                // Remove empty Map
+                schemaPartition.remove(storageGroup);
+              }
+            }
+          });
+    } else {
+      // Return the SchemaPartition for each StorageGroup
+      req.getPartitionSlotsMap()
+          .forEach(
+              (storageGroup, partitionSlots) -> {
+                if (storageGroupPartitionTables.containsKey(storageGroup)
+                    && !preDeletedStorageGroup.contains(storageGroup)) {
+                  schemaPartition.put(storageGroup, new ConcurrentHashMap<>());
+                  storageGroupPartitionTables
+                      .get(storageGroup)
+                      .getSchemaPartition(partitionSlots, schemaPartition.get(storageGroup));
+
+                  if (schemaPartition.get(storageGroup).size() == 0) {
+                    // Remove empty Map
+                    schemaPartition.remove(storageGroup);
+                  }
+                }
+              });
+    }
 
     SchemaPartitionResp schemaPartitionResp = new SchemaPartitionResp();
     // Notice: SchemaPartition contains two redundant structural parameters currently.
     schemaPartitionResp.setSchemaPartition(
-      new SchemaPartition(schemaPartition,
-      ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-      ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
+        new SchemaPartition(
+            schemaPartition,
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
     schemaPartitionResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return schemaPartitionResp;
   }
@@ -222,19 +255,33 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public DataSet getDataPartition(GetDataPartitionReq req) {
     // TODO: Replace this map whit new DataPartition
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>> dataPartition = new ConcurrentHashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartition = new ConcurrentHashMap<>();
 
-    req.getPartitionSlotsMap().forEach((storageGroup, partitionSlots) -> {
-      dataPartition.put(storageGroup, new ConcurrentHashMap<>());
-      storageGroupPartitionTables.get(storageGroup).getDataPartition(partitionSlots, dataPartition.get(storageGroup));
-    });
+    req.getPartitionSlotsMap()
+        .forEach(
+            (storageGroup, partitionSlots) -> {
+              if (storageGroupPartitionTables.containsKey(storageGroup)
+                  && !preDeletedStorageGroup.contains(storageGroup)) {
+                dataPartition.put(storageGroup, new ConcurrentHashMap<>());
+                storageGroupPartitionTables
+                    .get(storageGroup)
+                    .getDataPartition(partitionSlots, dataPartition.get(storageGroup));
+
+                if (dataPartition.get(storageGroup).size() == 0) {
+                  // Remove empty Map
+                  dataPartition.remove(storageGroup);
+                }
+              }
+            });
 
     DataPartitionResp dataPartitionResp = new DataPartitionResp();
-    // Notice: SchemaPartition contains two redundant structural parameters currently.
+    // Notice: DataPartition contains two redundant structural parameters currently.
     dataPartitionResp.setDataPartition(
-      new DataPartition(dataPartition,
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
+        new DataPartition(
+            dataPartition,
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
     dataPartitionResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return dataPartitionResp;
   }
@@ -243,147 +290,184 @@ public class PartitionInfo implements SnapshotProcessor {
    * Thread-safely create SchemaPartition
    *
    * @param req CreateSchemaPartitionPlan with SchemaPartition assigned result
-   * @return TSStatusCode.SUCCESS_STATUS when creation successful
+   * @return TSStatusCode.SUCCESS_STATUS
    */
   public TSStatus createSchemaPartition(CreateSchemaPartitionReq req) {
-    req.getAssignedSchemaPartition().forEach((storageGroup, partitionSlots) -> storageGroupPartitionTables.get(storageGroup).createSchemaPartition(partitionSlots));
+    req.getAssignedSchemaPartition()
+        .forEach(
+            (storageGroup, schemaPartitionTable) -> {
+              if (storageGroupPartitionTables.containsKey(storageGroup)
+                  && !preDeletedStorageGroup.contains(storageGroup)) {
+                storageGroupPartitionTables
+                    .get(storageGroup)
+                    .createSchemaPartition(schemaPartitionTable);
+              }
+            });
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**
-   * Only Leader use this interface
-   * Thread-safely filter no assigned SchemaPartitionSlots
+   * Thread-safely create DataPartition
+   *
+   * @param req CreateDataPartitionPlan with DataPartition assigned result
+   * @return TSStatusCode.SUCCESS_STATUS
+   */
+  public TSStatus createDataPartition(CreateDataPartitionReq req) {
+    req.getAssignedDataPartition()
+        .forEach(
+            (storageGroup, dataPartitionTable) -> {
+              if (storageGroupPartitionTables.containsKey(storageGroup)
+                  && !preDeletedStorageGroup.contains(storageGroup)) {
+                storageGroupPartitionTables
+                    .get(storageGroup)
+                    .createDataPartition(dataPartitionTable);
+              }
+            });
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /** Get SchemaNodeManagementPartition through matched storageGroup */
+  public DataSet getSchemaNodeManagementPartition(List<String> matchedStorageGroups) {
+    SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+        new ConcurrentHashMap<>();
+
+    matchedStorageGroups.forEach(
+        storageGroup -> {
+          schemaPartitionMap.put(storageGroup, new ConcurrentHashMap<>());
+          storageGroupPartitionTables
+              .get(storageGroup)
+              .getSchemaPartition(new ArrayList<>(), schemaPartitionMap.get(storageGroup));
+
+          if (schemaPartitionMap.get(storageGroup).size() == 0) {
+            // Remove empty Map
+            schemaPartitionMap.remove(storageGroup);
+          }
+        });
+
+    schemaNodeManagementResp.setSchemaPartition(
+        new SchemaPartition(
+            schemaPartitionMap,
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
+    schemaNodeManagementResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    return schemaNodeManagementResp;
+  }
+
+  // ======================================================
+  // Leader scheduling interfaces
+  // ======================================================
+
+  /**
+   * Only Leader use this interface. Thread-safely filter unassigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
    * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
    *     assigned in partitionSlotsMap
    */
-  public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlots(
+  public Map<String, List<TSeriesPartitionSlot>> filterUnassignedSchemaPartitionSlots(
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
     Map<String, List<TSeriesPartitionSlot>> result = new ConcurrentHashMap<>();
 
-    partitionSlotsMap.forEach((storageGroup, partitionSlots) -> {
-      Vector<TSeriesPartitionSlot> unAssignedPartitions = new Vector<>();
-      storageGroupPartitionTables.get(storageGroup).filterNoAssignedSchemaPartitionSlots(partitionSlots, unAssignedPartitions);
-      result.put(storageGroup, unAssignedPartitions);
-    });
+    partitionSlotsMap.forEach(
+        (storageGroup, partitionSlots) -> {
+          if (!preDeletedStorageGroup.contains(storageGroup)) {
+            result.put(
+                storageGroup,
+                storageGroupPartitionTables
+                    .get(storageGroup)
+                    .filterUnassignedSchemaPartitionSlots(partitionSlots));
+          }
+        });
 
     return result;
   }
 
   /**
-   * Create DataPartition
-   *
-   * @param req CreateDataPartitionPlan with DataPartition assigned result
-   * @return TSStatusCode.SUCCESS_STATUS when creation successful
-   */
-  public TSStatus createDataPartition(CreateDataPartitionReq req) {
-    dataPartitionReadWriteLock.writeLock().lock();
-    regionReadWriteLock.writeLock().lock();
-
-    try {
-      // Allocate DataPartition by CreateDataPartitionPlan
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          assignedResult = req.getAssignedDataPartition();
-      assignedResult.forEach(
-          (storageGroup, seriesPartitionTimePartitionSlots) ->
-              seriesPartitionTimePartitionSlots.forEach(
-                  ((seriesPartitionSlot, timePartitionSlotRegionReplicaSets) ->
-                      timePartitionSlotRegionReplicaSets.forEach(
-                          ((timePartitionSlot, regionReplicaSets) ->
-                              regionReplicaSets.forEach(
-                                  regionReplicaSet -> {
-                                    dataPartition.createDataPartition(
-                                        storageGroup,
-                                        seriesPartitionSlot,
-                                        timePartitionSlot,
-                                        regionReplicaSet);
-                                    regionSlotsCounter.computeIfPresent(
-                                        regionReplicaSet.getRegionId(),
-                                        (consensusGroupId, count) -> (count + 1));
-                                  }))))));
-    } finally {
-      regionReadWriteLock.writeLock().unlock();
-      dataPartitionReadWriteLock.writeLock().unlock();
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  /**
-   * Filter no assigned DataPartitionSlots
+   * Only Leader use this interface. Thread-safely filter unassigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
    *     List<TTimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map < TSeriesPartitionSlot, List < TTimePartitionSlot>>>,
+   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
    *     DataPartitionSlots that is not assigned in partitionSlotsMap
    */
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-      filterNoAssignedDataPartitionSlots(
+      filterUnassignedDataPartitionSlots(
           Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result;
-    dataPartitionReadWriteLock.readLock().lock();
-    try {
-      result = dataPartition.filterNoAssignedDataPartitionSlots(partitionSlotsMap);
-    } finally {
-      dataPartitionReadWriteLock.readLock().unlock();
-    }
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result =
+        new ConcurrentHashMap<>();
+
+    partitionSlotsMap.forEach(
+        (storageGroup, partitionSlots) -> {
+          if (!preDeletedStorageGroup.contains(storageGroup)) {
+            result.put(
+                storageGroup,
+                storageGroupPartitionTables
+                    .get(storageGroup)
+                    .filterUnassignedDataPartitionSlots(partitionSlots));
+          }
+        });
+
     return result;
   }
 
-  /** Get RegionReplicaSet by the specific TConsensusGroupIds */
-  public List<TRegionReplicaSet> getRegionReplicaSets(List<TConsensusGroupId> groupIds) {
-    List<TRegionReplicaSet> result = new ArrayList<>();
-    regionReadWriteLock.readLock().lock();
-    try {
-      for (TConsensusGroupId groupId : groupIds) {
-        result.add(regionReplicaMap.get(groupId));
-      }
-    } finally {
-      regionReadWriteLock.readLock().unlock();
-    }
+  /**
+   * Only leader use this interface.
+   *
+   * @return All Regions' RegionReplicaSet
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets() {
+    List<TRegionReplicaSet> result = new Vector<>();
+    storageGroupPartitionTables
+        .values()
+        .forEach(
+            storageGroupPartitionTable ->
+                result.addAll(storageGroupPartitionTable.getAllReplicaSets()));
     return result;
   }
 
-  /** Get all allocated RegionReplicaSets */
-  public List<TRegionReplicaSet> getAllocatedRegions() {
-    List<TRegionReplicaSet> result;
-    regionReadWriteLock.readLock().lock();
-    try {
-      result = new ArrayList<>(regionReplicaMap.values());
-    } finally {
-      regionReadWriteLock.readLock().unlock();
+  /**
+   * Only leader use this interface. Get the number of Regions currently owned by the specific
+   * StorageGroup
+   *
+   * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return Number of Regions currently owned by the specific StorageGroup
+   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   */
+  public int getRegionCount(String storageGroup, TConsensusGroupType type)
+      throws StorageGroupNotExistsException {
+    if (!storageGroupPartitionTables.containsKey(storageGroup)
+        || preDeletedStorageGroup.contains(storageGroup)) {
+      throw new StorageGroupNotExistsException(storageGroup);
     }
-    return result;
+
+    return storageGroupPartitionTables.get(storageGroup).getRegionCount(type);
   }
 
-  /** @return A copy of regionReplicaMap */
-  public Map<TConsensusGroupId, TRegionReplicaSet> getRegionReplicaMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> result;
-    regionReadWriteLock.readLock().lock();
-    try {
-      result = new HashMap<>(regionReplicaMap);
-    } finally {
-      regionReadWriteLock.readLock().unlock();
-    }
-    return result;
+  /**
+   * Only leader use this interface. Contending the Region allocation particle
+   *
+   * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return True when successfully get the allocation particle, false otherwise
+   */
+  public boolean getRegionAllocationParticle(String storageGroup, TConsensusGroupType type) {
+    return storageGroupPartitionTables.get(storageGroup).getRegionAllocationParticle(type);
   }
 
-  /** @return The specific Regions that sorted by the number of allocated slots */
+  /**
+   * Only leader use this interface.
+   *
+   * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
+   */
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
-      List<TConsensusGroupId> consensusGroupIds) {
-    List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
-    regionReadWriteLock.readLock().lock();
-    try {
-      for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
-        result.add(new Pair<>(regionSlotsCounter.get(consensusGroupId), consensusGroupId));
-      }
-      result.sort(Comparator.comparingLong(Pair::getLeft));
-    } finally {
-      regionReadWriteLock.readLock().unlock();
-    }
-    return result;
+      String storageGroup, TConsensusGroupType type) {
+    return storageGroupPartitionTables.get(storageGroup).getSortedRegionSlotsCounter(type);
   }
 
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
@@ -400,28 +484,36 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    lockAllRead();
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       // serialize nextRegionGroupId
       ReadWriteIOUtils.write(nextRegionGroupId.get(), fileOutputStream);
-      // serialize regionMap
-      serializeRegionMap(fileOutputStream, protocol);
+      // serialize StorageGroupPartitionTable
+      ReadWriteIOUtils.write(storageGroupPartitionTables.size(), fileOutputStream);
+      for (Map.Entry<String, StorageGroupPartitionTable> storageGroupPartitionTableEntry :
+          storageGroupPartitionTables.entrySet()) {
+        ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), fileOutputStream);
+        storageGroupPartitionTableEntry.getValue().serialize(fileOutputStream, protocol);
+      }
+      // serialize preDeletedStorageGroup
+      ReadWriteIOUtils.write(preDeletedStorageGroup.size(), fileOutputStream);
+      for (String storageGroup : preDeletedStorageGroup) {
+        ReadWriteIOUtils.write(storageGroup, fileOutputStream);
+      }
       // serialize deletedRegionSet
-      serializeDeletedRegionSet(fileOutputStream, protocol);
-      // serialize schemaPartition
-      schemaPartition.serialize(fileOutputStream, protocol);
-      // serialize dataPartition
-      dataPartition.serialize(fileOutputStream, protocol);
+      ReadWriteIOUtils.write(deletedRegionSet.size(), fileOutputStream);
+      for (TRegionReplicaSet regionReplicaSet : deletedRegionSet) {
+        regionReplicaSet.write(protocol);
+      }
+
       // write to file
       fileOutputStream.flush();
       fileOutputStream.close();
       // rename file
       return tmpFile.renameTo(snapshotFile);
     } finally {
-      unlockAllRead();
       // with or without success, delete temporary files anyway
       for (int retry = 0; retry < 5; retry++) {
         if (!tmpFile.exists() || tmpFile.delete()) {
@@ -444,9 +536,6 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    // no operations are processed at this time
-    lockAllWrite();
-
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
@@ -454,92 +543,55 @@ public class PartitionInfo implements SnapshotProcessor {
       clear();
       // start to restore
       nextRegionGroupId.set(ReadWriteIOUtils.readInt(fileInputStream));
-      deserializeRegionMap(fileInputStream, protocol);
-      // deserialize deletedRegionSet
-      deserializeDeletedRegionSet(fileInputStream, protocol);
-      schemaPartition.deserialize(fileInputStream, protocol);
-      dataPartition.deserialize(fileInputStream, protocol);
-    } finally {
-      unlockAllWrite();
-    }
-  }
 
-  /** Get SchemaNodeManagementPartition through matched storageGroup */
-  public DataSet getSchemaNodeManagementPartition(List<String> matchedStorageGroups) {
-    SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
-    schemaPartitionReadWriteLock.readLock().lock();
-    try {
-      schemaNodeManagementResp.setSchemaPartition(
-          schemaPartition.getSchemaPartition(matchedStorageGroups));
-    } finally {
-      schemaPartitionReadWriteLock.readLock().unlock();
-      schemaNodeManagementResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    }
-    return schemaNodeManagementResp;
-  }
-
-  @TestOnly
-  public DataPartition getDataPartition() {
-    return dataPartition;
-  }
-
-  @TestOnly
-  public SchemaPartition getSchemaPartition() {
-    return schemaPartition;
-  }
-
-  @TestOnly
-  public Map<TConsensusGroupId, Long> getRegionSlotsCounter() {
-    return regionSlotsCounter;
-  }
-
-  private void serializeRegionMap(OutputStream outputStream, TProtocol protocol)
-      throws TException, IOException {
-    ReadWriteIOUtils.write(regionReplicaMap.size(), outputStream);
-    for (TConsensusGroupId consensusGroupId : regionReplicaMap.keySet()) {
-      consensusGroupId.write(protocol);
-      regionReplicaMap.get(consensusGroupId).write(protocol);
-      protocol.writeI64(regionSlotsCounter.get(consensusGroupId));
-    }
-  }
-
-  private void deserializeRegionMap(InputStream inputStream, TProtocol protocol)
-      throws TException, IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    while (size > 0) {
-      TConsensusGroupId tConsensusGroupId = new TConsensusGroupId();
-      tConsensusGroupId.read(protocol);
-      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-      tRegionReplicaSet.read(protocol);
-      Long count = protocol.readI64();
-
-      regionReplicaMap.put(tConsensusGroupId, tRegionReplicaSet);
-      regionSlotsCounter.put(tConsensusGroupId, count);
-      size--;
-    }
-  }
-
-  private void serializeDeletedRegionSet(OutputStream outputStream, TProtocol protocol)
-      throws TException, IOException {
-    ReadWriteIOUtils.write(regionReplicaMap.size(), outputStream);
-    for (TRegionReplicaSet regionReplicaSet : deletedRegionSet) {
-      regionReplicaSet.write(protocol);
-    }
-  }
-
-  private void deserializeDeletedRegionSet(InputStream inputStream, TProtocol protocol)
-      throws TException, IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    while (size > 0) {
-      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-      tRegionReplicaSet.read(protocol);
-      deletedRegionSet.add(tRegionReplicaSet);
-      size--;
+      // restore StorageGroupPartitionTable
+      int length = ReadWriteIOUtils.readInt(fileInputStream);
+      for (int i = 0; i < length; i++) {
+        String storageGroup = ReadWriteIOUtils.readString(fileInputStream);
+        StorageGroupPartitionTable storageGroupPartitionTable = new StorageGroupPartitionTable();
+        storageGroupPartitionTable.deserialize(fileInputStream, protocol);
+        storageGroupPartitionTables.put(storageGroup, storageGroupPartitionTable);
+      }
+      // restore preDeletedStorageGroup
+      length = ReadWriteIOUtils.readInt(fileInputStream);
+      for (int i = 0; i < length; i++) {
+        String storageGroup = ReadWriteIOUtils.readString(fileInputStream);
+        preDeletedStorageGroup.add(storageGroup);
+      }
+      // restore deletedRegionSet
+      length = ReadWriteIOUtils.readInt(fileInputStream);
+      for (int i = 0; i < length; i++) {
+        TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+        regionReplicaSet.read(protocol);
+        deletedRegionSet.add(regionReplicaSet);
+      }
     }
   }
 
   public void clear() {
     nextRegionGroupId.set(0);
+    storageGroupPartitionTables.clear();
+    preDeletedStorageGroup.clear();
+    deletedRegionSet.clear();
+  }
 
+  @TestOnly
+  public Set<String> getPreDeletedStorageGroup() {
+    return preDeletedStorageGroup;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    PartitionInfo that = (PartitionInfo) o;
+    return storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
+        && preDeletedStorageGroup.equals(that.preDeletedStorageGroup)
+        && deletedRegionSet.equals(that.deletedRegionSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroupPartitionTables, preDeletedStorageGroup, deletedRegionSet);
   }
 }
