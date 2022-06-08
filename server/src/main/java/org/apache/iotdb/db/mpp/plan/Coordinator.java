@@ -61,7 +61,7 @@ public class Coordinator {
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
 
-  private static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
+  public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
       new TEndPoint(
           IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
           IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
