@@ -258,10 +258,6 @@ INTO
     : I N T O
     ;
 
-IS
-    : I S
-    ;
-
 KILL
     : K I L L
     ;
@@ -326,16 +322,8 @@ NODES
     : N O D E S
     ;
 
-NOT
-    : N O T
-    ;
-
 NOW
     : N O W
-    ;
-
-NULL
-    : N U L L
     ;
 
 OF
@@ -785,12 +773,7 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
 
-OPERATOR_ISNULL
-    : IS WS* NULL
-    ;
-OPERATOR_ISNOTNULL
-    : IS WS* NOT WS* NULL
-    ;
+OPERATOR_IS : I S;
 
 OPERATOR_IN : I N;
 
