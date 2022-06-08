@@ -484,6 +484,7 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
+    // TODO: Lock PartitionInfo
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
@@ -536,6 +537,7 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
+    // TODO: Lock PartitionInfo
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);

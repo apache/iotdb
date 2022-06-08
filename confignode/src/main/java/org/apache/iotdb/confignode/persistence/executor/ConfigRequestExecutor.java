@@ -68,7 +68,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class ConfigRequestExecutor {
@@ -79,7 +78,6 @@ public class ConfigRequestExecutor {
 
   private final ClusterSchemaInfo clusterSchemaInfo;
 
-  private final ReentrantReadWriteLock partitionInfoSnapshotLock;
   private final PartitionInfo partitionInfo;
 
   private final AuthorInfo authorInfo;
@@ -97,7 +95,6 @@ public class ConfigRequestExecutor {
       UDFInfo udfInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
-    this.partitionInfoSnapshotLock = new ReentrantReadWriteLock();
     this.partitionInfo = partitionInfo;
     this.authorInfo = authorInfo;
     this.procedureInfo = procedureInfo;
@@ -115,20 +112,10 @@ public class ConfigRequestExecutor {
         return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetStorageGroupReq) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          return partitionInfo.getDataPartition((GetDataPartitionReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        return partitionInfo.getDataPartition((GetDataPartitionReq) req);
       case GetSchemaPartition:
       case GetOrCreateSchemaPartition:
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          return partitionInfo.getSchemaPartition((GetSchemaPartitionReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        return partitionInfo.getSchemaPartition((GetSchemaPartitionReq) req);
       case ListUser:
         return authorInfo.executeListUser();
       case ListRole:
@@ -158,27 +145,12 @@ public class ConfigRequestExecutor {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          return partitionInfo.setStorageGroup((SetStorageGroupReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        return partitionInfo.setStorageGroup((SetStorageGroupReq) req);
       case DeleteStorageGroup:
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
-          return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
+        return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
       case PreDeleteStorageGroup:
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupReq) req);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLReq) req);
       case SetSchemaReplicationFactor:
@@ -188,26 +160,11 @@ public class ConfigRequestExecutor {
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
       case CreateRegions:
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          return partitionInfo.createRegions((CreateRegionsReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        return partitionInfo.createRegions((CreateRegionsReq) req);
       case CreateSchemaPartition:
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:
-        try {
-          partitionInfoSnapshotLock.readLock().lock();
-          return partitionInfo.createDataPartition((CreateDataPartitionReq) req);
-        } finally {
-          partitionInfoSnapshotLock.readLock().unlock();
-        }
+        return partitionInfo.createDataPartition((CreateDataPartitionReq) req);
       case UpdateProcedure:
         return procedureInfo.updateProcedure((UpdateProcedureReq) req);
       case DeleteProcedure:
@@ -236,78 +193,68 @@ public class ConfigRequestExecutor {
   }
 
   public boolean takeSnapshot(File snapshotDir) {
-    try {
-      partitionInfoSnapshotLock.writeLock().lock();
 
-      // consensus layer needs to ensure that the directory exists.
-      // if it does not exist, print a log to warn there may have a problem.
-      if (!snapshotDir.exists()) {
-        LOGGER.warn(
-            "snapshot directory [{}] is not exist,start to create it.",
-            snapshotDir.getAbsolutePath());
-        // try to create a directory to enable snapshot operation
-        if (!snapshotDir.mkdirs()) {
-          LOGGER.error(
-              "snapshot directory [{}] can not be created.", snapshotDir.getAbsolutePath());
-          return false;
-        }
-      }
-
-      // If the directory is not empty, we should not continue the snapshot operation,
-      // which may result in incorrect results.
-      File[] fileList = snapshotDir.listFiles();
-      if (fileList != null && fileList.length > 0) {
-        LOGGER.error("snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
+    // consensus layer needs to ensure that the directory exists.
+    // if it does not exist, print a log to warn there may have a problem.
+    if (!snapshotDir.exists()) {
+      LOGGER.warn(
+          "snapshot directory [{}] is not exist,start to create it.",
+          snapshotDir.getAbsolutePath());
+      // try to create a directory to enable snapshot operation
+      if (!snapshotDir.mkdirs()) {
+        LOGGER.error("snapshot directory [{}] can not be created.", snapshotDir.getAbsolutePath());
         return false;
       }
-
-      AtomicBoolean result = new AtomicBoolean(true);
-      getAllAttributes()
-          .parallelStream()
-          .forEach(
-              x -> {
-                boolean takeSnapshotResult = true;
-                try {
-                  takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
-                } catch (TException | IOException e) {
-                  LOGGER.error(e.getMessage());
-                  takeSnapshotResult = false;
-                } finally {
-                  // If any snapshot fails, the whole fails
-                  // So this is just going to be false
-                  if (!takeSnapshotResult) {
-                    result.set(false);
-                  }
-                }
-              });
-      return result.get();
-    } finally {
-      partitionInfoSnapshotLock.writeLock().unlock();
     }
+
+    // If the directory is not empty, we should not continue the snapshot operation,
+    // which may result in incorrect results.
+    File[] fileList = snapshotDir.listFiles();
+    if (fileList != null && fileList.length > 0) {
+      LOGGER.error("snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
+      return false;
+    }
+
+    AtomicBoolean result = new AtomicBoolean(true);
+    getAllAttributes()
+        .parallelStream()
+        .forEach(
+            x -> {
+              boolean takeSnapshotResult = true;
+              try {
+                takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
+              } catch (TException | IOException e) {
+                LOGGER.error(e.getMessage());
+                takeSnapshotResult = false;
+              } finally {
+                // If any snapshot fails, the whole fails
+                // So this is just going to be false
+                if (!takeSnapshotResult) {
+                  result.set(false);
+                }
+              }
+            });
+    return result.get();
   }
 
   public void loadSnapshot(File latestSnapshotRootDir) {
-    try {
-      if (!latestSnapshotRootDir.exists()) {
-        LOGGER.error(
-            "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
-            latestSnapshotRootDir.getAbsolutePath());
-        return;
-      }
-
-      getAllAttributes()
-          .parallelStream()
-          .forEach(
-              x -> {
-                try {
-                  x.processLoadSnapshot(latestSnapshotRootDir);
-                } catch (TException | IOException e) {
-                  LOGGER.error(e.getMessage());
-                }
-              });
-    } finally {
-      partitionInfoSnapshotLock.writeLock().unlock();
+    if (!latestSnapshotRootDir.exists()) {
+      LOGGER.error(
+          "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
+          latestSnapshotRootDir.getAbsolutePath());
+      return;
     }
+
+    getAllAttributes()
+        .parallelStream()
+        .forEach(
+            x -> {
+              try {
+                x.processLoadSnapshot(latestSnapshotRootDir);
+              } catch (TException | IOException e) {
+                LOGGER.error(e.getMessage());
+              }
+            });
   }
 
   private DataSet getSchemaNodeManagementPartition(ConfigRequest req) {
