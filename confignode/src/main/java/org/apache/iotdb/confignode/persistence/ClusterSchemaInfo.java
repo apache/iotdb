@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -223,6 +222,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setMessage("StorageGroup does not exist");
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
@@ -370,19 +370,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return True if StorageGroupInfo contains the specific StorageGroup */
-  public boolean containsStorageGroup(String storageName) {
-    boolean result;
+  public void checkContainsStorageGroup(String storageName) throws MetadataException {
     storageGroupReadWriteLock.readLock().lock();
     try {
-      result = mTree.isStorageGroupAlreadySet(new PartialPath(storageName));
-    } catch (IllegalPathException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      return false;
+      mTree.checkStorageGroupAlreadySet(new PartialPath(storageName));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
-    return result;
   }
 
   /**

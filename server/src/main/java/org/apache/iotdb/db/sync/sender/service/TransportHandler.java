@@ -96,7 +96,19 @@ public class TransportHandler {
     transportFuture = transportExecutorService.submit(transportClient);
     heartbeatFuture =
         heartbeatExecutorService.scheduleWithFixedDelay(
-            this::sendHeartbeat, 0, SyncConstant.HEARTBEAT_DELAY_SECONDS, TimeUnit.SECONDS);
+            () -> {
+              try {
+                sendHeartbeat();
+              } catch (Throwable t) {
+                logger.error(
+                    "Schedule {} failed",
+                    ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipeName,
+                    t);
+              }
+            },
+            0,
+            SyncConstant.HEARTBEAT_DELAY_SECONDS,
+            TimeUnit.SECONDS);
   }
 
   public void stop() {
