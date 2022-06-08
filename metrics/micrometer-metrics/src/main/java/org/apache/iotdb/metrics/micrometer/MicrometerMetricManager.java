@@ -32,7 +32,6 @@ import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.jvm.*;
-import io.micrometer.core.instrument.binder.logging.LogbackMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
