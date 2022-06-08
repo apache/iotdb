@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -465,8 +466,8 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  public SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+  public TAuthorizerResp queryPermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) throws TException {
     authReadWriteLock.readLock().lock();
     try {
       return AuthorityFetcher.queryPermission(authorizerReq, configNodeClient);
