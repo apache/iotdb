@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -77,9 +76,8 @@ public class InnerSeqCompactionTest {
   static final int[] toMergeFileNums = new int[] {2, 3};
   static final CompactionTimeseriesType[] compactionTimeseriesTypes =
       new CompactionTimeseriesType[] {
-        CompactionTimeseriesType.ALL_SAME,
-        CompactionTimeseriesType.PART_SAME,
-        CompactionTimeseriesType.NO_SAME
+        // CompactionTimeseriesType.ALL_SAME,
+        CompactionTimeseriesType.PART_SAME, CompactionTimeseriesType.NO_SAME
       };
   static final boolean[] compactionBeforeHasMods = new boolean[] {true, false};
   static final boolean[] compactionHasMods = new boolean[] {true, false};
@@ -614,8 +612,7 @@ public class InnerSeqCompactionTest {
 
   @Test
   public void testAppendChunk()
-      throws IOException, IllegalPathException, MetadataException, StorageEngineException,
-          WriteProcessException {
+      throws IOException, MetadataException, StorageEngineException, WriteProcessException {
     long prevChunkPointNumLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);

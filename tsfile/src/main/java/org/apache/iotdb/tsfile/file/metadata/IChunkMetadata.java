@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -64,6 +66,10 @@ public interface IChunkMetadata {
   void setClosed(boolean closed);
 
   TSDataType getDataType();
+
+  TSEncoding getEncodingType();
+
+  CompressionType getCompressionType();
 
   String getMeasurementUid();
 

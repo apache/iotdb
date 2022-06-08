@@ -206,7 +206,13 @@ public class TsFileIOWriter implements AutoCloseable {
       throws IOException {
 
     currentChunkMetadata =
-        new ChunkMetadata(measurementId, tsDataType, tsFileOutput.getPosition(), statistics);
+        new ChunkMetadata(
+            measurementId,
+            tsDataType,
+            encodingType,
+            compressionCodecName,
+            tsFileOutput.getPosition(),
+            statistics);
     currentChunkMetadata.setMask((byte) mask);
 
     ChunkHeader header =
@@ -228,6 +234,8 @@ public class TsFileIOWriter implements AutoCloseable {
         new ChunkMetadata(
             chunkHeader.getMeasurementID(),
             chunkHeader.getDataType(),
+            chunkHeader.getEncodingType(),
+            chunkHeader.getCompressionType(),
             tsFileOutput.getPosition(),
             chunkMetadata.getStatistics());
     chunkHeader.serializeTo(tsFileOutput.wrapAsStream());
@@ -346,7 +354,8 @@ public class TsFileIOWriter implements AutoCloseable {
       throws IOException {
     // create TimeseriesMetaData
     PublicBAOS publicBAOS = new PublicBAOS();
-    TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
+    IChunkMetadata lastChunkMetadata = chunkMetadataList.get(chunkMetadataList.size() - 1);
+    TSDataType dataType = lastChunkMetadata.getDataType();
     Statistics seriesStatistics = Statistics.getStatsByType(dataType);
 
     int chunkMetadataListLength = 0;
@@ -367,6 +376,8 @@ public class TsFileIOWriter implements AutoCloseable {
             chunkMetadataListLength,
             path.getMeasurement(),
             dataType,
+            lastChunkMetadata.getEncodingType(),
+            lastChunkMetadata.getCompressionType(),
             seriesStatistics,
             publicBAOS);
     deviceTimeseriesMetadataMap

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -54,6 +56,8 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   private String measurementId;
   private TSDataType dataType;
+  private TSEncoding encodingType;
+  private CompressionType compressionType;
 
   private Statistics<? extends Serializable> statistics;
 
@@ -79,12 +83,16 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
       int chunkMetaDataListDataSize,
       String measurementId,
       TSDataType dataType,
+      TSEncoding encodingType,
+      CompressionType compressionType,
       Statistics<? extends Serializable> statistics,
       PublicBAOS chunkMetadataListBuffer) {
     this.timeSeriesMetadataType = timeSeriesMetadataType;
     this.chunkMetaDataListDataSize = chunkMetaDataListDataSize;
     this.measurementId = measurementId;
     this.dataType = dataType;
+    this.encodingType = encodingType;
+    this.compressionType = compressionType;
     this.statistics = statistics;
     this.chunkMetadataListBuffer = chunkMetadataListBuffer;
   }
@@ -94,32 +102,38 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.chunkMetaDataListDataSize = timeseriesMetadata.chunkMetaDataListDataSize;
     this.measurementId = timeseriesMetadata.measurementId;
     this.dataType = timeseriesMetadata.dataType;
+    this.encodingType = timeseriesMetadata.encodingType;
+    this.compressionType = timeseriesMetadata.compressionType;
     this.statistics = timeseriesMetadata.statistics;
     this.modified = timeseriesMetadata.modified;
     this.chunkMetadataList = new ArrayList<>(timeseriesMetadata.chunkMetadataList);
   }
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer, boolean needChunkMetadata) {
-    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
-    timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(buffer));
-    timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(buffer));
-    timeseriesMetaData.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
+    TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata();
+    timeseriesMetadata.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(buffer));
+    timeseriesMetadata.setMeasurementId(ReadWriteIOUtils.readVarIntString(buffer));
+    timeseriesMetadata.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
+    // for compaction
+    timeseriesMetadata.setEncodingType(ReadWriteIOUtils.readEncoding(buffer));
+    timeseriesMetadata.setCompressionType(ReadWriteIOUtils.readCompressionType(buffer));
+
     int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-    timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
-    timeseriesMetaData.setStatistics(Statistics.deserialize(buffer, timeseriesMetaData.dataType));
+    timeseriesMetadata.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
+    timeseriesMetadata.setStatistics(Statistics.deserialize(buffer, timeseriesMetadata.dataType));
     if (needChunkMetadata) {
       ByteBuffer byteBuffer = buffer.slice();
       byteBuffer.limit(chunkMetaDataListDataSize);
-      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
+      timeseriesMetadata.chunkMetadataList = new ArrayList<>();
       while (byteBuffer.hasRemaining()) {
-        timeseriesMetaData.chunkMetadataList.add(
-            ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetaData));
+        timeseriesMetadata.chunkMetadataList.add(
+            ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetadata));
       }
       // minimize the storage of an ArrayList instance.
-      timeseriesMetaData.chunkMetadataList.trimToSize();
+      timeseriesMetadata.chunkMetadataList.trimToSize();
     }
     buffer.position(buffer.position() + chunkMetaDataListDataSize);
-    return timeseriesMetaData;
+    return timeseriesMetadata;
   }
 
   /**
@@ -134,6 +148,10 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     byteLen += ReadWriteIOUtils.write(timeSeriesMetadataType, outputStream);
     byteLen += ReadWriteIOUtils.writeVar(measurementId, outputStream);
     byteLen += ReadWriteIOUtils.write(dataType, outputStream);
+    // for compaction
+    byteLen += ReadWriteIOUtils.write(encodingType, outputStream);
+    byteLen += ReadWriteIOUtils.write(compressionType, outputStream);
+
     byteLen +=
         ReadWriteForEncodingUtils.writeUnsignedVarInt(chunkMetaDataListDataSize, outputStream);
     byteLen += statistics.serialize(outputStream);
@@ -180,6 +198,22 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   public void setTSDataType(TSDataType tsDataType) {
     this.dataType = tsDataType;
+  }
+
+  public TSEncoding getEncodingType() {
+    return encodingType;
+  }
+
+  public void setEncodingType(TSEncoding encodingType) {
+    this.encodingType = encodingType;
+  }
+
+  public CompressionType getCompressionType() {
+    return compressionType;
+  }
+
+  public void setCompressionType(CompressionType compressionType) {
+    this.compressionType = compressionType;
   }
 
   @Override

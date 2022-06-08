@@ -19,13 +19,9 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
@@ -194,39 +190,6 @@ public class TsFileRewriteToolTest {
     try {
       queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
     } catch (Exception e) {
-      Assert.fail(e.getMessage());
-    }
-  }
-
-  private void createFile(
-      List<TsFileResource> resourcesToBeSettled,
-      HashMap<String, List<String>> deviceSensorsMap,
-      String timeseriesPath)
-      throws IOException {
-    createOneTsFile(deviceSensorsMap);
-    createlModificationFile(timeseriesPath);
-    TsFileResource tsFileResource = new TsFileResource(new File(path));
-    tsFileResource.setModFile(
-        new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
-    tsFileResource.serialize();
-    tsFileResource.close();
-    resourcesToBeSettled.add(tsFileResource);
-  }
-
-  public void createlModificationFile(String timeseriesPath) {
-    String modFilePath = path + ModificationFile.FILE_SUFFIX;
-    ModificationFile modificationFile = new ModificationFile(modFilePath);
-    List<Modification> mods = new ArrayList<>();
-    try {
-      PartialPath partialPath = new PartialPath(timeseriesPath);
-      mods.add(new Deletion(partialPath, 10000000, 1500, 10000));
-      mods.add(new Deletion(partialPath, 10000000, 20000, 30000));
-      mods.add(new Deletion(partialPath, 10000000, 45000, 50000));
-      for (Modification mod : mods) {
-        modificationFile.write(mod);
-      }
-      modificationFile.close();
-    } catch (IllegalPathException | IOException e) {
       Assert.fail(e.getMessage());
     }
   }

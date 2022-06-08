@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.exception.TsFileTimeseriesMetadataException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -148,8 +149,7 @@ public class TsFileSelfCheckToolTest {
   }
 
   @Test
-  public void tsFileSelfCheckToolWithStatisticsModifiedTest()
-      throws IOException, TsFileTimeseriesMetadataException, Exception {
+  public void tsFileSelfCheckToolWithStatisticsModifiedTest() throws Exception {
     String fileName = "1-0-0-2.tsfile";
     String filePath = path.concat(fileName);
     setUp(filePath);
@@ -161,11 +161,14 @@ public class TsFileSelfCheckToolTest {
       LongStatistics statistics = (LongStatistics) timeseriesMetadata.getStatistics();
       statistics.initializeStats(666, 1999999, 1000000, 1999999, 0);
 
-      RandomAccessFile raf = new RandomAccessFile(filePath, "rw");
+      RandomAccessFile raf = new RandomAccessFile(filePath + TsFileConstant.INDEX_SUFFIX, "rw");
       ByteArrayOutputStream bo = new ByteArrayOutputStream();
       int serialLength = ReadWriteIOUtils.write(timeseriesMetadata.getTimeSeriesMetadataType(), bo);
       serialLength += ReadWriteIOUtils.writeVar(timeseriesMetadata.getMeasurementId(), bo);
       serialLength += ReadWriteIOUtils.write(timeseriesMetadata.getTSDataType(), bo);
+      serialLength += ReadWriteIOUtils.write(timeseriesMetadata.getEncodingType(), bo);
+      serialLength += ReadWriteIOUtils.write(timeseriesMetadata.getCompressionType(), bo);
+
       serialLength +=
           ReadWriteForEncodingUtils.writeUnsignedVarInt(
               timeseriesMetadata.getDataSizeOfChunkMetaDataList(), bo);

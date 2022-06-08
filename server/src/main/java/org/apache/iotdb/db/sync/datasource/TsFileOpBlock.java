@@ -527,7 +527,8 @@ public class TsFileOpBlock extends AbstractOpBlock {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
             ByteBuffer nextBuffer =
-                readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+                readData(
+                    indexFileInput, metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
             genTSMetadataFromMetaIndexEntry(
                 metadataIndexNode.getChildren().get(i).getOffset(),
                 metadataIndexNode.getChildren().get(i),
@@ -565,7 +566,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
         if (i != metadataIndexEntryList.size() - 1) {
           endOffset = metadataIndexEntryList.get(i + 1).getOffset();
         }
-        ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+        ByteBuffer buffer = readData(indexFileInput, metadataIndexEntry.getOffset(), endOffset);
         genTSMetadataFromMetaIndexEntry(
             metadataIndexEntry.getOffset(),
             metadataIndexEntry,
@@ -593,7 +594,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
       try {
         tsFileMetaData =
             TsFileMetadata.deserializeFrom(
-                readData(getFileMetadataPos(), (int) getFileMetadataSize()));
+                readData(indexFileInput, getFileMetadataPos(), (int) getFileMetadataSize()));
       } catch (BufferOverflowException e) {
         logger.error("readFileMetadata(), reading file metadata of file {}", file);
         throw e;

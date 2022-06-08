@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -60,6 +61,8 @@ public class TestHelper {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(measurementuid);
     timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
+    timeseriesMetaData.setEncodingType(TSEncoding.RLE);
+    timeseriesMetaData.setCompressionType(CompressionType.UNCOMPRESSED);
     timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(0);
     timeseriesMetaData.setChunkMetadataListBuffer(new PublicBAOS());

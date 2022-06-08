@@ -51,14 +51,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class RewriteCompactionFileSelectorTest extends MergeTest {
   private static final Logger logger =
       LoggerFactory.getLogger(RewriteCompactionFileSelectorTest.class);
 
   @Test
-  public void testFullSelection() throws MergeException, IOException {
+  public void testFullSelection() throws MergeException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
@@ -87,7 +86,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testWithFewMemoryBudgeSelection() throws MergeException, IOException {
+  public void testWithFewMemoryBudgeSelection() throws MergeException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
@@ -96,7 +95,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testRestrictedSelection() throws MergeException, IOException {
+  public void testRestrictedSelection() throws MergeException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =

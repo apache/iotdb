@@ -52,7 +52,7 @@ import java.util.Map;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCompactionTest {
-  private String TEST_SG = "root.compactionTest";
+  private final String TEST_SG = "root.compactionTest";
   private final String oldThreadName = Thread.currentThread().getName();
 
   @Override
@@ -156,6 +156,14 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
           new File(
               resource.getTsFilePath() + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD);
       Files.copy(resource.getTsFile(), mergeFile);
+
+      File indexFile = new File(resource.getTsFilePath() + TsFileConstant.INDEX_SUFFIX);
+      File mergeIndexFile =
+          new File(
+              resource.getTsFilePath()
+                  + TsFileConstant.INDEX_SUFFIX
+                  + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD);
+      Files.copy(indexFile, mergeIndexFile);
       tmpTargetResources.add(new TsFileResource(mergeFile));
     }
 
@@ -323,6 +331,14 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
           new File(
               resource.getTsFilePath() + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD);
       Files.copy(resource.getTsFile(), mergeFile);
+
+      File indexFile = new File(resource.getTsFilePath() + TsFileConstant.INDEX_SUFFIX);
+      File mergeIndexFile =
+          new File(
+              resource.getTsFilePath()
+                  + TsFileConstant.INDEX_SUFFIX
+                  + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD);
+      Files.copy(indexFile, mergeIndexFile);
       tmpTargetResources.add(new TsFileResource(mergeFile));
     }
 

@@ -42,19 +42,12 @@ public class TsFileSelfCheckTool {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckTool.class);
 
-  private Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithReader(
-      TsFileSelfCheckToolReader reader) throws Exception {
-    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
-    timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
-    return timeseriesMetadataMap;
-  }
-
   public Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithPath(String filename)
       throws IOException, TsFileTimeseriesMetadataException {
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
-    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap;
     try {
-      timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
+      timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
     } catch (Exception e) {
       logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
       throw new TsFileTimeseriesMetadataException(
@@ -80,10 +73,10 @@ public class TsFileSelfCheckTool {
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
     logger.info("file path: " + filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
-    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
-    long res = -1;
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap;
+    long res;
     try {
-      timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
+      timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
       res = reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
     } catch (TsFileStatisticsMistakesException e) {
       throw e;
@@ -144,7 +137,8 @@ public class TsFileSelfCheckTool {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
             ByteBuffer nextBuffer =
-                readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+                readData(
+                    indexFileInput, metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
             generateMetadataIndexWithOffset(
                 metadataIndexNode.getChildren().get(i).getOffset(),
                 metadataIndexNode.getChildren().get(i),
@@ -174,7 +168,7 @@ public class TsFileSelfCheckTool {
         if (i != metadataIndexEntryList.size() - 1) {
           endOffset = metadataIndexEntryList.get(i + 1).getOffset();
         }
-        ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+        ByteBuffer buffer = readData(indexFileInput, metadataIndexEntry.getOffset(), endOffset);
         generateMetadataIndexWithOffset(
             metadataIndexEntry.getOffset(),
             metadataIndexEntry,

@@ -178,6 +178,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -1446,6 +1447,13 @@ public class PlanExecutor implements IPlanExecutor {
     }
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+
+    File indexFile = FSFactoryProducer.getFSFactory().getFile(file + TsFileConstant.INDEX_SUFFIX);
+    if (!indexFile.exists()) {
+      throw new QueryProcessException(
+          String.format(
+              "Cannot load file %s because there is no index file.", file.getAbsolutePath()));
+    }
     try {
       // check file
       RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);

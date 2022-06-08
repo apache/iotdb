@@ -100,7 +100,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-
         truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
         minPlanIndex = reader.getMinPlanIndex();
         maxPlanIndex = reader.getMaxPlanIndex();
@@ -120,6 +119,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           // remove broken data
           if (truncate) {
             tsFileOutput.truncate(truncatedSize);
+            indexFileOutput.truncate(0);
           }
         }
       }
@@ -150,8 +150,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (position != file.length()) {
       // if the file is complete, we will remove all file metadatas
       try (FileChannel channel =
-          FileChannel.open(Paths.get(file.getAbsolutePath()), StandardOpenOption.WRITE)) {
-        channel.truncate(position - 1); // remove the last marker.
+          FileChannel.open(
+              Paths.get(file.getAbsolutePath() + TsFileConstant.INDEX_SUFFIX),
+              StandardOpenOption.WRITE)) {
+        channel.truncate(0); // remove the last marker.
       }
     }
     return new RestorableTsFileIOWriter(file);

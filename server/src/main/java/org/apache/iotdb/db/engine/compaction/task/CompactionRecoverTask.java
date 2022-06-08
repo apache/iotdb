@@ -356,10 +356,7 @@ public class CompactionRecoverTask {
               tsFileManager.getStorageGroupDir()
                   + File.separator
                   + IoTDBConstant.COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD);
-      if (!checkAndDeleteFile(compactionModsFileFromOld)) {
-        return false;
-      }
-      return true;
+      return checkAndDeleteFile(compactionModsFileFromOld);
     }
 
     /**
@@ -382,7 +379,8 @@ public class CompactionRecoverTask {
           TsFileIdentifier sourceFileIdentifier = sourceFileIdentifiers.get(i);
           if (sourceFileIdentifier.isSequence()) {
             File tmpTargetFile = targetFileIdentifiers.get(i).getFileFromDataDirs();
-            File targetFile = null;
+            File targetFile;
+            File targetIndexFile;
 
             // move tmp target file to target file if not exist
             if (tmpTargetFile != null) {
@@ -396,6 +394,22 @@ public class CompactionRecoverTask {
                           TsFileConstant.TSFILE_SUFFIX);
               targetFile = TsFileNameGenerator.increaseCrossCompactionCnt(new File(sourceFilePath));
               FSFactoryProducer.getFSFactory().moveFile(tmpTargetFile, targetFile);
+
+              String tmpIndexFilePath =
+                  tmpTargetFile
+                      .getPath()
+                      .replace(
+                          TsFileConstant.TSFILE_SUFFIX,
+                          TsFileConstant.TSFILE_SUFFIX + TsFileConstant.INDEX_SUFFIX);
+              String indexFilePath =
+                  targetFile
+                      .getPath()
+                      .replace(
+                          TsFileConstant.TSFILE_SUFFIX,
+                          TsFileConstant.TSFILE_SUFFIX + TsFileConstant.INDEX_SUFFIX);
+              File tmpIndexFile = FSFactoryProducer.getFSFactory().getFile(tmpIndexFilePath);
+              targetIndexFile = new File(indexFilePath);
+              FSFactoryProducer.getFSFactory().moveFile(tmpIndexFile, targetIndexFile);
             } else {
               // target file must exist
               File file =
@@ -410,8 +424,11 @@ public class CompactionRecoverTask {
                                   TsFileConstant.TSFILE_SUFFIX)));
 
               targetFile = getFileFromDataDirs(file.getPath());
+              targetIndexFile =
+                  FSFactoryProducer.getFSFactory()
+                      .getFile(targetFile + TsFileConstant.INDEX_SUFFIX);
             }
-            if (targetFile == null) {
+            if (targetFile == null || targetIndexFile == null) {
               LOGGER.error(
                   "{} [Compaction][Recover] target file of source seq file {} does not exist (<0.13).",
                   fullStorageGroupName,

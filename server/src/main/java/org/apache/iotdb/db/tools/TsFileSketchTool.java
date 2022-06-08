@@ -471,7 +471,8 @@ public class TsFileSketchTool {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
             ByteBuffer nextBuffer =
-                readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+                readData(
+                    indexFileInput, metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
             generateMetadataIndexWithOffset(
                 metadataIndexNode.getChildren().get(i).getOffset(),
                 metadataIndexNode.getChildren().get(i),
@@ -501,7 +502,7 @@ public class TsFileSketchTool {
         if (i != metadataIndexEntryList.size() - 1) {
           endOffset = metadataIndexEntryList.get(i + 1).getOffset();
         }
-        ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+        ByteBuffer buffer = readData(indexFileInput, metadataIndexEntry.getOffset(), endOffset);
         generateMetadataIndexWithOffset(
             metadataIndexEntry.getOffset(),
             metadataIndexEntry,

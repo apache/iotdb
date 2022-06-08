@@ -237,7 +237,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * etc.
    */
   public long getFileMetadataSize() throws IOException {
-    return tsFileInput.size() - getFileMetadataPos();
+    return indexFileInput.size() - getFileMetadataPos();
   }
 
   /** this function does not modify the position of the file reader. */
@@ -245,6 +245,18 @@ public class TsFileSequenceReader implements AutoCloseable {
     long totalSize = tsFileInput.size();
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.getBytes().length);
+    magicStringBytes.flip();
+    return new String(magicStringBytes.array());
+  }
+
+  /** this function does not modify the position of the file reader. */
+  public String readTailMagicInIndexFile() throws IOException {
+    if (indexFileInput == null || indexFileInput.size() == 0) {
+      return null;
+    }
+    long totalSize = indexFileInput.size();
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
+    indexFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.getBytes().length);
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
   }
@@ -258,6 +270,19 @@ public class TsFileSequenceReader implements AutoCloseable {
       String tailMagic = readTailMagic();
       String headMagic = readHeadMagic();
       return tailMagic.equals(headMagic);
+    } else {
+      return false;
+    }
+  }
+
+  /** whether the index file is complete: only if tail magic string exists. */
+  public boolean isIndexFileComplete() throws IOException {
+    long size = indexFileInput.size();
+    // TSFileConfig.MAGIC_STRING.getBytes().length for magic string
+    if (size >= TSFileConfig.MAGIC_STRING.getBytes().length) {
+      String tailMagicInIndex = readTailMagicInIndexFile();
+      String headMagic = readHeadMagic();
+      return tailMagicInIndex.equals(headMagic);
     } else {
       return false;
     }
@@ -1208,7 +1233,9 @@ public class TsFileSequenceReader implements AutoCloseable {
       resourceLogger.debug("{} reader is closed.", file);
     }
     this.tsFileInput.close();
-    this.indexFileInput.close();
+    if (this.indexFileInput != null) {
+      this.indexFileInput.close();
+    }
   }
 
   public String getFileName() {
@@ -1325,6 +1352,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkMetadata currentChunk;
     String measurementID;
     TSDataType dataType;
+    TSEncoding encodingType;
+    CompressionType compressionType;
     long fileOffsetOfChunk;
 
     // ChunkMetadata of current ChunkGroup
@@ -1343,7 +1372,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     boolean isComplete = isComplete();
     if (fileSize == headerLength) {
       return headerLength;
-    } else if (isComplete) {
+    } else if (isComplete && isIndexFileComplete()) {
       loadMetadataSize();
       if (fastFinish) {
         return TsFileCheckStatus.COMPLETE_FILE;
@@ -1370,15 +1399,14 @@ public class TsFileSequenceReader implements AutoCloseable {
             // insertion is not tolerable
             ChunkHeader chunkHeader = this.readChunkHeader(marker);
             measurementID = chunkHeader.getMeasurementID();
-            IMeasurementSchema measurementSchema =
-                new MeasurementSchema(
-                    measurementID,
-                    chunkHeader.getDataType(),
-                    chunkHeader.getEncodingType(),
-                    chunkHeader.getCompressionType());
-            measurementSchemaList.add(measurementSchema);
             dataType = chunkHeader.getDataType();
-            if (chunkHeader.getDataType() == TSDataType.VECTOR) {
+            encodingType = chunkHeader.getEncodingType();
+            compressionType = chunkHeader.getCompressionType();
+            IMeasurementSchema measurementSchema =
+                new MeasurementSchema(measurementID, dataType, encodingType, compressionType);
+            measurementSchemaList.add(measurementSchema);
+
+            if (dataType == TSDataType.VECTOR) {
               timeBatch.clear();
             }
             Statistics<? extends Serializable> chunkStatistics =
@@ -1392,7 +1420,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                 // generate chunk statistic
                 while (dataSize > 0) {
                   // a new Page
-                  PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
+                  PageHeader pageHeader = this.readPageHeader(dataType, true);
                   if (pageHeader.getUncompressedSize() != 0) {
                     // not empty page
                     chunkStatistics.mergeStatistics(pageHeader.getStatistics());
@@ -1504,7 +1532,13 @@ public class TsFileSequenceReader implements AutoCloseable {
               }
             }
             currentChunk =
-                new ChunkMetadata(measurementID, dataType, fileOffsetOfChunk, chunkStatistics);
+                new ChunkMetadata(
+                    measurementID,
+                    dataType,
+                    encodingType,
+                    compressionType,
+                    fileOffsetOfChunk,
+                    chunkStatistics);
             chunkMetadataList.add(currentChunk);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
@@ -1563,7 +1597,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         // last chunk group Metadata
         chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
       }
-      if (isComplete) {
+      if (isComplete && isIndexFileComplete()) {
         truncatedSize = TsFileCheckStatus.COMPLETE_FILE;
       } else {
         truncatedSize = this.position() - 1;
@@ -1627,7 +1661,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       Statistics<? extends Serializable> timeseriesMetadataSta = timeseriesMetadata.getStatistics();
       Statistics<? extends Serializable> chunkMetadatasSta = Statistics.getStatsByType(dataType);
       for (IChunkMetadata chunkMetadata : getChunkMetadataList(entry.getValue().left)) {
-        long tscheckStatus = TsFileCheckStatus.COMPLETE_FILE;
+        long tscheckStatus;
         try {
           tscheckStatus = checkChunkAndPagesStatistics(chunkMetadata);
         } catch (IOException e) {

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -46,6 +48,10 @@ public class ChunkMetadata implements IChunkMetadata {
   private long offsetOfChunkHeader;
 
   private TSDataType tsDataType;
+
+  // used to transfer encodingType and compressionType from ChunkHeader to TimeseriesMetadata
+  private TSEncoding encodingType;
+  private CompressionType compressionType;
 
   /**
    * version is used to define the order of operations(insertion, deletion, update). version is set
@@ -103,6 +109,21 @@ public class ChunkMetadata implements IChunkMetadata {
     this.statistics = statistics;
   }
 
+  public ChunkMetadata(
+      String measurementUid,
+      TSDataType tsDataType,
+      TSEncoding encodingType,
+      CompressionType compressionType,
+      long fileOffset,
+      Statistics<? extends Serializable> statistics) {
+    this.measurementUid = measurementUid;
+    this.tsDataType = tsDataType;
+    this.encodingType = encodingType;
+    this.compressionType = compressionType;
+    this.offsetOfChunkHeader = fileOffset;
+    this.statistics = statistics;
+  }
+
   @Override
   public String toString() {
     return String.format(
@@ -143,6 +164,14 @@ public class ChunkMetadata implements IChunkMetadata {
 
   public TSDataType getDataType() {
     return tsDataType;
+  }
+
+  public TSEncoding getEncodingType() {
+    return encodingType;
+  }
+
+  public CompressionType getCompressionType() {
+    return compressionType;
   }
 
   /**
