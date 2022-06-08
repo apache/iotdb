@@ -28,8 +28,7 @@ public class TimeRangeIteratorFactory {
   /**
    * The method returns different implements of ITimeRangeIterator depending on the parameters.
    *
-   * <p>Note: interval and slidingStep stand for the milliseconds if not grouped by month, or the
-   * month count if grouped by month.
+   * <p>Note: interval and slidingStep is always stand for the milliseconds in this method.
    */
   public static ITimeRangeIterator getTimeRangeIterator(
       long startTime,
@@ -41,9 +40,12 @@ public class TimeRangeIteratorFactory {
       boolean isSlidingStepByMonth,
       boolean leftCRightO,
       boolean outputPartialTimeWindow) {
-    long tmpInterval = isIntervalByMonth ? interval * MS_TO_MONTH : interval;
-    long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
-    if (outputPartialTimeWindow && tmpInterval > tmpSlidingStep) {
+    long originInterval = interval;
+    long originSlidingStep = slidingStep;
+    interval = isIntervalByMonth ? interval / MS_TO_MONTH : interval;
+    slidingStep = isSlidingStepByMonth ? slidingStep / MS_TO_MONTH : slidingStep;
+
+    if (outputPartialTimeWindow && originInterval > originSlidingStep) {
       if (!isIntervalByMonth && !isSlidingStepByMonth) {
         return new PreAggrWindowIterator(
             startTime, endTime, interval, slidingStep, isAscending, leftCRightO);

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -507,9 +508,9 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (noStarPaths.size() == 0) {
-        throw new SemanticException(
+        throw new MeasurementNotExistException(
             String.format(
-                "ALIGN BY DEVICE: measurement '%s' does not exist in device '%s'",
+                "ALIGN BY DEVICE: Measurement '%s' does not exist in device '%s'",
                 measurement, devicePath));
       }
 

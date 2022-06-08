@@ -372,6 +372,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public PlanNode visitLastQueryMerge(LastQueryMergeNode node, DistributionPlanContext context) {
+    // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
+    // force every region group have a parent node even if there is only 1 child for it.
+    context.setForceAddParent(true);
     return processRawMultiChildNode(node, context);
   }
 
@@ -419,7 +422,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, seriesScanNodes) -> {
-          if (seriesScanNodes.size() == 1) {
+          if (seriesScanNodes.size() == 1 && !context.forceAddParent) {
             root.addChild(seriesScanNodes.get(0));
           } else {
             if (!addParent[0]) {
