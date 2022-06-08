@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionTest;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
-import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
@@ -49,8 +49,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.recover.WALRecoverManager;
-import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -69,32 +68,30 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 
 public class StandaloneSchedulerTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-  private WALMode walMode = conf.getWalMode();
   static LocalConfigNode configNode;
 
   @Before
   public void setUp() throws Exception {
     conf.setMppMode(true);
     conf.setDataNodeId(0);
-    conf.setWalMode(WALMode.DISABLE);
+
     configNode = LocalConfigNode.getInstance();
     configNode.init();
-    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(0));
+    WALManager.getInstance().start();
+    StorageEngineV2.getInstance().start();
   }
 
   @After
   public void tearDown() throws Exception {
-    WALRecoverManager.getInstance().clear();
-    DriverScheduler.getInstance().clearResource();
     configNode.clear();
+    WALManager.getInstance().stop();
+    StorageEngineV2.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
-    conf.setWalMode(walMode);
     conf.setDataNodeId(-1);
     conf.setMppMode(false);
   }

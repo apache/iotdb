@@ -201,6 +201,8 @@ public class LocalConfigNode {
       storageGroupSchemaManager.clear();
       templateManager.clear();
 
+      dataPartitionTable.clear();
+
     } catch (IOException e) {
       logger.error("Error occurred when clearing LocalConfigNode:", e);
     }

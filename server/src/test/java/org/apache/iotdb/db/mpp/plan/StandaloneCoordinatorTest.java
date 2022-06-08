@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
-import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
@@ -36,66 +35,49 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.recover.WALRecoverManager;
-import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.time.ZoneId;
 import java.util.HashMap;
-import java.util.concurrent.CountDownLatch;
 
 public class StandaloneCoordinatorTest {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-  private static WALMode walMode = conf.getWalMode();
-
   private static LocalConfigNode configNode;
   private static Coordinator coordinator;
   private static ISchemaFetcher schemaFetcher;
   private static IPartitionFetcher partitionFetcher;
-  private static DataBlockService dataBlockService = DataBlockService.getInstance();
-
-  @BeforeClass
-  public static void setUpBeforeClass() throws Exception {
-    conf.setMppMode(true);
-    conf.setDataNodeId(0);
-    conf.setWalMode(WALMode.DISABLE);
-    coordinator = Coordinator.getInstance();
-    schemaFetcher = StandaloneSchemaFetcher.getInstance();
-    partitionFetcher = StandalonePartitionFetcher.getInstance();
-    dataBlockService.startService();
-  }
 
   @Before
   public void setUp() throws Exception {
+    conf.setMppMode(true);
+    conf.setDataNodeId(0);
+    coordinator = Coordinator.getInstance();
+    schemaFetcher = StandaloneSchemaFetcher.getInstance();
+    partitionFetcher = StandalonePartitionFetcher.getInstance();
+
     configNode = LocalConfigNode.getInstance();
     configNode.init();
-    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(0));
+    WALManager.getInstance().start();
+    StorageEngineV2.getInstance().start();
   }
 
   @After
   public void tearDown() throws Exception {
-    WALRecoverManager.getInstance().clear();
-    DriverScheduler.getInstance().clearResource();
     configNode.clear();
+    WALManager.getInstance().stop();
+    StorageEngineV2.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
-  }
-
-  @AfterClass
-  public static void tearDownAfterClass() throws Exception {
-    dataBlockService.stopService();
-    conf.setWalMode(walMode);
     conf.setDataNodeId(-1);
     conf.setMppMode(false);
   }
@@ -129,28 +111,14 @@ public class StandaloneCoordinatorTest {
           }
         });
     executeStatement(createTimeSeriesStatement);
-
-    String querySql = "SHOW TIMESERIES";
-
-    Statement queryStmt = StatementGenerator.createStatement(querySql, ZoneId.systemDefault());
-
-    executeStatement(queryStmt);
   }
 
   @Test
-  public void testInsertDataAndQuery() {
+  public void testInsertData() {
 
     String insertSql = "insert into root.sg.d1(time,s1,s2) values (100,222,333)";
     Statement insertStmt = StatementGenerator.createStatement(insertSql, ZoneId.systemDefault());
     executeStatement(insertStmt);
-
-    String querySql1 = "SHOW TIMESERIES";
-    Statement queryStmt1 = StatementGenerator.createStatement(querySql1, ZoneId.systemDefault());
-    executeStatement(queryStmt1);
-
-    String querySql2 = "select ** from root";
-    Statement queryStmt2 = StatementGenerator.createStatement(querySql2, ZoneId.systemDefault());
-    executeStatement(queryStmt2);
   }
 
   private void executeStatement(Statement statement) {

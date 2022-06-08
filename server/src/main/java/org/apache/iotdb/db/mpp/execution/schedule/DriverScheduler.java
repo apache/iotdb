@@ -242,14 +242,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @TestOnly
-  public void clearResource() {
-    getQueryMap().clear();
-    getBlockedTasks().clear();
-    getReadyQueue().clear();
-    getTimeoutQueue().clear();
-  }
-
-  @TestOnly
   void setBlockManager(IDataBlockManager blockManager) {
     this.blockManager = blockManager;
   }
