@@ -942,12 +942,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.1.2</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
-                        <version>8.18</version>
+                        <version>8.45.1</version>
                     </dependency>
                 </dependencies>
                 <executions>
@@ -999,9 +999,11 @@
                         <configuration>
                             <!-- configure your formatting preferences here (see link below) -->
                             <indentSize>4</indentSize>
-                            <excludes>**/target/**</excludes>
-                            <excludes>**/checkstyle.xml</excludes>
-                            <excludes>**/import-control.xml</excludes>
+                            <excludes>
+                                <exclude>**/target/**</exclude>
+                                <exclude>**/checkstyle.xml</exclude>
+                                <exclude>**/import-control.xml</exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>

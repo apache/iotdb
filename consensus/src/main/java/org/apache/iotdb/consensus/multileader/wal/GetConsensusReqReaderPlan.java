@@ -26,5 +26,8 @@ import java.nio.ByteBuffer;
 public class GetConsensusReqReaderPlan implements IConsensusRequest {
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {}
+  public ByteBuffer serializeToByteBuffer() {
+    // do not need any data, we will use instanceOf
+    return ByteBuffer.wrap(new byte[0]);
+  }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -300,11 +301,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
-    byteBuffer.putInt(stateCount);
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    stream.writeInt(stateCount);
     for (int i = 0; i < stateCount; ++i) {
-      byteBuffer.putInt(states[i]);
+      stream.writeInt(states[i]);
     }
   }
 

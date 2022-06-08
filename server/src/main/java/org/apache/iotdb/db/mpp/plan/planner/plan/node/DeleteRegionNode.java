@@ -22,13 +22,22 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public class DeleteRegionNode extends WritePlanNode implements IConsensusRequest {
+
+  private final Logger logger = LoggerFactory.getLogger(DeleteRegionNode.class);
 
   protected ConsensusGroupId consensusGroupId;
 
@@ -103,7 +112,21 @@ public class DeleteRegionNode extends WritePlanNode implements IConsensusRequest
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    super.serialize(buffer);
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DELETE_REGION.serialize(stream);
+    ReadWriteIOUtils.write(consensusGroupId.getType().getValue(), stream);
+    ReadWriteIOUtils.write(consensusGroupId.getId(), stream);
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      super.serialize(outputStream);
+      return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when serializing this DeleteRegionNode.", e);
+      throw new SerializationRunTimeException(e);
+    }
   }
 }

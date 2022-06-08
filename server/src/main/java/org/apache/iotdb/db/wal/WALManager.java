@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -175,17 +176,8 @@ public class WALManager implements IService {
   private void registerScheduleTask(long initDelayMs, long periodMs) {
     walDeleteThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-    walDeleteThread.scheduleWithFixedDelay(
-        () -> {
-          try {
-            deleteOutdatedFiles();
-          } catch (Throwable t) {
-            logger.error("Schedule {} failed", ThreadName.WAL_DELETE.getName(), t);
-          }
-        },
-        initDelayMs,
-        periodMs,
-        TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        walDeleteThread, this::deleteOutdatedFiles, initDelayMs, periodMs, TimeUnit.MILLISECONDS);
   }
 
   @TestOnly

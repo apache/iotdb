@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -114,6 +116,17 @@ public class PlanFragment {
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       typeProvider.serialize(byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    id.serialize(stream);
+    root.serialize(stream);
+    if (typeProvider == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      typeProvider.serialize(stream);
     }
   }
 

@@ -62,10 +62,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
             // TODO: (jackie tien) change the port
             try (SyncDataNodeInternalServiceClient client =
                 internalServiceClientManager.borrowClient(endPoint)) {
-              // TODO: (xingtanzjr) consider how to handle the buffer here
-              ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-              instance.serializeRequest(buffer);
-              buffer.flip();
+              ByteBuffer buffer = instance.serializeToByteBuffer();
               TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
               TSendFragmentInstanceReq req =
                   new TSendFragmentInstanceReq(

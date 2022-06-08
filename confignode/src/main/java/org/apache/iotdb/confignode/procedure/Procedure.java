@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
@@ -127,56 +128,58 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected abstract boolean abort(Env env);
 
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(DataOutputStream stream) throws IOException {
     // procid
-    byteBuffer.putLong(this.procId);
+    stream.writeLong(this.procId);
     // state
-    byteBuffer.putInt(this.state.ordinal());
+    stream.writeInt(this.state.ordinal());
     // submit time
-    byteBuffer.putLong(this.submittedTime);
+    stream.writeLong(this.submittedTime);
     // last updated
-    byteBuffer.putLong(this.lastUpdate);
+    stream.writeLong(this.lastUpdate);
     // parent id
-    byteBuffer.putLong(this.parentProcId);
+    stream.writeLong(this.parentProcId);
     // time out
-    byteBuffer.putLong(this.timeout);
+    stream.writeLong(this.timeout);
     // stack indexes
     if (stackIndexes != null) {
-      byteBuffer.putInt(stackIndexes.length);
-      Arrays.stream(stackIndexes).forEach(byteBuffer::putInt);
+      stream.writeInt(stackIndexes.length);
+      for (int index : stackIndexes) {
+        stream.writeInt(index);
+      }
     } else {
-      byteBuffer.putInt(-1);
+      stream.writeInt(-1);
     }
 
     // exceptions
     if (hasException()) {
-      byteBuffer.put((byte) 1);
+      stream.write((byte) 1);
       String exceptionClassName = exception.getClass().getName();
       byte[] exceptionClassNameBytes = exceptionClassName.getBytes(StandardCharsets.UTF_8);
-      byteBuffer.putInt(exceptionClassNameBytes.length);
-      byteBuffer.put(exceptionClassNameBytes);
+      stream.writeInt(exceptionClassNameBytes.length);
+      stream.write(exceptionClassNameBytes);
       String message = this.exception.getMessage();
       if (message != null) {
         byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
-        byteBuffer.putInt(messageBytes.length);
-        byteBuffer.put(messageBytes);
+        stream.writeInt(messageBytes.length);
+        stream.write(messageBytes);
       } else {
-        byteBuffer.putInt(-1);
+        stream.writeInt(-1);
       }
     } else {
-      byteBuffer.put((byte) 0);
+      stream.write((byte) 0);
     }
 
     // result
     if (result != null) {
-      byteBuffer.putInt(result.length);
-      byteBuffer.put(result);
+      stream.writeInt(result.length);
+      stream.write(result);
     } else {
-      byteBuffer.putInt(-1);
+      stream.writeInt(-1);
     }
 
     // has lock
-    byteBuffer.put(this.hasLock() ? (byte) 1 : (byte) 0);
+    stream.write(this.hasLock() ? (byte) 1 : (byte) 0);
   }
 
   public void deserialize(ByteBuffer byteBuffer) {

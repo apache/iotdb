@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -92,19 +93,20 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   private void startCollectClusterStatus() {
     // monitor all nodes' live status
     LOGGER.info("start metric node status and leader distribution");
-    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.CLUSTER_MONITOR.getName())
-        .scheduleAtFixedRate(
-            () -> {
-              MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
-              if (metaGroupMember != null
-                  && metaGroupMember.getLeader().equals(metaGroupMember.getThisNode())) {
-                metricNodeStatus(metaGroupMember);
-                metricLeaderDistribution(metaGroupMember);
-              }
-            },
-            10L,
-            10L,
-            TimeUnit.SECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.CLUSTER_MONITOR.getName()),
+        () -> {
+          MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
+          if (metaGroupMember != null
+              && metaGroupMember.getLeader().equals(metaGroupMember.getThisNode())) {
+            metricNodeStatus(metaGroupMember);
+            metricLeaderDistribution(metaGroupMember);
+          }
+        },
+        10L,
+        10L,
+        TimeUnit.SECONDS);
   }
 
   private void metricLeaderDistribution(MetaGroupMember metaGroupMember) {

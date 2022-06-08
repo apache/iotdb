@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProcessNode;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -75,6 +77,11 @@ public class NodePathsConvertNode extends ProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.NODE_PATHS_CONVERT.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.NODE_PATHS_CONVERT.serialize(stream);
   }
 
   public static NodePathsConvertNode deserialize(ByteBuffer byteBuffer) {
