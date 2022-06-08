@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
@@ -32,7 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -41,13 +42,13 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
+import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -58,19 +59,17 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-public class IoTDB implements IoTDBMBean {
+public class NewIoTDB implements NewIoTDBMBean {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
+  private static final Logger logger = LoggerFactory.getLogger(NewIoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final RegisterManager registerManager = new RegisterManager();
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
-  public static ServiceProvider serviceProvider;
-  private static boolean clusterMode = false;
 
-  public static IoTDB getInstance() {
+  public static NewIoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
   }
 
@@ -82,24 +81,9 @@ public class IoTDB implements IoTDBMBean {
       logger.error("meet error when doing start checking", e);
       System.exit(1);
     }
-    IoTDB daemon = IoTDB.getInstance();
+    NewIoTDB daemon = NewIoTDB.getInstance();
+    config.setMppMode(true);
     daemon.active();
-  }
-
-  public static void setSchemaProcessor(LocalSchemaProcessor schemaProcessor) {
-    IoTDB.schemaProcessor = schemaProcessor;
-  }
-
-  public static void setServiceProvider(ServiceProvider serviceProvider) {
-    IoTDB.serviceProvider = serviceProvider;
-  }
-
-  public static void setClusterMode() {
-    IoTDB.clusterMode = true;
-  }
-
-  public static boolean isClusterMode() {
-    return IoTDB.clusterMode;
   }
 
   public void active() {
@@ -118,6 +102,8 @@ public class IoTDB implements IoTDBMBean {
     config.setAutoCreateSchemaEnabled(false);
     boolean prevIsEnablePartialInsert = config.isEnablePartialInsert();
     config.setEnablePartialInsert(true);
+    // Set datanodeId to 0 for standalone IoTDB
+    config.setDataNodeId(0);
 
     try {
       setUp();
@@ -140,7 +126,10 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    initServiceProvider();
+    // init rpc service
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
@@ -156,7 +145,10 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SenderService.getInstance());
     registerManager.register(WALManager.getInstance());
 
-    registerManager.register(StorageEngine.getInstance());
+    registerManager.register(StorageEngineV2.getInstance());
+    registerManager.register(DataBlockService.getInstance());
+    registerManager.register(InternalService.getInstance());
+    registerManager.register(DriverScheduler.getInstance());
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(
@@ -171,17 +163,11 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(ReceiverService.getInstance());
 
     initProtocols();
-    // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
-    // avoid wasting time.
-    if (!isClusterMode()
-        && IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
-      initInfluxDBMManager();
-    }
 
     logger.info(
         "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
 
-    while (!StorageEngine.getInstance().isAllSgReady()) {
+    while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -192,7 +178,11 @@ public class IoTDB implements IoTDBMBean {
     }
 
     registerManager.register(UpgradeSevice.getINSTANCE());
-    registerManager.register(SettleService.getINSTANCE());
+    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
+    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
+    if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      registerManager.register(SettleService.getINSTANCE());
+    }
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 
@@ -200,16 +190,6 @@ public class IoTDB implements IoTDBMBean {
     MetricsService.getInstance().startAllReporter();
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
-  }
-
-  public static void initInfluxDBMManager() {
-    InfluxDBMetaManager.getInstance().recover();
-  }
-
-  private void initServiceProvider() throws QueryProcessException {
-    if (!clusterMode) {
-      serviceProvider = new StandaloneServiceProvider();
-    }
   }
 
   public static void initProtocols() throws StartupException {
@@ -263,7 +243,7 @@ public class IoTDB implements IoTDBMBean {
 
   private static class IoTDBHolder {
 
-    private static final IoTDB INSTANCE = new IoTDB();
+    private static final NewIoTDB INSTANCE = new NewIoTDB();
 
     private IoTDBHolder() {}
   }
