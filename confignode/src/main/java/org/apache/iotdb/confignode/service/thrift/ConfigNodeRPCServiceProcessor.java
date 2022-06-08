@@ -425,7 +425,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.STORAGE_GROUP_NOT_EXIST,
-            "storageGroup" + sb.subSequence(0, sb.length() - 1).toString() + "does not exist");
+            "storageGroup " + sb.subSequence(0, sb.length() - 1).toString() + " does not exist");
       }
     }
 
