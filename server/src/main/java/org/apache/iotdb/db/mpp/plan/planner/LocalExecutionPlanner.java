@@ -105,6 +105,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -179,7 +180,6 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
-import static org.apache.iotdb.db.mpp.plan.Coordinator.LOCAL_HOST_DATA_BLOCK_ENDPOINT;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -1101,7 +1101,7 @@ public class LocalExecutionPlanner {
     }
 
     private boolean isSameNode(TEndPoint endPoint) {
-      return endPoint.equals(LOCAL_HOST_DATA_BLOCK_ENDPOINT);
+      return endPoint.equals(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT);
     }
 
     @Override
