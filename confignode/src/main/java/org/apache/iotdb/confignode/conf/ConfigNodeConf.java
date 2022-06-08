@@ -59,7 +59,7 @@ public class ConfigNodeConf {
   private final String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.MultiLeaderConsensus;
 
   /** DataNode schema region consensus protocol */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
