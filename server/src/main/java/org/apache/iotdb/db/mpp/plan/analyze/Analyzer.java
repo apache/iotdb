@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -92,6 +93,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -289,9 +291,21 @@ public class Analyzer {
 
           if (queryStatement.getWhereCondition() != null) {
             Map<String, Expression> deviceToQueryFilter = new HashMap<>();
-            for (PartialPath devicePath : deviceList) {
-              Expression queryFilter =
-                  analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
+            Iterator<PartialPath> deviceIterator = deviceList.iterator();
+            while (deviceIterator.hasNext()) {
+              PartialPath devicePath = deviceIterator.next();
+              Expression queryFilter = null;
+              try {
+                queryFilter = analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
+              } catch (SemanticException e) {
+                if (e instanceof MeasurementNotExistException) {
+                  logger.warn(e.getMessage());
+                  deviceIterator.remove();
+                  deviceToSourceExpressions.remove(devicePath.getFullPath());
+                  continue;
+                }
+                throw e;
+              }
               deviceToQueryFilter.put(devicePath.getFullPath(), queryFilter);
               updateSource(
                   queryFilter,
