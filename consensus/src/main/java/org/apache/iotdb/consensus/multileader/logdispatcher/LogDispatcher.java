@@ -59,8 +59,6 @@ public class LogDispatcher {
 
   private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
 
-  private static final int DEFAULT_BUFFER_SIZE = 1024 * 15;
-
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
   private ExecutorService executorService;

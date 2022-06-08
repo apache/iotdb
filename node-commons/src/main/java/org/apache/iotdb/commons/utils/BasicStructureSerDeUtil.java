@@ -107,8 +107,6 @@ public class BasicStructureSerDeUtil {
   /**
    * write a map to buffer
    *
-   * @param map Map<String, String>
-   * @param buffer
    * @return length
    */
   public static int write(Map<String, String> map, ByteBuffer buffer) {
@@ -138,8 +136,6 @@ public class BasicStructureSerDeUtil {
   /**
    * write a map to dataOutputStream
    *
-   * @param map Map<String, String>
-   * @param stream DataOutputStream
    * @return length
    */
   public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
@@ -166,12 +162,7 @@ public class BasicStructureSerDeUtil {
     return length;
   }
 
-  /**
-   * read map from buffer
-   *
-   * @param buffer ByteBuffer
-   * @return Map<String, String>
-   */
+  /** read map from buffer */
   public static Map<String, String> readMap(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {
@@ -191,8 +182,6 @@ public class BasicStructureSerDeUtil {
   /**
    * write a string map to buffer
    *
-   * @param map Map<String, String>
-   * @param buffer
    * @return length
    */
   public static int writeStringMapLists(Map<String, List<String>> map, ByteBuffer buffer) {
@@ -219,12 +208,7 @@ public class BasicStructureSerDeUtil {
     return length;
   }
 
-  /**
-   * read string map from buffer
-   *
-   * @param buffer ByteBuffer
-   * @return Map<String, String>
-   */
+  /** read string map from buffer */
   public static Map<String, List<String>> readStringMapLists(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {
@@ -249,8 +233,6 @@ public class BasicStructureSerDeUtil {
   /**
    * write a string map to buffer
    *
-   * @param map Map<String, String>
-   * @param buffer
    * @return length
    */
   public static int writeIntMapLists(Map<Integer, List<Integer>> map, ByteBuffer buffer) {
@@ -263,22 +245,12 @@ public class BasicStructureSerDeUtil {
     for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
       buffer.putInt(entry.getKey());
       buffer.putInt(entry.getValue().size());
-      entry
-          .getValue()
-          .forEach(
-              b -> {
-                buffer.putInt(b);
-              });
+      entry.getValue().forEach(buffer::putInt);
     }
     return length;
   }
 
-  /**
-   * read string map from buffer
-   *
-   * @param buffer ByteBuffer
-   * @return Map<String, String>
-   */
+  /** read string map from buffer */
   public static Map<Integer, List<Integer>> readIntMapLists(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {

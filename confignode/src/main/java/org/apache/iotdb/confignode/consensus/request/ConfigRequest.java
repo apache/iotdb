@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
@@ -76,7 +77,7 @@ public abstract class ConfigRequest implements IConsensusRequest {
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
       LOGGER.error("Unexpected error occurs when serializing this ConfigRequest.", e);
-      throw new RuntimeException(e);
+      throw new SerializationRunTimeException(e);
     }
   }
 

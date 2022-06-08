@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -129,7 +130,7 @@ public class DeleteRegionNode extends WritePlanNode implements IConsensusRequest
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       logger.error("Unexpected error occurs when serializing this DeleteRegionNode.", e);
-      throw new RuntimeException(e);
+      throw new SerializationRunTimeException(e);
     }
   }
 }

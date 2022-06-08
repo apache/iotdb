@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -196,7 +197,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
       logger.error("Unexpected error occurs when serializing this InsertNode.", e);
-      throw new RuntimeException(e);
+      throw new SerializationRunTimeException(e);
     }
   }
 

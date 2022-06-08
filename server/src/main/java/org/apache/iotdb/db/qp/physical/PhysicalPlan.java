@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -185,7 +186,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
       logger.error("Unexpected error occurs when serializing this physical plan.", e);
-      throw new RuntimeException(e);
+      throw new SerializationRunTimeException(e);
     }
   }
 
