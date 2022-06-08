@@ -415,7 +415,7 @@ public class ConfigNodeRPCServiceProcessorTest {
           .get(sg + i)
           .forEach(
               (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-                Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+                Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
                 Assert.assertEquals(
                     TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
               });
@@ -438,7 +438,7 @@ public class ConfigNodeRPCServiceProcessorTest {
           .get(sg + i)
           .forEach(
               (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-                Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+                Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
                 Assert.assertEquals(
                     TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
               });
@@ -460,7 +460,7 @@ public class ConfigNodeRPCServiceProcessorTest {
         .get(sg0)
         .forEach(
             (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-              Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+              Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
               Assert.assertEquals(
                   TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
             });
@@ -471,7 +471,7 @@ public class ConfigNodeRPCServiceProcessorTest {
         .get(sg1)
         .forEach(
             (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-              Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+              Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
               Assert.assertEquals(
                   TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
             });
