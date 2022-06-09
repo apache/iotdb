@@ -28,12 +28,13 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
-import javax.annotation.Nullable;
 import org.apache.flink.api.common.io.FileOutputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.util.HadoopUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.conf.Configuration;
+
+import javax.annotation.Nullable;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
