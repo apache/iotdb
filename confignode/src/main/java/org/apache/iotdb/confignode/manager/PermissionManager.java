@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -110,6 +111,6 @@ public class PermissionManager {
         return status;
       }
     }
-    return status;
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 }
