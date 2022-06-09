@@ -69,7 +69,6 @@ import java.util.stream.Collectors;
 public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
-  private static final String allPartitionsExist = "All Partitions exist";
 
   private final Manager configManager;
   private final PartitionInfo partitionInfo;
