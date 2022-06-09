@@ -204,7 +204,7 @@ service InternalService {
      * Config node will migrate a region(maybe data region or schema region)
      * from one data node to another
      *
-     * @param new replica set of this region
+     * @param new replica set of the region
      */
   TMigrateRegionResp migrateRegion(TMigrateRegionReq req)
 
