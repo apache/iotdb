@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
@@ -82,8 +81,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionsReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionsResp;
+import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -98,9 +97,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -376,13 +373,12 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TMigrateRegionsResp migrateRegions(TMigrateRegionsReq req) throws TException {
-    Map<TConsensusGroupId, TSStatus> migrateResults = new HashMap<>();
-
-    for (TRegionReplicaSet regionReplicaSet : req.migrateRegions) {
-      TSStatus tsStatus;
-      ConsensusGenericResponse consensusGenericResponse;
-      if (regionReplicaSet.regionId.type == TConsensusGroupType.DataRegion) {
+  public TMigrateRegionResp migrateRegion(TMigrateRegionReq req) throws TException {
+    TRegionReplicaSet regionReplicaSet = req.migrateRegion;
+    TSStatus tsStatus;
+    ConsensusGenericResponse consensusGenericResponse;
+    switch (regionReplicaSet.regionId.type) {
+      case DataRegion:
         DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
         List<Peer> newPeers = new ArrayList<>();
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -394,9 +390,10 @@ public class InternalServiceImpl implements InternalService.Iface {
         }
         consensusGenericResponse =
             DataRegionConsensusImpl.getInstance().changePeer(dataRegionId, newPeers);
-      } else if (regionReplicaSet.regionId.type == TConsensusGroupType.SchemaRegion) {
+        break;
+      case SchemaRegion:
         SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
-        List<Peer> newPeers = new ArrayList<>();
+        newPeers = new ArrayList<>();
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           TEndPoint endpoint =
               new TEndPoint(
@@ -406,24 +403,22 @@ public class InternalServiceImpl implements InternalService.Iface {
         }
         consensusGenericResponse =
             SchemaRegionConsensusImpl.getInstance().changePeer(schemaRegionId, newPeers);
-      } else {
-        migrateResults.put(
-            regionReplicaSet.regionId,
-            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
-        continue;
-      }
-
-      // SchemaRegionConsensusImpl
-      if (consensusGenericResponse.isSuccess()) {
-        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
+        break;
+      default:
+        // unsupported region type
         tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
-      }
-      migrateResults.put(regionReplicaSet.regionId, tsStatus);
+        tsStatus.setMessage("Region type is invalid");
+        return new TMigrateRegionResp(tsStatus);
     }
 
-    return new TMigrateRegionsResp(migrateResults);
+    if (consensusGenericResponse.isSuccess()) {
+      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
+    }
+
+    return new TMigrateRegionResp(tsStatus);
   }
 
   @Override

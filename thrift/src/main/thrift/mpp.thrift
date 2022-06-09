@@ -35,12 +35,12 @@ struct TInvalidateCacheReq {
     2: required string fullPath
 }
 
-struct TMigrateRegionsReq{
-    1: required list<common.TRegionReplicaSet> migrateRegions
+struct TMigrateRegionReq{
+    1: required common.TRegionReplicaSet migrateRegion
 }
 
-struct TMigrateRegionsResp{
-    1: required map<common.TConsensusGroupId, common.TSStatus> migrateResults
+struct TMigrateRegionResp{
+    1: required common.TSStatus migrateResult
 }
 
 struct TFragmentInstanceId {
@@ -206,7 +206,7 @@ service InternalService {
      *
      * @param a map from consensus group id to replica set
      */
-  TMigrateRegionsResp migrateRegions(TMigrateRegionsReq req)
+  TMigrateRegionResp migrateRegion(TMigrateRegionReq req)
 
   /**
   * ConfigNode will ask DataNode for heartbeat in every few seconds.
