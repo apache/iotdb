@@ -20,20 +20,22 @@
 package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.storagegroup.dataregion.HashVirtualPartitioner;
+import org.apache.iotdb.db.engine.storagegroup.dataregion.VirtualPartitioner;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 
 // This class is used for data partition maintaining the map between storage group and
 // dataRegionIds.
 public class LocalDataPartitionTable {
 
-  private AtomicInteger dataRegionIdGenerator;
+  VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
 
   private Map<PartialPath, List<DataRegionId>> table;
 
@@ -49,10 +51,15 @@ public class LocalDataPartitionTable {
     return LocalDataPartitionTableHolder.INSTANCE;
   }
 
-  public synchronized void init(Map<PartialPath, List<DataRegionId>> recoveredLocalDataRegionInfo) {
+  public synchronized void init(Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo)
+      throws IllegalPathException {
     table = new ConcurrentHashMap<>();
-    dataRegionIdGenerator = new AtomicInteger(0);
-    // TODO:(recovery)
+    for (Map.Entry<String, List<DataRegionId>> entry : recoveredLocalDataRegionInfo.entrySet()) {
+      String storageGroup = entry.getKey();
+      List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
+      table.put(new PartialPath(storageGroup), dataRegionIdList);
+      dataRegionIdList.addAll(entry.getValue());
+    }
   }
 
   public synchronized void clear() {
@@ -60,24 +67,10 @@ public class LocalDataPartitionTable {
       table.clear();
       table = null;
     }
-
-    if (dataRegionIdGenerator != null) {
-      dataRegionIdGenerator = null;
-    }
-  }
-
-  public synchronized DataRegionId allocateDataRegionId(PartialPath storageGroup) {
-    DataRegionId dataRegionId = new DataRegionId(dataRegionIdGenerator.getAndIncrement());
-    table.get(storageGroup).add(dataRegionId);
-    return dataRegionId;
   }
 
   public synchronized void putDataRegionId(PartialPath storageGroup, DataRegionId dataRegionId) {
     table.get(storageGroup).add(dataRegionId);
-
-    if (dataRegionId.getId() >= dataRegionIdGenerator.get()) {
-      dataRegionIdGenerator.set(dataRegionId.getId() + 1);
-    }
   }
 
   public synchronized void removeDataRegionId(PartialPath storageGroup, DataRegionId dataRegionId) {
@@ -85,7 +78,10 @@ public class LocalDataPartitionTable {
   }
 
   public DataRegionId getDataRegionId(PartialPath storageGroup, PartialPath path) {
-    return calculateDataRegionId(storageGroup, path);
+    if (!table.containsKey(storageGroup)) {
+      return null;
+    }
+    return calculateDataRegionId(path);
   }
 
   public List<DataRegionId> getInvolvedDataRegionIds(
@@ -101,14 +97,15 @@ public class LocalDataPartitionTable {
     return new ArrayList<>(table.get(storageGroup));
   }
 
-  public synchronized List<DataRegionId> setStorageGroup(PartialPath storageGroup) {
+  public synchronized void setDataPartitionInfo(PartialPath storageGroup, PartialPath device) {
+    List<DataRegionId> dataRegionIdList;
     if (table.containsKey(storageGroup)) {
-      return table.get(storageGroup);
+      dataRegionIdList = table.get(storageGroup);
+    } else {
+      dataRegionIdList = new CopyOnWriteArrayList<>();
     }
-    List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
-    dataRegionIdList.add(new DataRegionId(dataRegionIdGenerator.getAndIncrement()));
+    dataRegionIdList.add(calculateDataRegionId(device));
     table.put(storageGroup, dataRegionIdList);
-    return dataRegionIdList;
   }
 
   public synchronized List<DataRegionId> deleteStorageGroup(PartialPath storageGroup) {
@@ -117,10 +114,7 @@ public class LocalDataPartitionTable {
 
   // This method may be extended to implement multi dataRegion for one storageGroup
   // todo keep consistent with the partition method of config node in new cluster
-  private DataRegionId calculateDataRegionId(PartialPath storageGroup, PartialPath path) {
-    if (!table.containsKey(storageGroup)) {
-      setStorageGroup(storageGroup);
-    }
-    return table.get(storageGroup).iterator().next();
+  private DataRegionId calculateDataRegionId(PartialPath device) {
+    return new DataRegionId(partitioner.deviceToDataRegionId(device));
   }
 }

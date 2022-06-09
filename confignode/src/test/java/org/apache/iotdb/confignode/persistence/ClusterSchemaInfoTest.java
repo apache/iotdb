@@ -47,7 +47,7 @@ public class ClusterSchemaInfoTest {
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
   @BeforeClass
-  public static void setup() {
+  public static void setup() throws IOException {
     clusterSchemaInfo = new ClusterSchemaInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
@@ -91,9 +91,21 @@ public class ClusterSchemaInfoTest {
         storageGroupPathList.size(), clusterSchemaInfo.getStorageGroupNames().size());
 
     GetStorageGroupReq getStorageGroupReq =
-        new GetStorageGroupReq(Arrays.asList(PathUtils.splitPathToDetachedPath("root.**")));
+        new GetStorageGroupReq(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
     Map<String, TStorageGroupSchema> reloadResult =
         clusterSchemaInfo.getMatchedStorageGroupSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
+
+    Assert.assertEquals(
+        clusterSchemaInfo.getSchemaRegionParticles().size(), storageGroupPathList.size());
+    storageGroupPathList.forEach(
+        storageGroup ->
+            Assert.assertTrue(clusterSchemaInfo.getSchemaRegionParticles().contains(storageGroup)));
+
+    Assert.assertEquals(
+        clusterSchemaInfo.getDataRegionParticles().size(), storageGroupPathList.size());
+    storageGroupPathList.forEach(
+        storageGroup ->
+            Assert.assertTrue(clusterSchemaInfo.getDataRegionParticles().contains(storageGroup)));
   }
 }

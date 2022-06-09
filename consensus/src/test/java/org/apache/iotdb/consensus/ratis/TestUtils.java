@@ -41,7 +41,7 @@ import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestUtils {
-  static class TestDataSet implements DataSet {
+  public static class TestDataSet implements DataSet {
     private int number;
 
     public void setNumber(int number) {
@@ -53,7 +53,7 @@ public class TestUtils {
     }
   }
 
-  static class TestRequest {
+  public static class TestRequest implements IConsensusRequest {
     private final int cmd;
 
     public TestRequest(ByteBuffer buffer) {
@@ -63,9 +63,16 @@ public class TestUtils {
     public boolean isIncr() {
       return cmd == 1;
     }
+
+    @Override
+    public ByteBuffer serializeToByteBuffer() {
+      ByteBuffer buffer = ByteBuffer.allocate(4).putInt(cmd);
+      buffer.flip();
+      return buffer;
+    }
   }
 
-  static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
+  public static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
     private AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
     private TEndPoint leaderEndpoint;
@@ -80,9 +87,13 @@ public class TestUtils {
     public void stop() {}
 
     @Override
-    public TSStatus write(IConsensusRequest IConsensusRequest) {
-      ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
-      TestRequest testRequest = new TestRequest(request.getContent());
+    public TSStatus write(IConsensusRequest request) {
+      TestRequest testRequest;
+      if (request instanceof ByteBufferConsensusRequest) {
+        testRequest = new TestRequest(request.serializeToByteBuffer());
+      } else {
+        testRequest = (TestRequest) request;
+      }
       if (testRequest.isIncr()) {
         integer.incrementAndGet();
       }

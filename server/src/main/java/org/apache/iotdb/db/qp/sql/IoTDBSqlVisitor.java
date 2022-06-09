@@ -21,9 +21,36 @@ package org.apache.iotdb.db.qp.sql;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -126,31 +153,6 @@ import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.executor.fill.ValueFill;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
-import org.apache.iotdb.db.query.expression.binary.EqualToExpression;
-import org.apache.iotdb.db.query.expression.binary.GreaterEqualExpression;
-import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
-import org.apache.iotdb.db.query.expression.binary.LessEqualExpression;
-import org.apache.iotdb.db.query.expression.binary.LessThanExpression;
-import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
-import org.apache.iotdb.db.query.expression.binary.LogicOrExpression;
-import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
-import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
-import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
-import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.InExpression;
-import org.apache.iotdb.db.query.expression.unary.LikeExpression;
-import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
-import org.apache.iotdb.db.query.expression.unary.NegationExpression;
-import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -161,6 +163,7 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.time.ZoneId;
@@ -172,7 +175,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -181,6 +183,8 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 
 public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
@@ -193,6 +197,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // used to match "{x}", where x is an integer.
   // for create-cq clause and select-into clause.
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
+
+  // ${} are allowed
+  private static final Pattern NODE_NAME_IN_SELECT_INTO_PATTERN =
+      Pattern.compile("([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)");
 
   private ZoneId zoneId;
   private QueryOperator queryOp;
@@ -278,42 +286,95 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.aliasNodeName() != null) {
       createTimeSeriesOperator.setAlias(parseNodeName(ctx.aliasNodeName().nodeName()));
     }
-    final String dataType = ctx.dataType.getText().toUpperCase();
-    final TSDataType tsDataType = TSDataType.valueOf(dataType);
-    createTimeSeriesOperator.setDataType(tsDataType);
 
-    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
-    TSEncoding encoding = ioTDBDescriptor.getDefaultEncodingByType(tsDataType);
-    if (Objects.nonNull(ctx.encoding)) {
-      String encodingString = ctx.encoding.getText().toUpperCase();
-      encoding = TSEncoding.valueOf(encodingString);
+    Map<String, String> props = new HashMap<>();
+    if (ctx.dataType != null) {
+      if (ctx.attributeKey() != null) {
+        if (!parseAttributeKey(ctx.attributeKey())
+            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+          throw new SQLParserException("expecting datatype");
+        }
+      }
+      props.put(
+          IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase(),
+          parseAttributeValue(ctx.dataType).toLowerCase());
     }
-    createTimeSeriesOperator.setEncoding(encoding);
-
-    CompressionType compressor;
     List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
-    if (ctx.compressor != null) {
-      compressor = CompressionType.valueOf(ctx.compressor.getText().toUpperCase());
-    } else {
-      compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    }
-    Map<String, String> props = null;
     if (ctx.attributePair(0) != null) {
-      props = new HashMap<>(attributePairs.size());
       for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
         props.put(
             parseAttributeKey(attributePair.attributeKey()).toLowerCase(),
             parseAttributeValue(attributePair.attributeValue()).toLowerCase());
       }
     }
-    createTimeSeriesOperator.setCompressor(compressor);
     createTimeSeriesOperator.setProps(props);
+    checkPropsInCreateTimeSeries(createTimeSeriesOperator);
     if (ctx.tagClause() != null) {
       parseTagClause(ctx.tagClause(), createTimeSeriesOperator);
     }
     if (ctx.attributeClause() != null) {
       parseAttributeClause(ctx.attributeClause(), createTimeSeriesOperator);
     }
+  }
+
+  /** check and set datatype, encoding, compressor */
+  private void checkPropsInCreateTimeSeries(CreateTimeSeriesOperator createTimeSeriesOperator) {
+    Map<String, String> props = createTimeSeriesOperator.getProps();
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase())) {
+      String datatypeString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setDataType(TSDataType.valueOf(datatypeString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
+      }
+    }
+    if (createTimeSeriesOperator.getDataType() == null) {
+      throw new SemanticException("datatype must be declared");
+    }
+
+    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
+    createTimeSeriesOperator.setEncoding(
+        ioTDBDescriptor.getDefaultEncodingByType(createTimeSeriesOperator.getDataType()));
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encodingString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
+      }
+    }
+
+    createTimeSeriesOperator.setCompressor(
+        TSFileDescriptor.getInstance().getConfig().getCompressor());
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressionString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("Unsupported compression: %s", compressionString));
+      }
+    } else if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        createTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressorString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported compression: %s", compressorString));
+      }
+    }
+    createTimeSeriesOperator.setProps(props);
   }
 
   public void parseAttributeClauses(
@@ -325,25 +386,74 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       createAlignedTimeSeriesOperator.addAliasList(null);
     }
 
-    String dataTypeString = ctx.dataType.getText().toUpperCase();
-    TSDataType dataType = TSDataType.valueOf(dataTypeString);
-    createAlignedTimeSeriesOperator.addDataType(dataType);
+    TSDataType dataType = null;
+    if (ctx.dataType != null) {
+      if (ctx.attributeKey() != null) {
+        if (!parseAttributeKey(ctx.attributeKey())
+            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+          throw new SQLParserException("expecting datatype");
+        }
+      }
+      String dataTypeString = ctx.dataType.getText().toUpperCase();
+      try {
+        dataType = TSDataType.valueOf(dataTypeString);
+        createAlignedTimeSeriesOperator.addDataType(dataType);
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported datatype: %s", dataTypeString));
+      }
+    }
+
+    Map<String, String> props = new HashMap<>();
+    if (ctx.attributePair() != null) {
+      for (int i = 0; i < ctx.attributePair().size(); i++) {
+        props.put(
+            parseAttributeKey(ctx.attributePair(i).attributeKey()).toLowerCase(),
+            parseAttributeValue(ctx.attributePair(i).attributeValue()));
+      }
+    }
 
     TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
-    if (Objects.nonNull(ctx.encoding)) {
-      String encodingString = ctx.encoding.getText().toUpperCase();
-      encoding = TSEncoding.valueOf(encodingString);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        encoding = TSEncoding.valueOf(encodingString);
+        createAlignedTimeSeriesOperator.addEncoding(encoding);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
+      }
+    } else {
+      createAlignedTimeSeriesOperator.addEncoding(encoding);
     }
-    createAlignedTimeSeriesOperator.addEncoding(encoding);
 
     CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    if (ctx.compressor != null) {
-      String compressorString = ctx.compressor.getText().toUpperCase();
-      compressor = CompressionType.valueOf(compressorString);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressorString);
+        createAlignedTimeSeriesOperator.addCompressor(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported compressor: %s", compressorString));
+      }
+    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressionString);
+        createAlignedTimeSeriesOperator.addCompressor(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("unsupported compression: %s", compressionString));
+      }
+    } else {
+      createAlignedTimeSeriesOperator.addCompressor(compressor);
     }
-    createAlignedTimeSeriesOperator.addCompressor(compressor);
 
-    if (ctx.attributePair(0) != null) {
+    if (props.size() > 0) {
       throw new SQLParserException("create aligned timeseries: property is not supported yet.");
     }
 
@@ -418,25 +528,74 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new SQLParserException("schema template: alias is not supported yet.");
     }
 
-    String dataTypeString = ctx.dataType.getText().toUpperCase();
-    TSDataType dataType = TSDataType.valueOf(dataTypeString);
-    dataTypes.add(dataType);
+    TSDataType dataType = null;
+    if (ctx.dataType != null) {
+      if (ctx.attributeKey() != null) {
+        if (!parseAttributeKey(ctx.attributeKey())
+            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+          throw new SQLParserException("expecting datatype");
+        }
+      }
+      String dataTypeString = ctx.dataType.getText().toUpperCase();
+      try {
+        dataType = TSDataType.valueOf(dataTypeString);
+        dataTypes.add(dataType);
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported datatype: %s", dataTypeString));
+      }
+    }
+
+    Map<String, String> props = new HashMap<>();
+    if (ctx.attributePair() != null) {
+      for (int i = 0; i < ctx.attributePair().size(); i++) {
+        props.put(
+            parseAttributeKey(ctx.attributePair(i).attributeKey()).toLowerCase(),
+            parseAttributeValue(ctx.attributePair(i).attributeValue()));
+      }
+    }
 
     TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
-    if (Objects.nonNull(ctx.encoding)) {
-      String encodingString = ctx.encoding.getText().toUpperCase();
-      encoding = TSEncoding.valueOf(encodingString);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        encoding = TSEncoding.valueOf(encodingString);
+        encodings.add(encoding);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
+      }
+    } else {
+      encodings.add(encoding);
     }
-    encodings.add(encoding);
 
     CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    if (ctx.compressor != null) {
-      String compressorString = ctx.compressor.getText().toUpperCase();
-      compressor = CompressionType.valueOf(compressorString);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressorString);
+        compressors.add(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported compressor: %s", compressorString));
+      }
+    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressionString);
+        compressors.add(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("unsupported compression: %s", compressionString));
+      }
+    } else {
+      compressors.add(compressor);
     }
-    compressors.add(compressor);
 
-    if (ctx.attributePair(0) != null) {
+    if (props.size() > 0) {
       throw new SQLParserException("schema template: property is not supported yet.");
     }
 
@@ -654,9 +813,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     // rename
     if (ctx.RENAME() != null) {
       alterTimeSeriesOperator.setAlterType(AlterType.RENAME);
-      alterMap.put(
-          parseStringLiteral(ctx.beforeName.getText()),
-          parseStringLiteral(ctx.currentName.getText()));
+      alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
       // set
       alterTimeSeriesOperator.setAlterType(AlterType.SET);
@@ -664,8 +821,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } else if (ctx.DROP() != null) {
       // drop
       alterTimeSeriesOperator.setAlterType(AlterType.DROP);
-      for (int i = 0; i < ctx.STRING_LITERAL().size(); i++) {
-        alterMap.put(parseStringLiteral(ctx.STRING_LITERAL(i).getText()), null);
+      for (int i = 0; i < ctx.attributeKey().size(); i++) {
+        alterMap.put(parseAttributeKey(ctx.attributeKey().get(i)), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
@@ -1137,7 +1294,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     PartialPath intoPath = null;
     if (intoPathContext.fullPath() != null) {
-      intoPath = parseFullPath(intoPathContext.fullPath());
+      intoPath = parseFullPathInSelectInto(intoPathContext.fullPath());
 
       Matcher m = leveledPathNodePattern.matcher(intoPath.getFullPath());
       while (m.find()) {
@@ -1165,7 +1322,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       for (int i = 1; i <= nodeNameWithoutStars.size(); ++i) {
         intoPathNodes[levelLimitOfSourcePrefixPath + i] =
-            parseNodeNameWithoutWildCard(nodeNameWithoutStars.get(i - 1));
+            parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStars.get(i - 1));
       }
 
       intoPath = new PartialPath(intoPathNodes);
@@ -1573,7 +1730,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private void parsePrimitiveTypeClause(
       IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
-    TSDataType dataType = parseType(ctx.dataType.getText());
+    TSDataType dataType = parseType(parseAttributeValue(ctx.dataType));
     if (dataType == TSDataType.VECTOR) {
       throw new SQLParserException(String.format("type %s cannot use fill function", dataType));
     }
@@ -1622,22 +1779,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private TSDataType parseType(String datatype) {
-    String type = datatype.toLowerCase();
-    switch (type) {
-      case "int32":
-        return TSDataType.INT32;
-      case "int64":
-        return TSDataType.INT64;
-      case "float":
-        return TSDataType.FLOAT;
-      case "double":
-        return TSDataType.DOUBLE;
-      case "boolean":
-        return TSDataType.BOOLEAN;
-      case "text":
-        return TSDataType.TEXT;
-      default:
-        throw new SQLParserException("not a valid fill type : " + type);
+    try {
+      return TSDataType.valueOf(datatype.toUpperCase());
+    } catch (Exception e) {
+      throw new SQLParserException("not a valid fill type : " + datatype);
     }
   }
 
@@ -2380,6 +2525,21 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
+  private PartialPath parseFullPathInSelectInto(IoTDBSqlParser.FullPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] path = new String[nodeNamesWithoutStar.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+      i++;
+      path[i] = parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStar);
+    }
+    return new PartialPath(path);
+  }
+
   /** path of expression in withoutNull clause can start with root. */
   private PartialPath parseFullPathInExpression(
       IoTDBSqlParser.FullPathInExpressionContext ctx, boolean inWithoutNull)
@@ -2432,13 +2592,75 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   // node name
 
-  /** function for parsing node name. */
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return parseNodeString(ctx.getText());
   }
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return parseNodeString(ctx.getText());
+  }
+
+  /** in select into, $ and {} are allowed */
+  private String parseNodeNameWithoutWildCardInSelectInto(
+      IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
+    String nodeName = ctx.getText();
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    if (!NODE_NAME_IN_SELECT_INTO_PATTERN.matcher(nodeName).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",
+              nodeName));
+    }
+    return nodeName;
+  }
+
+  private String parseNodeString(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    checkNodeName(nodeName);
+    return nodeName;
+  }
+
+  private void checkNodeName(String src) {
+    // node name could start with * and end with *
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
+    }
+  }
+
+  private void checkIdentifier(String src) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              src));
+    }
   }
 
   // alias
@@ -2685,7 +2907,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(
@@ -2697,7 +2919,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteralInLikeOrRegular(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -2989,15 +3211,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private String parseStringLiteral(String src) {
     if (2 <= src.length()) {
-      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+      // do not unescape string
+      String unWrappedString =
+          src.substring(1, src.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         // replace "" with "
-        String replaced = unescapeString.replace("\"\"", "\"");
+        String replaced = unWrappedString.replace("\"\"", "\"");
         return replaced.length() == 0 ? "" : replaced;
       }
       if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
         // replace '' with '
-        String replaced = unescapeString.replace("''", "'");
+        String replaced = unWrappedString.replace("''", "'");
         return replaced.length() == 0 ? "" : replaced;
       }
     }
@@ -3014,12 +3238,30 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return src;
   }
 
-  private String parseIdentifier(String src) {
-    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      String unescaped = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-      // replace `` with `
-      return unescaped.replace("``", "`");
+  private String parseStringLiteralInLikeOrRegular(String src) {
+    if (2 <= src.length()) {
+      String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+      if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+        // replace "" with "
+        String replaced = unescapeString.replace("\"\"", "\"");
+        return replaced.length() == 0 ? "" : replaced;
+      }
+      if ((src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
+        // replace '' with '
+        String replaced = unescapeString.replace("''", "'");
+        return replaced.length() == 0 ? "" : replaced;
+      }
     }
+    return src;
+  }
+
+  private String parseIdentifier(String src) {
+    if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      return src.substring(1, src.length() - 1)
+          .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
+    }
+    checkIdentifier(src);
     return src;
   }
 
@@ -3057,7 +3299,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         } else if (constantContext.INTEGER_LITERAL() != null) {
           return new ConstantOperand(TSDataType.INT64, text);
         } else if (constantContext.realLiteral() != null) {
-          return new ConstantOperand(TSDataType.DOUBLE, text);
+          return parseRealLiteral(text);
         } else if (constantContext.dateExpression() != null) {
           return new ConstantOperand(
               TSDataType.INT64,
@@ -3074,6 +3316,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } catch (IllegalPathException e) {
       throw new SQLParserException(e.getMessage());
     }
+  }
+
+  private Expression parseRealLiteral(String value) {
+    // 3.33 is float by default
+    return new ConstantOperand(
+        CONFIG.getFloatingStringInferType().equals(TSDataType.DOUBLE)
+            ? TSDataType.DOUBLE
+            : TSDataType.FLOAT,
+        value);
   }
 
   private void setMap(IoTDBSqlParser.AlterClauseContext ctx, Map<String, String> alterMap) {

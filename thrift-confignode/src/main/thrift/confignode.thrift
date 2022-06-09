@@ -30,10 +30,11 @@ struct TDataNodeRegisterReq {
 }
 
 struct TGlobalConfig {
-  1: required string dataNodeConsensusProtocolClass
-  2: required i32 seriesPartitionSlotNum
-  3: required string seriesPartitionExecutorClass
-  4: required i64 timePartitionInterval
+  1: required string dataRegionConsensusProtocolClass
+  2: required string schemaRegionConsensusProtocolClass
+  3: required i32 seriesPartitionSlotNum
+  4: required string seriesPartitionExecutorClass
+  5: required i64 timePartitionInterval
 }
 
 struct TDataNodeRegisterResp {
@@ -117,6 +118,20 @@ struct TSchemaPartitionResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
+// Node Management
+
+struct TSchemaNodeManagementReq {
+  1: required binary pathPatternTree
+  2: optional i32 level
+}
+
+struct TSchemaNodeManagementResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+  3: optional set<string> matchedNode
+}
+
 // Data
 struct TDataPartitionReq {
   // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
@@ -142,7 +157,25 @@ struct TAuthorizerReq {
 
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: required map<string, list<string>> authorizerInfo
+  2: optional map<string, list<string>> authorizerInfo
+}
+
+struct TUserResp {
+  1: required string username
+  2: required string password
+  3: required list<string> privilegeList
+  4: required list<string> roleList
+}
+
+struct TRoleResp {
+  1: required string roleName
+  2: required list<string> privilegeList
+}
+
+struct TPermissionInfoResp {
+  1: required common.TSStatus status
+  2: optional TUserResp userInfo
+  3: optional map<string, TRoleResp> roleInfo
 }
 
 struct TLoginReq {
@@ -150,7 +183,7 @@ struct TLoginReq {
   2: required string password
 }
 
-struct TCheckUserPrivilegesReq{
+struct TCheckUserPrivilegesReq {
   1: required string username;
   2: required list<string> paths
   3: required i32 permission
@@ -159,19 +192,38 @@ struct TCheckUserPrivilegesReq{
 // ConfigNode
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
-  2: required string dataNodeConsensusProtocolClass
-  3: required i32 seriesPartitionSlotNum
-  4: required string seriesPartitionExecutorClass
-  5: required i64 defaultTTL
-  6: required i64 timePartitionInterval
-  7: required i32 schemaReplicationFactor
-  8: required i32 dataReplicationFactor
+  2: required string dataRegionConsensusProtocolClass
+  3: required string schemaRegionConsensusProtocolClass
+  4: required i32 seriesPartitionSlotNum
+  5: required string seriesPartitionExecutorClass
+  6: required i64 defaultTTL
+  7: required i64 timePartitionInterval
+  8: required i32 schemaReplicationFactor
+  9: required i32 dataReplicationFactor
 }
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: optional common.TConsensusGroupId partitionRegionId
   3: optional list<common.TConfigNodeLocation> configNodeList
+}
+
+// Show cluster
+struct TClusterNodeInfos {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
+}
+
+// UDF
+struct TCreateFunctionReq {
+  1: required string udfName
+  2: required string className
+  3: required list<string> uris
+}
+
+struct TDropFunctionReq {
+  1: required string udfName
 }
 
 service ConfigIService {
@@ -181,6 +233,9 @@ service ConfigIService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+
+  /* Show Cluster */
+  TClusterNodeInfos getAllClusterNodeInfos()
 
   /* StorageGroup */
 
@@ -208,6 +263,10 @@ service ConfigIService {
 
   TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
+  /* Node Management */
+
+  TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
+
   /* Data */
 
   TDataPartitionResp getDataPartition(TDataPartitionReq req)
@@ -220,13 +279,19 @@ service ConfigIService {
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
-  common.TSStatus login(TLoginReq req)
+  TPermissionInfoResp login(TLoginReq req)
 
-  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
+  TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   /* ConfigNode */
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  /* UDF */
+
+  common.TSStatus createFunction(TCreateFunctionReq req)
+
+  common.TSStatus dropFunction(TDropFunctionReq req)
 }

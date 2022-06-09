@@ -88,13 +88,26 @@ struct TFragmentInstance {
   1: required binary body
 }
 
+struct TPlanNode {
+  1: required binary body
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
   2: required common.TConsensusGroupId consensusGroupId
-  3: required string queryType
 }
 
 struct TSendFragmentInstanceResp {
+  1: required bool accepted
+  2: optional string message
+}
+
+struct TSendPlanNodeReq {
+  1: required TPlanNode planNode
+  2: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TSendPlanNodeResp {
   1: required bool accepted
   2: optional string message
 }
@@ -135,11 +148,34 @@ struct TSchemaFetchResponse {
   1: required binary serializedSchemaTree
 }
 
+struct TCreateFunctionRequest {
+  1: required string udfName
+  2: required string className
+  3: required list<string> uris
+}
+
+struct TDropFunctionRequest {
+  1: required string udfName
+}
+
+struct TInvalidatePermissionCacheReq {
+  1: required string username
+  2: required string roleName
+}
+
 service InternalService {
 
   // -----------------------------------For Data Node-----------------------------------------------
 
+  /**
+  * disptcher FragmentInstance to remote node for query request
+  */
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
+
+  /**
+  * disptcher PlanNode to remote node for write request in order to save resource
+  */
+  TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 
   TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
 
@@ -210,6 +246,27 @@ service InternalService {
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
   common.THeartbeatResp getHeartBeat(common.THeartbeatReq req)
+
+  /**
+   * Config node will create a function on a list of data nodes.
+   *
+   * @param function name, function class name, and executable uris
+   **/
+  common.TSStatus createFunction(TCreateFunctionRequest req)
+
+  /**
+   * Config node will drop a function on a list of data nodes.
+   *
+   * @param function name
+   **/
+  common.TSStatus dropFunction(TDropFunctionRequest req)
+
+  /**
+   * Config node will invalidate permission Info cache.
+   *
+   * @param string:username, list<string>:roleList
+   */
+  common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 }
 
 service DataBlockService {

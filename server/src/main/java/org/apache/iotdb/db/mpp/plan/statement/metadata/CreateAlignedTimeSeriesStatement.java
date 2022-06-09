@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -27,9 +26,6 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,9 +41,6 @@ import java.util.Map;
  */
 public class CreateAlignedTimeSeriesStatement extends Statement {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(CreateAlignedTimeSeriesStatement.class);
-
   private PartialPath devicePath;
   private List<String> measurements = new ArrayList<>();
   private List<TSDataType> dataTypes = new ArrayList<>();
@@ -56,7 +49,6 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   private List<String> aliasList = new ArrayList<>();
   private List<Map<String, String>> tagsList = new ArrayList<>();
   private List<Map<String, String>> attributesList = new ArrayList<>();
-  private List<Long> tagOffsets = null;
 
   public CreateAlignedTimeSeriesStatement() {
     super();
@@ -67,11 +59,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   public List<PartialPath> getPaths() {
     List<PartialPath> paths = new ArrayList<>();
     for (String measurement : measurements) {
-      try {
-        paths.add(new PartialPath(devicePath.getFullPath(), measurement));
-      } catch (IllegalPathException e) {
-        logger.error("Failed to get paths of CreateAlignedTimeSeriesStatement. ", e);
-      }
+      paths.add(devicePath.concatNode(measurement));
     }
     return paths;
   }
@@ -166,24 +154,6 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
 
   public void addAttributesList(Map<String, String> attributes) {
     this.attributesList.add(attributes);
-  }
-
-  public List<Long> getTagOffsets() {
-    if (tagOffsets == null) {
-      tagOffsets = new ArrayList<>();
-      for (int i = 0; i < measurements.size(); i++) {
-        tagOffsets.add(Long.parseLong("-1"));
-      }
-    }
-    return tagOffsets;
-  }
-
-  public void setTagOffsets(List<Long> tagOffsets) {
-    this.tagOffsets = tagOffsets;
-  }
-
-  public void addTagOffsets(Long tagsOffset) {
-    this.tagOffsets.add(tagsOffset);
   }
 
   @Override

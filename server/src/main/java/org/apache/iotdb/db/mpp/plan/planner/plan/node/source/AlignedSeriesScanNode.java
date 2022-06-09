@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -37,12 +37,14 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class AlignedSeriesScanNode extends SourceNode {
+public class AlignedSeriesScanNode extends SeriesSourceNode {
 
   // The paths of the target series which will be scanned.
   private final AlignedPath alignedPath;
@@ -129,11 +131,13 @@ public class AlignedSeriesScanNode extends SourceNode {
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return regionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {}
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
 
   @Override
   public void close() throws Exception {}
@@ -200,7 +204,27 @@ public class AlignedSeriesScanNode extends SourceNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.ALIGNED_SERIES_SCAN.serialize(stream);
+    alignedPath.serialize(stream);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      timeFilter.serialize(stream);
+    }
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      valueFilter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(limit, stream);
+    ReadWriteIOUtils.write(offset, stream);
   }
 
   public static AlignedSeriesScanNode deserialize(ByteBuffer byteBuffer) {
@@ -218,18 +242,9 @@ public class AlignedSeriesScanNode extends SourceNode {
     }
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    TRegionReplicaSet dataRegionReplicaSet =
-        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AlignedSeriesScanNode(
-        planNodeId,
-        alignedPath,
-        scanOrder,
-        timeFilter,
-        valueFilter,
-        limit,
-        offset,
-        dataRegionReplicaSet);
+        planNodeId, alignedPath, scanOrder, timeFilter, valueFilter, limit, offset, null);
   }
 
   @Override
@@ -264,5 +279,21 @@ public class AlignedSeriesScanNode extends SourceNode {
         limit,
         offset,
         regionReplicaSet);
+  }
+
+  public String toString() {
+    return String.format(
+        "AlignedSeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
+        this.getPlanNodeId(), this.getAlignedPath(), this.getRegionReplicaSet());
+  }
+
+  @Override
+  public PartialPath getPartitionPath() {
+    return alignedPath;
+  }
+
+  @Override
+  public Filter getPartitionTimeFilter() {
+    return timeFilter;
   }
 }

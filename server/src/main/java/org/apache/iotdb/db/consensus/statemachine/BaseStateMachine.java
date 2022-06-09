@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,35 +33,10 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
 
   private static final Logger logger = LoggerFactory.getLogger(BaseStateMachine.class);
 
-  @Override
-  public TSStatus write(IConsensusRequest request) {
-    try {
-      return write(getFragmentInstance(request));
-    } catch (IllegalArgumentException e) {
-      logger.error(e.getMessage(), e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
-  }
-
-  protected abstract TSStatus write(FragmentInstance fragmentInstance);
-
-  @Override
-  public DataSet read(IConsensusRequest request) {
-    try {
-      return read(getFragmentInstance(request));
-    } catch (IllegalArgumentException e) {
-      logger.error(e.getMessage());
-      return null;
-    }
-  }
-
-  protected abstract DataSet read(FragmentInstance fragmentInstance);
-
-  private FragmentInstance getFragmentInstance(IConsensusRequest request) {
+  protected FragmentInstance getFragmentInstance(IConsensusRequest request) {
     FragmentInstance instance;
     if (request instanceof ByteBufferConsensusRequest) {
-      instance =
-          FragmentInstance.deserializeFrom(((ByteBufferConsensusRequest) request).getContent());
+      instance = FragmentInstance.deserializeFrom(request.serializeToByteBuffer());
     } else if (request instanceof FragmentInstance) {
       instance = (FragmentInstance) request;
     } else {
@@ -70,5 +44,18 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
       throw new IllegalArgumentException("Unexpected IConsensusRequest!");
     }
     return instance;
+  }
+
+  protected PlanNode getPlanNode(IConsensusRequest request) {
+    PlanNode node;
+    if (request instanceof ByteBufferConsensusRequest) {
+      node = PlanNodeType.deserialize(request.serializeToByteBuffer());
+    } else if (request instanceof PlanNode) {
+      node = (PlanNode) request;
+    } else {
+      logger.error("Unexpected IConsensusRequest : {}", request);
+      throw new IllegalArgumentException("Unexpected IConsensusRequest!");
+    }
+    return node;
   }
 }

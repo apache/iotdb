@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
@@ -26,7 +27,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 
 public class SchemaValidator {
 
-  private static final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
+  private static final ISchemaFetcher SCHEMA_FETCHER =
+      IoTDBDescriptor.getInstance().getConfig().isClusterMode()
+          ? ClusterSchemaFetcher.getInstance()
+          : StandaloneSchemaFetcher.getInstance();
 
   public static SchemaTree validate(InsertNode insertNode) {
 
@@ -34,14 +38,14 @@ public class SchemaValidator {
     if (insertNode instanceof BatchInsertNode) {
       BatchInsertNode batchInsertNode = (BatchInsertNode) insertNode;
       schemaTree =
-          schemaFetcher.fetchSchemaListWithAutoCreate(
+          SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
               batchInsertNode.getDevicePaths(),
               batchInsertNode.getMeasurementsList(),
               batchInsertNode.getDataTypesList(),
               batchInsertNode.getAlignedList());
     } else {
       schemaTree =
-          schemaFetcher.fetchSchemaWithAutoCreate(
+          SCHEMA_FETCHER.fetchSchemaWithAutoCreate(
               insertNode.getDevicePath(),
               insertNode.getMeasurements(),
               insertNode.getDataTypes(),

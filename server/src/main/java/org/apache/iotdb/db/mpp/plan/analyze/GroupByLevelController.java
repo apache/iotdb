@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,8 +46,11 @@ public class GroupByLevelController {
 
   private final int[] levels;
 
-  /** count(root.sg.d1.s1) with level = 1 -> count(root.*.d1.s1) */
+  /** count(root.sg.d1.s1) with level = 1 -> { count(root.*.d1.s1) : count(root.d1.d1.s1) } */
   private final Map<Expression, Set<Expression>> groupedPathMap;
+
+  /** count(root.sg.d1.s1) with level = 1 -> { root.d1.d1.s1 : root.d1.*.s1 } */
+  private final Map<Expression, Expression> rawPathToGroupedPathMap;
 
   /** count(root.*.d1.s1) -> alias */
   private final Map<String, String> columnToAliasMap;
@@ -58,11 +61,15 @@ public class GroupByLevelController {
    */
   private final Map<String, String> aliasToColumnMap;
 
-  public GroupByLevelController(int[] levels) {
+  private final TypeProvider typeProvider;
+
+  public GroupByLevelController(int[] levels, TypeProvider typeProvider) {
     this.levels = levels;
     this.groupedPathMap = new LinkedHashMap<>();
+    this.rawPathToGroupedPathMap = new HashMap<>();
     this.columnToAliasMap = new HashMap<>();
     this.aliasToColumnMap = new HashMap<>();
+    this.typeProvider = typeProvider;
   }
 
   public void control(Expression expression, String alias) {
@@ -73,11 +80,19 @@ public class GroupByLevelController {
 
     PartialPath rawPath = ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
     PartialPath groupedPath = generatePartialPathByLevel(rawPath.getNodes(), levels);
+    typeProvider.setType(groupedPath.getFullPath(), rawPath.getSeriesType());
+
+    Expression rawPathExpression = new TimeSeriesOperand(rawPath);
+    Expression groupedPathExpression = new TimeSeriesOperand(groupedPath);
+    if (!rawPathToGroupedPathMap.containsKey(rawPathExpression)) {
+      rawPathToGroupedPathMap.put(rawPathExpression, groupedPathExpression);
+    }
+
     Expression groupedExpression =
         new FunctionExpression(
             ((FunctionExpression) expression).getFunctionName(),
             ((FunctionExpression) expression).getFunctionAttributes(),
-            Collections.singletonList(new TimeSeriesOperand(groupedPath)));
+            Collections.singletonList(groupedPathExpression));
     groupedPathMap.computeIfAbsent(groupedExpression, key -> new HashSet<>()).add(expression);
 
     if (alias != null) {
@@ -140,5 +155,9 @@ public class GroupByLevelController {
 
   public String getAlias(String columnName) {
     return columnToAliasMap.get(columnName) != null ? columnToAliasMap.get(columnName) : null;
+  }
+
+  public Map<Expression, Expression> getRawPathToGroupedPathMap() {
+    return rawPathToGroupedPathMap;
   }
 }

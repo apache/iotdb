@@ -33,9 +33,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
@@ -59,10 +59,11 @@ import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractMemTable implements IMemTable {
+  /** each memTable node has a unique int value identifier, init when recovering wal */
+  public static final AtomicInteger memTableIdCounter = new AtomicInteger(-1);
+
   private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
-  /** each memTable node has a unique int value identifier */
-  private static final AtomicInteger memTableIdCounter = new AtomicInteger();
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
@@ -96,7 +97,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long minPlanIndex = Long.MAX_VALUE;
 
-  private final int memTableId = memTableIdCounter.getAndIncrement();
+  private final int memTableId = memTableIdCounter.incrementAndGet();
 
   private final long createdTime = System.currentTimeMillis();
 

@@ -21,21 +21,132 @@
 
 # Syntax Conventions
 
+## Issues with syntax conventions in 0.13 and earlier version
+
+In previous versions of syntax conventions, we introduced some ambiguity to maintain compatibility. To avoid ambiguity, we have designed new syntax conventions, and this chapter will explain the issues with the old syntax conventions and why we made the change.
+
+### Issues related to node name
+
+In previous versions of syntax conventions, when do you need to add quotation marks to the node name, and the rules for using single and double quotation marks or backquotes are complicated. We have unified usage of quotation marks in the new syntax conventions. For details, please refer to the relevant chapters of this document.
+
+#### When to use single and double quotes and backquotes
+
+In previous versions of syntax conventions, path node names were defined as identifiers, but when the path separator . was required in the path node name, single or double quotes were required. This goes against the rule that identifiers are quoted using backquotes.
+
+```SQL
+# In the previous syntax convention, if you need to create a time series root.sg.`www.baidu.com`, you need to use the following statement:
+create root.sg.'www.baidu.com' with datatype=BOOLEAN, encoding=PLAIN
+
+# The time series created by this statement is actually root.sg.'www.baidu.com', that is, the quotation marks are stored together. The three nodes of the time series are {"root","sg","'www.baidu.com'"}.
+
+# In the query statement, if you want to query the data of the time series, the query statement is as follows:
+select 'www.baidu.com' from root.sg;
+```
+
+In the new syntax conventions, special node names are uniformly quoted using backquotes:
+
+```SQL
+# In the new syntax convention, if you need to create a time series root.sg.`www.baidu.com`, the syntax is as follows:
+create root.sg.`www.baidu.com` with 'datatype' = 'BOOLEAN', 'encoding' = 'PLAIN'
+
+#To query the time series, you can use the following statement:
+select `www.baidu.com` from root.sg;
+```
+
+#### The issues of using quotation marks inside node names
+
+In previous versions of syntax conventions, when single quotes ' and double quotes " are used in path node names, they need to be escaped with a backslash \, and the backslashes will be stored as part of the path node name. Other identifiers do not have this restriction, causing inconsistency.
+
+```SQL
+# Create time series root.sg.\"a
+create timeseries root.sg.`\"a` with datatype=TEXT,encoding=PLAIN;
+
+# Query time series root.sg.\"a
+select `\"a` from root.sg;
++-----------------------------+-----------+
+|                         Time|root.sg.\"a|
++-----------------------------+-----------+
+|1970-01-01T08:00:00.004+08:00|       test|
++-----------------------------+-----------+
+```
+
+In the new syntax convention, special path node names are uniformly referenced with backquotes. When single and double quotes are used in path node names, there is no need to add backslashes to escape, and backquotes need to be double-written. For details, please refer to the relevant chapters of the new syntax conventions.
+
+### Inconsistent handling of string escaping between SQL and Session interfaces
+
+In previous releases, there was an inconsistency between the SQL and Session interfaces when using strings. For example, when using SQL to insert Text type data, the string will be unescaped, but not when using the Session interface, which is inconsistent. **In the new syntax convention, we do not unescape the strings. What you store is what will be obtained when querying (for the rules of using single and double quotation marks inside strings, please refer to this document for string literal chapter). **
+
+The following are examples of inconsistencies in the old syntax conventions:
+
+Use Session's insertRecord method to insert data into the time series root.sg.a
+
+```Java
+// session insert
+String deviceId = "root.sg";
+List<String> measurements = new ArrayList<>();
+measurements.add("a");
+String[] values = new String[]{"\\\\", "\\t", "\\\"", "\\u96d5"};
+for(int i = 0; i <= values.length; i++){
+  List<String> valueList = new ArrayList<>();
+  valueList.add(values[i]);
+  session.insertRecord(deviceId, i + 1, measurements, valueList);
+  }
+```
+
+Query the data of root.sg.a, you can see that there is no unescaping:
+
+```Plain%20Text
+// query result
++-----------------------------+---------+
+|                         Time|root.sg.a|
++-----------------------------+---------+
+|1970-01-01T08:00:00.001+08:00|       \\|
+|1970-01-01T08:00:00.002+08:00|       \t|
+|1970-01-01T08:00:00.003+08:00|       \"|
+|1970-01-01T08:00:00.004+08:00|   \u96d5|
++-----------------------------+---------+
+```
+
+Instead use SQL to insert data into root.sg.a:
+
+```SQL
+# SQL insert
+insert into root.sg(time, a) values(1, "\\")
+insert into root.sg(time, a) values(2, "\t")
+insert into root.sg(time, a) values(3, "\"")
+insert into root.sg(time, a) values(4, "\u96d5")
+```
+
+Query the data of root.sg.a, you can see that the string is unescaped:
+
+```Plain%20Text
+// query result
++-----------------------------+---------+
+|                         Time|root.sg.a|
++-----------------------------+---------+
+|1970-01-01T08:00:00.001+08:00|        \|
+|1970-01-01T08:00:00.002+08:00|         |
+|1970-01-01T08:00:00.003+08:00|        "|
+|1970-01-01T08:00:00.004+08:00|       雕|
++-----------------------------+---------+
+```
+
 ## Literal Values
 
 This section describes how to write literal values in IoTDB. These include strings, numbers, timestamp values, boolean values, and NULL.
 
 ### String Literals
 
-A string is a sequence of characters, enclosed within either single quote (`'`) or double quote (`"`) characters. Examples:
+> We refer to MySQL's definition of string：A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.
+
+Definition of string in MySQL could be found here：[MySQL :: MySQL 8.0 Reference Manual :: 9.1.1 String Literals](https://dev.mysql.com/doc/refman/8.0/en/string-literals.html)
+
+So in IoTDB, **A string is a sequence of bytes or characters, enclosed within either single quote (`'`) or double quote (`"`) characters.** Examples：
+
 ```js
 'a string'
 "another string"
 ```
-
-We will unescape the string unless it is used as a file path. Examples can be found in the usage scenarios part.
-
-More information about escape characters can be found in : [Characters (The Java™ Tutorials > Learning the Java Language > Numbers and Strings)](https://docs.oracle.com/javase/tutorial/java/data/characters.html)
 
 #### Usage Scenarios
 
@@ -48,20 +159,19 @@ Usages of string literals:
   insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
   insert into root.ln.wf02.wt02(timestamp,hardware) values(2, '\\')
   
-  # select data from root.ln.wf02.wt02, '\\' is unescpaed as '\'.
   +-----------------------------+--------------------------+
   |                         Time|root.ln.wf02.wt02.hardware|
   +-----------------------------+--------------------------+
   |1970-01-01T08:00:00.001+08:00|                        v1|
   +-----------------------------+--------------------------+
-  |1970-01-01T08:00:00.002+08:00|                         \|
+  |1970-01-01T08:00:00.002+08:00|                        \\|
   +-----------------------------+--------------------------+
   
-  # select 
+  # select
   select code from root.sg1.d1 where code in ('string1', 'string2');
   ```
-
-- Used in`LOAD` / `REMOVE` / `SETTLE` instructions to represent file path. File path will  not be unescaped. 
+  
+- Used in`LOAD` / `REMOVE` / `SETTLE` instructions to represent file path.
 
   ```SQL
   # load
@@ -77,7 +187,7 @@ Usages of string literals:
 - Password fields in user management statements
 
   ```SQL
-  # 'write_pwd' is a password
+  # write_pwd is the password
   CREATE USER ln_write_user 'write_pwd'
   ```
 
@@ -98,7 +208,7 @@ Usages of string literals:
   CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
-- `AS` function provided by IoTDB can assign an alias to time series selected in query. Alias can be string or identifier.
+- `AS` function provided by IoTDB can assign an alias to time series selected in query. Alias can be constant(including string) or identifier.
 
   ```SQL
   select s1 as 'temperature', s2 as 'speed' from root.ln.wf01.wt01;
@@ -109,67 +219,8 @@ Usages of string literals:
   +-----------------------------+-----------|-----+
   ```
 
-- The key of an attribute can be String Literal and identifier, the value of an attribute can be Constant(including String Literal) and identifer. Using string literal to represent  key and value is recommended.
+- The key/value of an attribute can be String Literal and identifier, more details can be found at **key-value pair** part. 
 
-  1. Attributes fields of trigger. See the attributes after `With` clause in the example below:
-
-  ```SQL
-  # exmaple
-  CREATE TRIGGER `alert-listener-sg1d1s1`
-  AFTER INSERT
-  ON root.sg1.d1.s1
-  AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
-  WITH (
-    'lo' = '0', 
-    'hi' = '100.0'
-  )
-  ```
-
-  2. Attributes fields of UDF. See the attributes in select clause in the example below:
-
-  ```sql
-  # 示例
-  SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
-  ```
-
-  3. Key-value pair to represent tag/attributes in timeseries.
-
-  ```SQL
-  # create timeseries
-  CREATE timeseries root.turbine.d1.s1(temprature) 
-  WITH datatype=FLOAT, encoding=RLE, compression=SNAPPY, 'max_point_number' = '5'
-  TAGS('tag1' = 'v1', 'tag2'= 'v2') ATTRIBUTES('attr1' = 'v1', 'attr2' = 'v2')
-  
-  # alter tags and attributes of timeseries
-  ALTER timeseries root.turbine.d1.s1 SET 'newTag1' = 'newV1', 'attr1' = 'newV1'
-  
-  # rename tag
-  ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'
-  
-  # upsert alias, tags, attributes
-  ALTER timeseries root.turbine.d1.s1 UPSERT 
-  ALIAS='newAlias' TAGS('tag2' = 'newV2', tag3=v3) ATTRIBUTES('attr3' ='v3', 'attr4'='v4')
-  
-  # add new tags
-  ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3' = 'v3', 'tag4' = 'v4'
-  
-  # add new attributes
-  ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3' = 'v3', 'attr4' = 'v4'
-  
-  # query for timeseries
-  SHOW timeseries root.ln.** WHRER 'unit' = 'c'
-  ```
-
-  4. Attributes fields of Pipe and PipeSink. 
-
-  ```SQL
-  # PipeSink example 
-  CREATE PIPESINK my_iotdb AS IoTDB ('ip' = 'your ip')
-  
-  # Pipe example
-  CREATE PIPE my_pipe TO my_iotdb FROM 
-  (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
-  ```
 
 #### How to use quotation marks in String Literals
 
@@ -227,27 +278,27 @@ The `NULL` value means “no data.” `NULL` can be written in any lettercase.
 
 ## Identifiers
 
-#### Usage scenarios
+### Usage scenarios
 
 Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS QUERY`, `SCHEMA TEMPLATE`, `USER`, `ROLE`,`Pipe`,`PipeSink`,`alias` and other object names are known as identifiers.
 
-#### Constraints
+### Constraints
 
 Below are basic constraints of identifiers, specific identifiers may have other constraints, for example, `user` should consists of more than 4 characters. 
 
 - Permitted characters in unquoted identifiers:
-  - [0-9 a-z A-Z _ : @ # $ { }] (letters, digits, some special characters)
+  - [0-9 a-z A-Z _ ] (letters, digits and underscore)
   - ['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)
 - Identifiers may begin with a digit, unquoted identifiers can not consists of solely digits.
 - Identifiers are case sensitive.
+- Key words can be used as an identifier.
 
-You need to quote the identifier with back quote(`) in the following cases:
+**You need to quote the identifier with back quote(`) in the following cases:**
 
 - Identifier contains special characters.
-- Using Key words as identifier
 - Identifier consists of solely digits.
 
-#### How to use quotations marks in quoted identifiers
+### How to use quotations marks in quoted identifiers
 
 `'` and `"` can be used directly in quoted identifiers.
 
@@ -263,7 +314,7 @@ create schema template `t1``t`
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
-#### Examples
+### Examples
 
 Examples of case in which quoted identifier is used ：
 
@@ -284,14 +335,14 @@ Examples of case in which quoted identifier is used ：
 - UDF name should be quoted in cases described above ：
 
   ```sql
-  # craete function named select, select is a keyword.
-  CREATE FUNCTION `select` AS 'org.apache.iotdb.udf.UDTFExample'
+  # create a funciton named 111, 111 consists of solely digits.
+  CREATE FUNCTION `111` AS 'org.apache.iotdb.udf.UDTFExample'
   ```
 
 - Template name should be quoted in cases described above ：
 
   ```sql
-  # create template named 111, 111 consists of solely digits.
+  # create a template named 111, 111 consists of solely digits.
   create schema template `111` 
   (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
   ```
@@ -302,8 +353,8 @@ Examples of case in which quoted identifier is used ：
   # create user special`user.
   CREATE USER `special``user.` 'write_pwd'
   
-  # create role `select`
-  CREATE ROLE `select`
+  # create role 111
+  CREATE ROLE `111`
   ```
 
 - Continuous query name should be quoted in cases described above ：
@@ -330,7 +381,7 @@ Examples of case in which quoted identifier is used ：
   (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
   ```
 
-- `AS` function provided by IoTDB can assign an alias to time series selected in query. Alias can be string or identifier.
+- `AS` function provided by IoTDB can assign an alias to time series selected in query. Alias can be constant(including string) or identifier.
 
   ```sql
   select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
@@ -341,33 +392,8 @@ Examples of case in which quoted identifier is used ：
   +-----------------------------+-----------|-----+
   ```
 
-- The key of an attribute can be String Literal and identifier, the value of an attribute can be Constant(including String Literal) and identifer. Using string literal to represent  key and value is recommended. Below are examples of using identifier in key-value of tags and attributes:
+- The key/value of an attribute can be String Literal and identifier, more details can be found at **key-value pair** part. 
 
-  ```SQL
-  # create timeseries
-  CREATE timeseries root.turbine.d1.s1(temprature) 
-  WITH datatype=FLOAT, encoding=RLE, compression=SNAPPY, max_point_number = 5
-  TAGS(tag1 = v1, tag2 = v2) ATTRIBUTES(attr1 = v1, attr2 = v2)
-  
-  # alter tags and attributes of timeseries
-  ALTER timeseries root.turbine.d1.s1 SET newTag1 = newV1, attr1 = newV1
-  
-  # rename tag
-  ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-  
-  # upsert alias, tags, attributes
-  ALTER timeseries root.turbine.d1.s1 UPSERT 
-  ALIAS = newAlias TAGS(tag2 = newV2, tag3=v3) ATTRIBUTES(attr3 = v3, attr4 = v4)
-  
-  # add new tags
-  ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3 = v3, tag4 = v4
-  
-  # add new attributes
-  ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3 = v3, attr4 = v4
-  
-  # query for timeseries
-  SHOW timeseries root.ln.** WHRER unit = c
-  ```
 
 ## Node Names in Path
 
@@ -382,7 +408,7 @@ Node name is a special identifier, it can also be wildcard `*` and `**`. When cr
 As `*` can also be used in expressions of select clause to represent multiplication, below are examples to help you better understand the usage of `* `:
 
 ```SQL
-# create timeseries root.sg.a*b
+# create timeseries root.sg.`a*b`
 create timeseries root.sg.`a*b` with datatype=FLOAT,encoding=PLAIN;
 
 # As described in Identifier part, a*b should be quoted.
@@ -394,7 +420,7 @@ create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN;
 # create timeseries root.sg.b
 create timeseries root.sg.b with datatype=FLOAT,encoding=PLAIN;
 
-# query data of root.sg.a*b
+# query data of root.sg.`a*b`
 select `a*b` from root.sg
 # Header of result dataset
 |Time|root.sg.a*b|
@@ -409,16 +435,11 @@ select a*b from root.sg
 
 When node name is not wildcard, it is a identifier, which means the constraints on it is the same as described in Identifier part.
 
-Node name quoted with back quote will also be wrapped with back quote in result dataset if it contains . or `, otherwise node name will not be quoted in result dataset. Below are examples to help you understand
-
-- Create timeseries stament:
+- Create timeseries statement:
 
 ```SQL
 # Node name contains special characters like ` and .,all nodes of this timeseries are: ["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
-
-# Node name is a key word.
-create timeseries root.sg.`select`.a with datatype=FLOAT,encoding=PLAIN;
 
 # Node name consists of solely digits.
 create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
@@ -430,8 +451,7 @@ After executing above statments, execute "show timeseries"，below is the result
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                 timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|           root.sg.select.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
-|              root.sg.111.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
+|            root.sg.`111`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 |root.sg.`www.``baidu.com`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 ```
@@ -442,9 +462,6 @@ After executing above statments, execute "show timeseries"，below is the result
 # Node name contains special characters like . and `
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
 
-# Node name is a key word.
-insert into root.sg.`select`(timestamp, a) values (1, 2);
-
 # Node name consists of solely digits.
 insert into root.sg(timestamp, `111`) values (1, 2);
 ```
@@ -454,9 +471,6 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 ```SQL
 # Node name contains special characters like . and `
 select a from root.sg.`www.``baidu.com`;
-
-# Node name is a key word.
-select a from root.sg.`select`
 
 # Node name consists of solely digits.
 select `111` from root.sg
@@ -472,13 +486,6 @@ Results:
 |1970-01-01T08:00:00.001+08:00|                        2.0|
 +-----------------------------+---------------------------+
 
-# select a from root.sg.`select`
-+-----------------------------+----------------+
-|                         Time|root.sg.select.a|
-+-----------------------------+----------------+
-|1970-01-01T08:00:00.001+08:00|             2.0|
-+-----------------------------+----------------+
-
 # select `111` from root.sg
 +-----------------------------+-----------+
 |                         Time|root.sg.111|
@@ -487,12 +494,209 @@ Results:
 +-----------------------------+-----------+
 ```
 
+## Key-Value Pair
+
+**The key/value of an attribute can be constant(including string) and identifier. **
+
+Below are usage scenarios of key-value pair:
+
+- Attributes fields of trigger. See the attributes after `With` clause in the example below:
+
+```SQL
+# 以字符串形式表示键值对
+CREATE TRIGGER `alert-listener-sg1d1s1`
+AFTER INSERT
+ON root.sg1.d1.s1
+AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+WITH (
+  'lo' = '0', 
+  'hi' = '100.0'
+)
+
+# 以标识符和常量形式表示键值对
+CREATE TRIGGER `alert-listener-sg1d1s1`
+AFTER INSERT
+ON root.sg1.d1.s1
+AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+WITH (
+  lo = 0, 
+  hi = 100.0
+)
+```
+
+- Key-value pair to represent tag/attributes in timeseries:
+
+```sql
+# create timeseries using string as key/value
+CREATE timeseries root.turbine.d1.s1(temprature) 
+WITH datatype = FLOAT, encoding = RLE, compression = SNAPPY, 'max_point_number' = '5'
+TAGS('tag1' = 'v1', 'tag2'= 'v2') ATTRIBUTES('attr1' = 'v1', 'attr2' = 'v2')
+
+# create timeseries using constant as key/value
+CREATE timeseries root.turbine.d1.s1(temprature) 
+WITH datatype = FLOAT, encoding = RLE, compression = SNAPPY, max_point_number = 5
+TAGS(tag1 = v1, tag2 = v2) ATTRIBUTES(attr1 = v1, attr2 = v2)
+```
+
+```sql
+# alter tags and attributes of timeseries
+ALTER timeseries root.turbine.d1.s1 SET 'newTag1' = 'newV1', 'attr1' = 'newV1'
+
+ALTER timeseries root.turbine.d1.s1 SET newTag1 = newV1, attr1 = newV1
+```
+
+```sql
+# rename tag
+ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'
+
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+
+```sql
+# upsert alias, tags, attributes
+ALTER timeseries root.turbine.d1.s1 UPSERT 
+ALIAS='newAlias' TAGS('tag2' = 'newV2', 'tag3' = 'v3') ATTRIBUTES('attr3' ='v3', 'attr4'='v4')
+
+ALTER timeseries root.turbine.d1.s1 UPSERT 
+ALIAS = newAlias TAGS(tag2 = newV2, tag3 = v3) ATTRIBUTES(attr3 = v3, attr4 = v4)
+```
+
+```sql
+# add new tags
+ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3' = 'v3', 'tag4' = 'v4'
+
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3 = v3, tag4 = v4
+```
+
+```sql
+# add new attributes
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3' = 'v3', 'attr4' = 'v4'
+
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3 = v3, attr4 = v4
+```
+
+```sql
+# query for timeseries
+SHOW timeseries root.ln.** WHRER 'unit' = 'c'
+
+SHOW timeseries root.ln.** WHRER unit = c
+```
+
+- Attributes fields of Pipe and PipeSink.
+
+```SQL
+# PipeSink example 
+CREATE PIPESINK my_iotdb AS IoTDB ('ip' = '输入你的IP')
+
+# Pipe example 
+CREATE PIPE my_pipe TO my_iotdb FROM 
+(select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
+```
+
 ## Keywords and Reserved Words
 
-Keywords are words that have significance in SQL require special treatment for use as identifiers and node names, and need to be escaped with backticks.
-Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifiers and node names (even after escaping).
+Keywords are words that have significance in SQL. Keywords can be used as an identifier. Certain keywords, such as TIME/TIMESTAMP and ROOT, are reserved and cannot use as identifiers.
 
-[Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB 0.13.
+[Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB.
+
+## Session、TsFile API
+
+When using the Session and TsFile APIs, if the method you call requires parameters such as measurement, device, storage group, path in the form of String, **please ensure that the parameters passed in the input string is the same as when using the SQL statement**, here are some examples to help you understand. Code example could be found at: `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+
+1. Take creating a time series createTimeseries as an example:
+
+```Java
+public void createTimeseries(
+    String path,
+    TSDataType dataType,
+    TSEncoding encoding,
+    CompressionType compressor)
+    throws IoTDBConnectionException, StatementExecutionException;
+```
+
+If you wish to create the time series root.sg.a, root.sg.\`a.\`\`"b\`, root.sg.\`111\`, the SQL statement you use should look like this:
+
+```SQL
+create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+
+# node names contain special characters, each node in the time series is ["root","sg","a.`\"b"]
+create timeseries root.sg.`a.``"b` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+
+# node names are pure numbers
+create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
+```
+
+When you call the createTimeseries method, you should assign the path string as follows to ensure that the content of the path string is the same as when using SQL:
+
+```Java
+// timeseries root.sg.a
+String path = "root.sg.a";
+
+// timeseries root.sg.`a``"b`
+String path = "root.sg.`a``\"b`";
+
+// timeseries root.sg.`111`
+String path = "root.sg.`111`";
+```
+
+2. Take inserting data insertRecord as an example:
+
+```Java
+public void insertRecord(
+    String deviceId,
+    long time,
+    List<String> measurements,
+    List<TSDataType> types,
+    Object... values)
+    throws IoTDBConnectionException, StatementExecutionException;
+```
+
+If you want to insert data into the time series root.sg.a, root.sg.\`a.\`\`"b\`, root.sg.\`111\`, the SQL statement you use should be as follows:
+
+```SQL
+insert into root.sg(timestamp, a, `a.``"b`, `111`) values (1, 2, 2, 2);
+```
+
+When you call the insertRecord method, you should assign deviceId and measurements as follows:
+
+```Java
+// deviceId is root.sg
+String deviceId = "root.sg";
+
+// measurements
+String[] measurements = new String[]{"a", "`a.``\"b`", "`111`"};
+List<String> measurementList = Arrays.asList(measurements);
+```
+
+3. Take executeRawDataQuery as an example:
+
+```Java
+public SessionDataSet executeRawDataQuery(
+    List<String> paths, 
+    long startTime, 
+    long endTime)
+    throws StatementExecutionException, IoTDBConnectionException;
+```
+
+If you wish to query the data of the time series root.sg.a, root.sg.\`a.\`\`"b\`, root.sg.\`111\`, the SQL statement you use should be as follows :
+
+```SQL
+select a from root.sg
+
+# node name contains special characters
+select `a.``"b` from root.sg;
+
+# node names are pure numbers
+select `111` from root.sg
+```
+
+When you call the executeRawDataQuery method, you should assign paths as follows:
+
+```Java
+// paths
+String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"};
+List<String> pathList = Arrays.asList(paths);
+```
 
 ## Learn More
 

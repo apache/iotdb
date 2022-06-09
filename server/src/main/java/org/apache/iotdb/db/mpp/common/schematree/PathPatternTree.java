@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -37,8 +38,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class PathPatternTree {
 
@@ -200,6 +199,11 @@ public class PathPatternTree {
     root.serialize(outputStream);
   }
 
+  public void serialize(DataOutputStream stream) throws IOException {
+    constructTree();
+    root.serialize(stream);
+  }
+
   public void serialize(ByteBuffer buffer) {
     constructTree();
     root.serialize(buffer);
@@ -252,18 +256,22 @@ public class PathPatternTree {
     return new PartialPath(nodeList.toArray(new String[0]));
   }
 
-  public PathPatternTree extractInvolvedPartByPrefix(PartialPath prefixPath) {
+  public PathPatternTree findOverlappedPattern(PartialPath pattern) {
+    return new PathPatternTree(findOverlappedPaths(pattern));
+  }
+
+  public List<PartialPath> findOverlappedPaths(PartialPath pattern) {
     if (pathList.isEmpty()) {
       pathList = splitToPathList();
     }
-    PartialPath pattern = prefixPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
-    List<PartialPath> involvedPath = new ArrayList<>();
+
+    List<PartialPath> results = new ArrayList<>();
     for (PartialPath path : pathList) {
       if (pattern.overlapWith(path)) {
-        involvedPath.add(path);
+        results.add(path);
       }
     }
-    return new PathPatternTree(involvedPath);
+    return results;
   }
 
   @TestOnly

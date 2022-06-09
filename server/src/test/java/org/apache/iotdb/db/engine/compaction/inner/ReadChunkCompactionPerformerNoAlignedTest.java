@@ -483,7 +483,6 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       for (String path : fullPathSetWithDeleted) {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
-      chunkPagePointsNumMerged.put(deletedPath, null);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(

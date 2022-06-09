@@ -40,7 +40,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.fail;
 
 public class CompactionTaskManagerTest extends InnerCompactionTest {
   static final Logger logger = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
@@ -120,7 +123,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", manager.getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
   }
@@ -179,7 +182,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", CompactionTaskManager.getInstance().getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
     for (TsFileResource resource : seqResources) {
@@ -187,7 +190,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
   }
 
-  @Test
+  @Test(expected = RuntimeException.class)
   public void testRepeatedSubmitAfterExecution() throws Exception {
     logger.warn("testRepeatedSubmitAfterExecution");
     TsFileManager tsFileManager =
@@ -218,19 +221,22 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     seqResources.get(0).readLock();
 
     // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
-    Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
-    manager.submitTaskFromTaskQueue();
-    Assert.assertEquals(manager.getExecutingTaskCount(), 0);
-    seqResources.get(0).readUnlock();
-    long waitingTime = 0;
-    while (manager.getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", manager.getRunningCompactionTaskList());
-      }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+    try {
+      Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
+      manager.submitTaskFromTaskQueue();
+      Assert.assertEquals(manager.getExecutingTaskCount(), 0);
+      seqResources.get(0).readUnlock();
+    } finally {
+      long waitingTime = 0;
+      while (manager.getRunningCompactionTaskList().size() > 0) {
+        Thread.sleep(100);
+        waitingTime += 100;
+        if (waitingTime % 10000 == 0) {
+          logger.warn("{}", manager.getRunningCompactionTaskList());
+        }
+        if (waitingTime > MAX_WAITING_TIME) {
+          fail();
+        }
       }
     }
   }
@@ -275,7 +281,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         logger.warn("{}", manager.getRunningCompactionTaskList());
       }
       if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
+        fail();
       }
     }
   }
@@ -310,6 +316,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   public void testRewriteCrossCompactionFileStatus() throws Exception {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    seqResources = seqResources.subList(1, 5);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
@@ -337,7 +344,14 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
 
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    CompactionTaskManager.getInstance().waitAllCompactionFinish();
+    long waitingTime = 0;
+    while (!task.isTaskFinished()) {
+      TimeUnit.MILLISECONDS.sleep(200);
+      waitingTime += 200;
+      if (waitingTime > 10_000) {
+        fail();
+      }
+    }
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());
     }
