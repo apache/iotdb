@@ -1228,7 +1228,7 @@ class Session(object):
         """
         add measurements in template, the template must already exit. This function add some measurements node.
         :param template_name: template name, string list, like ["name_x", "name_y", "name_z"]
-        :param measurements_path: recommend the name like a.b, like [python.x, python.y, iotdb.z]
+        :param measurements_path: when ths is_aligned is True, recommend the name like a.b, like [python.x, python.y, iotdb.z]
         :param data_types: using TSDataType(see IoTDBConstants.py)
         :param encodings: using TSEncoding(see IoTDBConstants.py)
         :param compressors: using Compressor(see IoTDBConstants.py)
