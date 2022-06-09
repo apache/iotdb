@@ -224,7 +224,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   public TSStatus checkPath(String username, List<String> allPath, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
-    TPermissionInfoResp permissionInfoResp = null;
+    TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
