@@ -178,7 +178,7 @@ public class LoadManager implements Runnable {
   @Override
   public void run() {
     int balanceCount = 0;
-    while (true) {
+    while (!configManager.isStopped()) {
       try {
 
         if (getConsensusManager().isLeader()) {
@@ -205,7 +205,6 @@ public class LoadManager implements Runnable {
         TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
       } catch (InterruptedException e) {
         LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
-        System.exit(-1);
       }
     }
   }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -368,6 +369,82 @@ public class ConfigNodeStartupCheck {
                 dir.getAbsolutePath()));
       }
     }
+  }
+
+  public boolean checkConfigurations() {
+    if (!isContainsRpcConfigNode()) {
+      return true;
+    }
+
+    List<TConfigNodeConfigurationResp> configNodeConfigurations = new ArrayList<>();
+    try {
+      List<TConfigNodeLocation> configNodeLocations =
+          NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
+      for (TConfigNodeLocation nodeLocation : configNodeLocations) {
+        if (nodeLocation
+            .getInternalEndPoint()
+            .getIp()
+            .equals(systemProperties.getProperty("rpc_address"))) {
+          continue;
+        }
+        TConfigNodeConfigurationResp resp =
+            SyncConfigNodeClientPool.getInstance().getConfigNodeConfiguration(nodeLocation);
+        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          configNodeConfigurations.add(resp);
+        } else {
+          return false;
+        }
+      }
+
+      for (TConfigNodeConfigurationResp resp : configNodeConfigurations) {
+        if (!checkConfigurations(resp)) {
+          return false;
+        }
+      }
+    } catch (BadNodeUrlException e) {
+      LOGGER.info("Load system properties file failed.", e);
+    }
+    return true;
+  }
+
+  private boolean checkConfigurations(TConfigNodeConfigurationResp resp)
+      throws BadNodeUrlException {
+    // Consensus protocol configuration
+    String configNodeConsensusProtocolClass =
+        systemProperties.getProperty("config_node_consensus_protocol_class");
+    if (!configNodeConsensusProtocolClass.equals(resp.getConfigNodeConsensusProtocolClass())) {
+      return false;
+    }
+
+    String dataNodeConsensusProtocolClass =
+        systemProperties.getProperty("data_node_consensus_protocol_class");
+    if (!dataNodeConsensusProtocolClass.equals(resp.getDataNodeConsensusProtocolClass())) {
+      return false;
+    }
+
+    // PartitionSlot configuration
+    int seriesPartitionSlotNum =
+        Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
+    if (seriesPartitionSlotNum != resp.getSeriesPartitionSlotNum()) {
+      return false;
+    }
+
+    String seriesPartitionExecutorClass =
+        systemProperties.getProperty("series_partition_executor_class");
+    if (!seriesPartitionExecutorClass.equals(resp.getSeriesPartitionExecutorClass())) {
+      return false;
+    }
+
+    // ConfigNodeList
+    List<TConfigNodeLocation> configNodeLocations =
+        NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
+    for (TConfigNodeLocation nodeLocation : resp.getConfigNodeList()) {
+      if (!configNodeLocations.contains(nodeLocation)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private static class ConfigNodeConfCheckHolder {

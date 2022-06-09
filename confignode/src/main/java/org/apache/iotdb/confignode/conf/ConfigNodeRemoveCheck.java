@@ -20,11 +20,8 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,56 +46,32 @@ public class ConfigNodeRemoveCheck {
     systemProperties = new Properties();
   }
 
-  public boolean removeCheck(TEndPoint endPoint) throws IOException, BadNodeUrlException {
-    if (isContainRemoveNode(endPoint)) {
-      removeConfigNode(endPoint);
-      return true;
-    }
-    return false;
-  }
-
-  private boolean isContainRemoveNode(TEndPoint endPoint) {
+  public TConfigNodeLocation removeCheck(TEndPoint endPoint) {
+    TConfigNodeLocation nodeLocation = new TConfigNodeLocation();
     if (!systemPropertiesFile.exists()) {
       LOGGER.error("The system properties file is not exists. IoTDB-ConfigNode is shutdown.");
-      return false;
+      return nodeLocation;
     }
     try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
       systemProperties.load(inputStream);
-      List<TConfigNodeLocation> configNodeLocations =
-          NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
-      for (TConfigNodeLocation nodeLocation : configNodeLocations) {
-        if (nodeLocation.getInternalEndPoint().equals(endPoint)) {
-          return true;
-        }
+      nodeLocation =
+          new TConfigNodeLocation(endPoint, new TEndPoint(endPoint.getIp(), getConsensusPort()));
+      if (getConfigNdoeList().contains(nodeLocation)) {
+        return nodeLocation;
       }
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.error("Load system properties file failed.", e);
     }
 
-    return false;
+    return nodeLocation;
   }
 
-  private void removeConfigNode(TEndPoint endPoint) throws IOException, BadNodeUrlException {
-    LOGGER.info(
-        "removeConfigNode confignode_list:{}, consensus_port: {}",
-        systemProperties.getProperty("confignode_list"),
-        Integer.parseInt(systemProperties.getProperty("consensus_port")));
-    TSStatus status =
-        SyncConfigNodeClientPool.getInstance()
-            .removeConfigNode(
-                NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list")),
-                new TConfigNodeLocation(
-                    endPoint,
-                    new TEndPoint(
-                        endPoint.getIp(),
-                        Integer.parseInt(systemProperties.getProperty("consensus_port")))));
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.error(status.getMessage());
-      throw new IOException("Remove ConfigNode failed:");
-    }
+  public List<TConfigNodeLocation> getConfigNdoeList() throws BadNodeUrlException {
+    return NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
+  }
 
-    // delete systemPropertiesFile
-    systemPropertiesFile.delete();
+  public int getConsensusPort() {
+    return Integer.parseInt(systemProperties.getProperty("consensus_port"));
   }
 
   private static class ConfigNodeConfRemoveCheckHolder {

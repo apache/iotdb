@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
@@ -27,15 +27,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class RemoveConfigNodeReq extends ConfigRequest {
-
+public class GetConfigNodeConfigurationReq extends ConfigRequest {
   private TConfigNodeLocation configNodeLocation;
 
-  public RemoveConfigNodeReq() {
-    super(ConfigRequestType.RemoveConfigNode);
+  public GetConfigNodeConfigurationReq() {
+    super(ConfigRequestType.GetConfigNodeConfiguration);
   }
 
-  public RemoveConfigNodeReq(TConfigNodeLocation configNodeLocation) {
+  public GetConfigNodeConfigurationReq(TConfigNodeLocation configNodeLocation) {
     this();
     this.configNodeLocation = configNodeLocation;
   }
@@ -46,7 +45,7 @@ public class RemoveConfigNodeReq extends ConfigRequest {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.RemoveConfigNode.ordinal());
+    buffer.putInt(ConfigRequestType.GetConfigNodeConfiguration.ordinal());
 
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, buffer);
   }
@@ -57,11 +56,6 @@ public class RemoveConfigNodeReq extends ConfigRequest {
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(configNodeLocation);
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -69,7 +63,12 @@ public class RemoveConfigNodeReq extends ConfigRequest {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    RemoveConfigNodeReq that = (RemoveConfigNodeReq) o;
+    GetConfigNodeConfigurationReq that = (GetConfigNodeConfigurationReq) o;
     return configNodeLocation.equals(that.configNodeLocation);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(configNodeLocation);
   }
 }

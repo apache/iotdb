@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
@@ -79,6 +80,8 @@ import java.util.Set;
 public class ConfigManager implements Manager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
+
+  private volatile boolean isStopped = false;
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private final ConsensusManager consensusManager;
@@ -133,11 +136,12 @@ public class ConfigManager implements Manager {
   public void close() throws IOException {
     consensusManager.close();
     procedureManager.shiftExecutor(false);
+    isStopped = true;
   }
 
   @Override
   public boolean isStopped() {
-    return false;
+    return isStopped;
   }
 
   @Override
@@ -492,6 +496,11 @@ public class ConfigManager implements Manager {
     } else {
       return status;
     }
+  }
+
+  @Override
+  public DataSet getConfigNodeConfiguration(GetConfigNodeConfigurationReq req) {
+    return nodeManager.getConfigNodeConfiguration(req);
   }
 
   @Override

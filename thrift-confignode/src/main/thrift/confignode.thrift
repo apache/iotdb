@@ -174,6 +174,15 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+struct TConfigNodeConfigurationResp {
+  1: required common.TSStatus status
+  2: optional list<common.TConfigNodeLocation> configNodeList
+  3: optional string dataNodeConsensusProtocolClass
+  4: optional i32 seriesPartitionSlotNum
+  5: optional string seriesPartitionExecutorClass
+  6: optional string configNodeConsensusProtocolClass
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -226,9 +235,13 @@ service ConfigIService {
 
   /* ConfigNode */
 
+  TConfigNodeConfigurationResp getConfigNodeConfiguration(common.TConfigNodeLocation configNodeLocation)
+
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 }

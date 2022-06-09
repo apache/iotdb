@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -63,6 +64,25 @@ public class SyncConfigNodeClientPool {
       return true;
     }
     return false;
+  }
+
+  public TConfigNodeConfigurationResp getConfigNodeConfiguration(
+      TConfigNodeLocation configNodeLocation) {
+    // TODO: Unified retry logic
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client =
+          clientManager.borrowClient(configNodeLocation.getInternalEndPoint())) {
+        return client.getConfigNodeConfiguration(configNodeLocation);
+      } catch (Exception e) {
+        LOGGER.warn("Get ConfigNode configuration failed, retrying...", e);
+        doRetryWait();
+      }
+    }
+    LOGGER.error("Get ConfigNode configuration failed");
+    return new TConfigNodeConfigurationResp()
+        .setStatus(
+            new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+                .setMessage("All retry failed."));
   }
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */
@@ -120,6 +140,7 @@ public class SyncConfigNodeClientPool {
       List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
     for (TConfigNodeLocation nodeLocation : configNodeLocations) {
+      LOGGER.info("nodeLocation: {}", nodeLocation);
       if (nodeLocation.equals(configNodeLocation)) {
         continue;
       }
@@ -144,6 +165,23 @@ public class SyncConfigNodeClientPool {
     }
 
     LOGGER.error("Remove ConfigNode failed");
+    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+        .setMessage("All retry failed.");
+  }
+
+  /** Only use stopConfigNode when the ConfigNode is removed. */
+  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
+    // TODO: Unified retry logic
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client =
+          clientManager.borrowClient(configNodeLocation.getInternalEndPoint())) {
+        return client.removeConfigNode(configNodeLocation);
+      } catch (Exception e) {
+        LOGGER.warn("Stop ConfigNode failed, retrying...", e);
+        doRetryWait();
+      }
+    }
+    LOGGER.error("Stop ConfigNode failed");
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed.");
   }

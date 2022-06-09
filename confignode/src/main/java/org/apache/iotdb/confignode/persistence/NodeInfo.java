@@ -22,15 +22,18 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.response.ConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -218,6 +221,43 @@ public class NodeInfo implements SnapshotProcessor {
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  public ConfigNodeConfigurationResp getConfigNodeConfiguration(GetConfigNodeConfigurationReq req) {
+    ConfigNodeConfigurationResp result = new ConfigNodeConfigurationResp();
+    Properties systemProperties = new Properties();
+    configNodeInfoReadWriteLock.readLock().lock();
+    for (TConfigNodeLocation onlineConfigNode : onlineConfigNodes) {
+      if (onlineConfigNode.equals(req.getConfigNodeLocation())) {
+        if (!systemPropertiesFile.exists()) {
+          LOGGER.info("The system properties file is not exists.");
+          result.setStatus(
+              new TSStatus(TSStatusCode.GET_CONFIGNODE_CONFIGURATION_FAILED.getStatusCode()));
+          return result;
+        }
+
+        try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
+          systemProperties.load(inputStream);
+          result.setConfigNodeConsensusProtocolClass(
+              systemProperties.getProperty("config_node_consensus_protocol_class"));
+          result.setDataNodeConsensusProtocolClass(
+              systemProperties.getProperty("data_node_consensus_protocol_class"));
+          result.setSeriesPartitionExecutorClass(
+              systemProperties.getProperty("series_partition_executor_class"));
+          result.setSeriesPartitionSlotNum(
+              Integer.parseInt(systemProperties.getProperty("series_partition_slot_num")));
+          result.setConfigNodeList(
+              NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list")));
+          result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+          return result;
+        } catch (IOException | BadNodeUrlException e) {
+          LOGGER.error("Load system properties file failed.", e);
+        } finally {
+          configNodeInfoReadWriteLock.readLock().unlock();
+        }
+      }
     }
     return result;
   }

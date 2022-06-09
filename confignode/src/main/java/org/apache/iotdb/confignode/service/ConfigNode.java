@@ -18,25 +18,27 @@
  */
 package org.apache.iotdb.confignode.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
+import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
@@ -98,6 +100,24 @@ public class ConfigNode implements ConfigNodeMBean {
   public void active() {
     try {
       setUp();
+      // Check key parameters between ConfigNodes
+      new Thread(
+              () -> {
+                long start = System.currentTimeMillis();
+                long end = start + 20 * 1000;
+                while (System.currentTimeMillis() < end) {
+                  try {
+                    Thread.sleep(10000);
+                    if (!ConfigNodeStartupCheck.getInstance().checkConfigurations()) {
+                      stop();
+                      return;
+                    }
+                  } catch (IOException | InterruptedException e) {
+                    LOGGER.error("Meet error when stop ConfigNode!", e);
+                  }
+                }
+              })
+          .start();
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -127,23 +147,37 @@ public class ConfigNode implements ConfigNodeMBean {
   public void doRemoveNode(String[] args) throws IOException {
     LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
     if (args.length != 3) {
-      LOGGER.info("Usage: -r <ip1>:<rpcPort1>,<ip2>:<rpcPort2>");
+      LOGGER.info("Usage: -r <ip>:<rpcPort>");
       return;
     }
 
     try {
-      List<TEndPoint> removeConfigNodes =
-          NodeUrlUtils.parseTEndPointUrls(new ArrayList<>(Arrays.asList(args[2].split(","))));
-      for (TEndPoint endPoint : removeConfigNodes) {
-        if (!ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint)) {
-          LOGGER.error("The Current endpoint is not in the Cluster.");
-          return;
-        }
+      TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args[2]);
+      TConfigNodeLocation removeConfigNodeLocation =
+          ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
+      if (removeConfigNodeLocation == null) {
+        LOGGER.error("The Current endpoint is not in the Cluster.");
+        return;
       }
+
+      LOGGER.info("start removeConfigNode: {}", removeConfigNodeLocation);
+      removeConfigNode(removeConfigNodeLocation);
     } catch (BadNodeUrlException e) {
       LOGGER.warn("No ConfigNodes need to be removed.", e);
     }
     LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
+  }
+
+  private void removeConfigNode(TConfigNodeLocation nodeLocation)
+      throws BadNodeUrlException, IOException {
+    TSStatus status =
+        SyncConfigNodeClientPool.getInstance()
+            .removeConfigNode(
+                ConfigNodeRemoveCheck.getInstance().getConfigNdoeList(), nodeLocation);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.error(status.getMessage());
+      throw new IOException("Remove ConfigNode failed:");
+    }
   }
 
   private static class ConfigNodeHolder {

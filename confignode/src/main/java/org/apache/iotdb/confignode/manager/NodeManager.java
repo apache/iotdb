@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -130,6 +131,16 @@ public class NodeManager {
   }
 
   /**
+   * Get ConfigNode Configuration
+   *
+   * @param req GetConfigNodeConfigurationReq
+   * @retu ConfigNode key parameters
+   */
+  public DataSet getConfigNodeConfiguration(GetConfigNodeConfigurationReq req) {
+    return getConsensusManager().read(req).getDataset();
+  }
+
+  /**
    * Provides ConfigNodeGroup information for the newly registered ConfigNode
    *
    * @param req TConfigNodeRegisterReq
@@ -173,7 +184,9 @@ public class NodeManager {
       return redirectionLeader();
     }
 
+    LOGGER.info("removeConfigNodePeer start...");
     if (getConsensusManager().removeConfigNodePeer(removeConfigNodeReq)) {
+      LOGGER.info("removeConfigNodePeer end..., start write...");
       return getConsensusManager().write(removeConfigNodeReq).getStatus();
     } else {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
