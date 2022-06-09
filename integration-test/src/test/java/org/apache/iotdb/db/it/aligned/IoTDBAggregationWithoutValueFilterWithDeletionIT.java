@@ -16,21 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.aligned;
+package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -42,7 +40,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
 
   private static final double DELTA = 1e-6;
@@ -52,45 +50,35 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-
-    enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
-
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+    EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s1 where time <= 21");
     } catch (Exception e) {
+      fail(e.getMessage());
       e.printStackTrace();
     }
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
   }
 
   @Test
-  public void countAllAlignedWithoutTimeFilterTest() throws ClassNotFoundException {
+  public void countAllAlignedWithoutTimeFilterTest() {
     String[] retArray = new String[] {"1", "28", "19", "20"};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
@@ -98,15 +86,10 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
       "count(root.sg1.d1.s4)",
       "count(root.sg1.d1.s5)"
     };
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select count(*) from root.sg1.d1");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.sg1.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -134,7 +117,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
   }
 
   @Test
-  public void countAllAlignedAndNonAlignedWithoutTimeFilterTest() throws ClassNotFoundException {
+  public void countAllAlignedAndNonAlignedWithoutTimeFilterTest() {
     String[] retArray = new String[] {"1", "28", "19", "20", "19", "29", "28", "18", "19"};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
@@ -147,15 +130,10 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
       "count(root.sg1.d2.s4)",
       "count(root.sg1.d2.s5)"
     };
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select count(*) from root.sg1.*");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.sg1.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -183,7 +161,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
   }
 
   @Test
-  public void countAllAlignedWithTimeFilterTest() throws ClassNotFoundException {
+  public void countAllAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"1", "22", "13", "6"};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
@@ -191,16 +169,12 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
       "count(root.sg1.d1.s4)",
       "count(root.sg1.d1.s5)"
     };
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select count(*) from root.sg1.d1 where time >= 9 and time <= 33");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(*) from root.sg1.d1 where time >= 9 and time <= 33")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -229,7 +203,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
 
   /** aggregate multi columns of aligned timeseries in one SQL */
   @Test
-  public void aggregateSomeAlignedWithoutTimeFilterTest() throws ClassNotFoundException {
+  public void aggregateSomeAlignedWithoutTimeFilterTest() {
     double[] retArray = new double[] {1, 28, 230000, 390417, 230000, 13943.464285714286};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
@@ -239,17 +213,12 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
       "avg(root.sg1.d1.s1)",
       "avg(root.sg1.d1.s3)",
     };
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.sg1.d1");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.sg1.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -278,7 +247,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
 
   /** aggregate multi columns of aligned timeseries in one SQL */
   @Test
-  public void aggregateSomeAlignedWithTimeFilterTest() throws ClassNotFoundException {
+  public void aggregateSomeAlignedWithTimeFilterTest() {
     double[] retArray = new double[] {1, 15, 230000, 230322, 230000, 15354.8};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
@@ -288,17 +257,12 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
       "avg(root.sg1.d1.s1)",
       "avg(root.sg1.d1.s3)",
     };
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.sg1.d1 where time>=16 and time<=34");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.sg1.d1 where time>=16 and time<=34")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -326,19 +290,14 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
   }
 
   @Test
-  public void countSingleAlignedWithTimeFilterTest() throws ClassNotFoundException {
+  public void countSingleAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"0"};
     String[] columnNames = {"count(root.sg1.d1.s1)"};
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select count(s1) from root.sg1.d1 where time>=16 and time<=20");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(s1) from root.sg1.d1 where time>=16 and time<=20")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -368,19 +327,14 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
   }
 
   @Test
-  public void sumSingleAlignedWithTimeFilterTest() throws ClassNotFoundException {
+  public void sumSingleAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"null"};
     String[] columnNames = {"sum(root.sg1.d1.s1)"};
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select sum(s1) from root.sg1.d1 where time>=16 and time<=20");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select sum(s1) from root.sg1.d1 where time>=16 and time<=20")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -410,19 +364,14 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
   }
 
   @Test
-  public void avgSingleAlignedWithTimeFilterTest() throws ClassNotFoundException {
+  public void avgSingleAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"null"};
     String[] columnNames = {"avg(root.sg1.d1.s1)"};
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select avg(s1) from root.sg1.d1 where time>=16 and time<=20");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select avg(s1) from root.sg1.d1 where time>=16 and time<=20")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
