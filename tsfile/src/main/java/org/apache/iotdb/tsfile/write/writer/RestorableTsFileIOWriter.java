@@ -71,15 +71,15 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   /** all chunk group metadata which have been serialized on disk. */
   private final Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
 
-  /**
-   * @param file a given tsfile path you want to (continue to) write
-   * @throws IOException if write failed, or the file is broken but autoRepair==false.
-   */
   public RestorableTsFileIOWriter(File file) throws IOException {
     this(file, true);
   }
 
-  public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {
+  /**
+   * @param file a given tsfile path you want to (continue to) write
+   * @throws IOException if write failed, or the file is broken but autoRepair==false.
+   */
+  public RestorableTsFileIOWriter(File file, boolean indexFileAppendable) throws IOException {
     if (logger.isDebugEnabled()) {
       logger.debug("{} is opened.", file.getName());
     }
@@ -88,7 +88,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
     this.indexFileOutput =
         FSFactoryProducer.getFileOutputFactory()
-            .getTsFileOutput(file.getPath() + TsFileConstant.INDEX_SUFFIX, false);
+            .getTsFileOutput(file.getPath() + TsFileConstant.INDEX_SUFFIX, indexFileAppendable);
 
     // file doesn't exist
     if (file.length() == 0) {
@@ -116,11 +116,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         } else {
           crashed = true;
           canWrite = true;
-          // remove broken data
-          if (truncate) {
-            tsFileOutput.truncate(truncatedSize);
-            indexFileOutput.truncate(0);
-          }
+          // truncate, remove broken data
+          tsFileOutput.truncate(truncatedSize);
+          indexFileOutput.truncate(0);
         }
       }
     }

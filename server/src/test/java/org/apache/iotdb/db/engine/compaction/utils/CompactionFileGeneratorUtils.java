@@ -177,7 +177,8 @@ public class CompactionFileGeneratorUtils {
     if (!newTsFileResource.getTsFile().getParentFile().exists()) {
       newTsFileResource.getTsFile().getParentFile().mkdirs();
     }
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
+    RestorableTsFileIOWriter writer =
+        new RestorableTsFileIOWriter(newTsFileResource.getTsFile(), false);
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
@@ -234,7 +235,8 @@ public class CompactionFileGeneratorUtils {
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer.MAX_VALUE);
 
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
+    RestorableTsFileIOWriter writer =
+        new RestorableTsFileIOWriter(newTsFileResource.getTsFile(), false);
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
