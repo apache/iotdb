@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.cq;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
@@ -126,7 +127,8 @@ public class ContinuousQueryService implements IService {
 
       continuousQueryTaskSubmitThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("CQ-Task-Submit-Thread");
-      continuousQueryTaskSubmitThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          continuousQueryTaskSubmitThread,
           this::checkAndSubmitTasks,
           0,
           TASK_SUBMIT_CHECK_INTERVAL,

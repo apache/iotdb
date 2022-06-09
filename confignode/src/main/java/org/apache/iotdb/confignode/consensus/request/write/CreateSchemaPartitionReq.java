@@ -23,10 +23,12 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 
 /** Create SchemaPartition by assignedSchemaPartition */
@@ -49,8 +51,8 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.CreateSchemaPartition.ordinal());
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.CreateSchemaPartition.ordinal());
 
     buffer.putInt(assignedSchemaPartition.size());
     assignedSchemaPartition.forEach(

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sync.sender.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -95,17 +96,9 @@ public class TransportHandler {
   public void start() {
     transportFuture = transportExecutorService.submit(transportClient);
     heartbeatFuture =
-        heartbeatExecutorService.scheduleWithFixedDelay(
-            () -> {
-              try {
-                sendHeartbeat();
-              } catch (Throwable t) {
-                logger.error(
-                    "Schedule {} failed",
-                    ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipeName,
-                    t);
-              }
-            },
+        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+            heartbeatExecutorService,
+            this::sendHeartbeat,
             0,
             SyncConstant.HEARTBEAT_DELAY_SECONDS,
             TimeUnit.SECONDS);

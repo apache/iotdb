@@ -21,15 +21,25 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -43,9 +53,9 @@ public class StandaloneScheduler implements IScheduler {
 
   private static final StorageEngineV2 STORAGE_ENGINE = StorageEngineV2.getInstance();
 
-  private static final LocalSchemaProcessor SCHEMA_ENGINE = LocalSchemaProcessor.getInstance();
+  private static final SchemaEngine SCHEMA_ENGINE = SchemaEngine.getInstance();
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterScheduler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneScheduler.class);
 
   private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
@@ -74,6 +84,7 @@ public class StandaloneScheduler implements IScheduler {
     this.queryType = queryType;
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
+    this.stateMachine = stateMachine;
     this.stateTracker =
         new FixedRateFragInsStateTracker(
             stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
@@ -82,18 +93,76 @@ public class StandaloneScheduler implements IScheduler {
             executor, queryContext.getQueryId(), instances, internalServiceClientManager);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void start() {
+    stateMachine.transitionToDispatching();
+    LOGGER.info("{} transit to DISPATCHING", getLogHeader());
     // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
     // TODO: Other QueryTypes
-    if (queryType == QueryType.WRITE) {
-
-      return;
+    switch (queryType) {
+      case READ:
+        try {
+          for (FragmentInstance fragmentInstance : instances) {
+            ConsensusGroupId groupId =
+                ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                    fragmentInstance.getRegionReplicaSet().getRegionId());
+            if (groupId instanceof DataRegionId) {
+              DataRegion region =
+                  StorageEngineV2.getInstance().getDataRegion((DataRegionId) groupId);
+              FragmentInstanceManager.getInstance()
+                  .execDataQueryFragmentInstance(fragmentInstance, region);
+            } else {
+              ISchemaRegion region =
+                  SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) groupId);
+              FragmentInstanceManager.getInstance()
+                  .execSchemaQueryFragmentInstance(fragmentInstance, region);
+            }
+          }
+        } catch (Exception e) {
+          stateMachine.transitionToFailed(e);
+        }
+        // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
+        stateMachine.transitionToRunning();
+        LOGGER.info("{} transit to RUNNING", getLogHeader());
+        instances.forEach(
+            instance ->
+                stateMachine.initialFragInstanceState(
+                    instance.getId(), FragmentInstanceState.RUNNING));
+        this.stateTracker.start();
+        LOGGER.info("{} state tracker starts", getLogHeader());
+        break;
+      case WRITE:
+        try {
+          for (FragmentInstance fragmentInstance : instances) {
+            PlanNode planNode = fragmentInstance.getFragment().getRoot();
+            ConsensusGroupId groupId =
+                ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                    fragmentInstance.getRegionReplicaSet().getRegionId());
+            if (planNode instanceof InsertNode) {
+              SchemaValidator.validate((InsertNode) planNode);
+            }
+            if (groupId instanceof DataRegionId) {
+              STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
+            } else {
+              SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
+            }
+          }
+          stateMachine.transitionToFinished();
+        } catch (Exception e) {
+          LOGGER.error("Execute write operation error ", e);
+          stateMachine.transitionToFailed(e);
+        }
     }
   }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
+    // practice ?
+    stateTracker.abort();
+    // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
+  }
 
   @Override
   public Duration getTotalCpuTime() {
@@ -110,4 +179,8 @@ public class StandaloneScheduler implements IScheduler {
 
   @Override
   public void cancelFragment(PlanFragmentId planFragmentId) {}
+
+  private String getLogHeader() {
+    return String.format("Query[%s]", queryContext.getQueryId());
+  }
 }

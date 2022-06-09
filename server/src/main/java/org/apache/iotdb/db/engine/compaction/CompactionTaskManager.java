@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedScheduledExecutorService;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.IService;
@@ -115,14 +116,9 @@ public class CompactionTaskManager implements IService {
       // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
       // if there is thread space available in the taskExecutionPool, put the compaction task thread
       // into the taskExecutionPool and perform the compaction.
-      compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
-          () -> {
-            try {
-              submitTaskFromTaskQueue();
-            } catch (Throwable t) {
-              logger.error("Schedule {} failed", ThreadName.COMPACTION_SERVICE.getName(), t);
-            }
-          },
+      ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+          compactionTaskSubmissionThreadPool,
+          this::submitTaskFromTaskQueue,
           TASK_SUBMIT_INTERVAL,
           TASK_SUBMIT_INTERVAL,
           TimeUnit.MILLISECONDS);

@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -58,16 +59,16 @@ public class CreateFunctionReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
 
-    ReadWriteIOUtils.write(functionName, buffer);
-    ReadWriteIOUtils.write(className, buffer);
+    ReadWriteIOUtils.write(functionName, stream);
+    ReadWriteIOUtils.write(className, stream);
 
     final int size = uris.size();
-    ReadWriteIOUtils.write(size, buffer);
+    ReadWriteIOUtils.write(size, stream);
     for (String uri : uris) {
-      ReadWriteIOUtils.write(uri, buffer);
+      ReadWriteIOUtils.write(uri, stream);
     }
   }
 

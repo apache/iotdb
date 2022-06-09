@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,6 +95,12 @@ public class TimeJoinNode extends MultiChildNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TIME_JOIN.serialize(stream);
+    ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
   }
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {

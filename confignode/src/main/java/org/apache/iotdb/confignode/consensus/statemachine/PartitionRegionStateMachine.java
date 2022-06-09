@@ -69,7 +69,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request, e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -100,7 +100,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;

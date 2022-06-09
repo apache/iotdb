@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -57,10 +58,10 @@ public class PreDeleteStorageGroupReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.PreDeleteStorageGroup.ordinal());
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
-    buffer.put(preDeleteType.getType());
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.PreDeleteStorageGroup.ordinal());
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.write(preDeleteType.getType());
   }
 
   @Override
