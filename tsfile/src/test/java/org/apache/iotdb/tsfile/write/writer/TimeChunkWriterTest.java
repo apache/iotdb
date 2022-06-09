@@ -55,7 +55,8 @@ public class TimeChunkWriterTest {
 
     try {
       TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
-      TsFileIOWriter writer = new TsFileIOWriter(testTsFileOutput, true);
+      TestTsFileOutput testIndexFileOutput = new TestTsFileOutput();
+      TsFileIOWriter writer = new TsFileIOWriter(testTsFileOutput, testIndexFileOutput, true);
       chunkWriter.writeAllPagesOfChunkToTsFile(writer);
       PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
@@ -91,7 +92,8 @@ public class TimeChunkWriterTest {
 
     try {
       TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
-      TsFileIOWriter writer = new TsFileIOWriter(testTsFileOutput, true);
+      TestTsFileOutput testIndexFileOutput = new TestTsFileOutput();
+      TsFileIOWriter writer = new TsFileIOWriter(testTsFileOutput, testIndexFileOutput, true);
       chunkWriter.writeAllPagesOfChunkToTsFile(writer);
       PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());

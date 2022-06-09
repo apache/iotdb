@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -41,7 +42,8 @@ public class TsFileTestHelper {
 
   public static boolean deleteTsFile(String filePath) {
     File file = new File(filePath);
-    return file.delete();
+    File indexFile = new File(filePath + TsFileConstant.INDEX_SUFFIX);
+    return file.delete() && indexFile.delete();
   }
 
   public static void writeTsFile(String filePath) {

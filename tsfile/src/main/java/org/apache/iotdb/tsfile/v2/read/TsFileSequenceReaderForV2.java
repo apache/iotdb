@@ -104,7 +104,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    * @param loadMetadataSize -load meta data size
    */
   public TsFileSequenceReaderForV2(TsFileInput input, boolean loadMetadataSize) throws IOException {
-    super(input, loadMetadataSize);
+    super(input, null, loadMetadataSize);
   }
 
   /**

@@ -21,6 +21,7 @@ package org.apache.iotdb.hadoop.tsfile;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
@@ -37,7 +38,6 @@ import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -71,6 +71,8 @@ public class TSFHadoopTest {
           .concat("0")
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
+
+  private final String indexFilePath = tsfilePath + TsFileConstant.INDEX_SUFFIX;
 
   private FSType beforeFSType;
 
@@ -155,7 +157,9 @@ public class TSFHadoopTest {
       beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
       TsFileSequenceReader reader =
-          new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
+          new TsFileSequenceReader(
+              new HDFSInput(tsfilePath, job.getConfiguration()),
+              new HDFSInput(indexFilePath, job.getConfiguration()));
       System.out.println(reader.readFileMetadata());
       // assertEquals(tsFile.getRowGroupPosList().size(), inputSplits.size());
       for (InputSplit inputSplit : inputSplits) {
@@ -171,7 +175,6 @@ public class TSFHadoopTest {
   }
 
   @Test
-  @Ignore
   public void RecordReaderTest() {
     TsFileTestHelper.writeTsFile(tsfilePath);
     try {
@@ -188,7 +191,9 @@ public class TSFHadoopTest {
       beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
       TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
       TsFileSequenceReader reader =
-          new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
+          new TsFileSequenceReader(
+              new HDFSInput(tsfilePath, job.getConfiguration()),
+              new HDFSInput(indexFilePath, job.getConfiguration()));
 
       reader.close();
       // read one split

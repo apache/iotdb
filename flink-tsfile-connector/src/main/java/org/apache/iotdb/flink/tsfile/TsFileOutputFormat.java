@@ -22,18 +22,18 @@ package org.apache.iotdb.flink.tsfile;
 import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
 import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
+import javax.annotation.Nullable;
 import org.apache.flink.api.common.io.FileOutputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.util.HadoopUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.conf.Configuration;
-
-import javax.annotation.Nullable;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -54,6 +54,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
 
   protected transient Configuration hadoopConf = null;
   private FileOutputStream fos = null;
+  private FileOutputStream indexFos = null;
   protected transient TsFileWriter writer = null;
 
   public TsFileOutputFormat(String path, Schema schema, TSFileConfig config) {
@@ -77,22 +78,31 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
     // Use TsFile API to write instead of FSDataOutputStream.
     this.stream.close();
     Path actualFilePath = getAcutalFilePath();
-    TsFileOutput out;
+    TsFileOutput tsFileOutput;
+    TsFileOutput indexOutput;
     try {
       if (actualFilePath.getFileSystem().isDistributedFS()) {
         // HDFS
-        out =
+        tsFileOutput =
             new HDFSOutput(
                 new org.apache.hadoop.fs.Path(new URI(actualFilePath.getPath())), hadoopConf, true);
+        indexOutput =
+            new HDFSOutput(
+                new org.apache.hadoop.fs.Path(
+                    new URI(actualFilePath.getPath() + TsFileConstant.INDEX_SUFFIX)),
+                hadoopConf,
+                true);
       } else {
         // Local File System
         fos = new FileOutputStream(actualFilePath.getPath());
-        out = new LocalTsFileOutput(fos);
+        indexFos = new FileOutputStream(actualFilePath.getPath() + TsFileConstant.INDEX_SUFFIX);
+        tsFileOutput = new LocalTsFileOutput(fos);
+        indexOutput = new LocalTsFileOutput(indexFos);
       }
     } catch (URISyntaxException e) {
       throw new RuntimeException(e);
     }
-    writer = new TsFileWriter(out, schema);
+    writer = new TsFileWriter(tsFileOutput, indexOutput, schema);
   }
 
   @Override
@@ -107,6 +117,10 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
       if (fos != null) {
         fos.close();
         fos = null;
+      }
+      if (indexFos != null) {
+        indexFos.close();
+        indexFos = null;
       }
     }
   }

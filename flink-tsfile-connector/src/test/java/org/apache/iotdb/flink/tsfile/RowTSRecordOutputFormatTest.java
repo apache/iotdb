@@ -42,6 +42,7 @@ public class RowTSRecordOutputFormatTest extends RowTsFileOutputFormatTestBase {
     try {
       outputFormat.configure(new Configuration());
       outputFormat.open(0, 2);
+
       List<Row> data = prepareData();
       for (Row row : data) {
         outputFormat.writeRecord(row);

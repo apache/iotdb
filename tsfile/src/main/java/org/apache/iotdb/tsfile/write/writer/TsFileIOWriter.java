@@ -123,14 +123,16 @@ public class TsFileIOWriter implements AutoCloseable {
    *
    * @param output be used to output written data
    */
-  public TsFileIOWriter(TsFileOutput output) throws IOException {
+  public TsFileIOWriter(TsFileOutput output, TsFileOutput indexOutput) throws IOException {
     this.tsFileOutput = output;
+    this.indexFileOutput = indexOutput;
     startFile();
   }
 
   /** for test only */
-  public TsFileIOWriter(TsFileOutput output, boolean test) {
+  public TsFileIOWriter(TsFileOutput output, TsFileOutput indexOutput, boolean test) {
     this.tsFileOutput = output;
+    this.indexFileOutput = indexOutput;
   }
 
   /**

@@ -19,6 +19,7 @@
 package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -95,7 +96,12 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
       List<String> deviceIdList)
       throws IOException {
     org.apache.hadoop.fs.Path path = split.getPath();
-    TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
+    org.apache.hadoop.fs.Path indexPath =
+        new org.apache.hadoop.fs.Path(
+            split.getPath().toString().concat(TsFileConstant.INDEX_SUFFIX));
+    TsFileSequenceReader reader =
+        new TsFileSequenceReader(
+            new HDFSInput(path, configuration), new HDFSInput(indexPath, configuration));
     readerSet.setReader(reader);
     // Get the read columns and filter information
 

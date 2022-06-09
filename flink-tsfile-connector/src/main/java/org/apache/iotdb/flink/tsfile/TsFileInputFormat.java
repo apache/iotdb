@@ -22,6 +22,7 @@ package org.apache.iotdb.flink.tsfile;
 import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
+import javax.annotation.Nullable;
 import org.apache.flink.api.common.io.FileInputFormat;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
@@ -39,8 +41,6 @@ import org.apache.flink.core.fs.FileInputSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.util.HadoopUtils;
 import org.apache.flink.util.FlinkRuntimeException;
-
-import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.net.URI;
@@ -96,22 +96,34 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
     if (config != null) {
       TSFileConfigUtil.setGlobalTSFileConfig(config);
     }
-    TsFileInput in;
+    TsFileInput tsFileInput;
+    TsFileInput indexFileInput;
     try {
       if (currentSplit.getPath().getFileSystem().isDistributedFS()) {
         // HDFS
-        in =
+        tsFileInput =
             new HDFSInput(
                 new org.apache.hadoop.fs.Path(new URI(currentSplit.getPath().getPath())),
                 hadoopConf);
+        indexFileInput =
+            new HDFSInput(
+                new org.apache.hadoop.fs.Path(
+                    new URI(currentSplit.getPath().getPath() + TsFileConstant.INDEX_SUFFIX)),
+                hadoopConf);
       } else {
         // Local File System
-        in = new LocalTsFileInput(Paths.get(currentSplit.getPath().toUri()));
+        tsFileInput = new LocalTsFileInput(Paths.get(currentSplit.getPath().toUri()));
+        indexFileInput =
+            new LocalTsFileInput(
+                Paths.get(
+                    Paths.get(currentSplit.getPath().toUri())
+                        .toString()
+                        .concat(TsFileConstant.INDEX_SUFFIX)));
       }
     } catch (URISyntaxException e) {
       throw new FlinkRuntimeException(e);
     }
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(in)) {
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileInput, indexFileInput)) {
       readTsFile = new TsFileReader(reader);
       queryDataSet =
           readTsFile.query(

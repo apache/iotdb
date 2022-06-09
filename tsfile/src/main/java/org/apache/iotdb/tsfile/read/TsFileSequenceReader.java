@@ -168,8 +168,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param input given input
    */
-  public TsFileSequenceReader(TsFileInput input) throws IOException {
-    this(input, true);
+  public TsFileSequenceReader(TsFileInput input, TsFileInput indexFileInput) throws IOException {
+    this(input, indexFileInput, true);
   }
 
   /**
@@ -178,15 +178,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param input -given input
    * @param loadMetadataSize -load meta data size
    */
-  public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
+  public TsFileSequenceReader(TsFileInput input, TsFileInput indexInput, boolean loadMetadataSize)
+      throws IOException {
     this.tsFileInput = input;
+    this.indexFileInput = indexInput;
     this.file = input.getFilePath();
 
-    if (FSFactoryProducer.getFSFactory().getFile(file + TsFileConstant.INDEX_SUFFIX).exists()) {
-      indexFileInput =
-          FSFactoryProducer.getFileInputFactory()
-              .getTsFileInput(file + TsFileConstant.INDEX_SUFFIX);
-    }
     try {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
