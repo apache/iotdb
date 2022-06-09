@@ -30,7 +30,6 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -51,10 +50,8 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final Coordinator coordinator = Coordinator.getInstance();
   private final LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private final IPartitionFetcher partitionFetcher = StandalonePartitionFetcher.getInstance();
 
   private StandaloneSchemaFetcher() {}
 
@@ -93,6 +90,26 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     return fetchSchema(patternTree);
   }
 
+  private SchemaTree fetchSchemaForWrite(PathPatternTree patternTree) {
+    patternTree.constructTree();
+    Set<String> storageGroupSet = new HashSet<>();
+    SchemaTree schemaTree = new SchemaTree();
+    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    try {
+      for (PartialPath path : partialPathList) {
+        String storageGroup = localConfigNode.getBelongedStorageGroup(path).getFullPath();
+        storageGroupSet.add(storageGroup);
+        SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(path);
+        ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+        schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+      }
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
+    }
+    schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
+    return schemaTree;
+  }
+
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
@@ -107,14 +124,12 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      fetchedSchemaTree =
-          fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
+      fetchedSchemaTree = fetchSchemaForWrite(patternTree);
       schemaTree.mergeSchemaTree(fetchedSchemaTree);
       return schemaTree;
     }
 
-    fetchedSchemaTree =
-        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
+    fetchedSchemaTree = fetchSchemaForWrite(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
     SchemaTree missingSchemaTree =
@@ -145,14 +160,12 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      fetchedSchemaTree =
-          fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
+      fetchedSchemaTree = fetchSchemaForWrite(patternTree);
       schemaTree.mergeSchemaTree(fetchedSchemaTree);
       return schemaTree;
     }
 
-    fetchedSchemaTree =
-        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
+    fetchedSchemaTree = fetchSchemaForWrite(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
     SchemaTree missingSchemaTree;

@@ -127,7 +127,9 @@ public class Coordinator {
                 DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
             partitionFetcher,
             schemaFetcher);
-    queryExecutionMap.put(queryId, execution);
+    if (execution.isQuery()) {
+      queryExecutionMap.put(queryId, execution);
+    }
     execution.start();
 
     return execution.getStatus();
