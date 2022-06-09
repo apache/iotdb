@@ -149,9 +149,7 @@ public class InternalServiceImplTest {
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     // serialize fragmentInstance
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
 
     // put serialized fragmentInstance to TSendFragmentInstanceReq
     TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
@@ -238,9 +236,7 @@ public class InternalServiceImplTest {
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     // serialize fragmentInstance
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
 
     // put serialized fragmentInstance to TSendFragmentInstanceReq
     TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
@@ -337,9 +333,7 @@ public class InternalServiceImplTest {
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     // serialize fragmentInstance
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
 
     // put serialized fragmentInstance to TSendFragmentInstanceReq
     TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();

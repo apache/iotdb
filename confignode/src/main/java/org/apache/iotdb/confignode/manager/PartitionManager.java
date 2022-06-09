@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
@@ -82,7 +83,8 @@ public class PartitionManager {
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
-    regionCleaner.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        regionCleaner,
         this::clearDeletedRegions,
         REGION_CLEANER_WORK_INITIAL_DELAY,
         REGION_CLEANER_WORK_INTERVAL,

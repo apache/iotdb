@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 
@@ -100,5 +102,11 @@ public class RegularExpression extends UnaryExpression {
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(patternString, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(patternString, stream);
   }
 }

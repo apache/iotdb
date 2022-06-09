@@ -22,7 +22,6 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.thrift.TLogType;
@@ -108,7 +107,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
         if (indexedConsensusRequest.getType() == TLogType.InsertNode) {
           planNode =
               PlanNodeType.deserialize(
-                  ((ByteBufferConsensusRequest) indexedConsensusRequest.getRequest()).getContent());
+                  indexedConsensusRequest.getRequest().serializeToByteBuffer());
         } else {
           planNode =
               getFragmentInstance(indexedConsensusRequest.getRequest()).getFragment().getRoot();

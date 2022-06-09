@@ -44,6 +44,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,11 +135,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private boolean dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-    if (isDispatchedToLocal(endPoint)) {
-      return dispatchLocally(instance);
-    } else {
-      return dispatchRemote(instance, endPoint);
+    try (SetThreadName fragmentInstanceName = new SetThreadName(instance.getId().getFullId())) {
+      TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
+      if (isDispatchedToLocal(endPoint)) {
+        return dispatchLocally(instance);
+      } else {
+        return dispatchRemote(instance, endPoint);
+      }
     }
   }
 
@@ -150,9 +153,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-      instance.serializeRequest(buffer);
-      buffer.flip();
+      ByteBuffer buffer = instance.serializeToByteBuffer();
       TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
       TSendFragmentInstanceReq req =
           new TSendFragmentInstanceReq(

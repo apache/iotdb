@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -196,6 +197,11 @@ public class PathPatternTree {
   public void serialize(PublicBAOS outputStream) throws IOException {
     constructTree();
     root.serialize(outputStream);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    constructTree();
+    root.serialize(stream);
   }
 
   public void serialize(ByteBuffer buffer) {

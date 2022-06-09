@@ -25,13 +25,13 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.QueryIdGenerator;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.execution.QueryExecution;
@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,16 +61,6 @@ public class Coordinator {
   private static final int COORDINATOR_WRITE_EXECUTOR_SIZE = 10;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
-
-  private static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
-          IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
-
-  private static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
-          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -126,21 +117,24 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
 
-    IQueryExecution execution =
-        createQueryExecution(
-            statement,
-            new MPPQueryContext(
-                sql,
-                queryIdGenerator.createNextQueryId(),
-                session,
-                LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                LOCAL_HOST_INTERNAL_ENDPOINT),
-            partitionFetcher,
-            schemaFetcher);
-    queryExecutionMap.put(queryId, execution);
-    execution.start();
+    QueryId globalQueryId = queryIdGenerator.createNextQueryId();
+    try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+      IQueryExecution execution =
+          createQueryExecution(
+              statement,
+              new MPPQueryContext(
+                  sql,
+                  queryIdGenerator.createNextQueryId(),
+                  session,
+                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
+              partitionFetcher,
+              schemaFetcher);
+      queryExecutionMap.put(queryId, execution);
+      execution.start();
 
-    return execution.getStatus();
+      return execution.getStatus();
+    }
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {
