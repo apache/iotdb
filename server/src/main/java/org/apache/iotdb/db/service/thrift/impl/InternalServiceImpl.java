@@ -35,7 +35,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -48,19 +47,17 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
@@ -87,6 +84,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -115,58 +114,56 @@ public class InternalServiceImpl implements InternalService.Iface {
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     LOGGER.info("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
-    QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    switch (type) {
-      case READ:
-        ConsensusReadResponse readResponse;
-        if (groupId instanceof DataRegionId) {
-          readResponse =
-              DataRegionConsensusImpl.getInstance()
-                  .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
-        } else {
-          readResponse =
-              SchemaRegionConsensusImpl.getInstance()
-                  .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
-        }
-        if (!readResponse.isSuccess()) {
-          LOGGER.error(
-              "execute FragmentInstance in ConsensusGroup {} failed because {}",
-              req.getConsensusGroupId(),
-              readResponse.getException());
-          return new TSendFragmentInstanceResp(false);
-        }
-        FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
-        return new TSendFragmentInstanceResp(!info.getState().isFailed());
-      case WRITE:
-        TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
-        ConsensusWriteResponse writeResponse;
-
-        FragmentInstance fragmentInstance =
-            FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-        PlanNode planNode = fragmentInstance.getFragment().getRoot();
-        if (planNode instanceof InsertNode) {
-          try {
-            SchemaValidator.validate((InsertNode) planNode);
-          } catch (SemanticException e) {
-            response.setAccepted(false);
-            response.setMessage(e.getMessage());
-            return response;
-          }
-        }
-        if (groupId instanceof DataRegionId) {
-          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, fragmentInstance);
-        } else {
-          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, fragmentInstance);
-        }
-        // TODO need consider more status
-        response.setAccepted(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
-        response.setMessage(writeResponse.getStatus().message);
-        return response;
+    ConsensusReadResponse readResponse;
+    // We deserialize here instead of the underlying state machine because parallelism is possible
+    // here but not at the underlying state machine
+    FragmentInstance fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+    if (groupId instanceof DataRegionId) {
+      readResponse = DataRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
+    } else {
+      readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
     }
-    return null;
+    if (!readResponse.isSuccess()) {
+      LOGGER.error(
+          "execute FragmentInstance in ConsensusGroup {} failed because {}",
+          req.getConsensusGroupId(),
+          readResponse.getException());
+      return new TSendFragmentInstanceResp(false);
+    }
+    FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
+    return new TSendFragmentInstanceResp(!info.getState().isFailed());
+  }
+
+  @Override
+  public TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req) {
+    LOGGER.info("receive PlanNode to group[{}]", req.getConsensusGroupId());
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    TSendPlanNodeResp response = new TSendPlanNodeResp();
+    ConsensusWriteResponse writeResponse;
+
+    PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
+    if (planNode instanceof InsertNode) {
+      try {
+        SchemaValidator.validate((InsertNode) planNode);
+      } catch (SemanticException e) {
+        response.setAccepted(false);
+        response.setMessage(e.getMessage());
+        return response;
+      }
+    }
+    if (groupId instanceof DataRegionId) {
+      writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+    } else {
+      writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
+    }
+    // TODO need consider more status
+    response.setAccepted(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
+    response.setMessage(writeResponse.getStatus().message);
+    return response;
   }
 
   @Override
@@ -366,18 +363,13 @@ public class InternalServiceImpl implements InternalService.Iface {
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     deleteRegionNode.setConsensusGroupId(consensusGroupId);
     deleteRegionNode.setPlanNodeId(planNodeId);
-    PlanFragmentId planFragmentId = queryId.genPlanFragmentId();
-    FragmentInstanceId fragmentInstanceId = planFragmentId.genFragmentInstanceId();
-    PlanFragment planFragment = new PlanFragment(planFragmentId, deleteRegionNode);
-    FragmentInstance fragmentInstance =
-        new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
     if (consensusGroupId instanceof DataRegionId) {
       return DataRegionConsensusImpl.getInstance()
-          .write(consensusGroupId, fragmentInstance)
+          .write(consensusGroupId, deleteRegionNode)
           .getStatus();
     } else {
       return SchemaRegionConsensusImpl.getInstance()
-          .write(consensusGroupId, fragmentInstance)
+          .write(consensusGroupId, deleteRegionNode)
           .getStatus();
     }
   }

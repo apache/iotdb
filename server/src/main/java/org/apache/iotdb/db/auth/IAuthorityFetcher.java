@@ -15,16 +15,28 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.sync.transport.client;
 
-import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
+package org.apache.iotdb.db.auth;
 
-public interface ITransportClient extends Runnable {
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 
-  /** send control message */
-  SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException;
+import com.google.common.util.concurrent.SettableFuture;
+
+import java.util.List;
+
+public interface IAuthorityFetcher {
+
+  TSStatus checkUser(String username, String password);
+
+  TSStatus checkUserPrivileges(String username, List<String> allPath, int permission);
+
+  SettableFuture<ConfigTaskResult> operatePermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
+
+  SettableFuture<ConfigTaskResult> queryPermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
 }
