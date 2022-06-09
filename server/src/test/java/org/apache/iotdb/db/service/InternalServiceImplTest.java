@@ -157,7 +157,6 @@ public class InternalServiceImplTest {
     tFragmentInstance.setBody(byteBuffer);
     request.setFragmentInstance(tFragmentInstance);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
-    request.setQueryType(QueryType.WRITE.toString());
 
     // Use consensus layer to execute request
     TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
@@ -244,7 +243,6 @@ public class InternalServiceImplTest {
     tFragmentInstance.setBody(byteBuffer);
     request.setFragmentInstance(tFragmentInstance);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
-    request.setQueryType(QueryType.WRITE.toString());
 
     // Use consensus layer to execute request
     TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
@@ -341,7 +339,6 @@ public class InternalServiceImplTest {
     tFragmentInstance.setBody(byteBuffer);
     request.setFragmentInstance(tFragmentInstance);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
-    request.setQueryType(QueryType.WRITE.toString());
 
     // Use consensus layer to execute request
     TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);

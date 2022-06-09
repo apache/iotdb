@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
+import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -62,13 +62,21 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
             // TODO: (jackie tien) change the port
             try (SyncDataNodeInternalServiceClient client =
                 internalServiceClientManager.borrowClient(endPoint)) {
-              ByteBuffer buffer = instance.serializeToByteBuffer();
-              TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
-              TSendFragmentInstanceReq req =
-                  new TSendFragmentInstanceReq(
-                      new TFragmentInstance(buffer), groupId, instance.getType().toString());
               LOGGER.info("send FragmentInstance[{}] to {}", instance.getId(), endPoint);
-              resp = client.sendFragmentInstance(req);
+              switch (instance.getType()) {
+                case READ:
+                  TSendFragmentInstanceReq sendFragmentInstanceReq =
+                      new TSendFragmentInstanceReq(
+                          new TFragmentInstance(instance.serializeToByteBuffer()),
+                          instance.getRegionReplicaSet().getRegionId());
+                  resp.setAccepted(client.sendFragmentInstance(sendFragmentInstanceReq).accepted);
+                case WRITE:
+                  TSendPlanNodeReq sendPlanNodeReq =
+                      new TSendPlanNodeReq(
+                          new TPlanNode(instance.getFragment().getRoot().serializeToByteBuffer()),
+                          instance.getRegionReplicaSet().getRegionId());
+                  resp.setAccepted(client.sendPlanNode(sendPlanNodeReq).accepted);
+              }
             } catch (IOException | TException e) {
               LOGGER.error("can't connect to node {}", endPoint, e);
               throw e;

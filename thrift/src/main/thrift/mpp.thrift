@@ -88,13 +88,26 @@ struct TFragmentInstance {
   1: required binary body
 }
 
+struct TPlanNode {
+  1: required binary body
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
   2: required common.TConsensusGroupId consensusGroupId
-  3: required string queryType
 }
 
 struct TSendFragmentInstanceResp {
+  1: required bool accepted
+  2: optional string message
+}
+
+struct TSendPlanNodeReq {
+  1: required TPlanNode planNode
+  2: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TSendPlanNodeResp {
   1: required bool accepted
   2: optional string message
 }
@@ -154,7 +167,15 @@ service InternalService {
 
   // -----------------------------------For Data Node-----------------------------------------------
 
+  /**
+  * disptcher FragmentInstance to remote node for query request
+  */
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
+
+  /**
+  * disptcher PlanNode to remote node for write request in order to saving resource
+  */
+  TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 
   TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
 
