@@ -184,7 +184,7 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 
 public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
@@ -3319,11 +3319,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private Expression parseRealLiteral(String value) {
-    if (config.getFloatingStringInferType().equals(TSDataType.DOUBLE)) {
-      return new ConstantOperand(TSDataType.DOUBLE, value);
-    }
     // 3.33 is float by default
-    return new ConstantOperand(TSDataType.FLOAT, value);
+    return new ConstantOperand(
+        CONFIG.getFloatingStringInferType().equals(TSDataType.DOUBLE)
+            ? TSDataType.DOUBLE
+            : TSDataType.FLOAT,
+        value);
   }
 
   private void setMap(IoTDBSqlParser.AlterClauseContext ctx, Map<String, String> alterMap) {

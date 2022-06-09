@@ -139,7 +139,7 @@ import java.util.regex.Pattern;
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
@@ -2071,11 +2071,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private Expression parseRealLiteral(String value) {
-    if (config.getFloatingStringInferType().equals(TSDataType.DOUBLE)) {
-      return new ConstantOperand(TSDataType.DOUBLE, value);
-    }
     // 3.33 is float by default
-    return new ConstantOperand(TSDataType.FLOAT, value);
+    return new ConstantOperand(
+        CONFIG.getFloatingStringInferType().equals(TSDataType.DOUBLE)
+            ? TSDataType.DOUBLE
+            : TSDataType.FLOAT,
+        value);
   }
 
   /**
