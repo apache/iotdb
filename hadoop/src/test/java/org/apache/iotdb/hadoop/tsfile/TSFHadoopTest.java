@@ -37,6 +37,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -170,6 +171,7 @@ public class TSFHadoopTest {
   }
 
   @Test
+  @Ignore
   public void RecordReaderTest() {
     TsFileTestHelper.writeTsFile(tsfilePath);
     try {
