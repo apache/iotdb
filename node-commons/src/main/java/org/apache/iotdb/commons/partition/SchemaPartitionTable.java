@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SchemaPartitionTable {
@@ -57,27 +58,35 @@ public class SchemaPartitionTable {
    * Thread-safely get SchemaPartition within the specific StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots
-   * @return SchemaPartitionTable
+   * @param schemaPartitionTable Store the matched SchemaPartitions
+   * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
-  public SchemaPartitionTable getSchemaPartition(List<TSeriesPartitionSlot> partitionSlots) {
+  public boolean getSchemaPartition(
+      List<TSeriesPartitionSlot> partitionSlots, SchemaPartitionTable schemaPartitionTable) {
+    AtomicBoolean result = new AtomicBoolean(true);
+
     if (partitionSlots.isEmpty()) {
       // Return all SchemaPartitions in one StorageGroup when the queried PartitionSlots are empty
-      return new SchemaPartitionTable(new ConcurrentHashMap<>(schemaPartitionMap));
+      schemaPartitionTable.getSchemaPartitionMap().putAll(schemaPartitionMap);
     } else {
-      // Return the DataPartition for each SeriesPartitionSlot
-      Map<TSeriesPartitionSlot, TConsensusGroupId> result = new ConcurrentHashMap<>();
+      // Return the SchemaPartition for each SeriesPartitionSlot
       partitionSlots.forEach(
           seriesPartitionSlot -> {
             if (schemaPartitionMap.containsKey(seriesPartitionSlot)) {
-              result.put(seriesPartitionSlot, schemaPartitionMap.get(seriesPartitionSlot));
+              schemaPartitionTable
+                  .getSchemaPartitionMap()
+                  .put(seriesPartitionSlot, schemaPartitionMap.get(seriesPartitionSlot));
+            } else {
+              result.set(false);
             }
           });
-      return new SchemaPartitionTable(result);
     }
+
+    return result.get();
   }
 
   /**
-   * Thread-safely create SchemaPartition within the specific StorageGroup
+   * Create SchemaPartition within the specific StorageGroup
    *
    * @param assignedSchemaPartition assigned result
    * @return Number of SchemaPartitions added to each Region
@@ -90,23 +99,18 @@ public class SchemaPartitionTable {
         .getSchemaPartitionMap()
         .forEach(
             ((seriesPartitionSlot, consensusGroupId) -> {
-              // In concurrent scenarios, some SchemaPartitions may have already been created by
-              // another thread.
-              // Therefore, we could just ignore them.
-              if (!schemaPartitionMap.containsKey(seriesPartitionSlot)) {
-                schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
-                deltaMap
-                    .computeIfAbsent(consensusGroupId, empty -> new AtomicInteger(0))
-                    .getAndIncrement();
-              }
+              schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
+              deltaMap
+                  .computeIfAbsent(consensusGroupId, empty -> new AtomicInteger(0))
+                  .getAndIncrement();
             }));
 
     return deltaMap;
   }
 
   /**
-   * Only Leader use this interface Thread-safely filter unassigned SchemaPartitionSlots within the
-   * specific StorageGroup
+   * Only Leader use this interface. Filter unassigned SchemaPartitionSlots within the specific
+   * StorageGroup.
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots

@@ -50,7 +50,7 @@ public class StorageGroupPartitionTable {
   // determines whether a new Region needs to be created
   private final AtomicInteger seriesPartitionSlotsCount;
 
-  // Allocation particle
+  // Region allocation particle
   private final AtomicBoolean schemaRegionParticle;
   private final AtomicBoolean dataRegionParticle;
 
@@ -134,12 +134,14 @@ public class StorageGroupPartitionTable {
    *
    * @param partitionSlots SeriesPartitionSlots
    * @param schemaPartition Where the results are stored
+   * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
-  public void getSchemaPartition(
+  public boolean getSchemaPartition(
       List<TSeriesPartitionSlot> partitionSlots,
       Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaPartition) {
     // Get RegionIds
-    SchemaPartitionTable regionIds = schemaPartitionTable.getSchemaPartition(partitionSlots);
+    SchemaPartitionTable regionIds = new SchemaPartitionTable();
+    boolean result = schemaPartitionTable.getSchemaPartition(partitionSlots, regionIds);
     // Map to RegionReplicaSets
     regionIds
         .getSchemaPartitionMap()
@@ -147,6 +149,7 @@ public class StorageGroupPartitionTable {
             (seriesPartitionSlot, consensusGroupId) ->
                 schemaPartition.put(
                     seriesPartitionSlot, regionInfoMap.get(consensusGroupId).getReplicaSet()));
+    return result;
   }
 
   /**
@@ -154,12 +157,14 @@ public class StorageGroupPartitionTable {
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartition Where the results are stored
+   * @return True if all the PartitionSlots are matched, false otherwise
    */
-  public void getDataPartition(
+  public boolean getDataPartition(
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dataPartition) {
     // Get RegionIds
-    DataPartitionTable regionIds = dataPartitionTable.getDataPartition(partitionSlots);
+    DataPartitionTable regionIds = new DataPartitionTable();
+    boolean result = dataPartitionTable.getDataPartition(partitionSlots, regionIds);
     // Map to RegionReplicaSets
     regionIds
         .getDataPartitionMap()
@@ -181,10 +186,11 @@ public class StorageGroupPartitionTable {
                                     .add(regionInfoMap.get(consensusGroupId).getReplicaSet()));
                       }));
             }));
+    return result;
   }
 
   /**
-   * Thread-safely create SchemaPartition within the specific StorageGroup
+   * Create SchemaPartition within the specific StorageGroup
    *
    * @param assignedSchemaPartition Assigned result
    */
@@ -204,7 +210,7 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Thread-safely create DataPartition within the specific StorageGroup
+   * Create DataPartition within the specific StorageGroup
    *
    * @param assignedDataPartition Assigned result
    */
@@ -223,8 +229,8 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Only Leader use this interface. Thread-safely filter unassigned SchemaPartitionSlots within the
-   * specific StorageGroup
+   * Only Leader use this interface. Filter unassigned SchemaPartitionSlots within the specific
+   * StorageGroup
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots
@@ -235,8 +241,8 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Only Leader use this interface. Thread-safely filter unassigned DataPartitionSlots within the
-   * specific StorageGroup
+   * Only Leader use this interface. Filter unassigned DataPartitionSlots within the specific
+   * StorageGroup
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots

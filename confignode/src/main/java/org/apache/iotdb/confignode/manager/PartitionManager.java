@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
+  private static final String allPartitionsExist = "All Partitions exist";
 
   private final Manager configManager;
   private final PartitionInfo partitionInfo;
@@ -130,53 +131,65 @@ public class PartitionManager {
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
+   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
+   *     StorageGroup doesn't exist.
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionReq req) {
-    Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlots =
-        partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
-
-    if (unassignedSchemaPartitionSlots.size() > 0) {
-
-      // Make sure each StorageGroup has at least one SchemaRegion
-      try {
-        checkAndAllocateRegionsIfNecessary(
-            new ArrayList<>(unassignedSchemaPartitionSlots.keySet()),
-            TConsensusGroupType.SchemaRegion);
-      } catch (NotEnoughDataNodeException e) {
-        SchemaPartitionResp resp = new SchemaPartitionResp();
-        resp.setStatus(
-            new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode())
-                .setMessage(
-                    "ConfigNode failed to allocate DataPartition because there are not enough DataNodes"));
-        return resp;
-      } catch (TimeoutException e) {
-        SchemaPartitionResp resp = new SchemaPartitionResp();
-        resp.setStatus(
-            new TSStatus(TSStatusCode.TIME_OUT.getStatusCode())
-                .setMessage(
-                    "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout."));
-        return resp;
-      } catch (StorageGroupNotExistsException e) {
-        SchemaPartitionResp resp = new SchemaPartitionResp();
-        resp.setStatus(
-            new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-                .setMessage(
-                    "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist."));
-        return resp;
-      }
-
-      // Allocate SchemaPartition
-      Map<String, SchemaPartitionTable> assignedSchemaPartition =
-          getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlots);
-
-      // Persist SchemaPartition
-      CreateSchemaPartitionReq createPlan = new CreateSchemaPartitionReq();
-      createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
-      getConsensusManager().write(createPlan);
-
-      // TODO: Allocate more Regions if necessary
+    // After all the SchemaPartitions are allocated,
+    // all the read requests about SchemaPartitionTable are parallel.
+    SchemaPartitionResp resp = (SchemaPartitionResp) getSchemaPartition(req);
+    if (resp.isAllPartitionsExist()) {
+      return resp;
     }
+
+    // Otherwise, fist ensure that each StorageGroup has at least one SchemaRegion.
+    // This block of code is still parallel and concurrent safe.
+    // Thus, we can prepare the SchemaRegions with maximum efficiency.
+    try {
+      checkAndAllocateRegionsIfNecessary(
+          new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.SchemaRegion);
+    } catch (NotEnoughDataNodeException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because there are not enough DataNodes"));
+      return resp;
+    } catch (TimeoutException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.TIME_OUT.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout."));
+      return resp;
+    } catch (StorageGroupNotExistsException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist."));
+      return resp;
+    }
+
+    // Next, we serialize the creation process of SchemaPartitions to
+    // ensure that each SchemaPartition is created by a unique CreateSchemaPartitionReq.
+    // Because the number of SchemaPartitions per storage group is limited by the number of
+    // SeriesPartitionSlots,
+    // the number of serialized CreateSchemaPartitionReqs is acceptable.
+    synchronized (this) {
+      // Filter unassigned SchemaPartitionSlots
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlots =
+          partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
+      if (unassignedSchemaPartitionSlots.size() > 0) {
+        // Allocate SchemaPartitions
+        Map<String, SchemaPartitionTable> assignedSchemaPartition =
+            getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlots);
+        // Cache allocating result
+        CreateSchemaPartitionReq createPlan = new CreateSchemaPartitionReq();
+        createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
+        getConsensusManager().write(createPlan);
+      }
+    }
+
+    // TODO: Allocate more SchemaRegions if necessary
 
     return getSchemaPartition(req);
   }
@@ -187,52 +200,66 @@ public class PartitionManager {
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
    * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
+   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
+   *     StorageGroup doesn't exist.
    */
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq req) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> unassignedDataPartitionSlots =
-        partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
-
-    if (unassignedDataPartitionSlots.size() > 0) {
-
-      // Make sure each StorageGroup has at least one DataRegion
-      try {
-        checkAndAllocateRegionsIfNecessary(
-            new ArrayList<>(unassignedDataPartitionSlots.keySet()), TConsensusGroupType.DataRegion);
-      } catch (NotEnoughDataNodeException e) {
-        DataPartitionResp resp = new DataPartitionResp();
-        resp.setStatus(
-            new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode())
-                .setMessage(
-                    "ConfigNode failed to allocate DataPartition because there are not enough DataNodes"));
-        return resp;
-      } catch (TimeoutException e) {
-        DataPartitionResp resp = new DataPartitionResp();
-        resp.setStatus(
-            new TSStatus(TSStatusCode.TIME_OUT.getStatusCode())
-                .setMessage(
-                    "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout."));
-        return resp;
-      } catch (StorageGroupNotExistsException e) {
-        SchemaPartitionResp resp = new SchemaPartitionResp();
-        resp.setStatus(
-            new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-                .setMessage(
-                    "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist."));
-        return resp;
-      }
-
-      // Allocate DataPartition
-      Map<String, DataPartitionTable> assignedDataPartition =
-          getLoadManager().allocateDataPartition(unassignedDataPartitionSlots);
-
-      // Persist DataPartition
-      CreateDataPartitionReq createPlan = new CreateDataPartitionReq();
-      createPlan.setAssignedDataPartition(assignedDataPartition);
-      getConsensusManager().write(createPlan);
-
-      // TODO: Allocate more Regions if necessary
+    // After all the SchemaPartitions are allocated,
+    // all the read requests about SchemaPartitionTable are parallel.
+    DataPartitionResp resp = (DataPartitionResp) getDataPartition(req);
+    if (resp.isAllPartitionsExist()) {
+      return resp;
     }
+
+    // Otherwise, fist ensure that each StorageGroup has at least one DataRegion.
+    // This block of code is still parallel and concurrent safe.
+    // Thus, we can prepare the DataRegions with maximum efficiency.
+    try {
+      checkAndAllocateRegionsIfNecessary(
+          new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.DataRegion);
+    } catch (NotEnoughDataNodeException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because there are not enough DataNodes"));
+      return resp;
+    } catch (TimeoutException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.TIME_OUT.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout."));
+      return resp;
+    } catch (StorageGroupNotExistsException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist."));
+      return resp;
+    }
+
+    // Next, we serialize the creation process of DataPartitions to
+    // ensure that each DataPartition is created by a unique CreateDataPartitionReq.
+    // Because the number of DataPartitions per storage group per day is limited by the number of
+    // SeriesPartitionSlots,
+    // the number of serialized CreateDataPartitionReqs is acceptable.
+    synchronized (this) {
+      // Filter unassigned DataPartitionSlots
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+          unassignedDataPartitionSlots =
+              partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
+      if (unassignedDataPartitionSlots.size() > 0) {
+        // Allocate DataPartitions
+        Map<String, DataPartitionTable> assignedDataPartition =
+            getLoadManager().allocateDataPartition(unassignedDataPartitionSlots);
+        // Cache allocating result
+        CreateDataPartitionReq createPlan = new CreateDataPartitionReq();
+        createPlan.setAssignedDataPartition(assignedDataPartition);
+        getConsensusManager().write(createPlan);
+      }
+    }
+
+    // TODO: Allocate more Regions if necessary
 
     return getDataPartition(req);
   }

@@ -69,6 +69,7 @@ import java.util.UUID;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -94,7 +95,11 @@ public class PartitionInfo implements SnapshotProcessor {
   public PartitionInfo() {
     this.storageGroupPartitionTables = new ConcurrentHashMap<>();
     this.nextRegionGroupId = new AtomicInteger(0);
+
+    // Ensure that the PartitionTables of the StorageGroups who've been logically deleted
+    // are unreadable and un-writable
     this.preDeletedStorageGroup = new CopyOnWriteArraySet<>();
+    // For RegionCleaner
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
   }
 
@@ -187,7 +192,9 @@ public class PartitionInfo implements SnapshotProcessor {
 
   /** @return The Regions that should be deleted among the DataNodes */
   public Set<TRegionReplicaSet> getDeletedRegionSet() {
-    return deletedRegionSet;
+    synchronized (deletedRegionSet) {
+      return deletedRegionSet;
+    }
   }
 
   /**
@@ -197,6 +204,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
   public DataSet getSchemaPartition(GetSchemaPartitionReq req) {
+    AtomicBoolean isAllPartitionsExist = new AtomicBoolean(true);
     // TODO: Replace this map whit new SchemaPartition
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartition =
         new ConcurrentHashMap<>();
@@ -224,9 +232,12 @@ public class PartitionInfo implements SnapshotProcessor {
                 if (storageGroupPartitionTables.containsKey(storageGroup)
                     && !preDeletedStorageGroup.contains(storageGroup)) {
                   schemaPartition.put(storageGroup, new ConcurrentHashMap<>());
-                  storageGroupPartitionTables
+
+                  if (!storageGroupPartitionTables
                       .get(storageGroup)
-                      .getSchemaPartition(partitionSlots, schemaPartition.get(storageGroup));
+                      .getSchemaPartition(partitionSlots, schemaPartition.get(storageGroup))) {
+                    isAllPartitionsExist.set(false);
+                  }
 
                   if (schemaPartition.get(storageGroup).size() == 0) {
                     // Remove empty Map
@@ -237,6 +248,7 @@ public class PartitionInfo implements SnapshotProcessor {
     }
 
     SchemaPartitionResp schemaPartitionResp = new SchemaPartitionResp();
+    schemaPartitionResp.setAllPartitionsExist(isAllPartitionsExist.get());
     // Notice: SchemaPartition contains two redundant structural parameters currently.
     schemaPartitionResp.setSchemaPartition(
         new SchemaPartition(
@@ -254,6 +266,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
   public DataSet getDataPartition(GetDataPartitionReq req) {
+    AtomicBoolean isAllPartitionsExist = new AtomicBoolean(true);
     // TODO: Replace this map whit new DataPartition
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartition = new ConcurrentHashMap<>();
@@ -264,9 +277,11 @@ public class PartitionInfo implements SnapshotProcessor {
               if (storageGroupPartitionTables.containsKey(storageGroup)
                   && !preDeletedStorageGroup.contains(storageGroup)) {
                 dataPartition.put(storageGroup, new ConcurrentHashMap<>());
-                storageGroupPartitionTables
+                if (!storageGroupPartitionTables
                     .get(storageGroup)
-                    .getDataPartition(partitionSlots, dataPartition.get(storageGroup));
+                    .getDataPartition(partitionSlots, dataPartition.get(storageGroup))) {
+                  isAllPartitionsExist.set(false);
+                }
 
                 if (dataPartition.get(storageGroup).size() == 0) {
                   // Remove empty Map
@@ -276,6 +291,7 @@ public class PartitionInfo implements SnapshotProcessor {
             });
 
     DataPartitionResp dataPartitionResp = new DataPartitionResp();
+    dataPartitionResp.setAllPartitionsExist(isAllPartitionsExist.get());
     // Notice: DataPartition contains two redundant structural parameters currently.
     dataPartitionResp.setDataPartition(
         new DataPartition(
@@ -287,7 +303,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely create SchemaPartition
+   * Create SchemaPartition
    *
    * @param req CreateSchemaPartitionPlan with SchemaPartition assigned result
    * @return TSStatusCode.SUCCESS_STATUS
@@ -308,7 +324,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely create DataPartition
+   * Create DataPartition
    *
    * @param req CreateDataPartitionPlan with DataPartition assigned result
    * @return TSStatusCode.SUCCESS_STATUS
@@ -361,7 +377,7 @@ public class PartitionInfo implements SnapshotProcessor {
   // ======================================================
 
   /**
-   * Only Leader use this interface. Thread-safely filter unassigned SchemaPartitionSlots
+   * Only Leader use this interface. Filter unassigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
    * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
@@ -373,7 +389,8 @@ public class PartitionInfo implements SnapshotProcessor {
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {
-          if (!preDeletedStorageGroup.contains(storageGroup)) {
+          if (storageGroupPartitionTables.containsKey(storageGroup)
+              && !preDeletedStorageGroup.contains(storageGroup)) {
             result.put(
                 storageGroup,
                 storageGroupPartitionTables
@@ -386,7 +403,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only Leader use this interface. Thread-safely filter unassigned SchemaPartitionSlots
+   * Only Leader use this interface. Filter unassigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
    *     List<TTimePartitionSlot>>>
@@ -401,7 +418,8 @@ public class PartitionInfo implements SnapshotProcessor {
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {
-          if (!preDeletedStorageGroup.contains(storageGroup)) {
+          if (storageGroupPartitionTables.containsKey(storageGroup)
+              && !preDeletedStorageGroup.contains(storageGroup)) {
             result.put(
                 storageGroup,
                 storageGroupPartitionTables

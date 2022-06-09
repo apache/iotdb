@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataPartitionTable {
@@ -57,32 +58,40 @@ public class DataPartitionTable {
    * Thread-safely get DataPartition within the specific StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
-   * @return RegionIds of the PartitionSlots
+   * @param dataPartitionTable Store the matched Partitions
+   * @return True if all the PartitionSlots are matched, false otherwise
    */
-  public DataPartitionTable getDataPartition(
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots) {
+  public boolean getDataPartition(
+      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
+      DataPartitionTable dataPartitionTable) {
+    AtomicBoolean result = new AtomicBoolean(true);
     if (partitionSlots.isEmpty()) {
       // Return all DataPartitions in one StorageGroup when the queried PartitionSlots are empty
-      return new DataPartitionTable(new ConcurrentHashMap<>(dataPartitionMap));
+      dataPartitionTable.getDataPartitionMap().putAll(dataPartitionMap);
     } else {
       // Return the DataPartition for each SeriesPartitionSlot
-      Map<TSeriesPartitionSlot, SeriesPartitionTable> result = new ConcurrentHashMap<>();
-
       partitionSlots.forEach(
           (seriesPartitionSlot, timePartitionSlots) -> {
             if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
-              result.put(
-                  seriesPartitionSlot,
-                  dataPartitionMap.get(seriesPartitionSlot).getDataPartition(timePartitionSlots));
+              SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
+              if (!dataPartitionMap
+                  .get(seriesPartitionSlot)
+                  .getDataPartition(timePartitionSlots, seriesPartitionTable)) {
+                result.set(false);
+              }
+              dataPartitionTable
+                  .getDataPartitionMap()
+                  .put(seriesPartitionSlot, seriesPartitionTable);
+            } else {
+              result.set(false);
             }
           });
-
-      return new DataPartitionTable(result);
     }
+    return result.get();
   }
 
   /**
-   * Thread-safely create DataPartition within the specific StorageGroup
+   * Create DataPartition within the specific StorageGroup
    *
    * @param assignedDataPartition Assigned result
    * @return Number of DataPartitions added to each Region
@@ -103,8 +112,8 @@ public class DataPartitionTable {
   }
 
   /**
-   * Only Leader use this interface Thread-safely filter unassigned DataPartitionSlots within the
-   * specific StorageGroup
+   * Only Leader use this interface. Filter unassigned DataPartitionSlots within the specific
+   * StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @return Unassigned PartitionSlots
@@ -114,30 +123,14 @@ public class DataPartitionTable {
     Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> result = new ConcurrentHashMap<>();
 
     partitionSlots.forEach(
-        (seriesPartitionSlot, timePartitionSlots) -> {
-          if (!dataPartitionMap.containsKey(seriesPartitionSlot)) {
-            result.put(seriesPartitionSlot, timePartitionSlots);
-          } else {
+        (seriesPartitionSlot, timePartitionSlots) ->
             result.put(
                 seriesPartitionSlot,
                 dataPartitionMap
-                    .get(seriesPartitionSlot)
-                    .filterNoAssignedSchemaPartitionSlots(timePartitionSlots));
-          }
-        });
+                    .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
+                    .filterNoAssignedSchemaPartitionSlots(timePartitionSlots)));
 
     return result;
-  }
-
-  public void deserialize(ByteBuffer buffer) {
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
-      TSeriesPartitionSlot seriesPartitionSlot =
-          ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-      SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
-      seriesPartitionTable.deserialize(buffer);
-      dataPartitionMap.put(seriesPartitionSlot, seriesPartitionTable);
-    }
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
@@ -150,6 +143,19 @@ public class DataPartitionTable {
     }
   }
 
+  /** Only for ConsensusRequest */
+  public void deserialize(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      TSeriesPartitionSlot seriesPartitionSlot =
+          ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
+      SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
+      seriesPartitionTable.deserialize(buffer);
+      dataPartitionMap.put(seriesPartitionSlot, seriesPartitionTable);
+    }
+  }
+
+  /** Only for Snapshot */
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     int length = ReadWriteIOUtils.readInt(inputStream);

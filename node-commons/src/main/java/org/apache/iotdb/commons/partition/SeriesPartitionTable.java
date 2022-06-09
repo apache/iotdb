@@ -30,12 +30,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SeriesPartitionTable {
@@ -58,29 +58,36 @@ public class SeriesPartitionTable {
    * Thread-safely get DataPartition within the specific StorageGroup
    *
    * @param partitionSlots TimePartitionSlots
-   * @return RegionIds of the PartitionSlots
+   * @param seriesPartitionTable Store the matched SeriesPartitions
+   * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
-  public SeriesPartitionTable getDataPartition(List<TTimePartitionSlot> partitionSlots) {
+  public boolean getDataPartition(
+      List<TTimePartitionSlot> partitionSlots, SeriesPartitionTable seriesPartitionTable) {
+    AtomicBoolean result = new AtomicBoolean(true);
+
     if (partitionSlots.isEmpty()) {
-      // Return all DataPartitions in one SeriesPartitionSlot when the queried PartitionSlots are
-      // empty
-      return new SeriesPartitionTable(new ConcurrentHashMap<>(seriesPartitionMap));
+      // Return all DataPartitions in one SeriesPartitionSlot
+      // when the queried TimePartitionSlots are empty
+      seriesPartitionTable.getSeriesPartitionMap().putAll(seriesPartitionMap);
     } else {
       // Return the DataPartition for each TimePartitionSlot
-      Map<TTimePartitionSlot, List<TConsensusGroupId>> result = new ConcurrentHashMap<>();
       partitionSlots.forEach(
           timePartitionSlot -> {
             if (seriesPartitionMap.containsKey(timePartitionSlot)) {
-              result.put(
-                  timePartitionSlot, new ArrayList<>(seriesPartitionMap.get(timePartitionSlot)));
+              seriesPartitionTable
+                  .getSeriesPartitionMap()
+                  .put(timePartitionSlot, seriesPartitionMap.get(timePartitionSlot));
+            } else {
+              result.set(false);
             }
           });
-      return new SeriesPartitionTable(result);
     }
+
+    return result.get();
   }
 
   /**
-   * Thread-safely create DataPartition within the specific SeriesPartitionSlot
+   * Create DataPartition within the specific SeriesPartitionSlot
    *
    * @param assignedSeriesPartitionTable Assigned result
    * @param deltaMap Number of DataPartitions added to each Region
@@ -92,27 +99,21 @@ public class SeriesPartitionTable {
         .getSeriesPartitionMap()
         .forEach(
             ((timePartitionSlot, consensusGroupIds) -> {
-              // In concurrent scenarios, some DataPartitions may have already been created by
-              // another thread.
-              // Therefore, we could just ignore them.
-              if (!seriesPartitionMap.containsKey(timePartitionSlot)) {
-                // Notice: For each TimePartitionSlot, we only allocate one DataPartition at a time
-                seriesPartitionMap.put(timePartitionSlot, new Vector<>(consensusGroupIds));
-                deltaMap
-                    .computeIfAbsent(consensusGroupIds.get(0), empty -> new AtomicInteger(0))
-                    .getAndIncrement();
-              }
+              seriesPartitionMap.put(timePartitionSlot, new Vector<>(consensusGroupIds));
+              deltaMap
+                  .computeIfAbsent(consensusGroupIds.get(0), empty -> new AtomicInteger(0))
+                  .getAndIncrement();
             }));
   }
 
   /**
-   * Only Leader use this interface Thread-safely filter no assigned DataPartitionSlots within the
-   * specific SeriesPartitionSlot
+   * Only Leader use this interface. And this interface is synchronized. Thread-safely filter no
+   * assigned DataPartitionSlots within the specific SeriesPartitionSlot
    *
    * @param partitionSlots TimePartitionSlots
-   * @return Un-assigned PartitionSlots
+   * @return Unassigned PartitionSlots
    */
-  public List<TTimePartitionSlot> filterNoAssignedSchemaPartitionSlots(
+  public synchronized List<TTimePartitionSlot> filterNoAssignedSchemaPartitionSlots(
       List<TTimePartitionSlot> partitionSlots) {
     List<TTimePartitionSlot> result = new Vector<>();
 
@@ -126,6 +127,20 @@ public class SeriesPartitionTable {
     return result;
   }
 
+  public void serialize(OutputStream outputStream, TProtocol protocol)
+      throws IOException, TException {
+    ReadWriteIOUtils.write(seriesPartitionMap.size(), outputStream);
+    for (Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionEntry :
+        seriesPartitionMap.entrySet()) {
+      seriesPartitionEntry.getKey().write(protocol);
+      ReadWriteIOUtils.write(seriesPartitionEntry.getValue().size(), outputStream);
+      for (TConsensusGroupId consensusGroupId : seriesPartitionEntry.getValue()) {
+        consensusGroupId.write(protocol);
+      }
+    }
+  }
+
+  /** Only for ConsensusRequest */
   public void deserialize(ByteBuffer buffer) {
     int timePartitionSlotNum = buffer.getInt();
     for (int i = 0; i < timePartitionSlotNum; i++) {
@@ -142,19 +157,7 @@ public class SeriesPartitionTable {
     }
   }
 
-  public void serialize(OutputStream outputStream, TProtocol protocol)
-      throws IOException, TException {
-    ReadWriteIOUtils.write(seriesPartitionMap.size(), outputStream);
-    for (Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionEntry :
-        seriesPartitionMap.entrySet()) {
-      seriesPartitionEntry.getKey().write(protocol);
-      ReadWriteIOUtils.write(seriesPartitionEntry.getValue().size(), outputStream);
-      for (TConsensusGroupId consensusGroupId : seriesPartitionEntry.getValue()) {
-        consensusGroupId.write(protocol);
-      }
-    }
-  }
-
+  /** Only for Snapshot */
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     int timePartitionSlotNum = ReadWriteIOUtils.readInt(inputStream);
