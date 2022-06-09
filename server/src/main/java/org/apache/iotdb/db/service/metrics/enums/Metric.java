@@ -26,6 +26,7 @@ public enum Metric {
   FILE_SIZE,
   FILE_COUNT,
   MEM,
+  CACHE,
   CACHE_HIT,
   ERROR_LOG,
   QUANTITY,
