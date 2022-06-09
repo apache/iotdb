@@ -286,10 +286,9 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 **标识符命名有以下约束：**
 
 - 不使用反引号括起的标识符中，允许出现以下字符：
-  - [ 0-9 a-z A-Z _ : @ # $ { } ] （字母，数字，部分特殊字符）
-
-- ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
-
+  - [ 0-9 a-z A-Z _ ] （字母，数字，下划线）
+  - ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
+  
 - 标识符允许使用数字开头、不使用反引号括起的标识符不能全部为数字。
 
 - 标识符是大小写敏感的。
@@ -604,7 +603,7 @@ CREATE PIPE my_pipe TO my_iotdb FROM
 
 ## Session、TsFile API
 
-在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。
+在使用Session、TsFIle API时，如果您调用的方法需要以字符串形式传入物理量（measurement）、设备（device）、存储组（storage group）、路径（path）等参数，**请保证所传入字符串与使用 SQL 语句时的写法一致**，下面是一些帮助您理解的例子。具体代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. 以创建时间序列 createTimeseries 为例：
 

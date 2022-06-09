@@ -26,13 +26,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class DeviceMergeNode extends ProcessNode {
+public class DeviceMergeNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first OrderBy in this list has higher priority.
@@ -40,8 +42,6 @@ public class DeviceMergeNode extends ProcessNode {
 
   // the list of selected devices
   private final List<String> devices;
-
-  private final List<PlanNode> children;
 
   public DeviceMergeNode(
       PlanNodeId id, List<PlanNode> children, List<OrderBy> mergeOrders, List<String> devices) {
@@ -111,6 +111,17 @@ public class DeviceMergeNode extends ProcessNode {
     }
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DEVICE_MERGE.serialize(stream);
+    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), stream);
+    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), stream);
+    ReadWriteIOUtils.write(devices.size(), stream);
+    for (String deviceName : devices) {
+      ReadWriteIOUtils.write(deviceName, stream);
+    }
+  }
+
   public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
     List<OrderBy> mergeOrders = new ArrayList<>();
     mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
@@ -145,5 +156,10 @@ public class DeviceMergeNode extends ProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), mergeOrders, devices, children);
+  }
+
+  @Override
+  public String toString() {
+    return "DeviceMerge-" + this.getPlanNodeId();
   }
 }

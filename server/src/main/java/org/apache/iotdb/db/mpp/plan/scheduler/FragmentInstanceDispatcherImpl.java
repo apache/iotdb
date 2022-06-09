@@ -24,9 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.consensus.ConsensusImpl;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
@@ -41,6 +44,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,11 +135,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private boolean dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-    if (isDispatchedToLocal(endPoint)) {
-      return dispatchLocally(instance);
-    } else {
-      return dispatchRemote(instance, endPoint);
+    try (SetThreadName fragmentInstanceName = new SetThreadName(instance.getId().getFullId())) {
+      TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
+      if (isDispatchedToLocal(endPoint)) {
+        return dispatchLocally(instance);
+      } else {
+        return dispatchRemote(instance, endPoint);
+      }
     }
   }
 
@@ -147,9 +153,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-      instance.serializeRequest(buffer);
-      buffer.flip();
+      ByteBuffer buffer = instance.serializeToByteBuffer();
       TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
       TSendFragmentInstanceReq req =
           new TSendFragmentInstanceReq(
@@ -169,9 +173,20 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             instance.getRegionReplicaSet().getRegionId());
     switch (instance.getType()) {
       case READ:
-        FragmentInstanceInfo info =
-            (FragmentInstanceInfo) ConsensusImpl.getInstance().read(groupId, instance).getDataset();
-        return !info.getState().isFailed();
+        ConsensusReadResponse readResponse;
+        if (groupId instanceof DataRegionId) {
+          readResponse = DataRegionConsensusImpl.getInstance().read(groupId, instance);
+        } else {
+          readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, instance);
+        }
+        if (!readResponse.isSuccess()) {
+          logger.error(
+              "dispatch FragmentInstance {} locally failed because {}",
+              instance,
+              readResponse.getException());
+          return false;
+        }
+        return !((FragmentInstanceInfo) readResponse.getDataset()).getState().isFailed();
       case WRITE:
         PlanNode planNode = instance.getFragment().getRoot();
         if (planNode instanceof InsertNode) {
@@ -181,8 +196,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             throw new FragmentInstanceDispatchException(e);
           }
         }
-        ConsensusWriteResponse resp = ConsensusImpl.getInstance().write(groupId, instance);
-        return TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode();
+        ConsensusWriteResponse writeResponse;
+        if (groupId instanceof DataRegionId) {
+          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, instance);
+        } else {
+          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, instance);
+        }
+        return TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
     }
     throw new UnsupportedOperationException(
         String.format("unknown query type [%s]", instance.getType()));

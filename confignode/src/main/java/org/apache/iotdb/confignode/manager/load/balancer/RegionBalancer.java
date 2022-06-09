@@ -41,12 +41,9 @@ import java.util.List;
 public class RegionBalancer {
 
   private final Manager configManager;
-  private final IRegionAllocator regionAllocator;
 
   public RegionBalancer(Manager configManager) {
     this.configManager = configManager;
-    // TODO: The RegionAllocator should be configurable
-    this.regionAllocator = new CopySetRegionAllocator();
   }
 
   /**
@@ -63,6 +60,7 @@ public class RegionBalancer {
       List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
       throws NotEnoughDataNodeException, MetadataException {
     CreateRegionsReq createRegionsReq = new CreateRegionsReq();
+    IRegionAllocator regionAllocator = genRegionAllocator();
 
     List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllocatedRegions();
@@ -97,6 +95,11 @@ public class RegionBalancer {
     }
 
     return createRegionsReq;
+  }
+
+  private IRegionAllocator genRegionAllocator() {
+    // TODO: The RegionAllocator should be configurable
+    return new CopySetRegionAllocator();
   }
 
   private NodeManager getNodeManager() {

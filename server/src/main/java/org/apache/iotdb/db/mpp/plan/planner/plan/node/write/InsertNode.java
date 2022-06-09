@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -31,9 +32,14 @@ import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -44,6 +50,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode implements IConsensusRequest {
+
+  private final Logger logger = LoggerFactory.getLogger(InsertNode.class);
   /** this insert node doesn't need to participate in multi-leader consensus */
   public static final long NO_CONSENSUS_INDEX = -1;
   /** no multi-leader consensus, all insert nodes can be safely deleted */
@@ -83,7 +91,7 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
   protected long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   /** Physical address of data region after splitting */
-  TRegionReplicaSet dataRegionReplicaSet;
+  protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -176,12 +184,25 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
    * org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)}
    */
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serializeAttributes(buffer);
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serializeAttributes(outputStream);
+      getPlanNodeId().serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when serializing this InsertNode.", e);
+      throw new SerializationRunTimeException(e);
+    }
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
 

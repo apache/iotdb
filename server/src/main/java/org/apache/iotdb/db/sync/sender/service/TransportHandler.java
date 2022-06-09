@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sync.sender.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -62,7 +63,8 @@ public class TransportHandler {
   public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
     this.pipeName = pipe.getName();
     this.createTime = pipe.getCreateTime();
-    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort());
+    this.localIP = getLocalIP(pipeSink);
+    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
 
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -70,8 +72,6 @@ public class TransportHandler {
     this.heartbeatExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipeName);
-
-    this.localIP = getLocalIP(pipeSink);
   }
 
   private String getLocalIP(IoTDBPipeSink pipeSink) {
@@ -96,8 +96,12 @@ public class TransportHandler {
   public void start() {
     transportFuture = transportExecutorService.submit(transportClient);
     heartbeatFuture =
-        heartbeatExecutorService.scheduleWithFixedDelay(
-            this::sendHeartbeat, 0, SyncConstant.HEARTBEAT_DELAY_SECONDS, TimeUnit.SECONDS);
+        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+            heartbeatExecutorService,
+            this::sendHeartbeat,
+            0,
+            SyncConstant.HEARTBEAT_DELAY_SECONDS,
+            TimeUnit.SECONDS);
   }
 
   public void stop() {

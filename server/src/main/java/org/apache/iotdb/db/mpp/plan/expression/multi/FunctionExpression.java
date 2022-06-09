@@ -51,6 +51,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -116,9 +117,15 @@ public class FunctionExpression extends Expression {
 
   public FunctionExpression(ByteBuffer byteBuffer) {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
-    functionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+
+    Map<String, String> deserializedFunctionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    functionAttributes =
+        deserializedFunctionAttributes != null
+            ? deserializedFunctionAttributes
+            : new LinkedHashMap<>();
+
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Expression> expressions = new ArrayList<>();
+    expressions = new ArrayList<>();
     for (int i = 0; i < expressionSize; i++) {
       expressions.add(Expression.deserialize(byteBuffer));
     }
@@ -602,6 +609,16 @@ public class FunctionExpression extends Expression {
     ReadWriteIOUtils.write(expressions.size(), byteBuffer);
     for (Expression expression : expressions) {
       Expression.serialize(expression, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(functionName, stream);
+    ReadWriteIOUtils.write(functionAttributes, stream);
+    ReadWriteIOUtils.write(expressions.size(), stream);
+    for (Expression expression : expressions) {
+      Expression.serialize(expression, stream);
     }
   }
 }

@@ -57,7 +57,8 @@ public class FragmentInstanceSerdeTest {
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     PlanFragmentId planFragmentId = new PlanFragmentId("test", -1);
     FragmentInstance fragmentInstance =
@@ -72,9 +73,7 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
@@ -86,7 +85,8 @@ public class FragmentInstanceSerdeTest {
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     PlanFragmentId planFragmentId = new PlanFragmentId("test2", 1);
     FragmentInstance fragmentInstance =
@@ -101,9 +101,7 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }

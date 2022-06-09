@@ -45,6 +45,8 @@ public class UpdateLastCacheOperator implements ProcessOperator {
   private final Operator child;
 
   // fullPath for queried time series
+  // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
+  // accept PartialPath
   private final PartialPath fullPath;
 
   // dataType for queried time series;
@@ -93,6 +95,11 @@ public class UpdateLastCacheOperator implements ProcessOperator {
     }
 
     checkArgument(res.getPositionCount() == 1, "last query result should only have one record");
+
+    // last value is null
+    if (res.getColumn(0).isNull(0)) {
+      return LAST_QUERY_EMPTY_TSBLOCK;
+    }
 
     long lastTime = res.getColumn(0).getLong(0);
     TsPrimitiveType lastValue = res.getColumn(1).getTsPrimitiveType(0);

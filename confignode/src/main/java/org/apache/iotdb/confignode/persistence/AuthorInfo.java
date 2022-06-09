@@ -65,7 +65,7 @@ public class AuthorInfo implements SnapshotProcessor {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      logger.error("get user or role permissionInfo failed", e);
+      logger.error("get user or role permissionInfo failed because ", e);
     }
   }
 
@@ -81,10 +81,7 @@ public class AuthorInfo implements SnapshotProcessor {
         result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       } else {
-        result.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
-        Map<String, TRoleResp> roleInfo = new HashMap<>();
-        roleInfo.put("", new TRoleResp("", new ArrayList<>()));
-        result.setRoleInfo(roleInfo);
+        result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
       logger.error("meet error while logging in.", e);
@@ -120,17 +117,12 @@ public class AuthorInfo implements SnapshotProcessor {
       } catch (AuthException e) {
         result.setStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage()));
-        return result;
       }
-      return result;
     } else {
-      result.setUserInfo(new TUserResp("", "", new ArrayList<>(), new ArrayList<>()));
-      Map<String, TRoleResp> roleInfo = new HashMap<>();
-      roleInfo.put("", new TRoleResp("", new ArrayList<>()));
-      result.setRoleInfo(roleInfo);
+      result = AuthUtils.generateEmptyPermissionInfoResp();
       result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR));
-      return result;
     }
+    return result;
   }
 
   private boolean checkOnePath(String username, String path, int permission) throws AuthException {
@@ -334,10 +326,6 @@ public class AuthorInfo implements SnapshotProcessor {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         userPrivilegesList.add(privilegeType.toString());
       }
-      permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
-      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      result.setPermissionInfo(permissionInfo);
-      return result;
     } else {
       List<String> rolePrivileges = new ArrayList<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
@@ -361,11 +349,11 @@ public class AuthorInfo implements SnapshotProcessor {
         }
       }
       permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
-      permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
-      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      result.setPermissionInfo(permissionInfo);
-      return result;
     }
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    result.setPermissionInfo(permissionInfo);
+    return result;
   }
 
   @Override

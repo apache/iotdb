@@ -287,11 +287,11 @@ Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS 
 Below are basic constraints of identifiers, specific identifiers may have other constraints, for example, `user` should consists of more than 4 characters. 
 
 - Permitted characters in unquoted identifiers:
-  - [0-9 a-z A-Z _ : @ # $ { }] (letters, digits, some special characters)
+  - [0-9 a-z A-Z _ ] (letters, digits and underscore)
   - ['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)
 - Identifiers may begin with a digit, unquoted identifiers can not consists of solely digits.
 - Identifiers are case sensitive.
-- Key words can be  used as an identifier.
+- Key words can be used as an identifier.
 
 **You need to quote the identifier with back quote(`) in the following cases:**
 
@@ -601,7 +601,7 @@ Keywords are words that have significance in SQL. Keywords can be used as an ide
 
 ## Session、TsFile API
 
-When using the Session and TsFile APIs, if the method you call requires parameters such as measurement, device, storage group, path in the form of String, **please ensure that the parameters passed in the input string is the same as when using the SQL statement**, here are some examples to help you understand.
+When using the Session and TsFile APIs, if the method you call requires parameters such as measurement, device, storage group, path in the form of String, **please ensure that the parameters passed in the input string is the same as when using the SQL statement**, here are some examples to help you understand. Code example could be found at: `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 1. Take creating a time series createTimeseries as an example:
 

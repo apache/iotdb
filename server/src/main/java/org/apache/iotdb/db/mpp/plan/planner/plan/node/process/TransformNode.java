@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -111,6 +113,17 @@ public class TransformNode extends ProcessNode {
     }
     ReadWriteIOUtils.write(keepNull, byteBuffer);
     ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TRANSFORM.serialize(stream);
+    ReadWriteIOUtils.write(outputExpressions.length, stream);
+    for (Expression expression : outputExpressions) {
+      Expression.serialize(expression, stream);
+    }
+    ReadWriteIOUtils.write(keepNull, stream);
+    ReadWriteIOUtils.write(zoneId.getId(), stream);
   }
 
   public static TransformNode deserialize(ByteBuffer byteBuffer) {

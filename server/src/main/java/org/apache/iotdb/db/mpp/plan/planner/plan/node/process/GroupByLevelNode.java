@@ -24,8 +24,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nullable;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,17 +58,33 @@ public class GroupByLevelNode extends MultiChildNode {
   // each GroupByLevelDescriptor will be output as one or two column of result TsBlock
   protected List<GroupByLevelDescriptor> groupByLevelDescriptors;
 
+  // The parameter of `group by time`.
+  // Its value will be null if there is no `group by time` clause.
+  @Nullable protected GroupByTimeParameter groupByTimeParameter;
+
+  protected OrderBy scanOrder;
+
   public GroupByLevelNode(
       PlanNodeId id,
       List<PlanNode> children,
-      List<GroupByLevelDescriptor> groupByLevelDescriptors) {
+      List<GroupByLevelDescriptor> groupByLevelDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
     super(id, children);
     this.groupByLevelDescriptors = groupByLevelDescriptors;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
   }
 
-  public GroupByLevelNode(PlanNodeId id, List<GroupByLevelDescriptor> groupByLevelDescriptors) {
+  public GroupByLevelNode(
+      PlanNodeId id,
+      List<GroupByLevelDescriptor> groupByLevelDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      OrderBy scanOrder) {
     super(id);
     this.groupByLevelDescriptors = groupByLevelDescriptors;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
   }
 
   @Override
@@ -82,7 +104,8 @@ public class GroupByLevelNode extends MultiChildNode {
 
   @Override
   public PlanNode clone() {
-    return new GroupByLevelNode(getPlanNodeId(), getGroupByLevelDescriptors());
+    return new GroupByLevelNode(
+        getPlanNodeId(), getGroupByLevelDescriptors(), this.groupByTimeParameter, this.scanOrder);
   }
 
   public List<GroupByLevelDescriptor> getGroupByLevelDescriptors() {
@@ -113,6 +136,29 @@ public class GroupByLevelNode extends MultiChildNode {
     for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
       groupByLevelDescriptor.serialize(byteBuffer);
     }
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      groupByTimeParameter.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.GROUP_BY_LEVEL.serialize(stream);
+    ReadWriteIOUtils.write(groupByLevelDescriptors.size(), stream);
+    for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
+      groupByLevelDescriptor.serialize(stream);
+    }
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
@@ -122,28 +168,40 @@ public class GroupByLevelNode extends MultiChildNode {
       groupByLevelDescriptors.add(GroupByLevelDescriptor.deserialize(byteBuffer));
       descriptorSize--;
     }
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = null;
+    if (isNull == 1) {
+      groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
+    }
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new GroupByLevelNode(planNodeId, groupByLevelDescriptors);
+    return new GroupByLevelNode(
+        planNodeId, groupByLevelDescriptors, groupByTimeParameter, scanOrder);
+  }
+
+  @Nullable
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
     GroupByLevelNode that = (GroupByLevelNode) o;
-    return Objects.equals(groupByLevelDescriptors, that.groupByLevelDescriptors);
+    return Objects.equals(groupByLevelDescriptors, that.groupByLevelDescriptors)
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), groupByLevelDescriptors);
+    return Objects.hash(super.hashCode(), groupByLevelDescriptors, groupByTimeParameter, scanOrder);
   }
 
   public String toString() {

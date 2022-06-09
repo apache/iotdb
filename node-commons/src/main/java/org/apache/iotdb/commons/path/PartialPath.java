@@ -32,6 +32,8 @@ import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -523,11 +525,26 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    PathType.Partial.serialize(stream);
+    serializeWithoutType(stream);
+  }
+
+  @Override
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
     super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(nodes.length, byteBuffer);
     for (String node : nodes) {
       ReadWriteIOUtils.write(node, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeWithoutType(DataOutputStream stream) throws IOException {
+    super.serializeWithoutType(stream);
+    ReadWriteIOUtils.write(nodes.length, stream);
+    for (String node : nodes) {
+      ReadWriteIOUtils.write(node, stream);
     }
   }
 
@@ -546,5 +563,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     partialPath.device = path.getDevice();
     partialPath.fullPath = path.getFullPath();
     return partialPath;
+  }
+
+  public PartialPath transformToPartialPath() {
+    return this;
   }
 }

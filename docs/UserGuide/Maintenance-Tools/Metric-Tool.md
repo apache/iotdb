@@ -101,11 +101,13 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | ------ | --------------------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
-#### 4.3.4. Cache Hit Ratio
+#### 4.3.4. Cache
 
 | Metric    | Tag                                     | level     | Description                                                                   | Sample                      |
 | --------- | --------------------------------------- | --------- | ----------------------------------------------------------------------------- | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
+| cache_hit | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache" | important | Cache hit ratio of chunk/timeSeriesMeta/SchemaCache  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
+| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | The cache hit/all counts of StorageGroup/SchemaPartition/DataPartition | cache_total{name="DataPartition",type="all",} 801.0 |
+
 
 #### 4.3.5. Business Data
 

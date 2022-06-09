@@ -28,7 +28,9 @@ import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
-import org.apache.ratis.retry.RetryPolicies;
+import org.apache.ratis.protocol.exceptions.RaftException;
+import org.apache.ratis.retry.ExponentialBackoffRetry;
+import org.apache.ratis.retry.RetryPolicy;
 import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,9 +99,7 @@ public class RatisClient {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
-                  .setRetryPolicy(
-                      RetryPolicies.retryForeverWithSleep(
-                          TimeDuration.valueOf(100, TimeUnit.MILLISECONDS)))
+                  .setRetryPolicy(new RatisRetryPolicy())
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));
@@ -108,6 +108,46 @@ public class RatisClient {
     @Override
     public boolean validateObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
       return true;
+    }
+  }
+
+  /**
+   * RatisRetryPolicy is similar to ExceptionDependentRetry 1. By default, use
+   * ExponentialBackoffRetry to handle request failure 2. If unexpected IOException is caught,
+   * immediately fail the request and let application choose retry action.
+   *
+   * <p>potential IOException can be categorized into expected and unexpected 1. expected, instance
+   * of RaftException, like LeaderNotReady / GroupMisMatch etc. 2. unexpected, IOException which is
+   * not an instance of RaftException
+   */
+  private static class RatisRetryPolicy implements RetryPolicy {
+
+    private static final Logger logger = LoggerFactory.getLogger(RatisClient.class);
+    private static final int maxAttempts = 10;
+    RetryPolicy defaultPolicy;
+
+    public RatisRetryPolicy() {
+      defaultPolicy =
+          ExponentialBackoffRetry.newBuilder()
+              .setBaseSleepTime(TimeDuration.valueOf(100, TimeUnit.MILLISECONDS))
+              .setMaxSleepTime(TimeDuration.valueOf(10, TimeUnit.SECONDS))
+              .setMaxAttempts(maxAttempts)
+              .build();
+    }
+
+    @Override
+    public Action handleAttemptFailure(Event event) {
+
+      if (event.getCause() != null) {
+        if (event.getCause() instanceof IOException
+            && !(event.getCause() instanceof RaftException)) {
+          // unexpected. may be caused by statemachine.
+          logger.debug("raft client request failed and caught exception: ", event.getCause());
+          return NO_RETRY_ACTION;
+        }
+      }
+
+      return defaultPolicy.handleAttemptFailure(event);
     }
   }
 }

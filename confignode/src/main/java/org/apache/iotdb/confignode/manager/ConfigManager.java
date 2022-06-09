@@ -24,15 +24,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildNodesPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -386,26 +386,15 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getChildPathsPartition(PartialPath partialPath) {
+  public DataSet getNodePathsPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      GetChildPathsPartitionReq getChildPathsPartitionReq = new GetChildPathsPartitionReq();
-      getChildPathsPartitionReq.setPartialPath(partialPath);
-      return partitionManager.getChildPathsPartition(getChildPathsPartitionReq);
-    } else {
-      SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
-      dataSet.setStatus(status);
-      return dataSet;
-    }
-  }
-
-  @Override
-  public DataSet getChildNodesPartition(PartialPath partialPath) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      GetChildNodesPartitionReq getChildNodesPartitionReq = new GetChildNodesPartitionReq();
-      getChildNodesPartitionReq.setPartialPath(partialPath);
-      return partitionManager.getChildNodesPartition(getChildNodesPartitionReq);
+      GetNodePathsPartitionReq getNodePathsPartitionReq = new GetNodePathsPartitionReq();
+      getNodePathsPartitionReq.setPartialPath(partialPath);
+      if (null != level) {
+        getNodePathsPartitionReq.setLevel(level);
+      }
+      return partitionManager.getNodePathsPartition(getNodePathsPartitionReq);
     } else {
       SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
       dataSet.setStatus(status);
@@ -523,9 +512,9 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.login(username, password);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 
@@ -536,9 +525,9 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 
@@ -548,11 +537,22 @@ public class ConfigManager implements Manager {
     ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
-    if (!req.getDataNodeConsensusProtocolClass().equals(conf.getDataNodeConsensusProtocolClass())) {
+    if (!req.getDataRegionConsensusProtocolClass()
+        .equals(conf.getDataRegionConsensusProtocolClass())) {
       errorResp
           .getStatus()
           .setMessage(
-              "Reject register, please ensure that the data_node_consensus_protocol_class are consistent.");
+              "Reject register, please ensure that the data_region_consensus_protocol_class "
+                  + "are consistent.");
+      return errorResp;
+    }
+    if (!req.getSchemaRegionConsensusProtocolClass()
+        .equals(conf.getSchemaRegionConsensusProtocolClass())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the schema_region_consensus_protocol_class "
+                  + "are consistent.");
       return errorResp;
     }
     if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
@@ -610,6 +610,14 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? udfManager.createFunction(udfName, className, uris)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropFunction(String udfName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? udfManager.dropFunction(udfName)
         : status;
   }
 

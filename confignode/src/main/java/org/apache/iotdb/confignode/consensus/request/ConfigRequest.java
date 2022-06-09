@@ -20,9 +20,9 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetChildPathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
@@ -44,12 +45,14 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 
 public abstract class ConfigRequest implements IConsensusRequest {
@@ -67,29 +70,18 @@ public abstract class ConfigRequest implements IConsensusRequest {
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serialize(buffer);
-  }
-
-  public final void serialize(ByteBuffer buffer) {
-    buffer.mark();
-    try {
-      serializeImpl(buffer);
-    } catch (UnsupportedOperationException e) {
-      // ignore and throw
-      throw e;
-    } catch (BufferOverflowException e) {
-      buffer.reset();
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Rollback buffer entry because error occurs when serializing this physical plan.", e);
-      buffer.reset();
-      throw e;
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serializeImpl(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      LOGGER.error("Unexpected error occurs when serializing this ConfigRequest.", e);
+      throw new SerializationRunTimeException(e);
     }
   }
 
-  protected abstract void serializeImpl(ByteBuffer buffer);
+  protected abstract void serializeImpl(DataOutputStream stream) throws IOException;
 
   protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
 
@@ -191,8 +183,11 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case CreateFunction:
           req = new CreateFunctionReq();
           break;
-        case GetChildPathsPartition:
-          req = new GetChildPathsPartitionReq();
+        case DropFunction:
+          req = new DropFunctionReq();
+          break;
+        case GetNodePathsPartition:
+          req = new GetNodePathsPartitionReq();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

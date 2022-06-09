@@ -31,8 +31,9 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
 public class MeasurementPath extends PartialPath {
 
@@ -44,8 +45,6 @@ public class MeasurementPath extends PartialPath {
 
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   private String measurementAlias = "";
-
-  private String version = null;
 
   public MeasurementPath() {}
 
@@ -126,14 +125,6 @@ public class MeasurementPath extends PartialPath {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
-  public String getVersion() {
-    return version;
-  }
-
-  public void setVersion(String version) {
-    this.version = version;
-  }
-
   @Override
   public PartialPath copy() {
     MeasurementPath result = new MeasurementPath();
@@ -144,15 +135,6 @@ public class MeasurementPath extends PartialPath {
     result.measurementSchema = measurementSchema;
     result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    MeasurementPath that = (MeasurementPath) o;
-    return Objects.equals(version, that.version);
   }
 
   /**
@@ -193,8 +175,25 @@ public class MeasurementPath extends PartialPath {
     }
     ReadWriteIOUtils.write(isUnderAlignedEntity, byteBuffer);
     ReadWriteIOUtils.write(measurementAlias, byteBuffer);
+  }
 
-    ReadWriteIOUtils.write(version, byteBuffer);
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    PathType.Measurement.serialize(stream);
+    super.serializeWithoutType(stream);
+    if (measurementSchema == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      if (measurementSchema instanceof MeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+      }
+      measurementSchema.serializeTo(stream);
+    }
+    ReadWriteIOUtils.write(isUnderAlignedEntity, stream);
+    ReadWriteIOUtils.write(measurementAlias, stream);
   }
 
   public static MeasurementPath deserialize(ByteBuffer byteBuffer) {
@@ -211,12 +210,14 @@ public class MeasurementPath extends PartialPath {
     }
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
-
-    measurementPath.version = ReadWriteIOUtils.readString(byteBuffer);
-
     measurementPath.nodes = partialPath.getNodes();
     measurementPath.device = partialPath.getDevice();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
+  }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    return getDevicePath().concatNode(getTailNode());
   }
 }

@@ -23,6 +23,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -44,9 +46,9 @@ public class DeleteStorageGroupReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteStorageGroup.ordinal());
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroup, buffer);
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.DeleteStorageGroup.ordinal());
+    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroup, stream);
   }
 
   @Override
