@@ -67,7 +67,9 @@ public class SnapshotStorage implements StateMachineStorage {
     ArrayList<Path> snapshotPaths = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(stateMachineDir.toPath())) {
       for (Path path : stream) {
-        snapshotPaths.add(path);
+        if (path.toFile().isDirectory()) {
+          snapshotPaths.add(path);
+        }
       }
     } catch (IOException exception) {
       logger.warn("cannot construct snapshot directory stream ", exception);
@@ -105,7 +107,9 @@ public class SnapshotStorage implements StateMachineStorage {
 
         @Override
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-          allFiles.add(file);
+          if (attrs.isRegularFile()) {
+            allFiles.add(file);
+          }
           return FileVisitResult.CONTINUE;
         }
 
