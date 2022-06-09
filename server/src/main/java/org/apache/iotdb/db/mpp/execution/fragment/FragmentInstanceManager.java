@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -82,39 +83,41 @@ public class FragmentInstanceManager {
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, DataRegion dataRegion) {
+
     FragmentInstanceId instanceId = instance.getId();
+    try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
+      FragmentInstanceExecution execution =
+          instanceExecution.computeIfAbsent(
+              instanceId,
+              id -> {
+                FragmentInstanceStateMachine stateMachine =
+                    new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
-    FragmentInstanceExecution execution =
-        instanceExecution.computeIfAbsent(
-            instanceId,
-            id -> {
-              FragmentInstanceStateMachine stateMachine =
-                  new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+                FragmentInstanceContext context =
+                    instanceContext.computeIfAbsent(
+                        instanceId,
+                        fragmentInstanceId ->
+                            createFragmentInstanceContext(fragmentInstanceId, stateMachine));
 
-              FragmentInstanceContext context =
-                  instanceContext.computeIfAbsent(
-                      instanceId,
-                      fragmentInstanceId ->
-                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                try {
+                  DataDriver driver =
+                      planner.plan(
+                          instance.getFragment().getRoot(),
+                          instance.getFragment().getTypeProvider(),
+                          context,
+                          instance.getTimeFilter(),
+                          dataRegion);
+                  return createFragmentInstanceExecution(
+                      scheduler, instanceId, context, driver, stateMachine, failedInstances);
+                } catch (Throwable t) {
+                  logger.error("error when create FragmentInstanceExecution.", t);
+                  stateMachine.failed(t);
+                  return null;
+                }
+              });
 
-              try {
-                DataDriver driver =
-                    planner.plan(
-                        instance.getFragment().getRoot(),
-                        instance.getFragment().getTypeProvider(),
-                        context,
-                        instance.getTimeFilter(),
-                        dataRegion);
-                return createFragmentInstanceExecution(
-                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
-              } catch (Throwable t) {
-                logger.error("error when create FragmentInstanceExecution.", t);
-                stateMachine.failed(t);
-                return null;
-              }
-            });
-
-    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+      return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+    }
   }
 
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
