@@ -225,7 +225,7 @@ public class InternalServiceImpl implements InternalService.Iface {
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (IllegalPathException e1) {
@@ -236,7 +236,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     } catch (MetadataException e2) {
       LOGGER.error(
           "Create Schema Region {} failed because {}", req.getStorageGroup(), e2.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
     }
@@ -263,13 +263,13 @@ public class InternalServiceImpl implements InternalService.Iface {
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (DataRegionException e) {
       LOGGER.error(
           "Create Data Region {} failed because {}", req.getStorageGroup(), e.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     }
     return tsStatus;
@@ -406,7 +406,7 @@ public class InternalServiceImpl implements InternalService.Iface {
         break;
       default:
         // unsupported region type
-        tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage("Region type is invalid");
         return new TMigrateRegionResp(tsStatus);
     }
@@ -414,7 +414,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     if (consensusGenericResponse.isSuccess()) {
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
     }
 
