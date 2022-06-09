@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -97,74 +98,139 @@ public class FilterOperator extends TransformOperator {
 
   @Override
   public TsBlock next() {
-    final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
-
-    final int outputColumnCount = transformers.length - 1;
-
-    if (outputDataTypes == null) {
-      outputDataTypes = new ArrayList<>();
-      for (int i = 0; i < outputColumnCount; ++i) {
-        outputDataTypes.add(transformers[i].getDataType());
-      }
+    if (isFirstIteration) {
+      return null;
     }
-    tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
-
-    final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     try {
-      int rowCount = 0;
+      YieldableState yieldableState = iterateAllColumnsToNextValid();
+      if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+        return null;
+      }
 
-      while (rowCount < FETCH_SIZE && !timeHeap.isEmpty()) {
+      final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
+      final int outputColumnCount = transformers.length - 1;
+      if (outputDataTypes == null) {
+        outputDataTypes = new ArrayList<>();
+        for (int i = 0; i < outputColumnCount; ++i) {
+          outputDataTypes.add(transformers[i].getDataType());
+        }
+      }
+      tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
+      final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+      final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+
+      int rowCount = 0;
+      while (!timeHeap.isEmpty()) {
         final long currentTime = timeHeap.pollFirst();
 
-        if (filterPointReader.next() && filterPointReader.currentTime() == currentTime) {
+        yieldableState = filterPointReader.yield();
+        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+          timeHeap.add(currentTime);
+          tsBlockBuilder.declarePositions(rowCount);
+          return tsBlockBuilder.build();
+        }
+
+        if (yieldableState == YieldableState.YIELDABLE
+            && filterPointReader.currentTime() == currentTime) {
           if (!filterPointReader.isCurrentNull() && filterPointReader.currentBoolean()) {
             // time
             timeBuilder.writeLong(currentTime);
 
             // values
             for (int i = 0; i < outputColumnCount; ++i) {
-              collectDataPointAndIterateToNextValid(
-                  transformers[i], columnBuilders[i], currentTime);
+              yieldableState = collectDataPoint(transformers[i], columnBuilders[i], currentTime, i);
+              if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+                for (int j = 0; j <= i; ++j) {
+                  shouldIterateReadersToNextValid[j] = false;
+                }
+                timeHeap.add(currentTime);
+
+                tsBlockBuilder.declarePositions(rowCount);
+                return tsBlockBuilder.build();
+              }
+            }
+            shouldIterateReadersToNextValid[outputColumnCount] = true;
+
+            for (int i = 0; i <= outputColumnCount; ++i) {
+              if (shouldIterateReadersToNextValid[i]) {
+                transformers[i].readyForNext();
+              }
             }
 
             ++rowCount;
           } else {
             // values
             for (int i = 0; i < outputColumnCount; ++i) {
-              skipDataPointAndIterateToNextValid(transformers[i], currentTime);
+              yieldableState = skipDataPoint(transformers[i], currentTime, i);
+              if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+                for (int j = 0; j <= i; ++j) {
+                  shouldIterateReadersToNextValid[j] = false;
+                }
+                timeHeap.add(currentTime);
+
+                tsBlockBuilder.declarePositions(rowCount);
+                return tsBlockBuilder.build();
+              }
+            }
+            shouldIterateReadersToNextValid[outputColumnCount] = true;
+
+            for (int i = 0; i <= outputColumnCount; ++i) {
+              if (shouldIterateReadersToNextValid[i]) {
+                transformers[i].readyForNext();
+              }
             }
           }
-
-          filterPointReader.readyForNext();
-          iterateReaderToNextValid(filterPointReader);
         } else {
           // values
           for (int i = 0; i < outputColumnCount; ++i) {
-            skipDataPointAndIterateToNextValid(transformers[i], currentTime);
+            yieldableState = skipDataPoint(transformers[i], currentTime, i);
+            if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+              for (int j = 0; j <= i; ++j) {
+                shouldIterateReadersToNextValid[j] = false;
+              }
+              timeHeap.add(currentTime);
+
+              tsBlockBuilder.declarePositions(rowCount);
+              return tsBlockBuilder.build();
+            }
           }
+
+          for (int i = 0; i < outputColumnCount; ++i) {
+            if (shouldIterateReadersToNextValid[i]) {
+              transformers[i].readyForNext();
+            }
+          }
+        }
+
+        yieldableState = iterateAllColumnsToNextValid();
+        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+          tsBlockBuilder.declarePositions(rowCount);
+          return tsBlockBuilder.build();
         }
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
 
       tsBlockBuilder.declarePositions(rowCount);
+      return tsBlockBuilder.build();
     } catch (Exception e) {
       LOGGER.error("FilterOperator#next()", e);
       throw new RuntimeException(e);
     }
-
-    return tsBlockBuilder.build();
   }
 
-  private void skipDataPointAndIterateToNextValid(LayerPointReader reader, long currentTime)
+  private YieldableState skipDataPoint(LayerPointReader reader, long currentTime, int readerIndex)
       throws IOException, QueryProcessException {
-    if (!reader.next() || reader.currentTime() != currentTime) {
-      return;
+    final YieldableState yieldableState = reader.yield();
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return yieldableState;
     }
 
-    reader.readyForNext();
-    iterateReaderToNextValid(reader);
+    if (reader.currentTime() == currentTime) {
+      shouldIterateReadersToNextValid[readerIndex] = true;
+    }
+
+    return YieldableState.YIELDABLE;
   }
 }
