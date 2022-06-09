@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.access.Row;
 
 import java.io.IOException;
 

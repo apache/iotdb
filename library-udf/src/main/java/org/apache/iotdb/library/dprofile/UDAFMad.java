@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.MADSketch;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 
 /** calculate the exact or approximate median absolute deviation (mad) */
 public class UDAFMad implements UDTF {
@@ -43,7 +44,11 @@ public class UDAFMad implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
-            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE)
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE))
         .validate(
             error -> (double) error >= 0 && (double) error < 1,
             "error has to be greater than or equal to 0 and less than 1.",
@@ -55,11 +60,13 @@ public class UDAFMad implements UDTF {
       throws Exception {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
     double error = parameters.getDoubleOrDefault("error", 0);
     exact = (error == 0);
     if (exact) {
-      statistics = new ExactOrderStatistics(parameters.getDataType(0));
+      statistics =
+          new ExactOrderStatistics(
+              UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0)));
     } else {
       sketch = new MADSketch(error);
     }

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.access.RowIterator;
-import org.apache.iotdb.commons.udf.api.access.RowWindow;
 import org.apache.iotdb.db.mpp.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.access.RowWindow;
 
 import java.io.IOException;
 
