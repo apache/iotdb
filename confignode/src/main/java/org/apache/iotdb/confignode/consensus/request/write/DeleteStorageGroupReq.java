@@ -47,7 +47,7 @@ public class DeleteStorageGroupReq extends ConfigRequest {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.DeleteStorageGroup.ordinal());
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroup, stream);
+    BasicStructureSerDeUtil.write(name, stream);
   }
 
   @Override

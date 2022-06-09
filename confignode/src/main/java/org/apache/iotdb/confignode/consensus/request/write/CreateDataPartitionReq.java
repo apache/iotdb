@@ -23,6 +23,11 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,14 +54,21 @@ public class CreateDataPartitionReq extends ConfigRequest {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigRequestType.CreateDataPartition.ordinal());
+    try {
+      TTransport transport = new TIOStreamTransport(stream);
+      TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-    buffer.putInt(assignedDataPartition.size());
-    assignedDataPartition.forEach(
-        (storageGroup, dataPartitionTable) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          dataPartitionTable.serialize(buffer);
-        });
+      stream.writeInt(ConfigRequestType.CreateDataPartition.ordinal());
+
+      stream.writeInt(assignedDataPartition.size());
+      for (Map.Entry<String, DataPartitionTable> dataPartitionTableEntry :
+          assignedDataPartition.entrySet()) {
+        BasicStructureSerDeUtil.write(dataPartitionTableEntry.getKey(), stream);
+        dataPartitionTableEntry.getValue().serialize(stream, protocol);
+      }
+    } catch (TException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override

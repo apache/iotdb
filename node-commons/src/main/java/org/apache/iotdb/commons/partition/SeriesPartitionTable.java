@@ -126,18 +126,6 @@ public class SeriesPartitionTable {
     return result;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    buffer.putInt(seriesPartitionMap.size());
-    seriesPartitionMap.forEach(
-        ((timePartitionSlot, consensusGroupIds) -> {
-          ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timePartitionSlot, buffer);
-          buffer.putInt(consensusGroupIds.size());
-          consensusGroupIds.forEach(
-              consensusGroupId ->
-                  ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer));
-        }));
-  }
-
   public void deserialize(ByteBuffer buffer) {
     int timePartitionSlotNum = buffer.getInt();
     for (int i = 0; i < timePartitionSlotNum; i++) {

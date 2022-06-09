@@ -23,12 +23,16 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 
 /** Create SchemaPartition by assignedSchemaPartition */
@@ -52,14 +56,21 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigRequestType.CreateSchemaPartition.ordinal());
+    try {
+      TTransport transport = new TIOStreamTransport(stream);
+      TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-    buffer.putInt(assignedSchemaPartition.size());
-    assignedSchemaPartition.forEach(
-        (storageGroup, schemaPartitionTable) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          schemaPartitionTable.serialize(buffer);
-        });
+      stream.writeInt(ConfigRequestType.CreateSchemaPartition.ordinal());
+
+      stream.writeInt(assignedSchemaPartition.size());
+      for (Map.Entry<String, SchemaPartitionTable> schemaPartitionTableEntry :
+          assignedSchemaPartition.entrySet()) {
+        BasicStructureSerDeUtil.write(schemaPartitionTableEntry.getKey(), stream);
+        schemaPartitionTableEntry.getValue().serialize(stream, protocol);
+      }
+    } catch (TException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override

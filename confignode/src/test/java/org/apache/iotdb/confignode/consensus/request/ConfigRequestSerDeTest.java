@@ -58,12 +58,10 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,13 +72,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class ConfigRequestSerDeTest {
-
-  private final ByteBuffer buffer = ByteBuffer.allocate(10240);
-
-  @After
-  public void cleanBuffer() {
-    buffer.clear();
-  }
 
   @Test
   public void RegisterDataNodeReqTest() throws IOException {
@@ -121,18 +112,16 @@ public class ConfigRequestSerDeTest {
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800));
-    req0.serialize(buffer);
-    buffer.flip();
-    SetStorageGroupReq req1 = (SetStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    SetStorageGroupReq req1 =
+        (SetStorageGroupReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void DeleteStorageGroupReqTest() throws IOException {
     DeleteStorageGroupReq req0 = new DeleteStorageGroupReq("root.sg");
-    req0.serialize(buffer);
-    buffer.flip();
-    DeleteStorageGroupReq req1 = (DeleteStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    DeleteStorageGroupReq req1 =
+        (DeleteStorageGroupReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -368,13 +357,11 @@ public class ConfigRequestSerDeTest {
             ConfigRequestType.CreateUser, "thulab", "", "passwd", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // create role
     req0 = new AuthorReq(ConfigRequestType.CreateRole, "", "admin", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // alter user
     req0 =
@@ -382,14 +369,12 @@ public class ConfigRequestSerDeTest {
             ConfigRequestType.UpdateUser, "tempuser", "", "", "newpwd", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // grant user
     req0 =
         new AuthorReq(ConfigRequestType.GrantUser, "tempuser", "", "", "", permissions, "root.ln");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // grant role
     req0 =
@@ -403,27 +388,23 @@ public class ConfigRequestSerDeTest {
             "root.ln");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // grant role to user
     req0 = new AuthorReq(ConfigRequestType.GrantRole, "", "temprole", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // revoke user
     req0 =
         new AuthorReq(ConfigRequestType.RevokeUser, "tempuser", "", "", "", permissions, "root.ln");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // revoke role
     req0 =
         new AuthorReq(ConfigRequestType.RevokeRole, "", "temprole", "", "", permissions, "root.ln");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // revoke role from user
     req0 =
@@ -437,67 +418,56 @@ public class ConfigRequestSerDeTest {
             "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // drop user
     req0 = new AuthorReq(ConfigRequestType.DropUser, "xiaoming", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // drop role
     req0 = new AuthorReq(ConfigRequestType.DropRole, "", "admin", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list user
     req0 = new AuthorReq(ConfigRequestType.ListUser, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list role
     req0 = new AuthorReq(ConfigRequestType.ListRole, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list privileges user
     req0 = new AuthorReq(ConfigRequestType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list privileges role
     req0 = new AuthorReq(ConfigRequestType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list user privileges
     req0 = new AuthorReq(ConfigRequestType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list role privileges
     req0 = new AuthorReq(ConfigRequestType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list all role of user
     req0 = new AuthorReq(ConfigRequestType.ListUserRoles, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list all user of role
     req0 = new AuthorReq(ConfigRequestType.ListRoleUsers, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
   }
 
   @Test

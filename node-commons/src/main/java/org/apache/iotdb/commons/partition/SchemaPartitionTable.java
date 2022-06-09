@@ -125,24 +125,6 @@ public class SchemaPartitionTable {
     return result;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    buffer.putInt(schemaPartitionMap.size());
-    schemaPartitionMap.forEach(
-        ((seriesPartitionSlot, consensusGroupId) -> {
-          ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
-          ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
-        }));
-  }
-
-  public void deserialize(ByteBuffer buffer) {
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
-      schemaPartitionMap.put(
-          ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer),
-          ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
-    }
-  }
-
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(schemaPartitionMap.size(), outputStream);
@@ -153,6 +135,17 @@ public class SchemaPartitionTable {
     }
   }
 
+  /** Only for ConsensusRequest */
+  public void deserialize(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      schemaPartitionMap.put(
+          ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer),
+          ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
+    }
+  }
+
+  /** Only for Snapshot */
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     int length = ReadWriteIOUtils.readInt(inputStream);

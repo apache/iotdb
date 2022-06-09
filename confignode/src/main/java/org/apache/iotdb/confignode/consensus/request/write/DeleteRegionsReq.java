@@ -54,14 +54,15 @@ public class DeleteRegionsReq extends ConfigRequest {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigRequestType.DeleteRegions.ordinal());
 
-    buffer.putInt(deleteRegionMap.size());
-    deleteRegionMap.forEach(
-        (storageGroup, regionIds) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          buffer.putInt(regionIds.size());
-          regionIds.forEach(
-              regionId -> ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, buffer));
-        });
+    stream.writeInt(deleteRegionMap.size());
+    for (Map.Entry<String, List<TConsensusGroupId>> consensusGroupIdsEntry :
+        deleteRegionMap.entrySet()) {
+      BasicStructureSerDeUtil.write(consensusGroupIdsEntry.getKey(), stream);
+      stream.writeInt(consensusGroupIdsEntry.getValue().size());
+      for (TConsensusGroupId consensusGroupId : consensusGroupIdsEntry.getValue()) {
+        ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
+      }
+    }
   }
 
   @Override

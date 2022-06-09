@@ -129,15 +129,6 @@ public class DataPartitionTable {
     return result;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    buffer.putInt(dataPartitionMap.size());
-    dataPartitionMap.forEach(
-        ((seriesPartitionSlot, seriesPartitionTable) -> {
-          ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
-          seriesPartitionTable.serialize(buffer);
-        }));
-  }
-
   public void deserialize(ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
