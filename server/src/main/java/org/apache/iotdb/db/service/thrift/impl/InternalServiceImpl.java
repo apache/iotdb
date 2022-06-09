@@ -48,7 +48,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
@@ -57,7 +56,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -156,9 +154,9 @@ public class InternalServiceImpl implements InternalService.Iface {
           }
         }
         if (groupId instanceof DataRegionId) {
-          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, fragmentInstance);
+          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
         } else {
-          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, fragmentInstance);
+          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
         // TODO need consider more status
         response.setAccepted(
@@ -366,18 +364,13 @@ public class InternalServiceImpl implements InternalService.Iface {
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     deleteRegionNode.setConsensusGroupId(consensusGroupId);
     deleteRegionNode.setPlanNodeId(planNodeId);
-    PlanFragmentId planFragmentId = queryId.genPlanFragmentId();
-    FragmentInstanceId fragmentInstanceId = planFragmentId.genFragmentInstanceId();
-    PlanFragment planFragment = new PlanFragment(planFragmentId, deleteRegionNode);
-    FragmentInstance fragmentInstance =
-        new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
     if (consensusGroupId instanceof DataRegionId) {
       return DataRegionConsensusImpl.getInstance()
-          .write(consensusGroupId, fragmentInstance)
+          .write(consensusGroupId, deleteRegionNode)
           .getStatus();
     } else {
       return SchemaRegionConsensusImpl.getInstance()
-          .write(consensusGroupId, fragmentInstance)
+          .write(consensusGroupId, deleteRegionNode)
           .getStatus();
     }
   }

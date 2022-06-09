@@ -195,9 +195,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         ConsensusWriteResponse writeResponse;
         if (groupId instanceof DataRegionId) {
-          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, instance);
+          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
         } else {
-          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, instance);
+          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
         return TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
     }
