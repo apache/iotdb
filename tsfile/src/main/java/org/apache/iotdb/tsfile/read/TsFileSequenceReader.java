@@ -181,6 +181,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
     this.tsFileInput = input;
     this.file = input.getFilePath();
+
+    if (FSFactoryProducer.getFSFactory().getFile(file + TsFileConstant.INDEX_SUFFIX).exists()) {
+      indexFileInput =
+          FSFactoryProducer.getFileInputFactory()
+              .getTsFileInput(file + TsFileConstant.INDEX_SUFFIX);
+    }
     try {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
@@ -203,6 +209,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(TsFileInput input, long fileMetadataPos, int fileMetadataSize) {
     this.tsFileInput = input;
+    this.file = input.getFilePath();
+
+    if (FSFactoryProducer.getFSFactory().getFile(file + TsFileConstant.INDEX_SUFFIX).exists()) {
+      indexFileInput =
+          FSFactoryProducer.getFileInputFactory()
+              .getTsFileInput(file + TsFileConstant.INDEX_SUFFIX);
+    }
     this.fileMetadataPos = fileMetadataPos;
     this.fileMetadataSize = fileMetadataSize;
   }
