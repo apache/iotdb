@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -89,6 +91,12 @@ public class SortNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SORT.serialize(byteBuffer);
     ReadWriteIOUtils.write(sortOrder.ordinal(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SORT.serialize(stream);
+    ReadWriteIOUtils.write(sortOrder.ordinal(), stream);
   }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {

@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -356,6 +357,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     subSerialize(byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.INSERT_TABLET.serialize(stream);
+    subSerialize(stream);
+  }
+
   void subSerialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
     writeMeasurementsOrSchemas(buffer);
@@ -363,14 +370,24 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     writeTimes(buffer);
     writeBitMaps(buffer);
     writeValues(buffer);
-    buffer.put((byte) (isAligned ? 1 : 0));
+    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), buffer);
+  }
+
+  void subSerialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    writeMeasurementsOrSchemas(stream);
+    writeDataTypes(stream);
+    writeTimes(stream);
+    writeBitMaps(stream);
+    writeValues(stream);
+    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
   }
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(ByteBuffer buffer) {
-    buffer.putInt(measurements.length - getFailedMeasurementNumber());
+    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), buffer);
+    ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), buffer);
 
-    buffer.put((byte) (measurementSchemas != null ? 1 : 0));
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert
       if (measurements[i] == null) {
@@ -381,6 +398,25 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         measurementSchemas[i].serializeTo(buffer);
       } else {
         ReadWriteIOUtils.write(measurements[i], buffer);
+      }
+    }
+  }
+
+  /** Serialize measurements or measurement schemas, ignoring failed time series */
+  private void writeMeasurementsOrSchemas(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
+    ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
+
+    for (int i = 0; i < measurements.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
+      // serialize measurement schemas when exist
+      if (measurementSchemas != null) {
+        measurementSchemas[i].serializeTo(stream);
+      } else {
+        ReadWriteIOUtils.write(measurements[i], stream);
       }
     }
   }
@@ -396,16 +432,34 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize data types, ignoring failed time series */
+  private void writeDataTypes(DataOutputStream stream) throws IOException {
+    for (int i = 0; i < dataTypes.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
+      dataTypes[i].serializeTo(stream);
+    }
+  }
+
   private void writeTimes(ByteBuffer buffer) {
-    buffer.putInt(rowCount);
+    ReadWriteIOUtils.write(rowCount, buffer);
     for (long time : times) {
-      buffer.putLong(time);
+      ReadWriteIOUtils.write(time, buffer);
+    }
+  }
+
+  private void writeTimes(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(rowCount, stream);
+    for (long time : times) {
+      ReadWriteIOUtils.write(time, stream);
     }
   }
 
   /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(ByteBuffer buffer) {
-    buffer.put(BytesUtils.boolToByte(bitMaps != null));
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), buffer);
     if (bitMaps != null) {
       for (int i = 0; i < bitMaps.length; i++) {
         // ignore failed partial insert
@@ -414,10 +468,30 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         }
 
         if (bitMaps[i] == null) {
-          buffer.put(BytesUtils.boolToByte(false));
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(false), buffer);
         } else {
-          buffer.put(BytesUtils.boolToByte(true));
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(true), buffer);
           buffer.put(bitMaps[i].getByteArray());
+        }
+      }
+    }
+  }
+
+  /** Serialize bitmaps, ignoring failed time series */
+  private void writeBitMaps(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), stream);
+    if (bitMaps != null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        // ignore failed partial insert
+        if (measurements[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
+        } else {
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
+          stream.write(bitMaps[i].getByteArray());
         }
       }
     }
@@ -434,43 +508,97 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize values, ignoring failed time series */
+  private void writeValues(DataOutputStream stream) throws IOException {
+    for (int i = 0; i < columns.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
+      serializeColumn(dataTypes[i], columns[i], stream);
+    }
+  }
+
   private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer) {
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
         for (int j = 0; j < rowCount; j++) {
-          buffer.putInt(intValues[j]);
+          ReadWriteIOUtils.write(intValues[j], buffer);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
         for (int j = 0; j < rowCount; j++) {
-          buffer.putLong(longValues[j]);
+          ReadWriteIOUtils.write(longValues[j], buffer);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
         for (int j = 0; j < rowCount; j++) {
-          buffer.putFloat(floatValues[j]);
+          ReadWriteIOUtils.write(floatValues[j], buffer);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
         for (int j = 0; j < rowCount; j++) {
-          buffer.putDouble(doubleValues[j]);
+          ReadWriteIOUtils.write(doubleValues[j], buffer);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
         for (int j = 0; j < rowCount; j++) {
-          buffer.put(BytesUtils.boolToByte(boolValues[j]));
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), buffer);
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
-          buffer.putInt(binaryValues[j].getLength());
-          buffer.put(binaryValues[j].getValues());
+          ReadWriteIOUtils.write(binaryValues[j], buffer);
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+    }
+  }
+
+  private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream)
+      throws IOException {
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) column;
+        for (int j = 0; j < rowCount; j++) {
+          ReadWriteIOUtils.write(intValues[j], stream);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) column;
+        for (int j = 0; j < rowCount; j++) {
+          ReadWriteIOUtils.write(longValues[j], stream);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) column;
+        for (int j = 0; j < rowCount; j++) {
+          ReadWriteIOUtils.write(floatValues[j], stream);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) column;
+        for (int j = 0; j < rowCount; j++) {
+          ReadWriteIOUtils.write(doubleValues[j], stream);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) column;
+        for (int j = 0; j < rowCount; j++) {
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for (int j = 0; j < rowCount; j++) {
+          ReadWriteIOUtils.write(binaryValues[j], stream);
         }
         break;
       default:
