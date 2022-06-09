@@ -75,6 +75,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
       try {
         if (!checkOnePath(username, path, permission)) {
           checkStatus = false;
+          break;
         }
       } catch (AuthException e) {
         checkStatus = false;
@@ -104,12 +105,16 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
   public SettableFuture<ConfigTaskResult> operatePermission(
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    boolean status = true;
     try {
       LocalConfigNode.getInstance().operatorPermission(authorizerReq);
     } catch (AuthException e) {
       future.setException(e);
+      status = false;
     }
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    if (status) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    }
     return future;
   }
 

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -27,7 +26,6 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -46,7 +44,7 @@ public class AuthorizerManagerTest {
   ClusterAuthorityFetcher authorityFetcher = ClusterAuthorityFetcher.getInstance();
 
   @Test
-  public void permissionCacheTest() throws ConfigNodeConnectionException, AuthException {
+  public void permissionCacheTest() {
     User user = new User();
     Role role1 = new Role();
     Role role2 = new Role();

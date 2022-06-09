@@ -224,27 +224,23 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   public TSStatus checkPath(String username, List<String> allPath, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
-    TPermissionInfoResp status = null;
+    TPermissionInfoResp permissionInfoResp = null;
     try (ConfigNodeClient configNodeClient =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
-      status = configNodeClient.checkUserPrivileges(req);
+      permissionInfoResp = configNodeClient.checkUserPrivileges(req);
     } catch (TException | IOException e) {
       logger.error("Failed to connect to config node.");
-      status = new TPermissionInfoResp();
-      status.setStatus(
+      permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(
           RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
-    } finally {
-      if (status == null) {
-        status = new TPermissionInfoResp();
-      }
     }
-    if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      userCache.put(username, cacheUser(status));
-      return status.getStatus();
+    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      userCache.put(username, cacheUser(permissionInfoResp));
+      return permissionInfoResp.getStatus();
     } else {
-      return status.getStatus();
+      return permissionInfoResp.getStatus();
     }
   }
 
@@ -256,19 +252,27 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
    * initialized.
    */
   public boolean invalidateCache(String username, String roleName) {
-    if (userCache.getIfPresent(username) != null) {
-      List<String> roleList = userCache.getIfPresent(username).getRoleList();
-      if (!roleList.isEmpty()) {
-        roleCache.invalidateAll(roleList);
+    if (username != null) {
+      if (userCache.getIfPresent(username) != null) {
+        List<String> roleList = userCache.getIfPresent(username).getRoleList();
+        if (!roleList.isEmpty()) {
+          roleCache.invalidateAll(roleList);
+        }
+        userCache.invalidate(username);
       }
-      userCache.invalidate(username);
+      if (userCache.getIfPresent(username) != null) {
+        logger.error("datanode cache initialization failed");
+        return false;
+      }
     }
-    if (roleCache.getIfPresent(roleName) != null) {
-      roleCache.invalidate(roleName);
-    }
-    if (userCache.getIfPresent(username) != null && roleCache.getIfPresent(roleName) != null) {
-      logger.error("datanode cache initialization failed");
-      return false;
+    if (roleName != null) {
+      if (roleCache.getIfPresent(roleName) != null) {
+        roleCache.invalidate(roleName);
+      }
+      if (roleCache.getIfPresent(roleName) != null) {
+        logger.error("datanode cache initialization failed");
+        return false;
+      }
     }
     return true;
   }
