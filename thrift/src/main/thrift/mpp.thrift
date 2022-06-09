@@ -173,7 +173,7 @@ service InternalService {
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
 
   /**
-  * disptcher PlanNode to remote node for write request in order to saving resource
+  * disptcher PlanNode to remote node for write request in order to save resource
   */
   TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 
