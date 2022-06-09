@@ -124,6 +124,14 @@ public class StandaloneCoordinatorTest {
     executeStatement(insertStmt);
   }
 
+  @Test
+  public void createUser() {
+    String createUserSql = "create user username 'password'";
+    Statement createStmt =
+        StatementGenerator.createStatement(createUserSql, ZoneId.systemDefault());
+    executeStatement(createStmt);
+  }
+
   private void executeStatement(Statement statement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =

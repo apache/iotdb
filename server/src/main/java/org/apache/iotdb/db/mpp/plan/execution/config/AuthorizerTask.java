@@ -57,9 +57,7 @@ public class AuthorizerTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
-    try (ConfigNodeClient configNodeClient =
-        clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+    try {
       // Construct request using statement
       TAuthorizerReq req =
           new TAuthorizerReq(
@@ -73,11 +71,23 @@ public class AuthorizerTask implements IConfigTask {
                   ? ""
                   : authorStatement.getNodeName().getFullPath());
       // Send request to some API server
-      if (authorStatement.getQueryType() == QueryType.WRITE) {
-        future = authorizerManager.operatePermission(req, configNodeClient);
+      if (config.isClusterMode()) {
+        try (ConfigNodeClient configNodeClient =
+            clientManager.borrowClient(ConfigNodeInfo.partitionRegionId); ) {
+          if (authorStatement.getQueryType() == QueryType.WRITE) {
+            future = authorizerManager.operatePermission(req, configNodeClient);
+          } else {
+            future = authorizerManager.queryPermission(req, configNodeClient);
+          }
+        }
       } else {
-        future = authorizerManager.queryPermission(req, configNodeClient);
+        if (authorStatement.getQueryType() == QueryType.WRITE) {
+          future = authorizerManager.operatePermission(req, null);
+        } else {
+          future = authorizerManager.queryPermission(req, null);
+        }
       }
+
     } catch (IOException | TException e) {
       LOGGER.error("can't connect to all config nodes", e);
       future.setException(e);

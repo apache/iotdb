@@ -21,7 +21,6 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -42,6 +41,8 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
 
   private static final Logger logger = LoggerFactory.getLogger(StandaloneAuthorityFetcher.class);
 
+  private LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+
   private static final class StandaloneAuthorityFetcherHolder {
     private static final StandaloneAuthorityFetcher INSTANCE = new StandaloneAuthorityFetcher();
 
@@ -55,7 +56,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUser(String username, String password) {
     try {
-      if (BasicAuthorizer.getInstance().login(username, password)) {
+      if (localConfigNode.login(username, password)) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
         return RpcUtils.getStatus(
@@ -86,11 +87,10 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  private static boolean checkOnePath(String username, String path, int permission)
-      throws AuthException {
+  private boolean checkOnePath(String username, String path, int permission) throws AuthException {
     try {
       String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path;
-      if (BasicAuthorizer.getInstance().checkUserPrivileges(username, fullPath, permission)) {
+      if (localConfigNode.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }
     } catch (AuthException e) {

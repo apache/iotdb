@@ -1234,4 +1234,13 @@ public class LocalConfigNode {
     permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
     return permissionInfo;
   }
+
+  public boolean login(String username, String password) throws AuthException {
+    return iAuthorizer.login(username, password);
+  }
+
+  public boolean checkUserPrivileges(String username, String path, int permission)
+      throws AuthException {
+    return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
 }
