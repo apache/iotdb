@@ -35,16 +35,12 @@ struct TInvalidateCacheReq {
     2: required string fullPath
 }
 
-struct TMigrateSchemaRegionReq{
-    1: required i32 sourceDataNodeID
-    2: required i32 targetDataNodeID
-    3: required i32 schemaRegionID
+struct TMigrateRegionsReq{
+    1: required list<common.TRegionReplicaSet> migrateRegions
 }
 
-struct TMigrateDataRegionReq{
-    1: required i32 sourceDataNodeID
-    2: required i32 targetDataNodeID
-    3: required i32 dataRegionID
+struct TMigrateRegionsResp{
+    1: required map<common.TConsensusGroupId, common.TSStatus> migrateResults
 }
 
 struct TFragmentInstanceId {
@@ -204,20 +200,13 @@ service InternalService {
      */
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
-
   /**
-   * Config node will migrate a schema region from one data node to another
-   *
-   * @param previous data node in the schema region, new data node, and schema region id
-   */
-  common.TSStatus migrateSchemaRegion(TMigrateSchemaRegionReq req)
-
-  /**
-   * Config node will migrate a data region from one data node to another
-   *
-   * @param previous data node in the data region, new data node, and dataregion id
-   */
-  common.TSStatus migrateDataRegion(TMigrateDataRegionReq req)
+     * Config node will migrate multiple regions(maybe data region or schema region)
+     * from one data node to other data nodes
+     *
+     * @param a map from consensus group id to replica set
+     */
+  TMigrateRegionsResp migrateRegions(TMigrateRegionsReq req)
 
   /**
   * ConfigNode will ask DataNode for heartbeat in every few seconds.
