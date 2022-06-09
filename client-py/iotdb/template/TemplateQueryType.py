@@ -17,31 +17,23 @@
 #
 
 
-class TemplateNode(object):
-    """
-    Template class, this class should be used to schema template node
-    """
+from enum import Enum, unique
 
-    def __init__(self, name):
-        self.name = name
 
-    def get_name(self):
-        return self.name
+@unique
+class TemplateQueryType(Enum):
+    COUNT_MEASUREMENTS = 0
+    IS_MEASUREMENT = 1
+    PATH_EXIST = 2
+    SHOW_MEASUREMENTS = 3
+    SHOW_TEMPLATES = 4
+    SHOW_SET_TEMPLATES = 5
+    SHOW_USING_TEMPLATES = 6
 
-    def get_children(self):
-        return None
+    # this method is implemented to avoid the issue reported by:
+    # https://bugs.python.org/issue30545
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
 
-    def add_child(self, node):
-        ...
-
-    def delete_child(self, node):
-        ...
-
-    def is_measurement(self):
-        return False
-
-    def is_share_time(self):
-        return False
-
-    def serialize(self, *args, **kwargs):
-        ...
+    def __hash__(self):
+        return self.value
