@@ -400,8 +400,8 @@ public class InternalServiceImpl implements InternalService.Iface {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           TEndPoint endpoint =
               new TEndPoint(
-                  dataNodeLocation.getDataRegionConsensusEndPoint().getIp(),
-                  dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
+                  dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
+                  dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
           newPeers.add(new Peer(schemaRegionId, endpoint));
         }
         consensusGenericResponse =
