@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,23 +117,26 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
 
-    IQueryExecution execution =
-        createQueryExecution(
-            statement,
-            new MPPQueryContext(
-                sql,
-                queryIdGenerator.createNextQueryId(),
-                session,
-                DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
-            partitionFetcher,
-            schemaFetcher);
-    if (execution.isQuery()) {
-      queryExecutionMap.put(queryId, execution);
-    }
-    execution.start();
+    QueryId globalQueryId = queryIdGenerator.createNextQueryId();
+    try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+      IQueryExecution execution =
+          createQueryExecution(
+              statement,
+              new MPPQueryContext(
+                  sql,
+                  queryIdGenerator.createNextQueryId(),
+                  session,
+                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
+              partitionFetcher,
+              schemaFetcher);
+      if (execution.isQuery()) {
+        queryExecutionMap.put(queryId, execution);
+      }
+      execution.start();
 
-    return execution.getStatus();
+      return execution.getStatus();
+    }
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {

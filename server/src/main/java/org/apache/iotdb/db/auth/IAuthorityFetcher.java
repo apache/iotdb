@@ -17,32 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution;
+package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 
-import java.util.Optional;
+import com.google.common.util.concurrent.SettableFuture;
 
-public interface IQueryExecution {
+import java.util.List;
 
-  void start();
+public interface IAuthorityFetcher {
 
-  void stop();
+  TSStatus checkUser(String username, String password);
 
-  void stopAndCleanup();
+  TSStatus checkUserPrivileges(String username, List<String> allPath, int permission);
 
-  ExecutionResult getStatus();
+  SettableFuture<ConfigTaskResult> operatePermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
 
-  Optional<TsBlock> getBatchResult();
-
-  boolean hasNextResult();
-
-  int getOutputValueColumnCount();
-
-  DatasetHeader getDatasetHeader();
-
-  boolean isQuery();
-
-  String getQueryId();
+  SettableFuture<ConfigTaskResult> queryPermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
 }

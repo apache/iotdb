@@ -173,4 +173,9 @@ public class ConfigExecution implements IQueryExecution {
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
   }
+
+  @Override
+  public String getQueryId() {
+    return context.getQueryId().getId();
+  }
 }

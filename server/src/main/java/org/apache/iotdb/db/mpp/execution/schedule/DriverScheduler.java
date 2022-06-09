@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskID;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,38 +182,41 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   private void clearDriverTask(DriverTask task) {
-    if (task.getStatus() != DriverTaskStatus.FINISHED) {
-      task.setStatus(DriverTaskStatus.ABORTED);
-    }
-    readyQueue.remove(task.getId());
-    timeoutQueue.remove(task.getId());
-    blockedTasks.remove(task);
-    Set<DriverTask> tasks = queryMap.get(task.getId().getQueryId());
-    if (tasks != null) {
-      tasks.remove(task);
-      if (tasks.isEmpty()) {
-        queryMap.remove(task.getId().getQueryId());
+    try (SetThreadName fragmentInstanceName =
+        new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+      if (task.getStatus() != DriverTaskStatus.FINISHED) {
+        task.setStatus(DriverTaskStatus.ABORTED);
       }
-    }
-    if (task.getAbortCause() != null) {
-      try {
-        task.getFragmentInstance()
-            .failed(
-                new FragmentInstanceAbortedException(
-                    task.getFragmentInstance().getInfo(), task.getAbortCause()));
-      } catch (Exception e) {
-        logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
+      readyQueue.remove(task.getId());
+      timeoutQueue.remove(task.getId());
+      blockedTasks.remove(task);
+      Set<DriverTask> tasks = queryMap.get(task.getId().getQueryId());
+      if (tasks != null) {
+        tasks.remove(task);
+        if (tasks.isEmpty()) {
+          queryMap.remove(task.getId().getQueryId());
+        }
       }
-    }
-    if (task.getStatus() == DriverTaskStatus.ABORTED) {
-      try {
-        blockManager.forceDeregisterFragmentInstance(
-            new TFragmentInstanceId(
-                task.getId().getQueryId().getId(),
-                task.getId().getFragmentId().getId(),
-                task.getId().getInstanceId()));
-      } catch (Exception e) {
-        logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
+      if (task.getAbortCause() != null) {
+        try {
+          task.getFragmentInstance()
+              .failed(
+                  new FragmentInstanceAbortedException(
+                      task.getFragmentInstance().getInfo(), task.getAbortCause()));
+        } catch (Exception e) {
+          logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
+        }
+      }
+      if (task.getStatus() == DriverTaskStatus.ABORTED) {
+        try {
+          blockManager.forceDeregisterFragmentInstance(
+              new TFragmentInstanceId(
+                  task.getId().getQueryId().getId(),
+                  task.getId().getFragmentId().getId(),
+                  task.getId().getInstanceId()));
+        } catch (Exception e) {
+          logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
+        }
       }
     }
   }
@@ -330,33 +334,36 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
     @Override
     public void toAborted(DriverTask task) {
-      task.lock();
-      try {
-        // If a task is already in an end state, it indicates that the task is finalized in other
-        // threads.
-        if (task.isEndState()) {
-          return;
-        }
-        logger.warn(
-            "The task {} is aborted. All other tasks in the same query will be cancelled",
-            task.getId().toString());
-        clearDriverTask(task);
-      } finally {
-        task.unlock();
-      }
-      QueryId queryId = task.getId().getQueryId();
-      Set<DriverTask> queryRelatedTasks = queryMap.remove(queryId);
-      if (queryRelatedTasks != null) {
-        for (DriverTask otherTask : queryRelatedTasks) {
-          if (task.equals(otherTask)) {
-            continue;
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+        task.lock();
+        try {
+          // If a task is already in an end state, it indicates that the task is finalized in other
+          // threads.
+          if (task.isEndState()) {
+            return;
           }
-          otherTask.lock();
-          try {
-            otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-            clearDriverTask(otherTask);
-          } finally {
-            otherTask.unlock();
+          logger.warn(
+              "The task {} is aborted. All other tasks in the same query will be cancelled",
+              task.getId().toString());
+          clearDriverTask(task);
+        } finally {
+          task.unlock();
+        }
+        QueryId queryId = task.getId().getQueryId();
+        Set<DriverTask> queryRelatedTasks = queryMap.remove(queryId);
+        if (queryRelatedTasks != null) {
+          for (DriverTask otherTask : queryRelatedTasks) {
+            if (task.equals(otherTask)) {
+              continue;
+            }
+            otherTask.lock();
+            try {
+              otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
+              clearDriverTask(otherTask);
+            } finally {
+              otherTask.unlock();
+            }
           }
         }
       }

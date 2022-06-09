@@ -59,6 +59,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,16 +135,18 @@ public class QueryExecution implements IQueryExecution {
     // So that the other components can only focus on the state change.
     stateMachine.addStateChangeListener(
         state -> {
-          if (!state.isDone()) {
-            return;
-          }
-          this.stop();
-          // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
-          // invoked
-          if (state == QueryState.FAILED
-              || state == QueryState.ABORTED
-              || state == QueryState.CANCELED) {
-            releaseResource();
+          try (SetThreadName queryName = new SetThreadName(context.getQueryId().getId())) {
+            if (!state.isDone()) {
+              return;
+            }
+            this.stop();
+            // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
+            // invoked
+            if (state == QueryState.FAILED
+                || state == QueryState.ABORTED
+                || state == QueryState.CANCELED) {
+              releaseResource();
+            }
           }
         });
   }
@@ -413,6 +416,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
+  }
+
+  @Override
+  public String getQueryId() {
+    return context.getQueryId().getId();
   }
 
   public String toString() {

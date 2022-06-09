@@ -96,7 +96,7 @@ public class ConfigTaskVisitor
 
   @Override
   public IConfigTask visitAuthor(AuthorStatement statement, TaskContext context) {
-    return new AuthorizerConfigTask(statement);
+    return new AuthorizerTask(statement);
   }
 
   @Override
