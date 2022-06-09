@@ -189,7 +189,7 @@ public class IOTDBInsertIT {
     Assert.assertTrue(countStatus == 2);
     st1.close();
   }
-  
+
   @Test
   public void testInsertWithDuplicatedMeasurements() {
     try (Statement st1 = connection.createStatement()) {
