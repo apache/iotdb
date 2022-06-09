@@ -77,6 +77,7 @@ public class StandaloneCoordinatorTest {
   @After
   public void tearDown() throws Exception {
     configNode.clear();
+    WALManager.getInstance().clear();
     WALManager.getInstance().stop();
     StorageEngineV2.getInstance().stop();
     FlushManager.getInstance().stop();
