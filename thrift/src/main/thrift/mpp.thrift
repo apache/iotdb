@@ -201,10 +201,10 @@ service InternalService {
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
   /**
-     * Config node will migrate multiple regions(maybe data region or schema region)
-     * from one data node to other data nodes
+     * Config node will migrate a region(maybe data region or schema region)
+     * from one data node to another
      *
-     * @param a map from consensus group id to replica set
+     * @param new replica set of this region
      */
   TMigrateRegionResp migrateRegion(TMigrateRegionReq req)
 
