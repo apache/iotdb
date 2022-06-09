@@ -82,6 +82,9 @@ public class GroupByLevelController {
     PartialPath rawPath = ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
     PartialPath groupedPath = generatePartialPathByLevel(rawPath.getNodes(), levels);
 
+    checkDatatypeConsistency(
+        groupedPath.getFullPath(), ((FunctionExpression) expression).getFunctionName(), rawPath);
+
     Expression rawPathExpression = new TimeSeriesOperand(rawPath);
     Expression groupedPathExpression = new TimeSeriesOperand(groupedPath);
     if (!rawPathToGroupedPathMap.containsKey(rawPathExpression)) {
@@ -93,7 +96,6 @@ public class GroupByLevelController {
             ((FunctionExpression) expression).getFunctionName(),
             ((FunctionExpression) expression).getFunctionAttributes(),
             Collections.singletonList(groupedPathExpression));
-    checkDatatypeConsistency(groupedExpression, rawPath);
     groupedPathMap.computeIfAbsent(groupedExpression, key -> new HashSet<>()).add(expression);
 
     if (alias != null) {
@@ -104,20 +106,20 @@ public class GroupByLevelController {
   /**
    * For example, calculating the first_value,
    *
-   * @param expression grouped expression, e.g. count(root.*.d1.s1)
+   * @param groupedPath grouped expression, e.g. root.*.d1.s1
+   * @param functionName function name, e.g. COUNT
    * @param rawPath raw series path, e.g. root.sg.d1.s1
    */
-  private void checkDatatypeConsistency(FunctionExpression expression, PartialPath rawPath) {
+  private void checkDatatypeConsistency(
+      String groupedPath, String functionName, PartialPath rawPath) {
     try {
       typeProvider.setType(
-          expression.getExpressionString(),
-          TypeInferenceUtils.getAggrDataType(
-              expression.getFunctionName(), rawPath.getSeriesType()));
+          groupedPath, TypeInferenceUtils.getAggrDataType(functionName, rawPath.getSeriesType()));
     } catch (StatementAnalyzeException e) {
       throw new SemanticException(
           String.format(
               "GROUP BY LEVEL: the data types of the same output column[%s] should be the same.",
-              expression.getExpressionString()));
+              groupedPath));
     }
   }
 

@@ -906,8 +906,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitRowBasedSeriesAggregate(
-        AggregationNode node, LocalExecutionPlanContext context) {
+    public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
       checkArgument(
           node.getAggregationDescriptorList().size() >= 1,
           "Aggregation descriptorList cannot be empty");

@@ -202,7 +202,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitRowBasedSeriesAggregate(AggregationNode node, GraphContext context) {
+  public List<String> visitAggregation(AggregationNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
