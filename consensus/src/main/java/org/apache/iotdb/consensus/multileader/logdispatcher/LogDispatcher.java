@@ -31,7 +31,6 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
-import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
@@ -281,7 +280,7 @@ public class LogDispatcher {
         if (data != null) {
           // since WAL can no longer recover FragmentInstance, but only PlanNode, we need to give
           // special flags to use different deserialization methods in the dataRegion stateMachine
-          logBatches.add(new TLogBatch(TLogType.InsertNode, data.serializeToByteBuffer()));
+          logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
         }
       }
       return currentIndex - 1;
@@ -289,7 +288,7 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, List<TLogBatch> logBatches) {
-      logBatches.add(new TLogBatch(TLogType.FragmentInstance, request.serializeToByteBuffer()));
+      logBatches.add(new TLogBatch(request.serializeToByteBuffer()));
     }
   }
 }
