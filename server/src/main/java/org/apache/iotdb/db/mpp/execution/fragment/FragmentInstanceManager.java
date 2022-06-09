@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -75,17 +76,8 @@ public class FragmentInstanceManager {
 
     this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
 
-    instanceManagementExecutor.scheduleWithFixedDelay(
-        () -> {
-          try {
-            removeOldInstances();
-          } catch (Throwable e) {
-            logger.warn("Error removing old tasks", e);
-          }
-        },
-        200,
-        200,
-        TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        instanceManagementExecutor, this::removeOldInstances, 200, 200, TimeUnit.MILLISECONDS);
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
@@ -147,6 +139,7 @@ public class FragmentInstanceManager {
                 return createFragmentInstanceExecution(
                     scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
+                logger.error("Execute error caused by ", t);
                 stateMachine.failed(t);
                 return null;
               }

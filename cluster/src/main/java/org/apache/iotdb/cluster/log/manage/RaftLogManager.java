@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
@@ -152,8 +153,10 @@ public abstract class RaftLogManager {
         ClusterDescriptor.getInstance().getConfig().getLogDeleteCheckIntervalSecond();
 
     if (logDeleteCheckIntervalSecond > 0) {
+
       this.deleteLogFuture =
-          deleteLogExecutorService.scheduleAtFixedRate(
+          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+              deleteLogExecutorService,
               this::checkDeleteLog,
               logDeleteCheckIntervalSecond,
               logDeleteCheckIntervalSecond,

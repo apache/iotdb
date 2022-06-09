@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -133,6 +135,12 @@ public class LastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.LAST_QUERY_SCAN.serialize(stream);
+    seriesPath.serialize(stream);
   }
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {

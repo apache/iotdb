@@ -45,12 +45,14 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 
 public abstract class ConfigRequest implements IConsensusRequest {
@@ -68,29 +70,18 @@ public abstract class ConfigRequest implements IConsensusRequest {
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serialize(buffer);
-  }
-
-  public final void serialize(ByteBuffer buffer) {
-    buffer.mark();
-    try {
-      serializeImpl(buffer);
-    } catch (UnsupportedOperationException e) {
-      // ignore and throw
-      throw e;
-    } catch (BufferOverflowException e) {
-      buffer.reset();
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Rollback buffer entry because error occurs when serializing this physical plan.", e);
-      buffer.reset();
-      throw e;
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serializeImpl(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      LOGGER.error("Unexpected error occurs when serializing this ConfigRequest.", e);
+      throw new SerializationRunTimeException(e);
     }
   }
 
-  protected abstract void serializeImpl(ByteBuffer buffer);
+  protected abstract void serializeImpl(DataOutputStream stream) throws IOException;
 
   protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
 

@@ -22,6 +22,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang.Validate;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -97,7 +99,23 @@ public abstract class PlanNode {
     }
   }
 
+  public void serialize(DataOutputStream stream) throws IOException {
+    serializeAttributes(stream);
+    id.serialize(stream);
+    List<PlanNode> planNodes = getChildren();
+    if (planNodes == null) {
+      ReadWriteIOUtils.write(0, stream);
+    } else {
+      ReadWriteIOUtils.write(planNodes.size(), stream);
+      for (PlanNode planNode : planNodes) {
+        planNode.serialize(stream);
+      }
+    }
+  }
+
   protected abstract void serializeAttributes(ByteBuffer byteBuffer);
+
+  protected abstract void serializeAttributes(DataOutputStream stream) throws IOException;
 
   @Override
   public boolean equals(Object o) {

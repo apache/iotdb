@@ -120,7 +120,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
     putString(stream, fullPath.getFullPath());
     putString(stream, className);
 
-    stream.write(attributes.size());
+    stream.writeInt(attributes.size());
     for (Entry<String, String> attribute : attributes.entrySet()) {
       putString(stream, attribute.getKey());
       putString(stream, attribute.getValue());

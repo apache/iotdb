@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.common;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -68,6 +70,11 @@ public class FragmentInstanceId {
   public void serialize(ByteBuffer byteBuffer) {
     fragmentId.serialize(byteBuffer);
     ReadWriteIOUtils.write(instanceId, byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    fragmentId.serialize(stream);
+    ReadWriteIOUtils.write(instanceId, stream);
   }
 
   public TFragmentInstanceId toThrift() {

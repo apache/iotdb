@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.commons.path;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public enum PathType {
@@ -33,6 +37,10 @@ public enum PathType {
   }
 
   public void serialize(ByteBuffer buffer) {
-    buffer.put(pathType);
+    ReadWriteIOUtils.write(pathType, buffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(pathType, stream);
   }
 }

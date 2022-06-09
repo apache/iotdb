@@ -142,7 +142,7 @@ public class CompactionMetricsManager {
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction",
-                Tag.NAME.toString(),
+                Tag.TYPE.toString(),
                 isInnerTask ? "inner" : "cross");
         if (isInnerTask) {
           MetricsService.getInstance()

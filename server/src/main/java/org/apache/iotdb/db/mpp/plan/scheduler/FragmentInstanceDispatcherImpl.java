@@ -150,9 +150,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-      instance.serializeRequest(buffer);
-      buffer.flip();
+      ByteBuffer buffer = instance.serializeToByteBuffer();
       TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
       TSendFragmentInstanceReq req =
           new TSendFragmentInstanceReq(

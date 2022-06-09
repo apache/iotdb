@@ -20,10 +20,12 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class PlanNodeId {
-  private String id;
+  private final String id;
 
   public PlanNodeId(String id) {
     this.id = id;
@@ -57,5 +59,9 @@ public class PlanNodeId {
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(id, byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(id, stream);
   }
 }
