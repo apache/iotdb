@@ -159,6 +159,12 @@ public class IOTDBInsertIT {
   }
 
   @Test(expected = Exception.class)
+  public void testInsertWithException6() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute(" insert into root.t1.*.a(timestamp, b) values(1509465600000, true)");
+  }
+
+  @Test(expected = Exception.class)
   public void testInsertWithException7() throws SQLException {
     Statement st1 = connection.createStatement();
     st1.execute("insert into root.t1.wf01.wt01(timestamp, hardware) values(2,1)");
