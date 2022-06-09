@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -99,31 +98,36 @@ public class SnapshotStorage implements StateMachineStorage {
   private List<Path> getAllFilesUnder(File rootDir) {
     List<Path> allFiles = new ArrayList<>();
     try {
-        Files.walkFileTree(rootDir.toPath(), new FileVisitor<Path>() {
-        @Override
-        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-          return FileVisitResult.CONTINUE;
-        }
+      Files.walkFileTree(
+          rootDir.toPath(),
+          new FileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                throws IOException {
+              return FileVisitResult.CONTINUE;
+            }
 
-        @Override
-        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-          if (attrs.isRegularFile()) {
-            allFiles.add(file);
-          }
-          return FileVisitResult.CONTINUE;
-        }
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                throws IOException {
+              if (attrs.isRegularFile()) {
+                allFiles.add(file);
+              }
+              return FileVisitResult.CONTINUE;
+            }
 
-        @Override
-        public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-          logger.info("visit file {} failed due to {}", file.toAbsolutePath(), exc);
-          return FileVisitResult.TERMINATE;
-        }
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+              logger.info("visit file {} failed due to {}", file.toAbsolutePath(), exc);
+              return FileVisitResult.TERMINATE;
+            }
 
-        @Override
-        public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-          return FileVisitResult.CONTINUE;
-        }
-      });
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
+                throws IOException {
+              return FileVisitResult.CONTINUE;
+            }
+          });
     } catch (IOException ioException) {
       logger.error("IOException occurred during listing snapshot directory: ", ioException);
       return Collections.emptyList();
