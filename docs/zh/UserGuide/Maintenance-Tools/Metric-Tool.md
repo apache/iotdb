@@ -100,11 +100,12 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | ------ | --------------------------------------- | --------- | -------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
-#### 4.3.4. 缓存命中率
+#### 4.3.4. 缓存
 
 | Metric    | Tag                                     | level     | 说明                                             | 示例                        |
 | --------- | --------------------------------------- | --------- | ------------------------------------------------ | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
+| cache_hit | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache" | important | chunk/timeSeriesMeta/SchemaCache缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
+| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | StorageGroup/SchemaPartition/DataPartition 的命中/总次数 | cache_total{name="DataPartition",type="all",} 801.0 |
 
 #### 4.3.5. 业务数据
 
