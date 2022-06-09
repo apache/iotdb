@@ -136,8 +136,8 @@ public class ExportCsvTestIT extends AbstractScript {
 
       List<String> values = new ArrayList<>();
       values.add("1.0");
-      values.add("\"abc\",aa");
-      values.add("abbe's");
+      values.add("'\"abc\",aa'");
+      values.add("'abbe's'");
       session.insertRecord(deviceId, 1L, measurements, values);
     } finally {
       if (session != null) {
