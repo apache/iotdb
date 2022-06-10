@@ -33,7 +33,6 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
-import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -374,7 +373,6 @@ public class MultiLeaderConsensusTest {
             new IndexedConsensusRequest(
                 ((IndexedConsensusRequest) request).getSearchIndex(),
                 -1,
-                TLogType.FragmentInstance,
                 new TestEntry(buffer.getInt(), Peer.deserialize(buffer))));
       } else {
         requestSet.add(((IndexedConsensusRequest) request));

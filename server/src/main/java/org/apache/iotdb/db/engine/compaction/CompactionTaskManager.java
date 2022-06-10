@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskCom
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -109,7 +110,7 @@ public class CompactionTaskManager implements IService {
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       candidateCompactionTaskQueue.regsitPollLastHook(
           x ->
-              CompactionMetricsManager.recordTaskInfo(
+              CompactionMetricsRecorder.recordTaskInfo(
                   x, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size()));
 
       // Periodically do the following: fetch the highest priority thread from the
@@ -224,7 +225,7 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.put(compactionTask);
 
       // add metrics
-      CompactionMetricsManager.recordTaskInfo(
+      CompactionMetricsRecorder.recordTaskInfo(
           compactionTask, CompactionTaskStatus.ADD_TO_QUEUE, candidateCompactionTaskQueue.size());
 
       return true;
@@ -251,12 +252,12 @@ public class CompactionTaskManager implements IService {
         AbstractCompactionTask task = candidateCompactionTaskQueue.take();
 
         // add metrics
-        CompactionMetricsManager.recordTaskInfo(
+        CompactionMetricsRecorder.recordTaskInfo(
             task, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size());
 
         if (task != null && task.checkValidAndSetMerging()) {
           submitTask(task);
-          CompactionMetricsManager.recordTaskInfo(
+          CompactionMetricsRecorder.recordTaskInfo(
               task, CompactionTaskStatus.READY_TO_EXECUTE, currentTaskNum.get());
         } else {
           logger.warn("A task {} is not submitted", task);
@@ -300,7 +301,7 @@ public class CompactionTaskManager implements IService {
       storageGroupTasks.get(storageGroupName).remove(task);
     }
     // add metrics
-    CompactionMetricsManager.recordTaskInfo(
+    CompactionMetricsRecorder.recordTaskInfo(
         task, CompactionTaskStatus.FINISHED, currentTaskNum.get());
   }
 

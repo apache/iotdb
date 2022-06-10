@@ -59,10 +59,10 @@ public class ConfigNodeConf {
   private final String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.MultiLeaderConsensus;
 
   /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -121,10 +121,10 @@ public class ConfigNodeConf {
   private long timePartitionInterval = 604800;
 
   /** Default number of SchemaRegion replicas */
-  private int schemaReplicationFactor = 3;
+  private int schemaReplicationFactor = 1;
 
   /** Default number of DataRegion replicas */
-  private int dataReplicationFactor = 3;
+  private int dataReplicationFactor = 1;
 
   /** Procedure Evict ttl */
   private int procedureCompletedEvictTTL = 800;

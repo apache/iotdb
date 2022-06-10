@@ -20,10 +20,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -32,7 +30,6 @@ import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -49,7 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class InsertNode extends WritePlanNode implements IConsensusRequest {
+public abstract class InsertNode extends WritePlanNode {
 
   private final Logger logger = LoggerFactory.getLogger(InsertNode.class);
   /** this insert node doesn't need to participate in multi-leader consensus */
@@ -177,23 +174,6 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
 
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
-  }
-
-  /**
-   * Deserialize via {@link
-   * org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)}
-   */
-  @Override
-  public ByteBuffer serializeToByteBuffer() {
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      serializeAttributes(outputStream);
-      getPlanNodeId().serialize(outputStream);
-      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    } catch (IOException e) {
-      logger.error("Unexpected error occurs when serializing this InsertNode.", e);
-      throw new SerializationRunTimeException(e);
-    }
   }
 
   @Override

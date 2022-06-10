@@ -37,6 +37,7 @@ import java.util.TreeMap;
 /** Create regions for specific StorageGroups */
 public class CreateRegionsReq extends ConfigRequest {
 
+  // Map<StorageGroupName, List<TRegionReplicaSet>>
   private final Map<String, List<TRegionReplicaSet>> regionMap;
 
   public CreateRegionsReq() {
