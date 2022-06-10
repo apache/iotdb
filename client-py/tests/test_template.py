@@ -54,16 +54,31 @@ def test_template_create():
         template.add_template(m_node_3)
         session.create_schema_template(template)
 
-        assert session.show_measurements_in_template(measurement_template_name) == ['s3', 's1', 's2']
+        assert session.show_measurements_in_template(measurement_template_name) == [
+            "s3",
+            "s1",
+            "s2",
+        ]
         assert session.count_measurements_in_template(measurement_template_name) == 3
-        assert session.is_measurement_in_template(measurement_template_name, 's1') is True
-        assert session.is_path_exist_in_template(measurement_template_name, "s1") is True
-        assert session.is_path_exist_in_template(measurement_template_name, "s4") is False
+        assert (
+            session.is_measurement_in_template(measurement_template_name, "s1") is True
+        )
+        assert (
+            session.is_path_exist_in_template(measurement_template_name, "s1") is True
+        )
+        assert (
+            session.is_path_exist_in_template(measurement_template_name, "s4") is False
+        )
 
         session.delete_node_in_template(measurement_template_name, "s1")
-        assert session.show_measurements_in_template(measurement_template_name) == ['s3', 's2']
+        assert session.show_measurements_in_template(measurement_template_name) == [
+            "s3",
+            "s2",
+        ]
         assert session.count_measurements_in_template(measurement_template_name) == 2
-        assert session.is_path_exist_in_template(measurement_template_name, "s1") is False
+        assert (
+            session.is_path_exist_in_template(measurement_template_name, "s1") is False
+        )
 
         tree_template_name = "treeTemplate_python"
         template = Template(name=tree_template_name, share_time=True)
@@ -79,10 +94,17 @@ def test_template_create():
         template.add_template(i_node_v)
         template.add_template(m_node_x)
         session.create_schema_template(template)
-        assert session.show_measurements_in_template(tree_template_name) == ['x', 'GPS.x', 'vehicle.x']
+        assert session.show_measurements_in_template(tree_template_name) == [
+            "x",
+            "GPS.x",
+            "vehicle.x",
+        ]
         assert session.count_measurements_in_template(tree_template_name) == 3
 
-        assert session.show_all_templates() == [measurement_template_name, tree_template_name]
+        assert session.show_all_templates() == [
+            measurement_template_name,
+            tree_template_name,
+        ]
         assert session.is_measurement_in_template(tree_template_name, "GPS") is False
         assert session.is_measurement_in_template(tree_template_name, "GPS.x") is True
 
@@ -101,7 +123,9 @@ def test_add_measurements_template():
         template_name = "add_template_python"
         template = Template(name=template_name, share_time=False)
         i_node_v = InternalNode(name="GPS", share_time=False)
-        i_node_gps_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+        i_node_gps_x = MeasurementNode(
+            "x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY
+        )
 
         i_node_v.add_child(i_node_gps_x)
         template.add_template(i_node_v)
@@ -113,15 +137,33 @@ def test_add_measurements_template():
         compressor_list = [Compressor.SNAPPY, Compressor.SNAPPY, Compressor.LZ4]
 
         measurements_aligned_path = ["aligned.s1", "aligned.s2", "aligned.s3"]
-        session.add_measurements_in_template(template_name, measurements_aligned_path, data_types, encoding_list,
-                                             compressor_list, is_aligned=True)
+        session.add_measurements_in_template(
+            template_name,
+            measurements_aligned_path,
+            data_types,
+            encoding_list,
+            compressor_list,
+            is_aligned=True,
+        )
         # session.drop_schema_template("add_template_python")
         measurements_aligned_path = ["unaligned.s1", "unaligned.s2", "unaligned.s3"]
-        session.add_measurements_in_template(template_name, measurements_aligned_path, data_types, encoding_list,
-                                             compressor_list, is_aligned=False)
+        session.add_measurements_in_template(
+            template_name,
+            measurements_aligned_path,
+            data_types,
+            encoding_list,
+            compressor_list,
+            is_aligned=False,
+        )
         measurements_aligned_path = ["s1", "s2", "s3"]
-        session.add_measurements_in_template(template_name, measurements_aligned_path, data_types, encoding_list,
-                                             compressor_list, is_aligned=False)
+        session.add_measurements_in_template(
+            template_name,
+            measurements_aligned_path,
+            data_types,
+            encoding_list,
+            compressor_list,
+            is_aligned=False,
+        )
 
         assert session.count_measurements_in_template(template_name) == 10
         assert session.is_measurement_in_template(template_name, "GPS") is False
@@ -144,7 +186,7 @@ def test_set_template():
 
         session.set_schema_template(template_name, "root.python.GPS")
 
-        assert session.show_paths_template_set_on(template_name) == ['root.python.GPS']
+        assert session.show_paths_template_set_on(template_name) == ["root.python.GPS"]
         assert session.show_paths_template_using_on(template_name) == []
 
         session.unset_schema_template(template_name, "root.python.GPS")

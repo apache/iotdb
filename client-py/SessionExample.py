@@ -368,12 +368,24 @@ encoding_list = [TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA]
 compressor_list = [Compressor.SNAPPY, Compressor.SNAPPY, Compressor.LZ4]
 
 measurements_aligned_path = ["aligned.s1", "aligned.s2", "aligned.s3"]
-session.add_measurements_in_template(template_name, measurements_aligned_path, data_types, encoding_list,
-                                     compressor_list, is_aligned=True)
+session.add_measurements_in_template(
+    template_name,
+    measurements_aligned_path,
+    data_types,
+    encoding_list,
+    compressor_list,
+    is_aligned=True,
+)
 # session.drop_schema_template("add_template_python")
 measurements_aligned_path = ["unaligned.s1", "unaligned.s2", "unaligned.s3"]
-session.add_measurements_in_template(template_name, measurements_aligned_path, data_types, encoding_list,
-                                     compressor_list, is_aligned=False)
+session.add_measurements_in_template(
+    template_name,
+    measurements_aligned_path,
+    data_types,
+    encoding_list,
+    compressor_list,
+    is_aligned=False,
+)
 session.delete_node_in_template(template_name, "aligned.s1")
 print(session.count_measurements_in_template(template_name))
 print(session.is_path_exist_in_template(template_name, "aligned.s1"))
