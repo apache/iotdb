@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
@@ -84,7 +85,7 @@ public class PlanFragment {
     }
     for (PlanNode child : root.getChildren()) {
       TRegionReplicaSet result = getNodeRegion(child);
-      if (result != null) {
+      if (result != null && result != DataPartition.NOT_ASSIGNED) {
         return result;
       }
     }

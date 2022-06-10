@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 // TODO: Remove this class
 public class DataPartition extends Partition {
-
+  public static final TRegionReplicaSet NOT_ASSIGNED = new TRegionReplicaSet();
   // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       dataPartitionMap;
@@ -69,6 +69,10 @@ public class DataPartition extends Partition {
       String deviceName, List<TTimePartitionSlot> timePartitionSlotList) {
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    if (!dataPartitionMap.containsKey(storageGroup)
+        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
     // TODO: (xingtanzjr) the timePartitionIdList is ignored
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
