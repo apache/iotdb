@@ -100,6 +100,8 @@ public class DataNode implements DataNodeMBean {
 
   public static void main(String[] args) {
     new DataNodeServerCommandLine().doMain(args);
+
+
   }
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
