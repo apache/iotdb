@@ -264,13 +264,6 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
-      throws MetadataException {
-    throw new UnsupportedOperationException(
-        "RSchemaRegion currently doesn't support timeseries with version");
-  }
-
   @TestOnly
   protected void createTimeseries(
       PartialPath path,
@@ -532,13 +525,6 @@ public class RSchemaRegion implements ISchemaRegion {
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
-  }
-
-  @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
-      throws MetadataException {
-    throw new UnsupportedOperationException(
-        "RSchemaRegion currently doesn't support timeseries with version");
   }
 
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)

@@ -47,6 +47,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.service.metrics.recorder.CacheMetricsRecorder;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -389,9 +390,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> deviceToTimePartitionMap =
           new HashMap<>();
       for (DataPartitionQueryParam queryParam : entry.getValue()) {
+        if (queryParam.getSeriesPartitionSlot() == null) {
+          queryParam.setSeriesPartitionSlot(
+              partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()));
+        }
         deviceToTimePartitionMap.put(
-            new TSeriesPartitionSlot(
-                partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()).getSlotId()),
+            new TSeriesPartitionSlot(queryParam.getSeriesPartitionSlot().getSlotId()),
             queryParam.getTimePartitionSlotList().stream()
                 .map(timePartitionSlot -> new TTimePartitionSlot(timePartitionSlot.getStartTime()))
                 .collect(Collectors.toList()));
@@ -448,26 +452,29 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     /** get storage group by cache */
     public boolean getStorageGroup(
         List<String> devicePaths, Map<String, String> deviceToStorageGroupMap) {
+      boolean result = true;
       if (storageGroupCache.size() == 0) {
         logger.debug("Failed to get storage group");
-        return false;
-      }
-      for (String devicePath : devicePaths) {
-        boolean hit = false;
-        for (String storageGroup : storageGroupCache) {
-          if (devicePath.startsWith(storageGroup + ".")) {
-            deviceToStorageGroupMap.put(devicePath, storageGroup);
-            hit = true;
+        result = false;
+      } else {
+        for (String devicePath : devicePaths) {
+          boolean hit = false;
+          for (String storageGroup : storageGroupCache) {
+            if (devicePath.startsWith(storageGroup + ".")) {
+              deviceToStorageGroupMap.put(devicePath, storageGroup);
+              hit = true;
+              break;
+            }
+          }
+          if (!hit) {
+            logger.debug("{} cannot hit storage group cache", devicePath);
+            result = false;
             break;
           }
         }
-        if (!hit) {
-          logger.debug("{} cannot hit storage group cache", devicePath);
-          return false;
-        }
       }
-      logger.debug("Hit storage group");
-      return true;
+      CacheMetricsRecorder.record(result, "StorageGroup");
+      return result;
     }
 
     /** update the cache of storage group */
@@ -490,7 +497,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
     /** get schemaPartition by patternTree */
     public SchemaPartition getSchemaPartition(Map<String, String> deviceToStorageGroupMap) {
+      String name = "SchemaPartition";
       if (deviceToStorageGroupMap.size() == 0) {
+        CacheMetricsRecorder.record(false, name);
         return null;
       }
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
@@ -503,6 +512,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         if (null == regionReplicaSet) {
           // if one device not find, then return cache miss.
           logger.debug("Failed to find schema partition");
+          CacheMetricsRecorder.record(false, name);
           return null;
         }
         String storageGroupName = deviceToStorageGroupMap.get(device);
@@ -515,6 +525,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       logger.debug("Hit schema partition");
       // cache hit
+      CacheMetricsRecorder.record(true, name);
       return new SchemaPartition(
           schemaPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
@@ -522,7 +533,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     /** get dataPartition by query param map */
     public DataPartition getDataPartition(
         Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      String name = "DataPartition";
       if (sgNameToQueryParamsMap.size() == 0) {
+        CacheMetricsRecorder.record(false, name);
         return null;
       }
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -542,6 +555,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               || 0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
             // if query all data, cache miss
             logger.debug("Failed to find data partition");
+            CacheMetricsRecorder.record(false, name);
             return null;
           }
           TSeriesPartitionSlot seriesPartitionSlot =
@@ -561,6 +575,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             if (null == regionReplicaSets) {
               // if one time partition not find, cache miss
               logger.debug("Failed to find data partition");
+              CacheMetricsRecorder.record(false, name);
               return null;
             }
             timePartitionSlotListMap.put(timePartitionSlot, regionReplicaSets);
@@ -569,6 +584,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       logger.debug("Hit data partition");
       // cache hit
+      CacheMetricsRecorder.record(true, name);
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
 

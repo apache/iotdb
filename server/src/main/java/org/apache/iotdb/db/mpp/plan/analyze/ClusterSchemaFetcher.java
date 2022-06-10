@@ -81,7 +81,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
   }
 
-  private SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
+  @Override
+  public SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
         schemaPartition.getSchemaPartitionMap();
     List<String> storageGroups = new ArrayList<>(schemaPartitionMap.keySet());
@@ -95,7 +96,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
-
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);

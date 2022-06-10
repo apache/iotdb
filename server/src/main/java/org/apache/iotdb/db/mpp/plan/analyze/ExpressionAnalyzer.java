@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -420,8 +421,11 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof FunctionExpression) {
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : expression.getExpressions()) {
-        extendedExpressions.add(
-            concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree, typeProvider));
+        List<Expression> concatedExpression =
+            concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree, typeProvider);
+        if (concatedExpression != null && concatedExpression.size() != 0) {
+          extendedExpressions.add(concatedExpression);
+        }
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -431,6 +435,9 @@ public class ExpressionAnalyzer {
       PartialPath concatPath = devicePath.concatPath(measurement);
 
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
+      if (actualPaths.isEmpty()) {
+        return new ArrayList<>();
+      }
       List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
       noStarPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
       return reconstructTimeSeriesOperands(noStarPaths);
@@ -500,9 +507,9 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (noStarPaths.size() == 0) {
-        throw new SemanticException(
+        throw new MeasurementNotExistException(
             String.format(
-                "ALIGN BY DEVICE: measurement '%s' does not exist in device '%s'",
+                "ALIGN BY DEVICE: Measurement '%s' does not exist in device '%s'",
                 measurement, devicePath));
       }
 

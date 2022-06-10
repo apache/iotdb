@@ -117,6 +117,10 @@ CLEAR
     : C L E A R
     ;
 
+CLUSTER
+    : C L U S T E R
+    ;
+
 CONCAT
     : C O N C A T
     ;

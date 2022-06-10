@@ -60,7 +60,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
 public class SlidingWindowAggregationOperatorTest {
@@ -145,6 +144,9 @@ public class SlidingWindowAggregationOperatorTest {
     int count = 0;
     while (slidingWindowAggregationOperator1.hasNext()) {
       TsBlock resultTsBlock = slidingWindowAggregationOperator1.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
       Assert.assertEquals(retArray[count], getResultString(resultTsBlock));
       count++;
@@ -155,6 +157,9 @@ public class SlidingWindowAggregationOperatorTest {
         initSlidingWindowAggregationOperator(false);
     while (slidingWindowAggregationOperator2.hasNext()) {
       TsBlock resultTsBlock = slidingWindowAggregationOperator2.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
       Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock));
       count--;

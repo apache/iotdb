@@ -25,6 +25,8 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -103,7 +105,9 @@ public class DeleteRegionNode extends WritePlanNode implements IConsensusRequest
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    super.serialize(buffer);
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DELETE_REGION.serialize(stream);
+    ReadWriteIOUtils.write(consensusGroupId.getType().getValue(), stream);
+    ReadWriteIOUtils.write(consensusGroupId.getId(), stream);
   }
 }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.common;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -36,8 +38,7 @@ public class FragmentInstanceId {
     this.queryId = fragmentId.getQueryId();
     this.fragmentId = fragmentId;
     this.instanceId = instanceId;
-    this.fullId =
-        String.format("%s.%d.%s", fragmentId.getQueryId().getId(), fragmentId.getId(), instanceId);
+    this.fullId = createFullId(fragmentId.getQueryId().getId(), fragmentId.getId(), instanceId);
   }
 
   public String getFullId() {
@@ -70,6 +71,11 @@ public class FragmentInstanceId {
     ReadWriteIOUtils.write(instanceId, byteBuffer);
   }
 
+  public void serialize(DataOutputStream stream) throws IOException {
+    fragmentId.serialize(stream);
+    ReadWriteIOUtils.write(instanceId, stream);
+  }
+
   public TFragmentInstanceId toThrift() {
     return new TFragmentInstanceId(queryId.getId(), fragmentId.getId(), instanceId);
   }
@@ -98,5 +104,9 @@ public class FragmentInstanceId {
   @Override
   public int hashCode() {
     return Objects.hash(fullId, queryId, fragmentId, instanceId);
+  }
+
+  public static String createFullId(String queryId, int fragmentId, String instanceId) {
+    return String.format("%s.%d.%s", queryId, fragmentId, instanceId);
   }
 }

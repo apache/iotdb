@@ -1336,7 +1336,12 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSink().getPipeSinkName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+        if (pipe.getStatus().equals(Pipe.PipeStatus.RUNNING) && pipe.isDisconnected()) {
+          record.addField(
+              Binary.valueOf(pipe.getStatus().name() + "(DISCONNECTED)"), TSDataType.TEXT);
+        } else {
+          record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+        }
         record.addField(
             Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
 

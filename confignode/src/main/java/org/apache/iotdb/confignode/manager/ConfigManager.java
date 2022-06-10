@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
@@ -511,9 +512,9 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.login(username, password);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 
@@ -524,9 +525,9 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 

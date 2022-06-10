@@ -77,7 +77,7 @@ public class CheckpointManagerTest {
     CheckpointReader checkpointReader =
         new CheckpointReader(
             new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(0)));
-    List<Checkpoint> actualCheckpoints = checkpointReader.readAll();
+    List<Checkpoint> actualCheckpoints = checkpointReader.getCheckpoints();
     assertEquals(expectedCheckpoints, actualCheckpoints);
   }
 
@@ -118,7 +118,7 @@ public class CheckpointManagerTest {
     assertEquals(memTablesNum / 2, checkpointManager.getFirstValidWALVersionId());
     // recover info from checkpoint file
     Map<Integer, MemTableInfo> actualMemTableId2Info =
-        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));
+        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
 
@@ -158,7 +158,7 @@ public class CheckpointManagerTest {
         new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(1)).exists());
     // recover info from checkpoint file
     Map<Integer, MemTableInfo> actualMemTableId2Info =
-        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));
+        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
 }

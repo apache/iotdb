@@ -35,6 +35,8 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -120,18 +122,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
 
     devicePath = insertRowNodeList.get(0).getDevicePath();
     isAligned = insertRowNodeList.get(0).isAligned;
-    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      List<String> measurements = Arrays.asList(insertRowNode.getMeasurements());
-      Map<String, TSDataType> subMap =
-          measurements.stream()
-              .collect(
-                  Collectors.toMap(
-                      key -> key, key -> insertRowNode.dataTypes[measurements.indexOf(key)]));
-      measurementsAndDataType.putAll(subMap);
-    }
-    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
-    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
+    storeMeasurementsAndDataType();
   }
 
   @Override
@@ -164,6 +155,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
         return false;
       }
     }
+    storeMeasurementsAndDataType();
     return true;
   }
 
@@ -199,6 +191,21 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
       result.add(reducedNode);
     }
     return result;
+  }
+
+  private void storeMeasurementsAndDataType() {
+    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      List<String> measurements = Arrays.asList(insertRowNode.getMeasurements());
+      Map<String, TSDataType> subMap =
+          measurements.stream()
+              .collect(
+                  Collectors.toMap(
+                      key -> key, key -> insertRowNode.getDataTypes()[measurements.indexOf(key)]));
+      measurementsAndDataType.putAll(subMap);
+    }
+    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
+    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
   }
 
   public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
@@ -242,14 +249,30 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(byteBuffer);
     ReadWriteIOUtils.write(devicePath.getFullPath(), byteBuffer);
 
-    byteBuffer.putInt(insertRowNodeList.size());
+    ReadWriteIOUtils.write(insertRowNodeList.size(), byteBuffer);
 
     for (InsertRowNode node : insertRowNodeList) {
-      byteBuffer.putLong(node.getTime());
+      ReadWriteIOUtils.write(node.getTime(), byteBuffer);
       node.serializeMeasurementsAndValues(byteBuffer);
     }
     for (Integer index : insertRowNodeIndexList) {
-      byteBuffer.putInt(index);
+      ReadWriteIOUtils.write(index, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(stream);
+    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+
+    ReadWriteIOUtils.write(insertRowNodeList.size(), stream);
+
+    for (InsertRowNode node : insertRowNodeList) {
+      ReadWriteIOUtils.write(node.getTime(), stream);
+      node.serializeMeasurementsAndValues(stream);
+    }
+    for (Integer index : insertRowNodeIndexList) {
+      ReadWriteIOUtils.write(index, stream);
     }
   }
 

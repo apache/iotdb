@@ -43,7 +43,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -60,7 +60,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle
+    : merge | fullMerge | flush | clearCache | settle | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
@@ -301,6 +301,11 @@ showTTL
 // Show All TTL
 showAllTTL
     : SHOW ALL TTL
+    ;
+
+// Show Cluster
+showCluster
+    : SHOW CLUSTER
     ;
 
 // Show Schema Template
@@ -620,6 +625,11 @@ clearCache
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
+    ;
+
+// Explain
+explain
+    : EXPLAIN selectStatement
     ;
 
 // Set System To ReadOnly/Writable

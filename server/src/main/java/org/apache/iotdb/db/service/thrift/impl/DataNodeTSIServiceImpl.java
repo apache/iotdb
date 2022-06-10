@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -100,6 +101,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -555,23 +557,26 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
 
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
-      TSExecuteStatementResp resp;
-      if (queryExecution.isQuery()) {
-        resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-        resp.setStatus(result.status);
-        resp.setQueryDataSet(
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
-      } else {
-        resp = RpcUtils.getTSExecuteStatementResp(result.status);
-      }
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          resp.setStatus(result.status);
+          resp.setQueryDataSet(
+              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
+        } else {
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
 
-      return resp;
+        return resp;
+      }
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSExecuteStatementResp(
@@ -609,18 +614,21 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
-      TSQueryDataSet result =
-          QueryDataSetUtils.convertTsBlockByFetchSize(
-              COORDINATOR.getQueryExecution(req.queryId), req.fetchSize);
-      boolean hasResultSet = result.bufferForTime().limit() != 0;
 
-      resp.setHasResultSet(hasResultSet);
-      resp.setQueryDataSet(result);
-      resp.setIsAlign(true);
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
+      try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
 
-      QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
-      return resp;
+        TSQueryDataSet result =
+            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize);
+        boolean hasResultSet = result.bufferForTime().limit() != 0;
 
+        resp.setHasResultSet(hasResultSet);
+        resp.setQueryDataSet(result);
+        resp.setIsAlign(true);
+
+        QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+        return resp;
+      }
     } catch (Exception e) {
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     }
@@ -1003,7 +1011,36 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      DeleteDataStatement statement = StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.DELETE_DATA, e.getErrorCode());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.DELETE_DATA, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override

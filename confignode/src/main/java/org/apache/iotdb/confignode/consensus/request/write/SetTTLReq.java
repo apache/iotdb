@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -51,11 +52,11 @@ public class SetTTLReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
-    buffer.putLong(TTL);
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.writeLong(TTL);
   }
 
   @Override

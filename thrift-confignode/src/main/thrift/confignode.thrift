@@ -157,25 +157,25 @@ struct TAuthorizerReq {
 
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: required map<string, list<string>> authorizerInfo
+  2: optional map<string, list<string>> authorizerInfo
 }
 
-struct TUserResp{
+struct TUserResp {
   1: required string username
   2: required string password
   3: required list<string> privilegeList
   4: required list<string> roleList
 }
 
-struct TRoleResp{
+struct TRoleResp {
   1: required string roleName
   2: required list<string> privilegeList
 }
 
-struct TPermissionInfoResp{
-  1: required TUserResp userInfo
-  2: required map<string, TRoleResp> roleInfo
-  3: required common.TSStatus status
+struct TPermissionInfoResp {
+  1: required common.TSStatus status
+  2: optional TUserResp userInfo
+  3: optional map<string, TRoleResp> roleInfo
 }
 
 struct TLoginReq {
@@ -183,7 +183,7 @@ struct TLoginReq {
   2: required string password
 }
 
-struct TCheckUserPrivilegesReq{
+struct TCheckUserPrivilegesReq {
   1: required string username;
   2: required list<string> paths
   3: required i32 permission
@@ -208,6 +208,13 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+// Show cluster
+struct TClusterNodeInfos {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
+}
+
 // UDF
 struct TCreateFunctionReq {
   1: required string udfName
@@ -226,6 +233,9 @@ service ConfigIService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+
+  /* Show Cluster */
+  TClusterNodeInfos getAllClusterNodeInfos()
 
   /* StorageGroup */
 

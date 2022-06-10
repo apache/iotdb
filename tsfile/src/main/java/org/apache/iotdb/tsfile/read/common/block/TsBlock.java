@@ -347,7 +347,8 @@ public class TsBlock {
       int columnCount = getValueColumnCount();
       Object[] row = new Object[columnCount + 1];
       for (int i = 0; i < columnCount; ++i) {
-        row[i] = valueColumns[i].getObject(rowIndex);
+        final Column column = valueColumns[i];
+        row[i] = column.isNull(rowIndex) ? null : column.getObject(rowIndex);
       }
       row[columnCount] = timeColumn.getObject(rowIndex);
 

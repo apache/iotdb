@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.db.engine;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
@@ -32,28 +31,23 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
+import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -63,7 +57,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -79,6 +72,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class StorageEngineV2 implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngineV2.class);
@@ -252,23 +246,25 @@ public class StorageEngineV2 implements IService {
 
   private void asyncRecover(ExecutorService pool, List<Future<Void>> futures) {
 
-    Map<String, List<String>> localDataRegionInfo = getLocalDataRegionInfo();
+    Map<String, List<DataRegionId>> localDataRegionInfo = getLocalDataRegionInfo();
+    localDataRegionInfo.values().forEach(list -> recoverDataRegionNum += list.size());
     readyDataRegionNum = new AtomicInteger(0);
     // init wal recover manager
     WALRecoverManager.getInstance()
         .setAllDataRegionScannedLatch(new CountDownLatch(recoverDataRegionNum));
-    for (Map.Entry<String, List<String>> entry : localDataRegionInfo.entrySet()) {
+    for (Map.Entry<String, List<DataRegionId>> entry : localDataRegionInfo.entrySet()) {
       String sgName = entry.getKey();
-      for (String dataRegionId : entry.getValue()) {
+      for (DataRegionId dataRegionId : entry.getValue()) {
         Callable<Void> recoverDataRegionTask =
             () -> {
               DataRegion dataRegion = null;
               try {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
               } catch (DataRegionException e) {
-                logger.error("Failed to recover data region {}[{}]", sgName, dataRegionId, e);
+                logger.error(
+                    "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
               }
-              dataRegionMap.put(new DataRegionId(Integer.parseInt(dataRegionId)), dataRegion);
+              dataRegionMap.put(dataRegionId, dataRegion);
               logger.info(
                   "Data regions have been recovered {}/{}",
                   readyDataRegionNum.incrementAndGet(),
@@ -280,22 +276,25 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  private Map<String, List<String>> getLocalDataRegionInfo() {
+  /** get StorageGroup -> DataRegionIdList map from data/system directory. */
+  public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] sgDirs = system.listFiles();
-    Map<String, List<String>> localDataRegionInfo = new HashMap<>();
+    Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
+    if (sgDirs == null) {
+      return localDataRegionInfo;
+    }
     for (File sgDir : sgDirs) {
       if (!sgDir.isDirectory()) {
         continue;
       }
       String sgName = sgDir.getName();
-      List<String> dataRegionIdList = new ArrayList<>();
+      List<DataRegionId> dataRegionIdList = new ArrayList<>();
       for (File dataRegionDir : sgDir.listFiles()) {
         if (!dataRegionDir.isDirectory()) {
           continue;
         }
-        dataRegionIdList.add(dataRegionDir.getName());
-        recoverDataRegionNum++;
+        dataRegionIdList.add(new DataRegionId(Integer.parseInt(dataRegionDir.getName())));
       }
       localDataRegionInfo.put(sgName, dataRegionIdList);
     }
@@ -324,8 +323,12 @@ public class StorageEngineV2 implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ttlCheckThread.scheduleAtFixedRate(
-        this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ttlCheckThread,
+        this::checkTTL,
+        TTL_CHECK_INTERVAL,
+        TTL_CHECK_INTERVAL,
+        TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
 
     startTimedService();
@@ -351,7 +354,8 @@ public class StorageEngineV2 implements IService {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
-      seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
           config.getSeqMemtableFlushCheckInterval(),
@@ -363,7 +367,8 @@ public class StorageEngineV2 implements IService {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
-      unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
           config.getUnseqMemtableFlushCheckInterval(),
@@ -469,7 +474,8 @@ public class StorageEngineV2 implements IService {
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
   public DataRegion buildNewDataRegion(
-      String logicalStorageGroupName, String dataRegionId, long ttl) throws DataRegionException {
+      String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
+      throws DataRegionException {
     DataRegion dataRegion;
     logger.info(
         "construct a data region instance, the storage group is {}, Thread is {}",
@@ -478,7 +484,7 @@ public class StorageEngineV2 implements IService {
     dataRegion =
         new DataRegion(
             systemDir + File.separator + logicalStorageGroupName,
-            dataRegionId,
+            String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
     dataRegion.setDataTTL(ttl);
@@ -487,52 +493,15 @@ public class StorageEngineV2 implements IService {
     return dataRegion;
   }
 
+  /** Write data into DataRegion. For standalone mode only. */
+  public void write(DataRegionId groupId, PlanNode planNode) {
+    planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
+  }
+
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
     dataRegionMap.clear();
-  }
-
-  /**
-   * insert an InsertRowNode to a storage group.
-   *
-   * @param insertRowNode
-   */
-  // TODO:(New insert)
-  public void insert(DataRegionId dataRegionId, InsertRowNode insertRowNode)
-      throws StorageEngineException, MetadataException {
-    if (enableMemControl) {
-      try {
-        blockInsertionIfReject(null);
-      } catch (WriteProcessException e) {
-        throw new StorageEngineException(e);
-      }
-    }
-
-    DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-
-    try {
-      dataRegion.insert(insertRowNode);
-    } catch (WriteProcessException e) {
-      throw new StorageEngineException(e);
-    }
-  }
-
-  /** insert an InsertTabletNode to a storage group */
-  // TODO:(New insert)
-  public void insertTablet(DataRegionId dataRegionId, InsertTabletNode insertTabletNode)
-      throws StorageEngineException, BatchProcessException {
-    if (enableMemControl) {
-      try {
-        blockInsertionIfReject(null);
-      } catch (WriteProcessRejectException e) {
-        TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
-        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
-        throw new BatchProcessException(results);
-      }
-    }
-    DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-    dataRegion.insertTablet(insertTabletNode);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
@@ -587,8 +556,21 @@ public class StorageEngineV2 implements IService {
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
       throws DataRegionException {
-    DataRegion dataRegion = buildNewDataRegion(sg, String.valueOf(regionId.getId()), ttl);
-    dataRegionMap.put(regionId, dataRegion);
+    AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
+    DataRegion dataRegion =
+        dataRegionMap.computeIfAbsent(
+            regionId,
+            x -> {
+              try {
+                return buildNewDataRegion(sg, x, ttl);
+              } catch (DataRegionException e) {
+                exceptionAtomicReference.set(e);
+              }
+              return null;
+            });
+    if (exceptionAtomicReference.get() != null) {
+      throw exceptionAtomicReference.get();
+    }
     return dataRegion;
   }
 

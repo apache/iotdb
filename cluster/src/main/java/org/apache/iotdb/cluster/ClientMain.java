@@ -327,7 +327,7 @@ public class ClientMain {
       logger.info(resp.columns.toString());
     }
 
-    SessionDataSet dataSet =
+    try (SessionDataSet dataSet =
         new SessionDataSet(
             query,
             resp.getColumns(),
@@ -338,11 +338,11 @@ public class ClientMain {
             client,
             sessionId,
             resp.queryDataSet,
-            false);
-
-    while (dataSet.hasNext()) {
-      if (logger.isInfoEnabled()) {
-        logger.info(dataSet.next().toString());
+            false)) {
+      while (dataSet.hasNext()) {
+        if (logger.isInfoEnabled()) {
+          logger.info(dataSet.next().toString());
+        }
       }
     }
     System.out.println();

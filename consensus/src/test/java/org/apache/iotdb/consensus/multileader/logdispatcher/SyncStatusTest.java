@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
-import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -39,6 +39,7 @@ public class SyncStatusTest {
 
   private static final File storageDir = new File("target" + java.io.File.separator + "test");
   private static final String prefix = "version";
+  private static final MultiLeaderConfig config = new MultiLeaderConfig.Builder().build();
 
   @Before
   public void setUp() throws IOException {
@@ -56,22 +57,22 @@ public class SyncStatusTest {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
-    SyncStatus status = new SyncStatus(controller);
+    SyncStatus status = new SyncStatus(controller, config);
     List<PendingBatch> batchList = new ArrayList<>();
 
-    for (long i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH; i++) {
+    for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
       batchList.add(batch);
       status.addNextBatch(batch);
     }
 
-    for (int i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH; i++) {
+    for (int i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       status.removeBatch(batchList.get(i));
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1 - i, status.getPendingBatches().size());
+          config.getReplication().getMaxPendingBatch() - 1 - i, status.getPendingBatches().size());
       Assert.assertEquals(i, controller.getCurrentIndex());
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
+          config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
     }
   }
 
@@ -82,29 +83,29 @@ public class SyncStatusTest {
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    SyncStatus status = new SyncStatus(controller);
+    SyncStatus status = new SyncStatus(controller, config);
     List<PendingBatch> batchList = new ArrayList<>();
 
-    for (long i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH; i++) {
+    for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
       batchList.add(batch);
       status.addNextBatch(batch);
     }
 
-    for (int i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1; i++) {
-      status.removeBatch(batchList.get(MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1 - i));
+    for (int i = 0; i < config.getReplication().getMaxPendingBatch() - 1; i++) {
+      status.removeBatch(batchList.get(config.getReplication().getMaxPendingBatch() - 1 - i));
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getPendingBatches().size());
+          config.getReplication().getMaxPendingBatch(), status.getPendingBatches().size());
       Assert.assertEquals(0, controller.getCurrentIndex());
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
+          config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
     }
 
     status.removeBatch(batchList.get(0));
     Assert.assertEquals(0, status.getPendingBatches().size());
     Assert.assertEquals(
-        MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1, controller.getCurrentIndex());
-    Assert.assertEquals(MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
+        config.getReplication().getMaxPendingBatch() - 1, controller.getCurrentIndex());
+    Assert.assertEquals(config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
   }
 
   /** Confirm success first from front to back, then back to front */
@@ -114,39 +115,39 @@ public class SyncStatusTest {
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    SyncStatus status = new SyncStatus(controller);
+    SyncStatus status = new SyncStatus(controller, config);
     List<PendingBatch> batchList = new ArrayList<>();
 
-    for (long i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH; i++) {
+    for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
       batchList.add(batch);
       status.addNextBatch(batch);
     }
 
-    for (int i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH / 2; i++) {
+    for (int i = 0; i < config.getReplication().getMaxPendingBatch() / 2; i++) {
       status.removeBatch(batchList.get(i));
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1 - i, status.getPendingBatches().size());
+          config.getReplication().getMaxPendingBatch() - 1 - i, status.getPendingBatches().size());
       Assert.assertEquals(i, controller.getCurrentIndex());
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
+          config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
     }
 
-    for (int i = MultiLeaderConsensusConfig.MAX_PENDING_BATCH / 2 + 1;
-        i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH;
+    for (int i = config.getReplication().getMaxPendingBatch() / 2 + 1;
+        i < config.getReplication().getMaxPendingBatch();
         i++) {
       status.removeBatch(batchList.get(i));
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH / 2, status.getPendingBatches().size());
+          config.getReplication().getMaxPendingBatch() / 2, status.getPendingBatches().size());
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
+          config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
     }
 
-    status.removeBatch(batchList.get(MultiLeaderConsensusConfig.MAX_PENDING_BATCH / 2));
+    status.removeBatch(batchList.get(config.getReplication().getMaxPendingBatch() / 2));
     Assert.assertEquals(0, status.getPendingBatches().size());
     Assert.assertEquals(
-        MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1, controller.getCurrentIndex());
-    Assert.assertEquals(MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
+        config.getReplication().getMaxPendingBatch() - 1, controller.getCurrentIndex());
+    Assert.assertEquals(config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
   }
 
   /** Test Blocking while addNextBatch */
@@ -155,22 +156,22 @@ public class SyncStatusTest {
     IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
-    SyncStatus status = new SyncStatus(controller);
+    SyncStatus status = new SyncStatus(controller, config);
     List<PendingBatch> batchList = new ArrayList<>();
 
-    for (long i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH; i++) {
+    for (long i = 0; i < config.getReplication().getMaxPendingBatch(); i++) {
       PendingBatch batch = new PendingBatch(i, i, Collections.emptyList());
       batchList.add(batch);
       status.addNextBatch(batch);
     }
 
-    for (int i = 0; i < MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1; i++) {
-      status.removeBatch(batchList.get(MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1 - i));
+    for (int i = 0; i < config.getReplication().getMaxPendingBatch() - 1; i++) {
+      status.removeBatch(batchList.get(config.getReplication().getMaxPendingBatch() - 1 - i));
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getPendingBatches().size());
+          config.getReplication().getMaxPendingBatch(), status.getPendingBatches().size());
       Assert.assertEquals(0, controller.getCurrentIndex());
       Assert.assertEquals(
-          MultiLeaderConsensusConfig.MAX_PENDING_BATCH, status.getNextSendingIndex());
+          config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
     }
 
     CompletableFuture<Boolean> future =
@@ -178,8 +179,8 @@ public class SyncStatusTest {
             () -> {
               PendingBatch batch =
                   new PendingBatch(
-                      MultiLeaderConsensusConfig.MAX_PENDING_BATCH,
-                      MultiLeaderConsensusConfig.MAX_PENDING_BATCH,
+                      config.getReplication().getMaxPendingBatch(),
+                      config.getReplication().getMaxPendingBatch(),
                       Collections.emptyList());
               batchList.add(batch);
               try {
@@ -198,14 +199,14 @@ public class SyncStatusTest {
     Assert.assertTrue(future.get());
     Assert.assertEquals(1, status.getPendingBatches().size());
     Assert.assertEquals(
-        MultiLeaderConsensusConfig.MAX_PENDING_BATCH - 1, controller.getCurrentIndex());
+        config.getReplication().getMaxPendingBatch() - 1, controller.getCurrentIndex());
     Assert.assertEquals(
-        MultiLeaderConsensusConfig.MAX_PENDING_BATCH + 1, status.getNextSendingIndex());
+        config.getReplication().getMaxPendingBatch() + 1, status.getNextSendingIndex());
 
-    status.removeBatch(batchList.get(MultiLeaderConsensusConfig.MAX_PENDING_BATCH));
+    status.removeBatch(batchList.get(config.getReplication().getMaxPendingBatch()));
     Assert.assertEquals(0, status.getPendingBatches().size());
-    Assert.assertEquals(MultiLeaderConsensusConfig.MAX_PENDING_BATCH, controller.getCurrentIndex());
+    Assert.assertEquals(config.getReplication().getMaxPendingBatch(), controller.getCurrentIndex());
     Assert.assertEquals(
-        MultiLeaderConsensusConfig.MAX_PENDING_BATCH + 1, status.getNextSendingIndex());
+        config.getReplication().getMaxPendingBatch() + 1, status.getNextSendingIndex());
   }
 }
