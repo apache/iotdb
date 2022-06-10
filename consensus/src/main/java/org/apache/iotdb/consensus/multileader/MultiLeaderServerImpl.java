@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
-import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.ratis.Utils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -153,19 +152,13 @@ public class MultiLeaderServerImpl {
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     return new IndexedConsensusRequest(
-        controller.incrementAndGet(),
-        getCurrentSafelyDeletedSearchIndex(),
-        TLogType.FragmentInstance,
-        request);
+        controller.incrementAndGet(), getCurrentSafelyDeletedSearchIndex(), request);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      ByteBufferConsensusRequest request, TLogType type) {
+      ByteBufferConsensusRequest request) {
     return new IndexedConsensusRequest(
-        ConsensusReqReader.DEFAULT_SEARCH_INDEX,
-        getCurrentSafelyDeletedSearchIndex(),
-        type,
-        request);
+        ConsensusReqReader.DEFAULT_SEARCH_INDEX, getCurrentSafelyDeletedSearchIndex(), request);
   }
 
   /**
