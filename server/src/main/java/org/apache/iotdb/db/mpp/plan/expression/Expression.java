@@ -57,6 +57,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -297,6 +298,17 @@ public abstract class Expression {
     }
   }
 
+  public static void serialize(Expression expression, DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(expression.getExpressionType().getExpressionTypeInShortEnum(), stream);
+
+    expression.serialize(stream);
+
+    ReadWriteIOUtils.write(expression.inputColumnIndex != null, stream);
+    if (expression.inputColumnIndex != null) {
+      ReadWriteIOUtils.write(expression.inputColumnIndex, stream);
+    }
+  }
+
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);
 
@@ -400,4 +412,6 @@ public abstract class Expression {
   public abstract ExpressionType getExpressionType();
 
   protected abstract void serialize(ByteBuffer byteBuffer);
+
+  protected abstract void serialize(DataOutputStream stream) throws IOException;
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -75,54 +77,47 @@ public class FragmentInstanceManager {
 
     this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
 
-    instanceManagementExecutor.scheduleWithFixedDelay(
-        () -> {
-          try {
-            removeOldInstances();
-          } catch (Throwable e) {
-            logger.warn("Error removing old tasks", e);
-          }
-        },
-        200,
-        200,
-        TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        instanceManagementExecutor, this::removeOldInstances, 200, 200, TimeUnit.MILLISECONDS);
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, DataRegion dataRegion) {
+
     FragmentInstanceId instanceId = instance.getId();
+    try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
+      FragmentInstanceExecution execution =
+          instanceExecution.computeIfAbsent(
+              instanceId,
+              id -> {
+                FragmentInstanceStateMachine stateMachine =
+                    new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
-    FragmentInstanceExecution execution =
-        instanceExecution.computeIfAbsent(
-            instanceId,
-            id -> {
-              FragmentInstanceStateMachine stateMachine =
-                  new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+                FragmentInstanceContext context =
+                    instanceContext.computeIfAbsent(
+                        instanceId,
+                        fragmentInstanceId ->
+                            createFragmentInstanceContext(fragmentInstanceId, stateMachine));
 
-              FragmentInstanceContext context =
-                  instanceContext.computeIfAbsent(
-                      instanceId,
-                      fragmentInstanceId ->
-                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
+                try {
+                  DataDriver driver =
+                      planner.plan(
+                          instance.getFragment().getRoot(),
+                          instance.getFragment().getTypeProvider(),
+                          context,
+                          instance.getTimeFilter(),
+                          dataRegion);
+                  return createFragmentInstanceExecution(
+                      scheduler, instanceId, context, driver, stateMachine, failedInstances);
+                } catch (Throwable t) {
+                  logger.error("error when create FragmentInstanceExecution.", t);
+                  stateMachine.failed(t);
+                  return null;
+                }
+              });
 
-              try {
-                DataDriver driver =
-                    planner.plan(
-                        instance.getFragment().getRoot(),
-                        instance.getFragment().getTypeProvider(),
-                        context,
-                        instance.getTimeFilter(),
-                        dataRegion);
-                return createFragmentInstanceExecution(
-                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
-              } catch (Throwable t) {
-                logger.error("error when create FragmentInstanceExecution.", t);
-                stateMachine.failed(t);
-                return null;
-              }
-            });
-
-    return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+      return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
+    }
   }
 
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
@@ -147,6 +142,7 @@ public class FragmentInstanceManager {
                 return createFragmentInstanceExecution(
                     scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
+                logger.error("Execute error caused by ", t);
                 stateMachine.failed(t);
                 return null;
               }

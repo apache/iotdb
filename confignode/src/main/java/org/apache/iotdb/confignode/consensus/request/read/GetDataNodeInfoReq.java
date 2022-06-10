@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.consensus.request.read;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -43,9 +45,9 @@ public class GetDataNodeInfoReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.GetDataNodeInfo.ordinal());
-    buffer.putInt(dataNodeID);
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.GetDataNodeInfo.ordinal());
+    stream.writeInt(dataNodeID);
   }
 
   @Override

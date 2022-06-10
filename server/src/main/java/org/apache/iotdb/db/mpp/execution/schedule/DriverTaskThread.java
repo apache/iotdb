@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
@@ -48,38 +49,44 @@ public class DriverTaskThread extends AbstractDriverThread {
 
   @Override
   public void execute(DriverTask task) throws InterruptedException {
-    // try to switch it to RUNNING
-    if (!scheduler.readyToRunning(task)) {
-      return;
-    }
-    IDriver instance = task.getFragmentInstance();
-    CpuTimer timer = new CpuTimer();
-    ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
-    CpuTimer.CpuDuration duration = timer.elapsedTime();
-    // long cost = System.nanoTime() - startTime;
-    // If the future is cancelled, the task is in an error and should be thrown.
-    if (future.isCancelled()) {
-      task.setAbortCause(FragmentInstanceAbortedException.BY_ALREADY_BEING_CANCELLED);
-      scheduler.toAborted(task);
-      return;
-    }
-    ExecutionContext context = new ExecutionContext();
-    context.setCpuDuration(duration);
-    context.setTimeSlice(EXECUTION_TIME_SLICE);
-    if (instance.isFinished()) {
-      scheduler.runningToFinished(task, context);
-      return;
-    }
+    try (SetThreadName fragmentInstanceName =
+        new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+      // try to switch it to RUNNING
+      if (!scheduler.readyToRunning(task)) {
+        return;
+      }
+      IDriver instance = task.getFragmentInstance();
+      CpuTimer timer = new CpuTimer();
+      ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
+      CpuTimer.CpuDuration duration = timer.elapsedTime();
+      // long cost = System.nanoTime() - startTime;
+      // If the future is cancelled, the task is in an error and should be thrown.
+      if (future.isCancelled()) {
+        task.setAbortCause(FragmentInstanceAbortedException.BY_ALREADY_BEING_CANCELLED);
+        scheduler.toAborted(task);
+        return;
+      }
+      ExecutionContext context = new ExecutionContext();
+      context.setCpuDuration(duration);
+      context.setTimeSlice(EXECUTION_TIME_SLICE);
+      if (instance.isFinished()) {
+        scheduler.runningToFinished(task, context);
+        return;
+      }
 
-    if (future.isDone()) {
-      scheduler.runningToReady(task, context);
-    } else {
-      scheduler.runningToBlocked(task, context);
-      future.addListener(
-          () -> {
-            scheduler.blockedToReady(task);
-          },
-          listeningExecutor);
+      if (future.isDone()) {
+        scheduler.runningToReady(task, context);
+      } else {
+        scheduler.runningToBlocked(task, context);
+        future.addListener(
+            () -> {
+              try (SetThreadName fragmentInstanceName2 =
+                  new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+                scheduler.blockedToReady(task);
+              }
+            },
+            listeningExecutor);
+      }
     }
   }
 }

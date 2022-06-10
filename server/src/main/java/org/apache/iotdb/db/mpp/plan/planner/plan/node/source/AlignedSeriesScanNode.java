@@ -37,6 +37,8 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -202,6 +204,27 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.ALIGNED_SERIES_SCAN.serialize(stream);
+    alignedPath.serialize(stream);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      timeFilter.serialize(stream);
+    }
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      valueFilter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(limit, stream);
+    ReadWriteIOUtils.write(offset, stream);
   }
 
   public static AlignedSeriesScanNode deserialize(ByteBuffer byteBuffer) {
