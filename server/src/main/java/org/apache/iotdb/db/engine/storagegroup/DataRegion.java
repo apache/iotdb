@@ -99,6 +99,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -2998,6 +2999,30 @@ public class DataRegion {
               "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
               resourceFileToLoad.getAbsolutePath(),
               targetResourceFile.getAbsolutePath(),
+              e.getMessage()));
+    }
+
+    File indexFileToLoad =
+        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + TsFileConstant.INDEX_SUFFIX);
+    File targetIndexFile =
+        fsFactory.getFile(targetFile.getAbsolutePath() + TsFileConstant.INDEX_SUFFIX);
+    try {
+      if (deleteOriginFile) {
+        FileUtils.moveFile(indexFileToLoad, targetIndexFile);
+      } else {
+        Files.createLink(targetIndexFile.toPath(), indexFileToLoad.toPath());
+      }
+    } catch (IOException e) {
+      logger.error(
+          "File renaming failed when loading .index file. Origin: {}, Target: {}",
+          indexFileToLoad.getAbsolutePath(),
+          targetIndexFile.getAbsolutePath(),
+          e);
+      throw new LoadFileException(
+          String.format(
+              "File renaming failed when loading .index file. Origin: %s, Target: %s, because %s",
+              indexFileToLoad.getAbsolutePath(),
+              targetIndexFile.getAbsolutePath(),
               e.getMessage()));
     }
 

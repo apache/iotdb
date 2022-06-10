@@ -212,7 +212,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
               .getSequenceFileList()
               .size());
       assertNotNull(tmpDir.listFiles());
-      assertEquals(2, tmpDir.listFiles().length >> 1);
+      assertEquals(6, tmpDir.listFiles().length);
     } catch (StorageEngineException | IllegalPathException e) {
       Assert.fail();
     }

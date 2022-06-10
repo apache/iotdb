@@ -198,10 +198,11 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
         Assert.assertEquals((i * originalTsFileNum), splitTsFilePartitions[i]);
       }
 
-      // each time partition folder should contain 2 files, the tsfile and the resource file
+      // each time partition folder should contain 2 files, the tsfile, the index file and the
+      // resource file
       for (int i = 0; i < (endTime - startTime) / (timePartition) / originalTsFileNum; i++) {
         Assert.assertEquals(
-            2, new File(f.getAbsolutePath(), "" + i * originalTsFileNum).list().length);
+            3, new File(f.getAbsolutePath(), "" + i * originalTsFileNum).list().length);
       }
     } catch (SQLException | IllegalPathException throwables) {
       throwables.printStackTrace();
@@ -308,9 +309,10 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
         Assert.assertEquals(i, splitTsFilePartitions[i]);
       }
 
-      // each time partition folder should contain 2 files, the tsfile and the resource file
+      // each time partition folder should contain 3 files, the tsfile, the index file and the
+      // resource file
       for (int i = 0; i < (endTime - startTime) / (timePartition); i++) {
-        Assert.assertEquals(2, new File(f.getAbsolutePath(), "" + i).list().length);
+        Assert.assertEquals(3, new File(f.getAbsolutePath(), "" + i).list().length);
       }
 
       for (int i = 0; i < devices.length; i++) {

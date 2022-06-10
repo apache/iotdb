@@ -214,7 +214,7 @@ public class IoTDBLoadExternalTsfileIT {
               .getSequenceFileList()
               .size());
       assertNotNull(tmpDir.listFiles());
-      assertEquals(2, tmpDir.listFiles().length >> 1);
+      assertEquals(6, tmpDir.listFiles().length);
     } catch (StorageEngineException | IllegalPathException e) {
       Assert.fail();
     }
@@ -861,7 +861,7 @@ public class IoTDBLoadExternalTsfileIT {
   }
 
   @Test
-  public void loadTsFileTestWithVerifyMetadata() throws Exception {
+  public void loadTsFileTestWithVerifyMetadata() {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -1025,7 +1025,6 @@ public class IoTDBLoadExternalTsfileIT {
       for (String sql : sqls) {
         statement.execute(sql);
       }
-
     } catch (Exception e) {
       LOGGER.error("Can not execute sql.", e);
       fail();
