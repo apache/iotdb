@@ -26,7 +26,8 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -104,7 +105,9 @@ public class GroupByLevelController {
   }
 
   /**
-   * For example, calculating the first_value,
+   * GroupByLevelNode can only accept intermediate input, so it doesn't matter what the origin
+   * series datatype is for aggregation like COUNT, SUM. But for MAX_VALUE, it must be consistent
+   * across different time series. And we will take one as the final type of grouped series.
    *
    * @param groupedPath grouped expression, e.g. root.*.d1.s1
    * @param functionName function name, e.g. COUNT
@@ -112,14 +115,37 @@ public class GroupByLevelController {
    */
   private void checkDatatypeConsistency(
       String groupedPath, String functionName, PartialPath rawPath) {
-    try {
-      typeProvider.setType(
-          groupedPath, TypeInferenceUtils.getAggrDataType(functionName, rawPath.getSeriesType()));
-    } catch (StatementAnalyzeException e) {
-      throw new SemanticException(
-          String.format(
-              "GROUP BY LEVEL: the data types of the same output column[%s] should be the same.",
-              groupedPath));
+    switch (functionName.toLowerCase()) {
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.COUNT:
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        try {
+          typeProvider.getType(groupedPath);
+        } catch (StatementAnalyzeException e) {
+          typeProvider.setType(groupedPath, rawPath.getSeriesType());
+        }
+        return;
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.LAST_VALUE:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.MAX_VALUE:
+      case SQLConstant.EXTREME:
+        try {
+          TSDataType tsDataType = typeProvider.getType(groupedPath);
+          if (tsDataType != rawPath.getSeriesType()) {
+            throw new SemanticException(
+                String.format(
+                    "GROUP BY LEVEL: the data types of the same output column[%s] should be the same.",
+                    groupedPath));
+          }
+        } catch (StatementAnalyzeException e) {
+          typeProvider.setType(groupedPath, rawPath.getSeriesType());
+        }
+        return;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + functionName);
     }
   }
 
