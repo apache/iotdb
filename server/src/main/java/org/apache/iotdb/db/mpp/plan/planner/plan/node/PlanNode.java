@@ -18,9 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,7 +36,10 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 /** The base class of query logical plan nodes, which is used to compose logical query plan. */
-public abstract class PlanNode {
+public abstract class PlanNode implements IConsensusRequest {
+
+  private final Logger logger = LoggerFactory.getLogger(PlanNode.class);
+
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;
   protected static final int CHILD_COUNT_NO_LIMIT = -1;
@@ -110,6 +118,22 @@ public abstract class PlanNode {
       for (PlanNode planNode : planNodes) {
         planNode.serialize(stream);
       }
+    }
+  }
+
+  /**
+   * Deserialize via {@link
+   * org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)}
+   */
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when serializing writePlanNode.", e);
+      throw new SerializationRunTimeException(e);
     }
   }
 

@@ -93,7 +93,7 @@ public class DeleteStorageGroupProcedure
           break;
         case DELETE_CONFIG:
           LOG.info("Delete config info of {}", deleteSgSchema.getName());
-          TSStatus status = env.deleteConfig(deleteSgSchema);
+          TSStatus status = env.deleteConfig(deleteSgSchema.getName());
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > retryThreshold) {
