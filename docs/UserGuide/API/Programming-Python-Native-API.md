@@ -260,13 +260,12 @@ The step for creating a metadata template is as follows
 3. Execute create schema template function
 
 ```python
-template = Template(name="treeTemplate_python", share_time=True)
+template = Template(name=template_name, share_time=True)
 
 i_node_gps = InternalNode(name="GPS", share_time=False)
 i_node_v = InternalNode(name="vehicle", share_time=True)
 m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
 
-i_node_gps.add_child(m_node_x)
 i_node_gps.add_child(m_node_x)
 i_node_v.add_child(m_node_x)
 
@@ -276,6 +275,63 @@ template.add_template(m_node_x)
 
 session.create_schema_template(template)
 ```
+#### Modify Schema Template nodes
+Modify nodes in a template, the template must be already created. These are functions that add or delete some measurement nodes.
+* add node in template
+```python
+session.add_measurements_in_template(template_name, measurements_path, data_types, encodings, compressors, is_aligned)
+```
+
+* delete node in template
+```python
+session.delete_node_in_template(template_name, path)
+```
+
+#### Set Schema Template
+```python
+session.set_schema_template(template_name, prefix_path)
+```
+
+#### Uset Schema Template
+```python
+session.unset_schema_template(template_name, prefix_path)
+```
+
+#### Show Schema Template
+* Show all schema templates
+```python
+session.show_all_templates()
+```
+* Count all nodes in templates
+```python
+session.count_measurements_in_template(template_name)
+```
+
+* Judge whether the path is measurement or not in templates, This measurement must be in the template
+```python
+session.count_measurements_in_template(template_name, path)
+```
+
+* Judge whether the path is exist or not in templates, This path may not belong to the template
+```python
+session.is_path_exist_in_template(template_name, path)
+```
+
+* Show nodes under in schema template
+```python
+session.show_measurements_in_template(template_name)
+```
+
+* Show the path prefix where a schema template is set
+```python
+session.show_paths_template_set_on(template_name)
+```
+
+* Show the path prefix where a schema template is used (i.e. the time series has been created)
+```python
+session.show_paths_template_using_on(template_name)
+```
+
 #### Drop Schema Template
 Delete an existing metadata template，dropping an already set template is not supported
 ```python
@@ -433,4 +489,5 @@ Namely, these are
 * Run Tests via pytest
 * Build
 * Release to pypi
+
 

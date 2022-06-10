@@ -1188,7 +1188,7 @@ class Session(object):
     def create_schema_template(self, template: Template):
         """
         create schema template, users using this method should use the template class as an argument
-        :param template: The template contain multiple child node(see Template.py)
+        :param template: The template contains multiple child node(see Template.py)
         """
         bytes_array = template.serialize
         request = TSCreateSchemaTemplateReq(
@@ -1226,7 +1226,7 @@ class Session(object):
         is_aligned: bool = False,
     ):
         """
-        add measurements in template, the template must already exit. This function add some measurements node.
+        add measurements in the template, the template must already create. This function adds some measurements node.
         :param template_name: template name, string list, like ["name_x", "name_y", "name_z"]
         :param measurements_path: when ths is_aligned is True, recommend the name like a.b, like [python.x, python.y, iotdb.z]
         :param data_types: using TSDataType(see IoTDBConstants.py)
@@ -1253,7 +1253,7 @@ class Session(object):
 
     def delete_node_in_template(self, template_name: str, path: str):
         """
-        delete node in template, this node must be already in the template
+        delete a node in the template, this node must be already in the template
         :param template_name: template name
         :param path: measurements path
         """
@@ -1319,7 +1319,7 @@ class Session(object):
 
     def is_measurement_in_template(self, template_name: str, path: str):
         """
-        judge the node in template is measurement or not, this node must in template
+        judge the node in the template is measurement or not, this node must in the template
         :param template_name: template name
         :param path:
         """
@@ -1339,7 +1339,7 @@ class Session(object):
 
     def is_path_exist_in_template(self, template_name: str, path: str):
         """
-        judge the node is in template or not, this node may not in template
+        judge whether the node is a measurement or not in the template, this node must be in the template
         :param template_name: template name
         :param path:
         """
