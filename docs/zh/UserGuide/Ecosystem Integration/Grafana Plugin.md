@@ -96,19 +96,20 @@ yarn build
 
 #### grafana-plugin 插件安装
 
-* 拷贝上述生成的前端工程目标文件夹到 Grafana 的插件目录中 `${Grafana文件目录}\data\plugins\`
-  * Windows 系统，启动 Grafana 后会自动创建 `data\plugins` 目录
-  * Linux 系统，plugins 目录需要手动创建 `/var/lib/grafana/plugins` 
-  * MacOS，plugins 目录在`/usr/local/var/lib/grafana/plugins`（具体位置参看使用 `brew install`安装 Grafana 后的命令行输出提示）
+* 拷贝上述生成的前端工程目标文件夹到 Grafana 的插件目录中 `${Grafana文件目录}\data\plugins\`。如果没有此目录可以手动建或者启动grafana会自动建立，当然也可以修改plugins的位置,具体请查看下面的修改Grafana 的插件目录位置说明。
 
 * 修改Grafana的配置文件：找到配置文件（`${Grafana文件目录}\conf\defaults.ini`），并进行如下的修改：
 
   ```ini
   allow_loading_unsigned_plugins = iotdb
   ```
+* 修改Grafana 的插件目录位置:找到配置文件（`${Grafana文件目录}\conf\defaults.ini`），并进行如下的修改：
 
+  ```ini
+  plugins = data/plugins
+  ```
 * 如果 Grafana 服务已启动，则需要重启服务。
-
+更多详情，请点 [这里](https://grafana.com/docs/grafana/latest/plugins/installation/)
 
 
 #### 启动 Grafana
