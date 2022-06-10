@@ -71,7 +71,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
             impl.getStateMachine()
                 .write(
                     impl.buildIndexedConsensusRequestForRemoteRequest(
-                        new ByteBufferConsensusRequest(batch.data), batch.type)));
+                        new ByteBufferConsensusRequest(batch.data))));
       }
     }
     logger.debug("Execute TSyncLogReq for {} with result {}", req.consensusGroupId, statuses);

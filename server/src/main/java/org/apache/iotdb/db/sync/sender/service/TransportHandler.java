@@ -53,6 +53,7 @@ public class TransportHandler {
   private long createTime;
   private final String localIP;
   protected ITransportClient transportClient;
+  private final Pipe pipe;
 
   protected ExecutorService transportExecutorService;
   private Future transportFuture;
@@ -61,10 +62,9 @@ public class TransportHandler {
   private Future heartbeatFuture;
 
   public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
+    this.pipe = pipe;
     this.pipeName = pipe.getName();
     this.createTime = pipe.getCreateTime();
-    this.localIP = getLocalIP(pipeSink);
-    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
 
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -72,6 +72,9 @@ public class TransportHandler {
     this.heartbeatExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipeName);
+
+    this.localIP = getLocalIP(pipeSink);
+    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
   }
 
   private String getLocalIP(IoTDBPipeSink pipeSink) {
@@ -136,7 +139,12 @@ public class TransportHandler {
           .receiveMsg(
               transportClient.heartbeat(
                   new SyncRequest(RequestType.HEARTBEAT, pipeName, localIP, createTime)));
+      synchronized (((TransportClient) transportClient).getWaitLock()) {
+        pipe.setDisconnected(false);
+        ((TransportClient) transportClient).getWaitLock().notifyAll();
+      }
     } catch (SyncConnectionException e) {
+      pipe.setDisconnected(true);
       logger.warn(
           String.format(
               "Pipe %s sends heartbeat to receiver error, skip this time, because %s.",
