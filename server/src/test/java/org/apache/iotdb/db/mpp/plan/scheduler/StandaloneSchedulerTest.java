@@ -155,9 +155,15 @@ public class StandaloneSchedulerTest {
             executor,
             null,
             null);
-    standaloneScheduler.start();
-
-    Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    try {
+      standaloneScheduler.start();
+      Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      standaloneScheduler.stop();
+    }
   }
 
   @Test
@@ -248,9 +254,15 @@ public class StandaloneSchedulerTest {
             executor,
             null,
             null);
-    standaloneScheduler.start();
-
-    Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    try {
+      standaloneScheduler.start();
+      Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      standaloneScheduler.stop();
+    }
   }
 
   @Test
@@ -351,9 +363,15 @@ public class StandaloneSchedulerTest {
             executor,
             null,
             null);
-    standaloneScheduler.start();
-
-    Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    try {
+      standaloneScheduler.start();
+      Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      standaloneScheduler.stop();
+    }
   }
 
   @Test
@@ -393,8 +411,15 @@ public class StandaloneSchedulerTest {
             executor,
             null,
             null);
-    standaloneScheduler.start();
-    Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    try {
+      standaloneScheduler.start();
+      Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      standaloneScheduler.stop();
+    }
   }
 
   @Test
@@ -463,8 +488,15 @@ public class StandaloneSchedulerTest {
             executor,
             null,
             null);
-    standaloneScheduler.start();
-    Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    try {
+      standaloneScheduler.start();
+      Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      standaloneScheduler.stop();
+    }
   }
 
   private TRegionReplicaSet genRegionReplicaSet(TConsensusGroupType type) {

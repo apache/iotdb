@@ -95,17 +95,5 @@ public class ClusterSchemaInfoTest {
     Map<String, TStorageGroupSchema> reloadResult =
         clusterSchemaInfo.getMatchedStorageGroupSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
-
-    Assert.assertEquals(
-        clusterSchemaInfo.getSchemaRegionParticles().size(), storageGroupPathList.size());
-    storageGroupPathList.forEach(
-        storageGroup ->
-            Assert.assertTrue(clusterSchemaInfo.getSchemaRegionParticles().contains(storageGroup)));
-
-    Assert.assertEquals(
-        clusterSchemaInfo.getDataRegionParticles().size(), storageGroupPathList.size());
-    storageGroupPathList.forEach(
-        storageGroup ->
-            Assert.assertTrue(clusterSchemaInfo.getDataRegionParticles().contains(storageGroup)));
   }
 }
