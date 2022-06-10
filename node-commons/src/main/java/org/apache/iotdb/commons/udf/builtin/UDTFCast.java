@@ -20,9 +20,11 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -48,12 +50,12 @@ public class UDTFCast implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
-    sourceDataType = parameters.getDataType(0);
+    sourceDataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     targetDataType = TSDataType.valueOf(parameters.getString("type"));
 
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(targetDataType);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(targetDataType));
   }
 
   @Override
@@ -75,7 +77,7 @@ public class UDTFCast implements UDTF {
         cast(row.getTime(), row.getBoolean(0), collector);
         return;
       case TEXT:
-        cast(row.getTime(), row.getBinary(0), collector);
+        cast(row.getTime(), UDFBinaryTransformer.transformToBinary(row.getBinary(0)), collector);
         return;
       default:
         throw new UnsupportedOperationException();
@@ -242,7 +244,7 @@ public class UDTFCast implements UDTF {
         collector.putBoolean(time, !("false".equals(stringValue) || "".equals(stringValue)));
         return;
       case TEXT:
-        collector.putBinary(time, value);
+        collector.putBinary(time, UDFBinaryTransformer.transformToUDFBinary(value));
         return;
       default:
         throw new UnsupportedOperationException();

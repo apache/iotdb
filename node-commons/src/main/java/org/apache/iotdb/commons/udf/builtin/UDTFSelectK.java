@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -53,11 +54,11 @@ public abstract class UDTFSelectK implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
             0,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT)
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT))
         .validateRequiredAttribute("k")
         .validate(
             k -> 0 < (int) k && (int) k <= 1000,
@@ -69,9 +70,11 @@ public abstract class UDTFSelectK implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException, UDFInputSeriesDataTypeNotValidException {
     k = parameters.getInt("k");
-    dataType = parameters.getDataType(0);
+    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     constructPQ();
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    configurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   protected abstract void constructPQ() throws UDFInputSeriesDataTypeNotValidException;
@@ -99,12 +102,12 @@ public abstract class UDTFSelectK implements UDTF {
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
-            dataType,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT);
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
     }
   }
 
@@ -164,12 +167,12 @@ public abstract class UDTFSelectK implements UDTF {
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
-            dataType,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT);
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
     }
   }
 }

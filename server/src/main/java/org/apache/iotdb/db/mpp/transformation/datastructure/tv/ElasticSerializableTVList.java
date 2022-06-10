@@ -215,7 +215,7 @@ public class ElasticSerializableTVList implements PointCollector {
   }
 
   @Override
-  public void putBinary(long timestamp, Binary value) throws IOException {
+  public void putBinary(long timestamp, UDFBinary value) throws IOException {
     checkExpansion();
     cache.get(size / internalTVListCapacity).putBinary(timestamp, value);
     ++size;

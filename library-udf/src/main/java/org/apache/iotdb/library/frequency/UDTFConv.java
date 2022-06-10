@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.library.frequency;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -42,9 +43,17 @@ public class UDTFConv implements UDTF {
     validator
         .validateInputSeriesNumber(2)
         .validateInputSeriesDataType(
-            0, TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT64)
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64))
         .validateInputSeriesDataType(
-            1, TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT64);
+            1,
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64));
   }
 
   @Override
@@ -52,7 +61,7 @@ public class UDTFConv implements UDTF {
       throws Exception {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
     list1.clear();
     list2.clear();
   }

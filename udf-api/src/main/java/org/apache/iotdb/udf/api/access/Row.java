@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.udf.api.access;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.commons.UDFBinary;
+import org.apache.iotdb.udf.api.commons.UDFDataType;
 
 import java.io.IOException;
 
@@ -93,7 +93,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
    */
-  Binary getBinary(int columnIndex) throws IOException;
+  UDFBinary getBinary(int columnIndex) throws IOException;
 
   /**
    * Returns the String value at the specified column in this row.
@@ -111,7 +111,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the actual data type of the value at the specified column in this row
    */
-  TSDataType getDataType(int columnIndex);
+  UDFDataType getDataType(int columnIndex);
 
   /**
    * Returns {@code true} if the value of the specified column is null.

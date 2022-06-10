@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -43,13 +44,17 @@ public class Accumulator implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.DOUBLE);
+    validator.validateInputSeriesDataType(
+        0,
+        UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+        UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     logger.debug("Accumulator#beforeStart");
-    configurations.setOutputDataType(TSDataType.INT32);
+    configurations.setOutputDataType(
+        UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
     switch (parameters.getStringOrDefault(
         ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW)) {
       case ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE:

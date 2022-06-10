@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -40,7 +41,8 @@ public class UDTFMatches implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateRequiredAttribute("regex")
-        .validateInputSeriesDataType(0, TSDataType.TEXT);
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
   }
 
   @Override
@@ -48,7 +50,7 @@ public class UDTFMatches implements UDTF {
     pattern = Pattern.compile(parameters.getString("regex"));
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.BOOLEAN);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
   }
 
   @Override

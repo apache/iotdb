@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -34,7 +35,8 @@ public class WindowStartEnd implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    configurations.setOutputDataType(TSDataType.INT64);
+    configurations.setOutputDataType(
+        UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64));
     if (ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE.equals(
         parameters.getString(ExampleUDFConstant.ACCESS_STRATEGY_KEY))) {
       configurations.setAccessStrategy(

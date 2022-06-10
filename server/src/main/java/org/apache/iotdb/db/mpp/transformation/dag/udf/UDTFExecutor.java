@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.api.UDTF;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.commons.udf.utils.UDFPartialPathTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -64,7 +65,10 @@ public class UDTFExecutor {
 
     final UDFParameters parameters =
         new UDFParameters(
-            childExpressions, maybeTimeSeriesPaths, childExpressionDataTypes, attributes);
+            childExpressions,
+            UDFPartialPathTransformer.transformToUDFPartialPathList(maybeTimeSeriesPaths),
+            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+            attributes);
 
     try {
       udtf.validate(new UDFParameterValidator(parameters));

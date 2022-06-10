@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -92,7 +94,9 @@ public class UDTFConst implements UDTF {
         throw new UnsupportedOperationException();
     }
 
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    configurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   @Override
@@ -114,7 +118,7 @@ public class UDTFConst implements UDTF {
         collector.putBoolean(row.getTime(), booleanValue);
         break;
       case TEXT:
-        collector.putBinary(row.getTime(), binaryValue);
+        collector.putBinary(row.getTime(), UDFBinaryTransformer.transformToUDFBinary(binaryValue));
         break;
       default:
         throw new UnsupportedOperationException();

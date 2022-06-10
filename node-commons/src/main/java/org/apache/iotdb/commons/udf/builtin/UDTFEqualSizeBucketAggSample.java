@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -436,7 +437,7 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
     }
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
-        .setOutputDataType(outputDataType);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(outputDataType));
     switch (aggMethodType) {
       case "avg":
         aggregator = new AvgAggregator();
@@ -481,7 +482,12 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
     }
   }
 }

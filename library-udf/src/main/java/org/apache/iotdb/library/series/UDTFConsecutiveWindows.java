@@ -16,10 +16,11 @@
 
 package org.apache.iotdb.library.series;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.series.util.ConsecutiveUtil;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -53,7 +54,7 @@ public class UDTFConsecutiveWindows implements UDTF {
       throws Exception {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.INT32);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
     long gap = Util.parseTime(parameters.getStringOrDefault("gap", "0ms"));
     len = Util.parseTime(parameters.getString("length"));
     int count = gap == 0 ? 0 : (int) (len / gap + 1);

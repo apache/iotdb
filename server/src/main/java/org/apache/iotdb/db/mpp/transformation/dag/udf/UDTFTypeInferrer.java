@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.api.UDTF;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.commons.udf.utils.UDFPartialPathTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
@@ -56,7 +57,10 @@ public class UDTFTypeInferrer {
 
       UDFParameters parameters =
           new UDFParameters(
-              childExpressions, maybeTimeSeriesPaths, childExpressionDataTypes, attributes);
+              childExpressions,
+              UDFPartialPathTransformer.transformToUDFPartialPathList(maybeTimeSeriesPaths),
+              UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+              attributes);
       udtf.validate(new UDFParameterValidator(parameters));
 
       // use ZoneId.systemDefault() because UDF's data type is ZoneId independent

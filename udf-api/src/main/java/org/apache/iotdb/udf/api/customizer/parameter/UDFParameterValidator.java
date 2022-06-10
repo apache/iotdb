@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.udf.api.customizer.parameter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.udf.api.commons.UDFDataType;
 import org.apache.iotdb.udf.api.exception.UDFAttributeNotProvidedException;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -70,11 +69,7 @@ public class UDFParameterValidator {
     validateInputSeriesIndex(index);
 
     UDFDataType actualDataType;
-    try {
-      actualDataType = parameters.getDataType(index);
-    } catch (MetadataException e) {
-      throw new UDFException("error occurred when getting the data type of the input series");
-    }
+    actualDataType = parameters.getDataType(index);
 
     if (!expectedDataType.equals(actualDataType)) {
       throw new UDFInputSeriesDataTypeNotValidException(index, actualDataType, expectedDataType);
@@ -97,11 +92,7 @@ public class UDFParameterValidator {
     validateInputSeriesIndex(index);
 
     UDFDataType actualDataType;
-    try {
-      actualDataType = parameters.getDataType(index);
-    } catch (MetadataException e) {
-      throw new UDFException("error occurred when getting the data type of the input series");
-    }
+    actualDataType = parameters.getDataType(index);
 
     for (UDFDataType expectedDataType : expectedDataTypes) {
       if (expectedDataType.equals(actualDataType)) {

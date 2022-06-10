@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.library.drepair;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.drepair.util.TimestampRepair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -40,7 +41,11 @@ public class UDTFTimestampRepair implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
-            0, TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT64)
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64))
         .validate(
             x -> (Integer) x >= 0,
             "Interval should be a positive integer.",

@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -42,7 +43,8 @@ public class Counter implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     logger.debug("Counter#beforeStart");
-    configurations.setOutputDataType(TSDataType.INT32);
+    configurations.setOutputDataType(
+        UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
     switch (parameters.getStringOrDefault(
         ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW)) {
       case ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE:

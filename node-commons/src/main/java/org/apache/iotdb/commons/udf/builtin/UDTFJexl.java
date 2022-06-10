@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -53,12 +54,12 @@ public class UDTFJexl implements UDTF {
     for (int i = 0; i < inputSeriesNumber; i++) {
       validator.validateInputSeriesDataType(
           i,
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE,
-          TSDataType.TEXT,
-          TSDataType.BOOLEAN);
+          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT),
+          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
     }
     validator.validateRequiredAttribute("expr");
   }
@@ -73,7 +74,7 @@ public class UDTFJexl implements UDTF {
 
     inputDataType = new TSDataType[inputSeriesNumber];
     for (int i = 0; i < inputSeriesNumber; i++) {
-      inputDataType[i] = parameters.getDataType(i);
+      inputDataType[i] = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(i));
     }
     outputDataType = probeOutputDataType();
 
@@ -100,13 +101,13 @@ public class UDTFJexl implements UDTF {
         default:
           throw new UDFInputSeriesDataTypeNotValidException(
               0,
-              inputDataType[0],
-              TSDataType.INT32,
-              TSDataType.INT64,
-              TSDataType.FLOAT,
-              TSDataType.DOUBLE,
-              TSDataType.TEXT,
-              TSDataType.BOOLEAN);
+              UDFDataTypeTransformer.transformToUDFDataType(inputDataType[0]),
+              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT),
+              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
       }
     } else {
       evaluator = new EvaluatorMulInput();
@@ -114,7 +115,7 @@ public class UDTFJexl implements UDTF {
 
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(outputDataType);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(outputDataType));
   }
 
   // 23, 23L, 23f, 23d, "string", true are hard codes for probing
@@ -338,13 +339,13 @@ public class UDTFJexl implements UDTF {
           default:
             throw new UDFInputSeriesDataTypeNotValidException(
                 i,
-                inputDataType[i],
-                TSDataType.INT32,
-                TSDataType.INT64,
-                TSDataType.FLOAT,
-                TSDataType.DOUBLE,
-                TSDataType.TEXT,
-                TSDataType.BOOLEAN);
+                UDFDataTypeTransformer.transformToUDFDataType(inputDataType[i]),
+                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
+                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT),
+                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
         }
       }
     }

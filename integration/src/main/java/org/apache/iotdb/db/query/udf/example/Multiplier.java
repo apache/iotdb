@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -40,7 +41,10 @@ public class Multiplier implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.INT64);
+    validator
+        .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64));
   }
 
   @Override
@@ -49,7 +53,7 @@ public class Multiplier implements UDTF {
     a = parameters.getLongOrDefault("a", 0);
     b = parameters.getLongOrDefault("b", 0);
     configurations
-        .setOutputDataType(TSDataType.INT64)
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64))
         .setAccessStrategy(new RowByRowAccessStrategy());
   }
 

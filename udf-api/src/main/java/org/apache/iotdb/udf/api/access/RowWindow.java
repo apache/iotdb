@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.udf.api.access;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.commons.UDFDataType;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 
@@ -53,7 +53,7 @@ public interface RowWindow {
    * @param columnIndex index of the specified column
    * @return the actual data type of the values at the specified column in this window
    */
-  TSDataType getDataType(int columnIndex);
+  UDFDataType getDataType(int columnIndex);
 
   /**
    * Returns an iterator used to access this window.

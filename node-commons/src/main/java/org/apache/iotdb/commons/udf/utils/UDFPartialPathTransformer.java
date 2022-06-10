@@ -18,34 +18,30 @@
  */
 package org.apache.iotdb.commons.udf.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.udf.api.commons.UDFDataType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.udf.api.commons.UDFPartialPath;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** Transform UDFDataType to TsDataType / TsDataType to UDFDataType */
-public class UDFDataTypeTransformer {
+public class UDFPartialPathTransformer {
 
-  private UDFDataTypeTransformer() {}
+  private UDFPartialPathTransformer() {}
 
-  public static TSDataType transformToTsDataType(UDFDataType udfDataType) {
-    return TSDataType.getTsDataType(udfDataType.getType());
+  public static UDFPartialPath transformToUDFPartialPath(PartialPath partialPath) {
+    return new UDFPartialPath(partialPath.getNodes());
   }
 
-  public static List<TSDataType> transformToTsDataTypeList(List<UDFDataType> udfDataTypeList) {
-    return udfDataTypeList.stream()
-        .map(UDFDataTypeTransformer::transformToTsDataType)
+  public static List<UDFPartialPath> transformToUDFPartialPathList(
+      List<PartialPath> partialPathList) {
+    return partialPathList.stream()
+        .map(UDFPartialPathTransformer::transformToUDFPartialPath)
         .collect(Collectors.toList());
   }
 
-  public static UDFDataType transformToUDFDataType(TSDataType tsDataType) {
-    return UDFDataType.getUDFDataType(tsDataType.getType());
-  }
-
-  public static List<UDFDataType> transformToUDFDataTypeList(List<TSDataType> tsDataTypeList) {
-    return tsDataTypeList.stream()
-        .map(UDFDataTypeTransformer::transformToUDFDataType)
-        .collect(Collectors.toList());
+  public static PartialPath transformToPartialPath(UDFPartialPath udfPartialPath)
+      throws IllegalPathException {
+    return new PartialPath(udfPartialPath.getFullPath());
   }
 }

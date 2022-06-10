@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.udf.api.collector;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.commons.UDFBinary;
+import org.apache.iotdb.udf.api.commons.UDFDataType;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 
@@ -39,13 +39,13 @@ public interface PointCollector {
    * Collects an int data point with timestamp.
    *
    * <p>Before calling this method, you need to ensure that the UDF output data type is set to
-   * {@code TSDataType.INT32} by calling {@link UDTFConfigurations#setOutputDataType(TSDataType)} in
-   * {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+   * {@code UDFDataType.INT32} by calling {@link UDTFConfigurations#setOutputDataType(UDFDataType)}
+   * in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
    *
    * @param timestamp timestamp to collect
    * @param value int value to collect
    * @throws IOException if any I/O errors occur
-   * @see TSDataType
+   * @see UDFDataType
    */
   void putInt(long timestamp, int value) throws IOException;
 
@@ -53,13 +53,13 @@ public interface PointCollector {
    * Collects a long data point with timestamp.
    *
    * <p>Before calling this method, you need to ensure that the UDF output data type is set to
-   * {@code TSDataType.INT64} by calling {@link UDTFConfigurations#setOutputDataType(TSDataType)} in
-   * {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+   * {@code UDFDataType.INT64} by calling {@link UDTFConfigurations#setOutputDataType(UDFDataType)}
+   * in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
    *
    * @param timestamp timestamp to collect
    * @param value long value to collect
    * @throws IOException if any I/O errors occur
-   * @see TSDataType
+   * @see UDFDataType
    */
   void putLong(long timestamp, long value) throws IOException;
 
@@ -67,13 +67,13 @@ public interface PointCollector {
    * Collects a float data point with timestamp.
    *
    * <p>Before calling this method, you need to ensure that the UDF output data type is set to
-   * {@code TSDataType.FLOAT} by calling {@link UDTFConfigurations#setOutputDataType(TSDataType)} in
-   * {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+   * {@code TSDataType.FLOAT} by calling {@link UDTFConfigurations#setOutputDataType(UDFDataType)}
+   * in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
    *
    * @param timestamp timestamp to collect
    * @param value float value to collect
    * @throws IOException if any I/O errors occur
-   * @see TSDataType
+   * @see UDFDataType
    */
   void putFloat(long timestamp, float value) throws IOException;
 
@@ -81,13 +81,13 @@ public interface PointCollector {
    * Collects a double data point with timestamp.
    *
    * <p>Before calling this method, you need to ensure that the UDF output data type is set to
-   * {@code TSDataType.DOUBLE} by calling {@link UDTFConfigurations#setOutputDataType(TSDataType)}
+   * {@code TSDataType.DOUBLE} by calling {@link UDTFConfigurations#setOutputDataType(UDFDataType)}
    * in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
    *
    * @param timestamp timestamp to collect
    * @param value double value to collect
    * @throws IOException if any I/O errors occur
-   * @see TSDataType
+   * @see UDFDataType
    */
   void putDouble(long timestamp, double value) throws IOException;
 
@@ -95,13 +95,13 @@ public interface PointCollector {
    * Collects a boolean data point with timestamp.
    *
    * <p>Before calling this method, you need to ensure that the UDF output data type is set to
-   * {@code TSDataType.BOOLEAN} by calling {@link UDTFConfigurations#setOutputDataType(TSDataType)}
+   * {@code TSDataType.BOOLEAN} by calling {@link UDTFConfigurations#setOutputDataType(UDFDataType)}
    * in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
    *
    * @param timestamp timestamp to collect
    * @param value boolean value to collect
    * @throws IOException if any I/O errors occur
-   * @see TSDataType
+   * @see UDFDataType
    */
   void putBoolean(long timestamp, boolean value) throws IOException;
 
@@ -109,29 +109,29 @@ public interface PointCollector {
    * Collects a Binary data point with timestamp.
    *
    * <p>Before calling this method, you need to ensure that the UDF output data type is set to
-   * {@code TSDataType.TEXT} by calling {@link UDTFConfigurations#setOutputDataType(TSDataType)} in
-   * {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+   * {@code UDFDataType.TEXT} by calling {@link UDTFConfigurations#setOutputDataType(UDFDataType)}
+   * in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
    *
    * @param timestamp timestamp to collect
    * @param value Binary value to collect
    * @throws IOException if any I/O errors occur
    * @throws RuntimeException if memory is not enough to continue collecting data points
-   * @see TSDataType
+   * @see UDFDataType
    */
-  void putBinary(long timestamp, Binary value) throws IOException;
+  void putBinary(long timestamp, UDFBinary value) throws IOException;
 
   /**
    * Collects a String data point with timestamp.
    *
    * <p>Before calling this method, you need to ensure that the UDF output data type is set to
-   * {@code TSDataType.TEXT} by calling {@link UDTFConfigurations#setOutputDataType(TSDataType)} in
-   * {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+   * {@code UDFDataType.TEXT} by calling {@link UDTFConfigurations#setOutputDataType(UDFDataType)}
+   * in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
    *
    * @param timestamp timestamp to collect
    * @param value String value to collect
    * @throws IOException if any I/O errors occur
    * @throws RuntimeException if memory is not enough to continue collecting data points
-   * @see TSDataType
+   * @see UDFDataType
    */
   void putString(long timestamp, String value) throws IOException;
 }

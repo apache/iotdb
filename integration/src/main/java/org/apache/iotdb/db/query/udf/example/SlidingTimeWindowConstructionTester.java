@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowIterator;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -41,7 +42,10 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.INT32);
+    validator
+        .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
   }
 
   @Override
@@ -49,7 +53,7 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
     logger.debug("SlidingTimeWindowConstructionTester#beforeStart");
     long timeInterval = parameters.getLong(ExampleUDFConstant.TIME_INTERVAL_KEY);
     configurations
-        .setOutputDataType(TSDataType.INT32)
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32))
         .setAccessStrategy(new SlidingTimeWindowAccessStrategy(timeInterval));
   }
 

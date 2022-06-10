@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -34,8 +35,10 @@ public abstract class UDTFValueDifference extends UDTFValueTrend {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
-    dataType = parameters.getDataType(0);
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    configurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   @Override

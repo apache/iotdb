@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.library.frequency;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -49,7 +50,11 @@ public class UDTFIFFT implements UDTF {
     validator
         .validateInputSeriesNumber(2)
         .validateInputSeriesDataType(
-            0, TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT64)
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
+            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64))
         .validate(
             x -> (long) x > 0,
             "interval should be a time period whose unit is ms, s, m, h, d.",
@@ -68,7 +73,7 @@ public class UDTFIFFT implements UDTF {
       throws Exception {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
     this.interval = Util.parseTime(parameters.getStringOrDefault("interval", "1s"));
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     this.start = 0;
