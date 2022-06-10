@@ -1040,7 +1040,7 @@ class Session(object):
         return -1
 
     def execute_raw_data_query(
-            self, paths: list, start_time: int, end_time: int
+        self, paths: list, start_time: int, end_time: int
     ) -> SessionDataSet:
         """
         execute query statement and returns SessionDataSet
