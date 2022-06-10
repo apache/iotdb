@@ -77,8 +77,8 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     assignedSchemaPartition = new HashMap<>();
 
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
+    int storageGroupNum = buffer.getInt();
+    for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
       SchemaPartitionTable schemaPartitionTable = new SchemaPartitionTable();
       schemaPartitionTable.deserialize(buffer);

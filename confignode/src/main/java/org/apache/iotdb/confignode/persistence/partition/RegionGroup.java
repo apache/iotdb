@@ -31,23 +31,25 @@ import java.io.OutputStream;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class RegionInfo {
+public class RegionGroup {
 
   private final TConsensusGroupId id;
   private final TRegionReplicaSet replicaSet;
 
-  private final AtomicLong partitionCount;
+  // For DataRegion, each SeriesSlot * TimeSlot form a slot,
+  // for SchemaRegion, each SeriesSlot is a slot
+  private final AtomicLong slotCount;
 
-  public RegionInfo() {
+  public RegionGroup() {
     this.id = new TConsensusGroupId();
     this.replicaSet = new TRegionReplicaSet();
-    this.partitionCount = new AtomicLong();
+    this.slotCount = new AtomicLong();
   }
 
-  public RegionInfo(TRegionReplicaSet replicaSet) {
+  public RegionGroup(TRegionReplicaSet replicaSet) {
     this.id = replicaSet.getRegionId();
     this.replicaSet = replicaSet;
-    this.partitionCount = new AtomicLong(0);
+    this.slotCount = new AtomicLong(0);
   }
 
   public TConsensusGroupId getId() {
@@ -59,32 +61,32 @@ public class RegionInfo {
   }
 
   public void addCounter(long delta) {
-    partitionCount.getAndAdd(delta);
+    slotCount.getAndAdd(delta);
   }
 
   public long getCounter() {
-    return partitionCount.get();
+    return slotCount.get();
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     id.write(protocol);
     replicaSet.write(protocol);
-    ReadWriteIOUtils.write(partitionCount.get(), outputStream);
+    ReadWriteIOUtils.write(slotCount.get(), outputStream);
   }
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     id.read(protocol);
     replicaSet.read(protocol);
-    partitionCount.set(ReadWriteIOUtils.readLong(inputStream));
+    slotCount.set(ReadWriteIOUtils.readLong(inputStream));
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    RegionInfo that = (RegionInfo) o;
+    RegionGroup that = (RegionGroup) o;
     return id.equals(that.id) && replicaSet.equals(that.replicaSet);
   }
 

@@ -55,7 +55,7 @@ public class StorageGroupPartitionTable {
   private final AtomicBoolean dataRegionParticle;
 
   // Region
-  private final Map<TConsensusGroupId, RegionInfo> regionInfoMap;
+  private final Map<TConsensusGroupId, RegionGroup> regionInfoMap;
   // SchemaPartition
   private final SchemaPartitionTable schemaPartitionTable;
   // DataPartition
@@ -79,15 +79,15 @@ public class StorageGroupPartitionTable {
    */
   public void createRegions(List<TRegionReplicaSet> replicaSets) {
     replicaSets.forEach(
-        replicaSet -> regionInfoMap.put(replicaSet.getRegionId(), new RegionInfo(replicaSet)));
+        replicaSet -> regionInfoMap.put(replicaSet.getRegionId(), new RegionGroup(replicaSet)));
   }
 
   /** @return All Regions' RegionReplicaSet within one StorageGroup */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
 
-    for (RegionInfo regionInfo : regionInfoMap.values()) {
-      result.add(regionInfo.getReplicaSet());
+    for (RegionGroup regionGroup : regionInfoMap.values()) {
+      result.add(regionGroup.getReplicaSet());
     }
 
     return result;
@@ -104,8 +104,8 @@ public class StorageGroupPartitionTable {
     regionInfoMap
         .values()
         .forEach(
-            regionInfo -> {
-              if (regionInfo.getId().getType().equals(type)) {
+            regionGroup -> {
+              if (regionGroup.getId().getType().equals(type)) {
                 result.getAndIncrement();
               }
             });
@@ -262,9 +262,9 @@ public class StorageGroupPartitionTable {
     List<Pair<Long, TConsensusGroupId>> result = new Vector<>();
 
     regionInfoMap.forEach(
-        (consensusGroupId, regionInfo) -> {
+        (consensusGroupId, regionGroup) -> {
           if (consensusGroupId.getType().equals(type)) {
-            result.add(new Pair<>(regionInfo.getCounter(), consensusGroupId));
+            result.add(new Pair<>(regionGroup.getCounter(), consensusGroupId));
           }
         });
 
@@ -277,7 +277,7 @@ public class StorageGroupPartitionTable {
     ReadWriteIOUtils.write(seriesPartitionSlotsCount.get(), outputStream);
 
     ReadWriteIOUtils.write(regionInfoMap.size(), outputStream);
-    for (Map.Entry<TConsensusGroupId, RegionInfo> regionInfoEntry : regionInfoMap.entrySet()) {
+    for (Map.Entry<TConsensusGroupId, RegionGroup> regionInfoEntry : regionInfoMap.entrySet()) {
       regionInfoEntry.getKey().write(protocol);
       regionInfoEntry.getValue().serialize(outputStream, protocol);
     }
@@ -294,9 +294,9 @@ public class StorageGroupPartitionTable {
     for (int i = 0; i < length; i++) {
       TConsensusGroupId consensusGroupId = new TConsensusGroupId();
       consensusGroupId.read(protocol);
-      RegionInfo regionInfo = new RegionInfo();
-      regionInfo.deserialize(inputStream, protocol);
-      regionInfoMap.put(consensusGroupId, regionInfo);
+      RegionGroup regionGroup = new RegionGroup();
+      regionGroup.deserialize(inputStream, protocol);
+      regionInfoMap.put(consensusGroupId, regionGroup);
     }
 
     schemaPartitionTable.deserialize(inputStream, protocol);

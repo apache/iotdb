@@ -75,8 +75,8 @@ public class CreateDataPartitionReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     assignedDataPartition = new HashMap<>();
 
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
+    int storageGroupNum = buffer.getInt();
+    for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
       dataPartitionTable.deserialize(buffer);
