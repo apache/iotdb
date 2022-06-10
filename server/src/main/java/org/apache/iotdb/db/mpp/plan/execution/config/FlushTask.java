@@ -44,7 +44,7 @@ import java.util.List;
 
 public class FlushTask implements IConfigTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(AuthorizerConfigTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(FlushTask.class);
 
   private FlushStatement flushStatement;
 
