@@ -179,7 +179,7 @@ public class LocalConfigNode {
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
             IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
             timedForceMLogThread,
             this::forceMlog,
             config.getSyncMlogPeriodInMs(),

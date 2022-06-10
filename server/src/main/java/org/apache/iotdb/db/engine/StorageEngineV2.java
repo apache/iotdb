@@ -323,7 +323,7 @@ public class StorageEngineV2 implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+    ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
         ttlCheckThread,
         this::checkTTL,
         TTL_CHECK_INTERVAL,
