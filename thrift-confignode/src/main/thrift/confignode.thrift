@@ -101,8 +101,8 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maximumSchemaRegionCount
-  7: optional i32 maximumDataRegionCount
+  6: optional i32 maxSchemaRegionGroupCount
+  7: optional i32 maxDataRegionGroupCount
 }
 
 // Schema

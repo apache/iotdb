@@ -94,10 +94,13 @@ public class NodeManager {
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);
     } else {
-      // Persist DataNodeInfo
+      // Cache DataNodeInfo
       req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
+
+      // Adjust the maximum RegionGroup number of each StorageGroup
+      getClusterSchemaManager().adjustMaxRegionGroupCount();
     }
 
     dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
@@ -183,6 +186,10 @@ public class NodeManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private ClusterSchemaManager getClusterSchemaManager() {
+    return configManager.getClusterSchemaManager();
   }
 
   public void registerListener(final ChangeServerListener serverListener) {

@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -93,22 +93,22 @@ public class LoadManager implements Runnable {
   public void initializeRegions(
       List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    CreateRegionsReq createRegionsReq =
+    CreateRegionGroupsReq createRegionGroupsReq =
         regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, regionNum);
-    createRegionsOnDataNodes(createRegionsReq);
+    createRegionsOnDataNodes(createRegionGroupsReq);
 
-    getConsensusManager().write(createRegionsReq);
+    getConsensusManager().write(createRegionGroupsReq);
   }
 
-  private void createRegionsOnDataNodes(CreateRegionsReq createRegionsReq)
+  private void createRegionsOnDataNodes(CreateRegionGroupsReq createRegionGroupsReq)
       throws StorageGroupNotExistsException {
     Map<String, Long> ttlMap = new HashMap<>();
-    for (String storageGroup : createRegionsReq.getRegionMap().keySet()) {
+    for (String storageGroup : createRegionGroupsReq.getRegionGroupMap().keySet()) {
       ttlMap.put(
           storageGroup,
           getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
     }
-    AsyncDataNodeClientPool.getInstance().createRegions(createRegionsReq, ttlMap);
+    AsyncDataNodeClientPool.getInstance().createRegions(createRegionGroupsReq, ttlMap);
   }
 
   /**

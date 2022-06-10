@@ -23,18 +23,17 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
-import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -55,6 +54,10 @@ public class ClusterSchemaManager {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
   }
+
+  // ======================================================
+  // Consensus read/write interfaces
+  // ======================================================
 
   /**
    * Set StorageGroup
@@ -77,13 +80,85 @@ public class ClusterSchemaManager {
       result.setMessage(metadataException.getMessage());
       return result;
     }
-    // Persist StorageGroupSchema
+
+    // Cache StorageGroupSchema
     result = getConsensusManager().write(setStorageGroupReq).getStatus();
+
+    // Adjust the maximum RegionGroup number of each StorageGroup
+    adjustMaxRegionGroupCount();
+
     return result;
   }
 
   public TSStatus deleteStorageGroup(DeleteStorageGroupReq deleteStorageGroupReq) {
     return getConsensusManager().write(deleteStorageGroupReq).getStatus();
+  }
+
+  /**
+   * Count StorageGroups by specific path pattern
+   *
+   * @return CountStorageGroupResp
+   */
+  public DataSet countMatchedStorageGroups(
+    CountStorageGroupReq countStorageGroupReq) {
+    return getConsensusManager().read(countStorageGroupReq).getDataset();
+  }
+
+  /**
+   * Get StorageGroupSchemas by specific path pattern
+   *
+   * @return StorageGroupSchemaDataSet
+   */
+  public DataSet getMatchedStorageGroupSchema(
+    GetStorageGroupReq getStorageGroupReq) {
+    return getConsensusManager().read(getStorageGroupReq).getDataset();
+  }
+
+  public TSStatus setTTL(SetTTLReq setTTLReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setTTLReq).getStatus();
+  }
+
+  public TSStatus setSchemaReplicationFactor(
+    SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setSchemaReplicationFactorReq).getStatus();
+  }
+
+  public TSStatus setDataReplicationFactor(
+    SetDataReplicationFactorReq setDataReplicationFactorReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setDataReplicationFactorReq).getStatus();
+  }
+
+  public TSStatus setTimePartitionInterval(
+    SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setTimePartitionIntervalReq).getStatus();
+  }
+
+  // ======================================================
+  // Leader scheduling interfaces
+  // ======================================================
+
+  /**
+   * Only leader use this interface.
+   * Adjust the maxSchemaRegionGroupCount and maxDataRegionGroupCount of each StorageGroup
+   * bases on existing cluster resources
+   */
+  public void adjustMaxRegionGroupCount() {
+    int dataNodeNum = getNodeManager().getOnlineDataNodeCount();
+    int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
+    Map<String, TStorageGroupSchema> storageGroupSchemaMap = getMatchedStorageGroupSchemasByName(getStorageGroupNames());
+
+    AdjustMaxRegionGroupCountReq adjustMaxRegionGroupCountReq = new AdjustMaxRegionGroupCountReq();
+    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
+      // Adjust maxSchemaRegionGroupCount
+
+
+      // Adjust maxDataRegionGroupCount
+
+    }
   }
 
   /**
@@ -109,53 +184,17 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
   }
 
-  public TSStatus setTTL(SetTTLReq setTTLReq) {
-    // TODO: Inform DataNodes
-    return getConsensusManager().write(setTTLReq).getStatus();
-  }
-
-  public TSStatus setSchemaReplicationFactor(
-      SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
-    // TODO: Inform DataNodes
-    return getConsensusManager().write(setSchemaReplicationFactorReq).getStatus();
-  }
-
-  public TSStatus setDataReplicationFactor(
-      SetDataReplicationFactorReq setDataReplicationFactorReq) {
-    // TODO: Inform DataNodes
-    return getConsensusManager().write(setDataReplicationFactorReq).getStatus();
-  }
-
-  public TSStatus setTimePartitionInterval(
-      SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
-    // TODO: Inform DataNodes
-    return getConsensusManager().write(setTimePartitionIntervalReq).getStatus();
-  }
-
   /**
-   * Count StorageGroups by specific path pattern
+   * Only leader use this interface.
    *
-   * @return CountStorageGroupResp
+   * @return List<StorageGroupName>, all storageGroups' name
    */
-  public CountStorageGroupResp countMatchedStorageGroups(
-      CountStorageGroupReq countStorageGroupReq) {
-    ConsensusReadResponse readResponse = getConsensusManager().read(countStorageGroupReq);
-    return (CountStorageGroupResp) readResponse.getDataset();
-  }
-
-  /**
-   * Get StorageGroupSchemas by specific path pattern
-   *
-   * @return StorageGroupSchemaDataSet
-   */
-  public StorageGroupSchemaResp getMatchedStorageGroupSchema(
-      GetStorageGroupReq getStorageGroupReq) {
-    ConsensusReadResponse readResponse = getConsensusManager().read(getStorageGroupReq);
-    return (StorageGroupSchemaResp) readResponse.getDataset();
-  }
-
   public List<String> getStorageGroupNames() {
     return clusterSchemaInfo.getStorageGroupNames();
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 
   private ConsensusManager getConsensusManager() {

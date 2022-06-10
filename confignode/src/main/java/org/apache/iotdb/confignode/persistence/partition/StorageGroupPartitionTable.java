@@ -73,11 +73,11 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Cache allocation result of new Regions
+   * Cache allocation result of new RegionGroups
    *
    * @param replicaSets List<TRegionReplicaSet>
    */
-  public void createRegions(List<TRegionReplicaSet> replicaSets) {
+  public void createRegionGroups(List<TRegionReplicaSet> replicaSets) {
     replicaSets.forEach(
         replicaSet -> regionInfoMap.put(replicaSet.getRegionId(), new RegionGroup(replicaSet)));
   }

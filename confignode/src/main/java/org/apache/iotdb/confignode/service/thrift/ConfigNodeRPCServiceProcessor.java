@@ -177,9 +177,9 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
 
-    // Mark the StorageGroup as SchemaRegions and DataRegions not yet created
-    storageGroupSchema.setMaximumSchemaRegionCount(0);
-    storageGroupSchema.setMaximumDataRegionCount(0);
+    // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0
+    storageGroupSchema.setMaxSchemaRegionGroupCount(0);
+    storageGroupSchema.setMaxDataRegionGroupCount(0);
 
     SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);

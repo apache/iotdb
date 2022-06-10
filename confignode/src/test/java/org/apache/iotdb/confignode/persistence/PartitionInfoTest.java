@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
@@ -98,24 +98,24 @@ public class PartitionInfoTest {
     partitionInfo.setStorageGroup(new SetStorageGroupReq(new TStorageGroupSchema("root.test")));
 
     // Create a SchemaRegion
-    CreateRegionsReq createRegionsReq = new CreateRegionsReq();
+    CreateRegionGroupsReq createRegionGroupsReq = new CreateRegionGroupsReq();
     TRegionReplicaSet schemaRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.SchemaPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-    createRegionsReq.addRegion("root.test", schemaRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionGroupsReq.addRegionGroup("root.test", schemaRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a DataRegion
-    createRegionsReq = new CreateRegionsReq();
+    createRegionGroupsReq = new CreateRegionGroupsReq();
     TRegionReplicaSet dataRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.DataPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-    createRegionsReq.addRegion("root.test", dataRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionGroupsReq.addRegionGroup("root.test", dataRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a SchemaPartition
     CreateSchemaPartitionReq createSchemaPartitionReq =
