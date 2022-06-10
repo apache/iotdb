@@ -291,7 +291,7 @@ public class ConfigManager implements Manager {
       for (String devicePath : devicePaths) {
         boolean matchStorageGroup = false;
         for (String storageGroup : storageGroups) {
-          if (devicePath.startsWith(storageGroup)) {
+          if (devicePath.equals(storageGroup) || devicePath.startsWith(storageGroup + ".")) {
             matchStorageGroup = true;
             if (devicePath.contains("*")) {
               // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
@@ -352,7 +352,7 @@ public class ConfigManager implements Manager {
         if (!devicePath.contains("*")) {
           // Only check devicePaths that without "*"
           for (String storageGroup : storageGroups) {
-            if (devicePath.startsWith(storageGroup)) {
+            if (devicePath.equals(storageGroup) || devicePath.startsWith(storageGroup + ".")) {
               partitionSlotsMap
                   .computeIfAbsent(storageGroup, key -> new ArrayList<>())
                   .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
