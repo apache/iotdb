@@ -339,7 +339,7 @@ public class PartitionManager {
     // TODO: Put back particles after creation
 
     // Waiting allocation for those StorageGroups who don't get the particle
-    for (int retry = 0; retry < 10; retry++) {
+    for (int retry = 0; retry < 100; retry++) {
       boolean allocationFinished = true;
       for (String storageGroup : storageGroupsInAllocation) {
         if (getRegionCount(storageGroup, consensusGroupType) == 0) {
@@ -352,8 +352,8 @@ public class PartitionManager {
       }
 
       try {
-        // Sleep 1s to wait Region allocation
-        TimeUnit.SECONDS.sleep(1);
+        // Sleep 200ms to wait Region allocation
+        TimeUnit.MILLISECONDS.sleep(200);
       } catch (InterruptedException e) {
         LOGGER.warn("The PartitionManager is interrupted.", e);
       }
