@@ -160,9 +160,18 @@ public class InternalServiceImpl implements InternalService.Iface {
       writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
     }
     // TODO need consider more status
-    response.setAccepted(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
-    response.setMessage(writeResponse.getStatus().message);
+    if (writeResponse.getStatus() != null) {
+      response.setAccepted(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
+      response.setMessage(writeResponse.getStatus().message);
+    } else {
+      LOGGER.error(
+          "Something wrong happened while calling consensus layer's write API.",
+          writeResponse.getException());
+      response.setAccepted(false);
+      response.setMessage(writeResponse.getException().getMessage());
+    }
+
     return response;
   }
 
