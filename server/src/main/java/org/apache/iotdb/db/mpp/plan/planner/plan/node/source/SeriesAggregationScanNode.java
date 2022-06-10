@@ -296,6 +296,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     return timeFilter;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "SeriesAggregationScanNode-%s:[SeriesPath: %s, Descriptor: %s, DataRegion: %s]",
