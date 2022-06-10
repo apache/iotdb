@@ -28,7 +28,7 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.tsfile.DefaultSource.SerializableConfiguration
 import org.apache.iotdb.spark.tsfile.qp.Executor
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
+import org.apache.iotdb.tsfile.common.constant.{QueryConstant, TsFileConstant}
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet
 import org.apache.iotdb.tsfile.read.{TsFileReader, TsFileSequenceReader}
@@ -102,9 +102,9 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       log.info(file.toString())
 
       val conf = broadcastedConf.value.value
-      val in = new HDFSInput(new Path(new URI(file.filePath)), conf)
-
-      val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+      val tsfileInput = new HDFSInput(new Path(new URI(file.filePath)), conf)
+      val indexFileInput = new HDFSInput(new Path(new URI(file.filePath + TsFileConstant.INDEX_SUFFIX)), conf)
+      val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
 
       val tsFileMetaData = reader.readFileMetadata
 

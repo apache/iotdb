@@ -48,6 +48,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
   private val tsfileFolder3 = baseFolder + "/tsfileFolder3"
   private val tsfile4 = tsfileFolder3 + "/test.tsfile"
+  private val tsfileIndex4 = tsfileFolder3 + "/test.tsfile.index"
 
   private val outputPath = baseFolder + "/output"
   private val outputPathFile = outputPath + "/part-m-00000"
@@ -340,8 +341,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
    */
   test("partition test: narrow table, global time filter, small partition size") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(1).getOffsetOfChunkHeader
@@ -403,8 +405,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
    */
   test("partition test: narrow table, global time filter, larger partition size") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -453,8 +456,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: wide table, global time filter 1") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -476,8 +480,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: wide table, global time filter 2") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -500,8 +505,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: wide table, global time filter 3") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -523,8 +529,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: narrow table, value filter") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -546,8 +553,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: wide table, value filter 1") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -569,8 +577,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: wide table, value filter 2") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -593,8 +602,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: wide table, value filter 3") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader
@@ -617,8 +627,9 @@ device_2: 400000 rows, time range [0,799998], interval 2
 
   test("partition test: wide table, value filter 4") {
     var conf: Configuration = spark.sparkContext.hadoopConfiguration
-    val in = new HDFSInput(new Path(new URI(tsfile4)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfile4)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndex4)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
     val chunkMetadataList = reader.getChunkMetadataList(new common.Path("device_1", "sensor_1"))
     val endOffsetOfChunkGroup = chunkMetadataList.get(2).getOffsetOfChunkHeader

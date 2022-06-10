@@ -24,7 +24,7 @@ import java.util
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
+import org.apache.iotdb.tsfile.common.constant.{QueryConstant, TsFileConstant}
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
@@ -90,8 +90,9 @@ object WideConverter extends Converter {
     var seriesSet: mutable.Set[String] = mutable.Set()
 
     files.foreach(f => {
-      val in = new HDFSInput(f.getPath, conf)
-      val reader = new TsFileSequenceReader(in)
+      val tsfileInput = new HDFSInput(f.getPath, conf)
+      val indexFileInput = new HDFSInput(f.getPath + TsFileConstant.INDEX_SUFFIX, conf)
+      val reader = new TsFileSequenceReader(tsfileInput, indexFileInput)
       val devices = reader.getAllDevices
       val measurements = reader.getAllMeasurements
 

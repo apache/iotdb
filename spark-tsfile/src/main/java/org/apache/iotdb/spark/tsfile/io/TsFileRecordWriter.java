@@ -19,6 +19,7 @@
 package org.apache.iotdb.spark.tsfile.io;
 
 import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -33,13 +34,14 @@ import java.io.IOException;
 
 public class TsFileRecordWriter extends RecordWriter<NullWritable, TSRecord> {
 
-  private TsFileWriter tsFileWriter = null;
+  private TsFileWriter tsFileWriter;
 
   public TsFileRecordWriter(TaskAttemptContext job, Path file, Schema schema) throws IOException {
     HDFSOutput hdfsOutput =
         new HDFSOutput(file.toString(), job.getConfiguration(), false); // NOTE overwrite false here
-
-    tsFileWriter = new TsFileWriter(hdfsOutput, schema);
+    HDFSOutput indexFileOutput =
+        new HDFSOutput(file + TsFileConstant.INDEX_SUFFIX, job.getConfiguration(), false);
+    tsFileWriter = new TsFileWriter(hdfsOutput, indexFileOutput, schema);
   }
 
   @Override

@@ -18,23 +18,26 @@
  */
 package org.apache.iotdb.spark.tsfile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.spark.constant.TestConstant;
 import org.apache.iotdb.spark.tool.TsFileWriteTool;
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class HDFSInputTest {
 
   private String folder = TestConstant.BASE_OUTPUT_PATH.concat("test-output/HDFSInputTest");
   private String path = folder + "/test.tsfile";
-  private HDFSInput in;
+  private HDFSInput tsfileInput;
+  private HDFSInput indexFileInput;
 
   @Before
   public void before() throws Exception {
@@ -45,12 +48,13 @@ public class HDFSInputTest {
     tsfile_folder.mkdirs();
     TsFileWriteTool tsFileWrite = new TsFileWriteTool();
     tsFileWrite.create1(path);
-    in = new HDFSInput(path);
+    tsfileInput = new HDFSInput(path);
+    indexFileInput = new HDFSInput(path + TsFileConstant.INDEX_SUFFIX);
   }
 
   @After
   public void after() throws IOException {
-    in.close();
+    tsfileInput.close();
     File tsfile_folder = new File(folder);
     deleteDir(tsfile_folder);
   }
@@ -66,16 +70,24 @@ public class HDFSInputTest {
 
   @Test
   public void test_read1() throws IOException {
-    int size = 500;
+    int size = 300;
     ByteBuffer buffer = ByteBuffer.allocate(size);
-    Assert.assertEquals(size, in.read(buffer));
+    Assert.assertEquals(size, tsfileInput.read(buffer));
+
+    int indexSize = 300;
+    buffer = ByteBuffer.allocate(indexSize);
+    Assert.assertEquals(indexSize, indexFileInput.read(buffer));
   }
 
   @Test
   public void test_read2() throws IOException {
-    int size = 500;
+    int size = 200;
     long pos = 20L;
     ByteBuffer buffer = ByteBuffer.allocate(size);
-    Assert.assertEquals(size, in.read(buffer, pos));
+    Assert.assertEquals(size, tsfileInput.read(buffer, pos));
+
+    int indexSize = 200;
+    buffer = ByteBuffer.allocate(indexSize);
+    Assert.assertEquals(indexSize, indexFileInput.read(buffer, pos));
   }
 }

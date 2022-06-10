@@ -25,7 +25,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.tsfile.qp.QueryProcessor
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
+import org.apache.iotdb.tsfile.common.constant.{QueryConstant, TsFileConstant}
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
 import org.apache.iotdb.spark.tsfile.qp.common.{BasicOperator, FilterOperator, SQLConstant, TSQueryPlan}
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
@@ -68,8 +68,9 @@ object NarrowConverter extends Converter {
     var seriesSet: mutable.Set[String] = mutable.Set()
 
     files.foreach(f => {
-      val in = new HDFSInput(f.getPath, conf)
-      val reader = new TsFileSequenceReader(in)
+      val tsfileInput = new HDFSInput(f.getPath, conf)
+      val indexFileInput = new HDFSInput(f.getPath + TsFileConstant.INDEX_SUFFIX, conf)
+      val reader = new TsFileSequenceReader(tsfileInput, indexFileInput)
       val measurements = reader.getAllMeasurements
 
       measurements.foreach(m => {

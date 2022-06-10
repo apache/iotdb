@@ -44,7 +44,9 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 class ConverterTest extends FunSuite with BeforeAndAfterAll {
   private val tsfileFolder = TestConstant.BASE_OUTPUT_PATH.concat("ConverterTest")
   private val tsfilePath1: String = tsfileFolder + "/test_1.tsfile"
+  private val tsfileIndexPath1: String = tsfileFolder + "/test_1.tsfile.index"
   private val tsfilePath2: String = tsfileFolder + "/test_2.tsfile"
+  private val tsfileIndexPath2: String = tsfileFolder + "/test_2.tsfile.index"
   private var spark: SparkSession = _
   private var conf: Configuration = _
 
@@ -85,8 +87,9 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("getSeries") {
-    val in = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndexPath1)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
 
     val series = WideConverter.getSeries(tsFileMetaData, reader)
@@ -99,7 +102,8 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals("[device_2.sensor_1,FLOAT]", series.get(4).toString)
     Assert.assertEquals("[device_2.sensor_2,INT32]", series.get(5).toString)
 
-    in.close()
+    tsfileInput.close()
+    indexFileInput.close()
   }
 
   test("getUnionSeries") {
@@ -170,8 +174,9 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("prep4requiredSchema1") {
-    val in = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndexPath1)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
     val tsFileMetaData = reader.readFileMetadata
 
     val requiredFields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
@@ -189,12 +194,15 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals("StructField(device_1.sensor_1,FloatType,true)", fields(1).toString)
     Assert.assertEquals("StructField(device_1.sensor_2,IntegerType,true)", fields(2).toString)
 
-    in.close()
+    tsfileInput.close()
+    indexFileInput.close()
   }
 
   test("prepSchema") {
-    val in = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
-    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsfileInput = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
+    val indexFileInput = new HDFSInput(new Path(new URI(tsfileIndexPath1)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(tsfileInput, indexFileInput)
+
     val tsFileMetaData = reader.readFileMetadata
 
     val requiredFields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
@@ -212,7 +220,8 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals("StructField(device_2.sensor_1,FloatType,true)", fields(4).toString)
     Assert.assertEquals("StructField(device_2.sensor_2,IntegerType,true)", fields(5).toString)
 
-    in.close()
+    tsfileInput.close()
+    indexFileInput.close()
   }
 
   test("toTsRecord") {
