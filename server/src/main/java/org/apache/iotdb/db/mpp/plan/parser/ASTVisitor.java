@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.parser;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -137,6 +138,8 @@ import java.util.regex.Pattern;
 
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
@@ -2058,13 +2061,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.INTEGER_LITERAL() != null) {
       return new ConstantOperand(TSDataType.INT64, text);
     } else if (constantContext.realLiteral() != null) {
-      return new ConstantOperand(TSDataType.DOUBLE, text);
+      return parseRealLiteral(text);
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
           TSDataType.INT64, String.valueOf(parseDateExpression(constantContext.dateExpression())));
     } else {
       throw new SQLParserException("Unsupported constant operand: " + text);
     }
+  }
+
+  private Expression parseRealLiteral(String value) {
+    // 3.33 is float by default
+    return new ConstantOperand(
+        CONFIG.getFloatingStringInferType().equals(TSDataType.DOUBLE)
+            ? TSDataType.DOUBLE
+            : TSDataType.FLOAT,
+        value);
   }
 
   /**

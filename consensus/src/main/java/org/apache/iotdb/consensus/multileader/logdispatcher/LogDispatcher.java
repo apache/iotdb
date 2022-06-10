@@ -31,7 +31,6 @@ import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClie
 import org.apache.iotdb.consensus.multileader.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
-import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
@@ -42,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -59,8 +57,6 @@ import java.util.stream.Collectors;
 public class LogDispatcher {
 
   private final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
-
-  private static final int DEFAULT_BUFFER_SIZE = 1024 * 15;
 
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
@@ -282,13 +278,9 @@ public class LogDispatcher {
         // TODO iterator
         IConsensusRequest data = reader.getReq(currentIndex++);
         if (data != null) {
-          // TODO fix byteBuffer overflow
-          ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-          data.serializeRequest(buffer);
-          buffer.flip();
           // since WAL can no longer recover FragmentInstance, but only PlanNode, we need to give
           // special flags to use different deserialization methods in the dataRegion stateMachine
-          logBatches.add(new TLogBatch(TLogType.InsertNode, buffer));
+          logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
         }
       }
       return currentIndex - 1;
@@ -296,11 +288,7 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, List<TLogBatch> logBatches) {
-      // TODO fix byteBuffer overflow
-      ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-      request.serializeRequest(buffer);
-      buffer.flip();
-      logBatches.add(new TLogBatch(TLogType.FragmentInstance, buffer));
+      logBatches.add(new TLogBatch(request.serializeToByteBuffer()));
     }
   }
 }

@@ -267,6 +267,8 @@ public class DataNode implements DataNodeMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
+    // init metric service
+    registerManager.register(MetricsService.getInstance());
     // init rpc service
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -276,7 +278,6 @@ public class DataNode implements DataNodeMBean {
       registerManager.register(RPCService.getInstance());
     }
 
-    registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());

@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -41,6 +43,12 @@ public class StringLiteral extends Literal {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.STRING.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(LiteralType.STRING.ordinal(), stream);
+    ReadWriteIOUtils.write(value, stream);
   }
 
   @Override

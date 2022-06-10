@@ -26,34 +26,38 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AuthorizerConfigTask implements IConfigTask {
+public class AuthorizerTask implements IConfigTask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizerConfigTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizerTask.class);
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private AuthorStatement authorStatement;
   private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
-  public AuthorizerConfigTask(AuthorStatement authorStatement) {
+  public AuthorizerTask(AuthorStatement authorStatement) {
     this.authorStatement = authorStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
-    SettableFuture<ConfigTaskResult> future = null;
-    try (ConfigNodeClient configNodeClient =
-        clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
       // Construct request using statement
       TAuthorizerReq req =
           new TAuthorizerReq(
@@ -66,18 +70,28 @@ public class AuthorizerConfigTask implements IConfigTask {
               authorStatement.getNodeName() == null
                   ? ""
                   : authorStatement.getNodeName().getFullPath());
-
       // Send request to some API server
-      if (authorStatement.getQueryType() == QueryType.WRITE) {
-        future = authorizerManager.operatePermission(req, configNodeClient);
+      if (config.isClusterMode()) {
+        try (ConfigNodeClient configNodeClient =
+            clientManager.borrowClient(ConfigNodeInfo.partitionRegionId); ) {
+          if (authorStatement.getQueryType() == QueryType.WRITE) {
+            future = authorizerManager.operatePermission(req, configNodeClient);
+          } else {
+            future = authorizerManager.queryPermission(req, configNodeClient);
+          }
+        }
       } else {
-        future = authorizerManager.queryPermission(req, configNodeClient);
+        if (authorStatement.getQueryType() == QueryType.WRITE) {
+          future = authorizerManager.operatePermission(req, null);
+        } else {
+          future = authorizerManager.queryPermission(req, null);
+        }
       }
-    } catch (AuthException e) {
-      LOGGER.error("No such privilege {}.", authorStatement.getAuthorType());
-      future.setException(e);
-    } catch (IOException e) {
+
+    } catch (IOException | TException e) {
       LOGGER.error("can't connect to all config nodes", e);
+      future.setException(e);
+    } catch (AuthException e) {
       future.setException(e);
     }
     // If the action is executed successfully, return the Future.

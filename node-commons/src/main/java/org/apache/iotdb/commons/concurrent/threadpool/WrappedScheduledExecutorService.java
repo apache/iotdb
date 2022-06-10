@@ -58,12 +58,14 @@ public class WrappedScheduledExecutorService
   }
 
   @Override
+  @SuppressWarnings("unsafeThreadSchedule")
   public ScheduledFuture<?> scheduleAtFixedRate(
       Runnable command, long initialDelay, long period, TimeUnit unit) {
     return service.scheduleAtFixedRate(command, initialDelay, period, unit);
   }
 
   @Override
+  @SuppressWarnings("unsafeThreadSchedule")
   public ScheduledFuture<?> scheduleWithFixedDelay(
       Runnable command, long initialDelay, long delay, TimeUnit unit) {
     return service.scheduleWithFixedDelay(command, initialDelay, delay, unit);

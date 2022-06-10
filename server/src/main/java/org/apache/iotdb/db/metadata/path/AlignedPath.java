@@ -33,6 +33,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -270,6 +272,29 @@ public class AlignedPath extends PartialPath {
           ReadWriteIOUtils.write((byte) 1, byteBuffer);
         }
         measurementSchema.serializeTo(byteBuffer);
+      }
+    }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    PathType.Aligned.serialize(stream);
+    super.serializeWithoutType(stream);
+    ReadWriteIOUtils.write(measurementList.size(), stream);
+    for (String measurement : measurementList) {
+      ReadWriteIOUtils.write(measurement, stream);
+    }
+    if (schemaList == null) {
+      ReadWriteIOUtils.write(-1, stream);
+    } else {
+      ReadWriteIOUtils.write(schemaList.size(), stream);
+      for (IMeasurementSchema measurementSchema : schemaList) {
+        if (measurementSchema instanceof MeasurementSchema) {
+          ReadWriteIOUtils.write((byte) 0, stream);
+        } else if (measurementSchema instanceof VectorMeasurementSchema) {
+          ReadWriteIOUtils.write((byte) 1, stream);
+        }
+        measurementSchema.serializeTo(stream);
       }
     }
   }

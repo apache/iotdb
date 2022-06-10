@@ -73,9 +73,7 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
@@ -103,9 +101,7 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
