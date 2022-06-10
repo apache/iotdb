@@ -238,7 +238,7 @@ public class NodeInfo implements SnapshotProcessor {
    * @param applyConfigNodeReq ApplyConfigNodeReq
    * @return APPLY_CONFIGNODE_FAILED if update online ConfigNode failed.
    */
-  public TSStatus updateConfigNodeList(ApplyConfigNodeReq applyConfigNodeReq) {
+  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
