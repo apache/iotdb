@@ -22,6 +22,8 @@ package org.apache.iotdb.db.mpp.plan.statement.literal;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -47,8 +49,37 @@ public class LongLiteral extends Literal {
   }
 
   @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(LiteralType.LONG.ordinal(), stream);
+    ReadWriteIOUtils.write(value, stream);
+  }
+
+  @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.INT32 || dataType == TSDataType.INT64;
+    return dataType == TSDataType.INT32
+        || dataType == TSDataType.INT64
+        || dataType == TSDataType.FLOAT
+        || dataType == TSDataType.DOUBLE;
+  }
+
+  @Override
+  public int getInt() {
+    return Math.toIntExact(value);
+  }
+
+  @Override
+  public long getLong() {
+    return value;
+  }
+
+  @Override
+  public float getFloat() {
+    return value;
+  }
+
+  @Override
+  public double getDouble() {
+    return value;
   }
 
   @Override

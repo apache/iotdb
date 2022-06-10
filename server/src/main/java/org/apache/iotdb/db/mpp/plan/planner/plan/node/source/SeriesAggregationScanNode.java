@@ -19,13 +19,14 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
@@ -37,6 +38,8 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,26 +61,10 @@ import java.util.stream.Collectors;
  * represent the whole aggregation result of this series. And the timestamp will be 0, which is
  * meaningless.
  */
-public class SeriesAggregationScanNode extends SourceNode {
+public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
   // The path of the target series which will be aggregated.
   private final MeasurementPath seriesPath;
-
-  // The list of aggregate functions, each AggregateDescriptor will be output as one column in
-  // result TsBlock
-  private final List<AggregationDescriptor> aggregationDescriptorList;
-
-  // The order to traverse the data.
-  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
-  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
-
-  // time filter for current series, could be null if doesn't exist
-  @Nullable private Filter timeFilter;
-
-  // The parameter of `group by time`
-  // Its value will be null if there is no `group by time` clause,
-  @Nullable private GroupByTimeParameter groupByTimeParameter;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -86,9 +73,8 @@ public class SeriesAggregationScanNode extends SourceNode {
       PlanNodeId id,
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList) {
-    super(id);
+    super(id, AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList));
     this.seriesPath = seriesPath;
-    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   public SeriesAggregationScanNode(
@@ -135,10 +121,6 @@ public class SeriesAggregationScanNode extends SourceNode {
 
   public MeasurementPath getSeriesPath() {
     return seriesPath;
-  }
-
-  public List<AggregationDescriptor> getAggregationDescriptorList() {
-    return aggregationDescriptorList;
   }
 
   @Override
@@ -194,7 +176,7 @@ public class SeriesAggregationScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSeriesAggregate(this, context);
+    return visitor.visitSeriesAggregationScan(this, context);
   }
 
   @Override
@@ -218,7 +200,29 @@ public class SeriesAggregationScanNode extends SourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
-    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SERIES_AGGREGATE_SCAN.serialize(stream);
+    seriesPath.serialize(stream);
+    ReadWriteIOUtils.write(aggregationDescriptorList.size(), stream);
+    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
+      aggregationDescriptor.serialize(stream);
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      timeFilter.serialize(stream);
+    }
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
+    }
   }
 
   public static SeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
@@ -239,8 +243,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    TRegionReplicaSet regionReplicaSet =
-        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesAggregationScanNode(
         planNodeId,
@@ -249,7 +251,7 @@ public class SeriesAggregationScanNode extends SourceNode {
         scanOrder,
         timeFilter,
         groupByTimeParameter,
-        regionReplicaSet);
+        null);
   }
 
   @Override
@@ -282,5 +284,24 @@ public class SeriesAggregationScanNode extends SourceNode {
         timeFilter,
         groupByTimeParameter,
         regionReplicaSet);
+  }
+
+  @Override
+  public PartialPath getPartitionPath() {
+    return seriesPath;
+  }
+
+  @Override
+  public Filter getPartitionTimeFilter() {
+    return timeFilter;
+  }
+
+  public String toString() {
+    return String.format(
+        "SeriesAggregationScanNode-%s:[SeriesPath: %s, Descriptor: %s, DataRegion: %s]",
+        this.getPlanNodeId(),
+        this.getSeriesPath(),
+        this.getAggregationDescriptorList(),
+        this.getRegionReplicaSet());
   }
 }

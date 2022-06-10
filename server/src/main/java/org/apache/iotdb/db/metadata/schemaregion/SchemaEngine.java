@@ -28,6 +28,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
+import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +56,12 @@ public class SchemaEngine {
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
+
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
+
+  public void write(SchemaRegionId schemaRegionId, PlanNode planNode) {
+    planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
+  }
 
   private static class SchemaEngineManagerHolder {
 

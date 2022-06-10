@@ -181,7 +181,7 @@ public class TsFileProcessor {
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode = WALManager.getInstance().applyForWALNode();
+    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeTsFileCallback);
@@ -203,7 +203,7 @@ public class TsFileProcessor {
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode = WALManager.getInstance().applyForWALNode();
+    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);
@@ -1222,7 +1222,7 @@ public class TsFileProcessor {
         MemTableFlushTask flushTask =
             new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
         flushTask.syncFlushMemTable();
-      } catch (Exception e) {
+      } catch (Throwable e) {
         if (writer == null) {
           logger.info(
               "{}: {} is closed during flush, abandon flush task",

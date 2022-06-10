@@ -27,10 +27,14 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -95,11 +99,20 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     insertTabletNodeList = new ArrayList<>();
   }
 
+  public InsertMultiTabletsNode(
+      PlanNodeId id,
+      List<Integer> parentInsertTabletNodeIndexList,
+      List<InsertTabletNode> insertTabletNodeList) {
+    super(id);
+    this.parentInsertTabletNodeIndexList = parentInsertTabletNodeIndexList;
+    this.insertTabletNodeList = insertTabletNodeList;
+  }
+
   public List<Integer> getParentInsertTabletNodeIndexList() {
     return parentInsertTabletNodeIndexList;
   }
 
-  public void setParentInsertTabletNodeIndexList(List<Integer> parentInsertTabletNodeIndexList) {
+  private void setParentInsertTabletNodeIndexList(List<Integer> parentInsertTabletNodeIndexList) {
     this.parentInsertTabletNodeIndexList = parentInsertTabletNodeIndexList;
   }
 
@@ -107,13 +120,25 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     return insertTabletNodeList;
   }
 
-  public void setInsertTabletNodeList(List<InsertTabletNode> insertTabletNodeList) {
+  private void setInsertTabletNodeList(List<InsertTabletNode> insertTabletNodeList) {
     this.insertTabletNodeList = insertTabletNodeList;
   }
 
   public void addInsertTabletNode(InsertTabletNode node, Integer parentIndex) {
     insertTabletNodeList.add(node);
     parentInsertTabletNodeIndexList.add(parentIndex);
+  }
+
+  @Override
+  public void setSearchIndex(long index) {
+    searchIndex = index;
+    insertTabletNodeList.forEach(plan -> plan.setSearchIndex(index));
+  }
+
+  @Override
+  public void setSafelyDeletedSearchIndex(long index) {
+    safelyDeletedSearchIndex = index;
+    insertTabletNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
   }
 
   @Override
@@ -245,13 +270,27 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_MULTI_TABLET.serialize(byteBuffer);
 
-    byteBuffer.putInt(insertTabletNodeList.size());
+    ReadWriteIOUtils.write(insertTabletNodeList.size(), byteBuffer);
 
     for (InsertTabletNode node : insertTabletNodeList) {
       node.subSerialize(byteBuffer);
     }
     for (Integer index : parentInsertTabletNodeIndexList) {
-      byteBuffer.putInt(index);
+      ReadWriteIOUtils.write(index, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.INSERT_MULTI_TABLET.serialize(stream);
+
+    ReadWriteIOUtils.write(insertTabletNodeList.size(), stream);
+
+    for (InsertTabletNode node : insertTabletNodeList) {
+      node.subSerialize(stream);
+    }
+    for (Integer index : parentInsertTabletNodeIndexList) {
+      ReadWriteIOUtils.write(index, stream);
     }
   }
 
@@ -268,5 +307,10 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), parentInsertTabletNodeIndexList, insertTabletNodeList);
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertMultiTablets(this, context);
   }
 }

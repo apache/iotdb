@@ -37,6 +37,7 @@ import org.apache.ratis.server.storage.RaftStorage;
 import org.apache.ratis.statemachine.StateMachineStorage;
 import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
+import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.LifeCycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,8 +86,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public void pause() {
-    getLifeCycle().transition(LifeCycle.State.PAUSING);
-    getLifeCycle().transition(LifeCycle.State.PAUSED);
+    if (getLifeCycleState() == LifeCycle.State.RUNNING) {
+      getLifeCycle().transition(LifeCycle.State.PAUSING);
+      getLifeCycle().transition(LifeCycle.State.PAUSED);
+    }
   }
 
   @Override
@@ -113,8 +116,14 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
 
-    TSStatus result = applicationStateMachine.write(applicationRequest);
-    Message ret = new ResponseMessage(result);
+    Message ret;
+    try {
+      TSStatus result = applicationStateMachine.write(applicationRequest);
+      ret = new ResponseMessage(result);
+    } catch (Exception rte) {
+      logger.error("application statemachine throws a runtime exception: ", rte);
+      ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
+    }
 
     return CompletableFuture.completedFuture(ret);
   }
@@ -141,13 +150,30 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // require the application statemachine to take the latest snapshot
     String metadata = Utils.getMetadataFromTermIndex(lastApplied);
     File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+
+    // delete snapshotDir fully in case of last takeSnapshot() crashed
+    FileUtils.deleteFully(snapshotDir);
+
     snapshotDir.mkdir();
     if (!snapshotDir.isDirectory()) {
       logger.error("Unable to create snapshotDir at {}", snapshotDir);
       return RaftLog.INVALID_LOG_INDEX;
     }
-    boolean success = applicationStateMachine.takeSnapshot(snapshotDir);
-    if (!success) {
+
+    boolean applicationTakeSnapshotSuccess = applicationStateMachine.takeSnapshot(snapshotDir);
+    boolean addTermIndexMetafileSuccess =
+        snapshotStorage.addTermIndexMetaFile(snapshotDir, metadata);
+
+    if (!applicationTakeSnapshotSuccess || !addTermIndexMetafileSuccess) {
+      // this takeSnapshot failed, clean up files and directories
+      // statemachine is supposed to clear snapshotDir on failure
+      boolean isEmpty = snapshotDir.delete();
+      if (!isEmpty) {
+        logger.warn(
+            "StateMachine take snapshot failed but leave unexpected remaining files at "
+                + snapshotDir.getAbsolutePath());
+        FileUtils.deleteFully(snapshotDir);
+      }
       return RaftLog.INVALID_LOG_INDEX;
     }
     return lastApplied.getIndex();

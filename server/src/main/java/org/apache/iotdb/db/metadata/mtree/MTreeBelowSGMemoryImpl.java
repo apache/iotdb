@@ -412,6 +412,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    */
   @Override
   public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
+    MetaFormatUtils.checkTimeseries(deviceId);
     String[] nodeNames = deviceId.getNodes();
     IMNode cur = storageGroupMNode;
     IMNode child;
@@ -1048,7 +1049,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   public void checkIsTemplateCompatibleWithChild(IMNode node, Template template)
       throws MetadataException {
     for (String measurementPath : template.getSchemaMap().keySet()) {
-      String directNodeName = PathUtils.splitPathToDetachedPath(measurementPath)[0];
+      String directNodeName = PathUtils.splitPathToDetachedNodes(measurementPath)[0];
       if (node.hasChild(directNodeName)) {
         throw new MetadataException(
             "Node name "
@@ -1099,7 +1100,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     // node
     Set<String> overlapSet = new HashSet<>();
     for (String path : appendMeasurements) {
-      overlapSet.add(PathUtils.splitPathToDetachedPath(path)[0]);
+      overlapSet.add(PathUtils.splitPathToDetachedNodes(path)[0]);
     }
 
     while (setNodes.size() != 0) {

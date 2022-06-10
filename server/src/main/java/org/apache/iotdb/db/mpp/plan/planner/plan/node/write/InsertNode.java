@@ -32,7 +32,11 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -43,6 +47,12 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode {
+
+  private final Logger logger = LoggerFactory.getLogger(InsertNode.class);
+  /** this insert node doesn't need to participate in multi-leader consensus */
+  public static final long NO_CONSENSUS_INDEX = -1;
+  /** no multi-leader consensus, all insert nodes can be safely deleted */
+  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -66,8 +76,19 @@ public abstract class InsertNode extends WritePlanNode {
    */
   protected IDeviceID deviceID;
 
+  /**
+   * this index is used by wal search, its order should be protected by the upper layer, and the
+   * value should start from 1
+   */
+  protected long searchIndex = NO_CONSENSUS_INDEX;
+  /**
+   * this index pass info to wal, indicating that insert nodes whose search index are before this
+   * value can be deleted safely
+   */
+  protected long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+
   /** Physical address of data region after splitting */
-  TRegionReplicaSet dataRegionReplicaSet;
+  protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -138,6 +159,34 @@ public abstract class InsertNode extends WritePlanNode {
     this.deviceID = deviceID;
   }
 
+  public long getSearchIndex() {
+    return searchIndex;
+  }
+
+  /** Search index should start from 1 */
+  public void setSearchIndex(long searchIndex) {
+    this.searchIndex = searchIndex;
+  }
+
+  public long getSafelyDeletedSearchIndex() {
+    return safelyDeletedSearchIndex;
+  }
+
+  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
+    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  // region Serialization methods for WAL
   /** Serialized size of measurement schemas, ignoring failed time series */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
@@ -172,6 +221,7 @@ public abstract class InsertNode extends WritePlanNode {
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
+  // endregion
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return dataRegionReplicaSet;
@@ -267,11 +317,6 @@ public abstract class InsertNode extends WritePlanNode {
     }
   }
   // endregion
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
-  }
 
   @Override
   public boolean equals(Object o) {

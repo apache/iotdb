@@ -61,7 +61,7 @@ public class InsertTabletNodeSerdeTest {
   }
 
   @Test
-  public void TestSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
+  public void testSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
     InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
 
     int serializedSize = insertTabletNode.serializedSize();

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 public class CountNodesStatement extends CountStatement {
   private final int level;
@@ -27,5 +28,14 @@ public class CountNodesStatement extends CountStatement {
   public CountNodesStatement(PartialPath partialPath, int level) {
     super(partialPath);
     this.level = level;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitCountNodes(this, context);
   }
 }

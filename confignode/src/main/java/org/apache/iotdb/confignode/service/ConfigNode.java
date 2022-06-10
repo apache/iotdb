@@ -25,14 +25,20 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -92,9 +98,26 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
+    registerManager.register(MetricsService.getInstance());
+    registerUdfServices();
+
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
     LOGGER.info("Init rpc server success");
+
+    // start reporter
+    MetricsService.getInstance().startAllReporter();
+  }
+
+  private void registerUdfServices() throws StartupException {
+    final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+    registerManager.register(
+        UDFExecutableManager.setupAndGetInstance(
+            configNodeConf.getTemporaryLibDir(), configNodeConf.getUdfLibDir()));
+    registerManager.register(
+        UDFClassLoaderManager.setupAndGetInstance(configNodeConf.getUdfLibDir()));
+    registerManager.register(
+        UDFRegistrationService.setupAndGetInstance(configNodeConf.getSystemUdfDir()));
   }
 
   public void active() {

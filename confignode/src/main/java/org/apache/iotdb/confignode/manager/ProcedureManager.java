@@ -68,7 +68,7 @@ public class ProcedureManager {
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(configNodeConf.getSchemaReplicationFactor());
+        executor.init(configNodeConf.getProcedureCoreWorkerThreadsSize());
         executor.startWorkers();
         executor.startCompletedCleaner(
             configNodeConf.getProcedureCompletedCleanInterval(),
@@ -90,12 +90,14 @@ public class ProcedureManager {
     List<Long> procIdList = new ArrayList<>();
     for (TStorageGroupSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteStorageGroupProcedure deleteStorageGroupProcedure =
-          new DeleteStorageGroupProcedure(storageGroupSchema, configManager);
+          new DeleteStorageGroupProcedure(storageGroupSchema);
       long procId = this.executor.submitProcedure(deleteStorageGroupProcedure);
       procIdList.add(procId);
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
     boolean isSucceed = getProcedureStatus(this.executor, procIdList, procedureStatus);
+    // clear the previously deleted regions
+    getConfigManager().getPartitionManager().clearDeletedRegions();
     if (isSucceed) {
       return StatusUtils.OK;
     } else {

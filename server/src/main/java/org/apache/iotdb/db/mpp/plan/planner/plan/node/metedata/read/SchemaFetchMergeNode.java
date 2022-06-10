@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /** This class defines the scanned result merge task of schema fetcher. */
@@ -41,6 +43,11 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_FETCH_MERGE.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SCHEMA_FETCH_MERGE.serialize(stream);
   }
 
   public static PlanNode deserialize(ByteBuffer byteBuffer) {

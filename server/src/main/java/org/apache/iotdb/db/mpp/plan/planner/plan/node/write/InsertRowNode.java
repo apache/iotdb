@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -41,14 +42,17 @@ import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -257,24 +261,45 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     subSerialize(byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.INSERT_ROW.serialize(stream);
+    subSerialize(stream);
+  }
+
   void subSerialize(ByteBuffer buffer) {
-    buffer.putLong(time);
+    ReadWriteIOUtils.write(time, buffer);
     ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
   }
 
+  void subSerialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(time, stream);
+    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    serializeMeasurementsAndValues(stream);
+  }
+
   /** Serialize measurements and values, ignoring failed time series */
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    buffer.putInt(measurements.length - getFailedMeasurementNumber());
+    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), buffer);
     serializeMeasurementsOrSchemas(buffer);
     putDataTypesAndValues(buffer);
-    buffer.put((byte) (isNeedInferType ? 1 : 0));
-    buffer.put((byte) (isAligned ? 1 : 0));
+    ReadWriteIOUtils.write((byte) (isNeedInferType ? 1 : 0), buffer);
+    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), buffer);
+  }
+
+  /** Serialize measurements and values, ignoring failed time series */
+  void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
+    serializeMeasurementsOrSchemas(stream);
+    putDataTypesAndValues(stream);
+    ReadWriteIOUtils.write((byte) (isNeedInferType ? 1 : 0), stream);
+    ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
   }
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void serializeMeasurementsOrSchemas(ByteBuffer buffer) {
-    buffer.put((byte) (measurementSchemas != null ? 1 : 0));
+    ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), buffer);
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert
       if (measurements[i] == null) {
@@ -285,6 +310,23 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         measurementSchemas[i].serializeTo(buffer);
       } else {
         ReadWriteIOUtils.write(measurements[i], buffer);
+      }
+    }
+  }
+
+  /** Serialize measurements or measurement schemas, ignoring failed time series */
+  private void serializeMeasurementsOrSchemas(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
+    for (int i = 0; i < measurements.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
+      // serialize measurement schemas when exist
+      if (measurementSchemas != null) {
+        measurementSchemas[i].serializeTo(stream);
+      } else {
+        ReadWriteIOUtils.write(measurements[i], stream);
       }
     }
   }
@@ -326,6 +368,51 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             break;
           case TEXT:
             ReadWriteIOUtils.write((Binary) values[i], buffer);
+            break;
+          default:
+            throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+        }
+      }
+    }
+  }
+
+  /** Serialize data types and values, ignoring failed time series */
+  private void putDataTypesAndValues(DataOutputStream stream) throws IOException {
+    for (int i = 0; i < values.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
+      // serialize null value
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, stream);
+        continue;
+      }
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (isNeedInferType) {
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, stream);
+        ReadWriteIOUtils.write(values[i].toString(), stream);
+      } else {
+        ReadWriteIOUtils.write(dataTypes[i], stream);
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values[i], stream);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values[i], stream);
+            break;
+          case INT64:
+            ReadWriteIOUtils.write((Long) values[i], stream);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values[i], stream);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values[i], stream);
+            break;
+          case TEXT:
+            ReadWriteIOUtils.write((Binary) values[i], stream);
             break;
           default:
             throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
@@ -422,7 +509,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private int subSerializeSize() {
     int size = 0;
-    size += Long.BYTES;
+    size += Long.BYTES * 2;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
@@ -478,6 +565,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   private void subSerialize(IWALByteBufferView buffer) {
+    buffer.putLong(searchIndex);
     buffer.putLong(time);
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
@@ -534,6 +622,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       throws IOException, IllegalPathException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
+    insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
     insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
     insertNode.deserializeMeasurementsAndValues(stream);
@@ -605,5 +694,18 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     int result = Objects.hash(super.hashCode(), time, isNeedInferType);
     result = 31 * result + Arrays.hashCode(values);
     return result;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertRow(this, context);
+  }
+
+  public TimeValuePair composeTimeValuePair(int columnIndex) {
+    if (columnIndex >= values.length) {
+      return null;
+    }
+    Object value = values[columnIndex];
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
   }
 }

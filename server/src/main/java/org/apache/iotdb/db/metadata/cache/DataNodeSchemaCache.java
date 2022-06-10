@@ -24,6 +24,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -41,6 +47,18 @@ public class DataNodeSchemaCache {
 
   private DataNodeSchemaCache() {
     cache = Caffeine.newBuilder().maximumSize(config.getDataNodeSchemaCacheSize()).build();
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      // add metrics
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.CACHE_HIT.toString(),
+              MetricLevel.IMPORTANT,
+              cache,
+              l -> (long) (l.stats().hitRate() * 100),
+              Tag.NAME.toString(),
+              "schemaCache");
+    }
   }
 
   public static DataNodeSchemaCache getInstance() {
@@ -70,7 +88,7 @@ public class DataNodeSchemaCache {
             devicePath.concatNode(
                 schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
             schemaCacheEntry.getMeasurementSchema(),
-            schemaCacheEntry.getAlias(),
+            null,
             schemaCacheEntry.isAligned());
       }
     }
@@ -82,18 +100,41 @@ public class DataNodeSchemaCache {
       SchemaCacheEntry schemaCacheEntry =
           new SchemaCacheEntry(
               (MeasurementSchema) measurementPath.getMeasurementSchema(),
-              measurementPath.isMeasurementAliasExists()
-                  ? measurementPath.getMeasurementAlias()
-                  : null,
               measurementPath.isUnderAlignedEntity());
       cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
-      if (measurementPath.isMeasurementAliasExists()) {
-        // cache alias path
-        cache.put(
-            measurementPath.getDevicePath().concatNode(measurementPath.getMeasurementAlias()),
-            schemaCacheEntry);
-      }
     }
+  }
+
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return null;
+    }
+
+    return DataNodeLastCacheManager.getLastCache(entry);
+  }
+
+  public void updateLastCache(
+      PartialPath seriesPath,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return;
+    }
+
+    DataNodeLastCacheManager.updateLastCache(
+        entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  public void resetLastCache(PartialPath seriesPath) {
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      return;
+    }
+
+    DataNodeLastCacheManager.resetLastCache(entry);
   }
 
   /**
@@ -103,6 +144,7 @@ public class DataNodeSchemaCache {
    * @return
    */
   public void invalidate(PartialPath partialPath) {
+    resetLastCache(partialPath);
     cache.invalidate(partialPath);
   }
 

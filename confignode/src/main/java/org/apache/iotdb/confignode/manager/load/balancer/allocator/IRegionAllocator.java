@@ -24,6 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.List;
 
+/**
+ * The IRegionAllocator is a functional interface, which means a new functional class who implements
+ * the IRegionAllocator must be created for each Region allocation.
+ */
 public interface IRegionAllocator {
 
   /**

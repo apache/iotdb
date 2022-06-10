@@ -42,10 +42,10 @@ public class CopySetRegionAllocator implements IRegionAllocator {
 
   private int maxId = 0;
   private int intersectionSize = 0;
-  private List<TDataNodeLocation> weightList;
+  private final List<TDataNodeLocation> weightList;
 
   public CopySetRegionAllocator() {
-    // Empty constructor
+    this.weightList = new ArrayList<>();
   }
 
   @Override
@@ -74,7 +74,6 @@ public class CopySetRegionAllocator implements IRegionAllocator {
       intersectionSize += 1;
     }
 
-    clear();
     result.setRegionId(consensusGroupId);
     return result;
   }
@@ -97,7 +96,6 @@ public class CopySetRegionAllocator implements IRegionAllocator {
       }
     }
 
-    weightList = new ArrayList<>();
     for (Map.Entry<TDataNodeLocation, Integer> countEntry : countMap.entrySet()) {
       int weight = maximumRegionNum - countEntry.getValue() + 1;
       // Repeatedly add DataNode copies equal to the number of their weights
@@ -157,12 +155,5 @@ public class CopySetRegionAllocator implements IRegionAllocator {
       }
     }
     return true;
-  }
-
-  private void clear() {
-    maxId = 0;
-    intersectionSize = 0;
-    weightList.clear();
-    weightList = null;
   }
 }

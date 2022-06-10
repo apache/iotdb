@@ -426,7 +426,8 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
   }
 
   @Override
-  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata() throws IOException {
+  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata(boolean needChunkMetadata)
+      throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }

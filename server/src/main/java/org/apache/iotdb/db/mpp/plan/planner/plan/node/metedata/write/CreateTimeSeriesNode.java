@@ -36,6 +36,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +54,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> props = null;
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
-  private long tagOffset = -1;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -144,14 +145,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     this.props = props;
   }
 
-  public long getTagOffset() {
-    return tagOffset;
-  }
-
-  public void setTagOffset(long tagOffset) {
-    this.tagOffset = tagOffset;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
     return new ArrayList<>();
@@ -181,7 +174,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     TSDataType dataType;
     TSEncoding encoding;
     CompressionType compressor;
-    long tagOffset;
     String alias = null;
     Map<String, String> props = null;
     Map<String, String> tags = null;
@@ -198,7 +190,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];
     compressor = CompressionType.values()[byteBuffer.get()];
-    tagOffset = byteBuffer.getLong();
 
     // alias
     if (byteBuffer.get() == 1) {
@@ -244,7 +235,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     byteBuffer.put((byte) dataType.ordinal());
     byteBuffer.put((byte) encoding.ordinal());
     byteBuffer.put((byte) compressor.ordinal());
-    byteBuffer.putLong(tagOffset);
 
     // alias
     if (alias != null) {
@@ -286,6 +276,56 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.CREATE_TIME_SERIES.serialize(stream);
+
+    byte[] bytes = path.getFullPath().getBytes();
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
+    stream.write((byte) dataType.ordinal());
+    stream.write((byte) encoding.ordinal());
+    stream.write((byte) compressor.ordinal());
+
+    // alias
+    if (alias != null) {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(alias, stream);
+    } else {
+      stream.write((byte) 0);
+    }
+
+    // props
+    if (props == null) {
+      stream.write((byte) -1);
+    } else if (props.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(props, stream);
+    }
+
+    // tags
+    if (tags == null) {
+      stream.write((byte) -1);
+    } else if (tags.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(tags, stream);
+    }
+
+    // attributes
+    if (attributes == null) {
+      stream.write((byte) -1);
+    } else if (attributes.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(attributes, stream);
+    }
+  }
+
+  @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
     return visitor.visitCreateTimeSeries(this, schemaRegion);
   }
@@ -301,8 +341,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       return false;
     }
     CreateTimeSeriesNode that = (CreateTimeSeriesNode) o;
-    return tagOffset == that.tagOffset
-        && path.equals(that.path)
+    return path.equals(that.path)
         && dataType == that.dataType
         && encoding == that.encoding
         && compressor == that.compressor

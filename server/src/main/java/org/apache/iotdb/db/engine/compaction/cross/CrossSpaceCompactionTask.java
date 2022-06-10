@@ -75,6 +75,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.seqTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
     this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
     this.performer = performer;
+    this.hashCode = this.toString().hashCode();
   }
 
   @Override
@@ -225,20 +226,18 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public String toString() {
-    return new StringBuilder()
-        .append(fullStorageGroupName)
-        .append("-")
-        .append(timePartition)
-        .append(" task seq files are ")
-        .append(selectedSequenceFiles.toString())
-        .append(" , unseq files are ")
-        .append(selectedUnsequenceFiles.toString())
-        .toString();
+    return fullStorageGroupName
+        + "-"
+        + timePartition
+        + " task seq files are "
+        + selectedSequenceFiles.toString()
+        + " , unseq files are "
+        + selectedUnsequenceFiles.toString();
   }
 
   @Override
   public int hashCode() {
-    return toString().hashCode();
+    return hashCode;
   }
 
   @Override
@@ -285,17 +284,22 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return false;
     }
-    for (TsFileResource tsFileResource : tsFileResourceList) {
-      tsFileResource.readLock();
-      holdReadLockList.add(tsFileResource);
-      if (tsFileResource.isCompacting()
-          || !tsFileResource.isClosed()
-          || !tsFileResource.getTsFile().exists()
-          || tsFileResource.isDeleted()) {
-        releaseAllLock();
-        return false;
+    try {
+      for (TsFileResource tsFileResource : tsFileResourceList) {
+        tsFileResource.readLock();
+        holdReadLockList.add(tsFileResource);
+        if (tsFileResource.isCompacting()
+            || !tsFileResource.isClosed()
+            || !tsFileResource.getTsFile().exists()
+            || tsFileResource.isDeleted()) {
+          releaseAllLock();
+          return false;
+        }
+        tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
       }
-      tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
+    } catch (Throwable e) {
+      releaseAllLock();
+      throw e;
     }
     return true;
   }

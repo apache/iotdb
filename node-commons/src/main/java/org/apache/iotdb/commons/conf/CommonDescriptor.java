@@ -57,7 +57,6 @@ public class CommonDescriptor {
   }
 
   public void loadCommonProps(Properties properties) {
-
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()));
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.

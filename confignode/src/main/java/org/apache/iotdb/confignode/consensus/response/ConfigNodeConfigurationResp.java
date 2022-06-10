@@ -28,10 +28,11 @@ import java.util.List;
 public class ConfigNodeConfigurationResp implements DataSet {
   private TSStatus status;
   private List<TConfigNodeLocation> configNodeList;
-  private String dataNodeConsensusProtocolClass;
+  private String configNodeConsensusProtocolClass;
+  private String dataRegionConsensusProtocolClass;
+  private String schemaRegionConsensusProtocolClass;
   private int seriesPartitionSlotNum;
   private String seriesPartitionExecutorClass;
-  private String configNodeConsensusProtocolClass;
 
   public ConfigNodeConfigurationResp() {}
 
@@ -51,8 +52,16 @@ public class ConfigNodeConfigurationResp implements DataSet {
     this.configNodeList = configNodeList;
   }
 
-  public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
-    this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
+  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
+    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
+  }
+
+  public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
+    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
   public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
@@ -63,16 +72,13 @@ public class ConfigNodeConfigurationResp implements DataSet {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
-  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
-    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
-  }
-
   public void convertToRPCConfigNodeConfigurationResp(TConfigNodeConfigurationResp resp) {
     resp.setStatus(status);
     resp.setConfigNodeList(configNodeList);
-    resp.setDataNodeConsensusProtocolClass(dataNodeConsensusProtocolClass);
+    resp.setConfigNodeConsensusProtocolClass(configNodeConsensusProtocolClass);
+    resp.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
+    resp.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     resp.setSeriesPartitionSlotNum(seriesPartitionSlotNum);
     resp.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
-    resp.setConfigNodeConsensusProtocolClass(configNodeConsensusProtocolClass);
   }
 }

@@ -19,28 +19,31 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -58,14 +61,14 @@ public class ShowTTLTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
+  public ListenableFuture<ConfigTaskResult> execute(
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     List<PartialPath> storageGroupPaths = showTTLStatement.getPaths();
     Map<String, Long> storageGroupToTTL = new HashMap<>();
     if (config.isClusterMode()) {
-      ConfigNodeClient client = null;
-      try {
-        client = new ConfigNodeClient();
+      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         if (showTTLStatement.isAll()) {
           List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
           TStorageGroupSchemaResp resp =
@@ -87,13 +90,9 @@ public class ShowTTLTask implements IConfigTask {
             }
           }
         }
-      } catch (IoTDBConnectionException e) {
+      } catch (TException | IOException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
-      } finally {
-        if (client != null) {
-          client.close();
-        }
       }
     } else {
       try {
@@ -119,11 +118,15 @@ public class ShowTTLTask implements IConfigTask {
       }
     }
     // build TSBlock
-    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
+    TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showTTLHeader.getRespDataTypes());
     for (Map.Entry<String, Long> entry : storageGroupToTTL.entrySet()) {
       builder.getTimeColumnBuilder().writeLong(0);
       builder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
-      builder.getColumnBuilder(1).writeLong(entry.getValue());
+      if (Long.MAX_VALUE == entry.getValue()) {
+        builder.getColumnBuilder(1).appendNull();
+      } else {
+        builder.getColumnBuilder(1).writeLong(entry.getValue());
+      }
       builder.declarePosition();
     }
     DatasetHeader datasetHeader = HeaderConstant.showTTLHeader;

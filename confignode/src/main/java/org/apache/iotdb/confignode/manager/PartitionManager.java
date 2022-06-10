@@ -24,20 +24,29 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.exception.TimeoutException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,6 +60,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
@@ -59,13 +72,28 @@ public class PartitionManager {
 
   private final Manager configManager;
   private final PartitionInfo partitionInfo;
+  private static final int REGION_CLEANER_WORK_INTERVAL = 300;
+  private static final int REGION_CLEANER_WORK_INITIAL_DELAY = 10;
 
   private SeriesPartitionExecutor executor;
+  private final ScheduledExecutorService regionCleaner;
 
   public PartitionManager(Manager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
+    this.regionCleaner =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        regionCleaner,
+        this::clearDeletedRegions,
+        REGION_CLEANER_WORK_INITIAL_DELAY,
+        REGION_CLEANER_WORK_INTERVAL,
+        TimeUnit.SECONDS);
     setSeriesPartitionExecutor();
+  }
+
+  public ScheduledExecutorService getRegionCleaner() {
+    return regionCleaner;
   }
 
   /**
@@ -102,6 +130,23 @@ public class PartitionManager {
       } catch (NotEnoughDataNodeException e) {
         SchemaPartitionResp resp = new SchemaPartitionResp();
         resp.setStatus(new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode()));
+        resp.getStatus()
+            .setMessage(
+                "ConfigNode failed to allocate DataPartition because there are not enough DataNodes");
+        return resp;
+      } catch (TimeoutException e) {
+        SchemaPartitionResp resp = new SchemaPartitionResp();
+        resp.setStatus(new TSStatus(TSStatusCode.TIME_OUT.getStatusCode()));
+        resp.getStatus()
+            .setMessage(
+                "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout.");
+        return resp;
+      } catch (MetadataException e) {
+        SchemaPartitionResp resp = new SchemaPartitionResp();
+        resp.setStatus(new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()));
+        resp.getStatus()
+            .setMessage(
+                "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist.");
         return resp;
       }
 
@@ -201,6 +246,23 @@ public class PartitionManager {
       } catch (NotEnoughDataNodeException e) {
         DataPartitionResp resp = new DataPartitionResp();
         resp.setStatus(new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode()));
+        resp.getStatus()
+            .setMessage(
+                "ConfigNode failed to allocate DataPartition because there are not enough DataNodes");
+        return resp;
+      } catch (TimeoutException e) {
+        DataPartitionResp resp = new DataPartitionResp();
+        resp.setStatus(new TSStatus(TSStatusCode.TIME_OUT.getStatusCode()));
+        resp.getStatus()
+            .setMessage(
+                "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout.");
+        return resp;
+      } catch (MetadataException e) {
+        SchemaPartitionResp resp = new SchemaPartitionResp();
+        resp.setStatus(new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()));
+        resp.getStatus()
+            .setMessage(
+                "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist.");
         return resp;
       }
 
@@ -280,16 +342,87 @@ public class PartitionManager {
 
   private void checkAndAllocateRegionsIfNecessary(
       List<String> storageGroups, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException {
-    List<String> storageGroupWithoutRegion = new ArrayList<>();
+      throws NotEnoughDataNodeException, TimeoutException, MetadataException {
+
+    int leastDataNode = 0;
+    List<String> unreadyStorageGroups = new ArrayList<>();
     for (String storageGroup : storageGroups) {
-      List<TConsensusGroupId> groupIds =
-          getClusterSchemaManager().getRegionGroupIds(storageGroup, consensusGroupType);
-      if (groupIds.size() == 0) {
-        storageGroupWithoutRegion.add(storageGroup);
+      if (getClusterSchemaManager().getRegionGroupCount(storageGroup, consensusGroupType) == 0) {
+        TStorageGroupSchema storageGroupSchema =
+            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
+        switch (consensusGroupType) {
+          case SchemaRegion:
+            leastDataNode =
+                Math.max(leastDataNode, storageGroupSchema.getSchemaReplicationFactor());
+            break;
+          case DataRegion:
+            leastDataNode = Math.max(leastDataNode, storageGroupSchema.getDataReplicationFactor());
+        }
+        // Recording StorageGroups without Region
+        unreadyStorageGroups.add(storageGroup);
       }
     }
-    getLoadManager().initializeRegions(storageGroupWithoutRegion, consensusGroupType);
+    if (getNodeManager().getOnlineDataNodeCount() < leastDataNode) {
+      // Make sure DataNode enough
+      throw new NotEnoughDataNodeException();
+    }
+
+    List<String> storageGroupsNeedAllocation = new ArrayList<>();
+    List<String> storageGroupsInAllocation = new ArrayList<>();
+    for (String storageGroup : unreadyStorageGroups) {
+      // Try to get the allocation particle
+      if (getClusterSchemaManager().getRegionAllocationParticle(storageGroup, consensusGroupType)) {
+        storageGroupsNeedAllocation.add(storageGroup);
+      } else {
+        storageGroupsInAllocation.add(storageGroup);
+      }
+    }
+
+    // Calculate the number of Regions
+    // TODO: This is a temporary code, delete it later
+    int regionNum;
+    if (consensusGroupType == TConsensusGroupType.SchemaRegion) {
+      regionNum =
+          Math.max(
+              1,
+              getNodeManager().getOnlineDataNodeCount()
+                  / ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+    } else {
+      regionNum =
+          Math.max(
+              2,
+              (int)
+                  (getNodeManager().getTotalCpuCoreCount()
+                      * 0.3
+                      / ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor()));
+    }
+
+    // Do Region allocation for those StorageGroups who get the particle
+    // TODO: Put back Region allocation particles when creation process failed. We can use Procedure
+    // to protect this
+    getLoadManager().initializeRegions(storageGroupsNeedAllocation, consensusGroupType, regionNum);
+
+    // Waiting allocation for those StorageGroups who don't get the particle
+    for (int retry = 0; retry < 10; retry++) {
+      boolean allocationFinished = true;
+      for (String storageGroup : storageGroupsInAllocation) {
+        if (getClusterSchemaManager().getRegionGroupCount(storageGroup, consensusGroupType) > 0) {
+          allocationFinished = false;
+          break;
+        }
+      }
+      if (allocationFinished) {
+        return;
+      }
+
+      try {
+        // Sleep 1s to wait Region allocation
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) {
+        LOGGER.warn("The PartitionManager is interrupted.", e);
+      }
+    }
+    throw new TimeoutException("");
   }
 
   /** Get all allocated RegionReplicaSets */
@@ -334,8 +467,51 @@ public class PartitionManager {
     return partitionInfo.getRegionReplicaSets(groupIds);
   }
 
+  /**
+   * GetNodePathsPartition
+   *
+   * @param physicalPlan GetNodesPathsPartitionReq
+   * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
+   *     SchemaPartition and matched child paths aboveMtree
+   */
+  public DataSet getNodePathsPartition(GetNodePathsPartitionReq physicalPlan) {
+    SchemaNodeManagementResp schemaNodeManagementResp;
+    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
+    schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
+    return schemaNodeManagementResp;
+  }
+
+  public void preDeleteStorageGroup(
+      String storageGroup, PreDeleteStorageGroupReq.PreDeleteType preDeleteType) {
+    final PreDeleteStorageGroupReq preDeleteStorageGroupReq =
+        new PreDeleteStorageGroupReq(storageGroup, preDeleteType);
+    getConsensusManager().write(preDeleteStorageGroupReq);
+  }
+
+  /**
+   * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
+   * groups periodically.
+   */
+  public void clearDeletedRegions() {
+    if (getConsensusManager().isLeader()) {
+      final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
+      if (!deletedRegionSet.isEmpty()) {
+        LOGGER.info(
+            "DELETE REGIONS {} START",
+            deletedRegionSet.stream()
+                .map(TRegionReplicaSet::getRegionId)
+                .collect(Collectors.toList()));
+        SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
+      }
+    }
+  }
+
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {

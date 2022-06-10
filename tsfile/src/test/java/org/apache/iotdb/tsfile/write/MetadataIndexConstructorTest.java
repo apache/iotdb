@@ -234,7 +234,7 @@ public class MetadataIndexConstructorTest {
       assertFalse(iterator.hasNext());
 
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
-          reader.getAllTimeseriesMetadata();
+          reader.getAllTimeseriesMetadata(false);
       for (int j = 0; j < actualDevices.size(); j++) {
         for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
           assertEquals(

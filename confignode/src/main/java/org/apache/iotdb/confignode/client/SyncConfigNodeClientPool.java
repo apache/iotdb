@@ -140,7 +140,6 @@ public class SyncConfigNodeClientPool {
       List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
     for (TConfigNodeLocation nodeLocation : configNodeLocations) {
-      LOGGER.info("nodeLocation: {}", nodeLocation);
       if (nodeLocation.equals(configNodeLocation)) {
         continue;
       }
