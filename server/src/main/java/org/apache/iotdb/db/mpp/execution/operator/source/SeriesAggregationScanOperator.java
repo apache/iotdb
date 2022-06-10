@@ -110,7 +110,9 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
    * timestamp, so it doesn't matter what the time range returns.
    */
   public static ITimeRangeIterator initTimeRangeIterator(
-      GroupByTimeParameter groupByTimeParameter, boolean ascending, boolean isPreAggr) {
+      GroupByTimeParameter groupByTimeParameter,
+      boolean ascending,
+      boolean outputPartialTimeWindow) {
     if (groupByTimeParameter == null) {
       return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
     } else {
@@ -123,7 +125,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           groupByTimeParameter.isIntervalByMonth(),
           groupByTimeParameter.isSlidingStepByMonth(),
           groupByTimeParameter.isLeftCRightO(),
-          isPreAggr);
+          outputPartialTimeWindow);
     }
   }
 

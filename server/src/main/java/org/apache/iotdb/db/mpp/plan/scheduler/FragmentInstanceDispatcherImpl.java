@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -39,17 +38,20 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
+import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -134,11 +136,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private boolean dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-    if (isDispatchedToLocal(endPoint)) {
-      return dispatchLocally(instance);
-    } else {
-      return dispatchRemote(instance, endPoint);
+    try (SetThreadName fragmentInstanceName = new SetThreadName(instance.getId().getFullId())) {
+      TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
+      if (isDispatchedToLocal(endPoint)) {
+        return dispatchLocally(instance);
+      } else {
+        return dispatchRemote(instance, endPoint);
+      }
     }
   }
 
@@ -150,19 +154,28 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-      instance.serializeRequest(buffer);
-      buffer.flip();
-      TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
-      TSendFragmentInstanceReq req =
-          new TSendFragmentInstanceReq(
-              new TFragmentInstance(buffer), groupId, instance.getType().toString());
-      TSendFragmentInstanceResp resp = client.sendFragmentInstance(req);
-      return resp.accepted;
+      switch (instance.getType()) {
+        case READ:
+          TSendFragmentInstanceReq sendFragmentInstanceReq =
+              new TSendFragmentInstanceReq(
+                  new TFragmentInstance(instance.serializeToByteBuffer()),
+                  instance.getRegionReplicaSet().getRegionId());
+          TSendFragmentInstanceResp sendFragmentInstanceResp =
+              client.sendFragmentInstance(sendFragmentInstanceReq);
+          return sendFragmentInstanceResp.accepted;
+        case WRITE:
+          TSendPlanNodeReq sendPlanNodeReq =
+              new TSendPlanNodeReq(
+                  new TPlanNode(instance.getFragment().getRoot().serializeToByteBuffer()),
+                  instance.getRegionReplicaSet().getRegionId());
+          TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
+          return sendPlanNodeResp.accepted;
+      }
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
       throw new FragmentInstanceDispatchException(e);
     }
+    return false;
   }
 
   private boolean dispatchLocally(FragmentInstance instance)
@@ -197,9 +210,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         ConsensusWriteResponse writeResponse;
         if (groupId instanceof DataRegionId) {
-          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, instance);
+          writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
         } else {
-          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, instance);
+          writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
         return TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
     }

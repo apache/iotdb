@@ -53,7 +53,7 @@ public class AggregationOperator implements ProcessOperator {
   private final TsBlock[] inputTsBlocks;
   private final TsBlockBuilder tsBlockBuilder;
 
-  private ITimeRangeIterator timeRangeIterator;
+  private final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
@@ -62,7 +62,8 @@ public class AggregationOperator implements ProcessOperator {
       List<Aggregator> aggregators,
       List<Operator> children,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputPartialTimeWindow) {
     this.operatorContext = operatorContext;
     this.aggregators = aggregators;
     this.children = children;
@@ -74,7 +75,8 @@ public class AggregationOperator implements ProcessOperator {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, ascending, outputPartialTimeWindow);
   }
 
   @Override
@@ -96,9 +98,17 @@ public class AggregationOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     // update input tsBlock
-    curTimeRange = timeRangeIterator.nextTimeRange();
+    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+      curTimeRange = timeRangeIterator.nextTimeRange();
+    }
     for (int i = 0; i < inputOperatorsCount; i++) {
+      if (inputTsBlocks[i] != null) {
+        continue;
+      }
       inputTsBlocks[i] = children.get(i).next();
+      if (inputTsBlocks[i] == null) {
+        return null;
+      }
     }
     // consume current input tsBlocks
     for (Aggregator aggregator : aggregators) {
@@ -106,12 +116,16 @@ public class AggregationOperator implements ProcessOperator {
       aggregator.processTsBlocks(inputTsBlocks);
     }
     // output result from aggregator
+    curTimeRange = null;
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      inputTsBlocks[i] = null;
+    }
     return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   @Override
   public boolean hasNext() {
-    return timeRangeIterator.hasNextTimeRange();
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
   @Override

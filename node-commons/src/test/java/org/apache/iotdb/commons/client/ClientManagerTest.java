@@ -17,17 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons;
+package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
-import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.ClientPoolProperty.DefaultProperty;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -37,24 +35,25 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
+
+import static org.mockito.Mockito.mock;
 
 public class ClientManagerTest {
 
   private final TEndPoint endPoint = new TEndPoint("localhost", 9003);
 
-  private ServerSocket metaServer;
-  private Thread metaServerListeningThread;
+  private MockInternalRPCService service;
 
   @Before
-  public void setUp() throws IOException {
-    startServer();
+  public void setUp() throws StartupException {
+    service = new MockInternalRPCService(endPoint);
+    service.initSyncedServiceImpl(mock(InternalService.Iface.class));
+    service.start();
   }
 
   @After
   public void tearDown() throws IOException, InterruptedException {
-    stopServer();
+    service.waitAndStop(10_000L);
   }
 
   @Test
@@ -416,39 +415,6 @@ public class ClientManagerTest {
     asyncClusterManager.close();
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
-  }
-
-  public void startServer() throws IOException {
-    metaServer = new ServerSocket();
-    // reuse the port to avoid `Bind Address already in use` which is caused by TIME_WAIT state
-    // because port won't be usable immediately after we close it.
-    metaServer.setReuseAddress(true);
-    metaServer.bind(new InetSocketAddress(endPoint.getIp(), endPoint.getPort()), 0);
-
-    metaServerListeningThread =
-        new Thread(
-            () -> {
-              while (!Thread.interrupted()) {
-                try {
-                  metaServer.accept();
-                } catch (IOException e) {
-                  return;
-                }
-              }
-            });
-    metaServerListeningThread.start();
-  }
-
-  public void stopServer() throws InterruptedException, IOException {
-    if (metaServer != null) {
-      metaServer.close();
-      metaServer = null;
-    }
-    if (metaServerListeningThread != null) {
-      metaServerListeningThread.interrupt();
-      metaServerListeningThread.join();
-      metaServerListeningThread = null;
-    }
   }
 
   public static class TestSyncDataNodeInternalServiceClientPoolFactory

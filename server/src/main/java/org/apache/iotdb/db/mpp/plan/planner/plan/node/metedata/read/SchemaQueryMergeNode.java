@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
@@ -50,6 +52,11 @@ public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_QUERY_MERGE.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SCHEMA_QUERY_MERGE.serialize(stream);
   }
 
   public static SchemaQueryMergeNode deserialize(ByteBuffer byteBuffer) {

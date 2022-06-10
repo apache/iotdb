@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction;
+package org.apache.iotdb.db.service.metrics.recorder;
 
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
@@ -32,14 +32,17 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
 
-public class CompactionMetricsManager {
+public class CompactionMetricsRecorder {
+
+  private static final boolean ENABLE_METRIC =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   public static void recordWriteInfo(
       CompactionType compactionType,
       ProcessChunkType processChunkType,
       boolean aligned,
       long byteNum) {
-    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+    if (!ENABLE_METRIC) {
       return;
     }
     MetricsService.getInstance()
@@ -69,7 +72,7 @@ public class CompactionMetricsManager {
   }
 
   public static void recordReadInfo(long byteNum) {
-    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+    if (!ENABLE_METRIC) {
       return;
     }
     MetricsService.getInstance()
@@ -84,7 +87,7 @@ public class CompactionMetricsManager {
 
   public static void recordTaskInfo(
       AbstractCompactionTask task, CompactionTaskStatus status, int size) {
-    if (!MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+    if (!ENABLE_METRIC) {
       return;
     }
     String taskType = "unknown";
@@ -142,7 +145,7 @@ public class CompactionMetricsManager {
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
                 "compaction",
-                Tag.NAME.toString(),
+                Tag.TYPE.toString(),
                 isInnerTask ? "inner" : "cross");
         if (isInnerTask) {
           MetricsService.getInstance()
@@ -165,6 +168,9 @@ public class CompactionMetricsManager {
                   Tag.NAME.toString(),
                   "cross_compaction_count");
         }
+        break;
+      default:
+        // do nothing
         break;
     }
   }

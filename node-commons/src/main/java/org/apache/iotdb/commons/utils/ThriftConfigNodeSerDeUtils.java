@@ -29,6 +29,7 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
+import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -106,6 +107,15 @@ public class ThriftConfigNodeSerDeUtils {
       TConfigNodeLocation configNodeLocation, ByteBuffer buffer) {
     try {
       configNodeLocation.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TConfigNodeLocation failed: ", e);
+    }
+  }
+
+  public static void serializeTConfigNodeLocation(
+      TConfigNodeLocation configNodeLocation, DataOutputStream stream) {
+    try {
+      configNodeLocation.write(generateWriteProtocol(stream));
     } catch (TException e) {
       throw new ThriftSerDeException("Write TConfigNodeLocation failed: ", e);
     }

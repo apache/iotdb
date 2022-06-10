@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -520,7 +522,8 @@ public class DataRegion {
                 + logicalStorageGroupName
                 + "-"
                 + dataRegionId);
-    timedCompactionScheduleTask.scheduleWithFixedDelay(
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        timedCompactionScheduleTask,
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
         IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
@@ -1046,7 +1049,7 @@ public class DataRegion {
       int before = loc;
       // before time partition
       long beforeTimePartition =
-          StorageEngine.getTimePartition(insertTabletNode.getTimes()[before]);
+          StorageEngineV2.getTimePartition(insertTabletNode.getTimes()[before]);
       // init map
       long lastFlushTime =
           lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
@@ -1103,7 +1106,11 @@ public class DataRegion {
     }
   }
 
-  /** @return whether the given time falls in ttl */
+  /**
+   * Check whether the time falls in TTL.
+   *
+   * @return whether the given time falls in ttl
+   */
   private boolean isAlive(long time) {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
@@ -3172,7 +3179,11 @@ public class DataRegion {
     return dataRegionId;
   }
 
-  /** @return data region path, like root.sg1/0 */
+  /**
+   * Get the storageGroupPath with dataRegionId.
+   *
+   * @return data region path, like root.sg1/0
+   */
   public String getStorageGroupPath() {
     return logicalStorageGroupName + File.separator + dataRegionId;
   }

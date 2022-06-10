@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -60,6 +62,14 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(level, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.LEVEL_TIME_SERIES_COUNT.serialize(stream);
+    ReadWriteIOUtils.write(path.getFullPath(), stream);
+    ReadWriteIOUtils.write(isPrefixPath, stream);
+    ReadWriteIOUtils.write(level, stream);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {

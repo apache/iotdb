@@ -23,8 +23,11 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,20 +75,16 @@ public class AggregationDescriptor {
     return outputColumnNames;
   }
 
-  public List<String> getInputColumnNames() {
+  public List<List<String>> getInputColumnNamesList() {
     if (step.isInputRaw()) {
       return inputExpressions.stream()
-          .map(Expression::getExpressionString)
+          .map(expression -> Collections.singletonList(expression.getExpressionString()))
           .collect(Collectors.toList());
     }
 
-    List<AggregationType> inputAggregationTypes = getActualAggregationTypes(step.isInputPartial());
-    List<String> inputColumnNames = new ArrayList<>();
+    List<List<String>> inputColumnNames = new ArrayList<>();
     for (Expression expression : inputExpressions) {
-      for (AggregationType funcName : inputAggregationTypes) {
-        inputColumnNames.add(
-            funcName.toString().toLowerCase() + "(" + expression.getExpressionString() + ")");
-      }
+      inputColumnNames.add(getInputColumnNames(expression));
     }
     return inputColumnNames;
   }
@@ -190,6 +189,15 @@ public class AggregationDescriptor {
     ReadWriteIOUtils.write(inputExpressions.size(), byteBuffer);
     for (Expression expression : inputExpressions) {
       Expression.serialize(expression, byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(aggregationType.ordinal(), stream);
+    step.serialize(stream);
+    ReadWriteIOUtils.write(inputExpressions.size(), stream);
+    for (Expression expression : inputExpressions) {
+      Expression.serialize(expression, stream);
     }
   }
 

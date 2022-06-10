@@ -36,16 +36,14 @@ import static java.util.Objects.requireNonNull;
 
 public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
-  private Set<String> data;
+  private final Set<String> data;
   private final Operator child;
-  private boolean isFinished;
 
   public NodeManageMemoryMergeOperator(
       OperatorContext operatorContext, Set<String> data, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.data = data;
     this.child = requireNonNull(child, "child operator is null");
-    isFinished = false;
   }
 
   @Override
@@ -60,7 +58,6 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    isFinished = true;
     TsBlock block = child.next();
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
@@ -90,6 +87,6 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return isFinished || child.isFinished();
+    return child.isFinished();
   }
 }

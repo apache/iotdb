@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
@@ -65,16 +66,20 @@ public class ClusterSchemaManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
     TSStatus result;
-    if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
+    try {
+      clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupReq.getSchema().getName());
+    } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
-      result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
-      result.setMessage(
-          String.format(
-              "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
-    } else {
-      // Persist StorageGroupSchema
-      result = getConsensusManager().write(setStorageGroupReq).getStatus();
+      if (metadataException instanceof IllegalPathException) {
+        result = new TSStatus(TSStatusCode.PATH_ILLEGAL.getStatusCode());
+      } else {
+        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+      }
+      result.setMessage(metadataException.getMessage());
+      return result;
     }
+    // Persist StorageGroupSchema
+    result = getConsensusManager().write(setStorageGroupReq).getStatus();
     return result;
   }
 
@@ -99,6 +104,18 @@ public class ClusterSchemaManager {
    * Only leader use this interface.
    *
    * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return Number of Regions currently owned by the specific StorageGroup
+   */
+  public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
+      throws MetadataException {
+    return clusterSchemaInfo.getRegionGroupCount(storageGroup, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param storageGroup StorageGroupName
    * @return the matched StorageGroupSchema
    * @throws MetadataException when the specific StorageGroup doesn't exist
    */
@@ -116,6 +133,18 @@ public class ClusterSchemaManager {
   public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
       List<String> rawPathList) {
     return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
+  }
+
+  /**
+   * Only leader use this interface. Contending the Region allocation particle
+   *
+   * @param storageGroup The specific StorageGroup
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @return True if successfully get the Region allocation particle, false otherwise.
+   */
+  public boolean getRegionAllocationParticle(
+      String storageGroup, TConsensusGroupType consensusGroupType) {
+    return clusterSchemaInfo.getRegionAllocationParticle(storageGroup, consensusGroupType);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {
