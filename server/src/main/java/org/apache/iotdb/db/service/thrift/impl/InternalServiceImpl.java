@@ -361,7 +361,7 @@ public class InternalServiceImpl implements InternalService.Iface {
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
-            TSStatusCode.INTERNAL_SERVER_ERROR, response.getException().getMessage());
+            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
       StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) consensusGroupId);
     } else {
@@ -370,7 +370,7 @@ public class InternalServiceImpl implements InternalService.Iface {
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
-            TSStatusCode.INTERNAL_SERVER_ERROR, response.getException().getMessage());
+            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
       try {
         SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) consensusGroupId);
