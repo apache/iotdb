@@ -18,55 +18,58 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 
 /** Create SchemaPartition by assignedSchemaPartition */
 public class CreateSchemaPartitionReq extends ConfigRequest {
 
-  private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition;
+  // TODO: Replace this field whit new SchemaPartition
+  private Map<String, SchemaPartitionTable> assignedSchemaPartition;
 
   public CreateSchemaPartitionReq() {
     super(ConfigRequestType.CreateSchemaPartition);
   }
 
-  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getAssignedSchemaPartition() {
+  public Map<String, SchemaPartitionTable> getAssignedSchemaPartition() {
     return assignedSchemaPartition;
   }
 
   public void setAssignedSchemaPartition(
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition) {
+      Map<String, SchemaPartitionTable> assignedSchemaPartition) {
     this.assignedSchemaPartition = assignedSchemaPartition;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigRequestType.CreateSchemaPartition.ordinal());
+    try {
+      TTransport transport = new TIOStreamTransport(stream);
+      TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-    stream.writeInt(assignedSchemaPartition.size());
-    for (Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> entry :
-        assignedSchemaPartition.entrySet()) {
-      String storageGroup = entry.getKey();
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> partitionSlots = entry.getValue();
-      BasicStructureSerDeUtil.write(storageGroup, stream);
-      stream.writeInt(partitionSlots.size());
-      partitionSlots.forEach(
-          (seriesPartitionSlot, regionReplicaSet) -> {
-            ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, stream);
-            ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream);
-          });
+      stream.writeInt(ConfigRequestType.CreateSchemaPartition.ordinal());
+
+      stream.writeInt(assignedSchemaPartition.size());
+      for (Map.Entry<String, SchemaPartitionTable> schemaPartitionTableEntry :
+          assignedSchemaPartition.entrySet()) {
+        BasicStructureSerDeUtil.write(schemaPartitionTableEntry.getKey(), stream);
+        schemaPartitionTableEntry.getValue().serialize(stream, protocol);
+      }
+    } catch (TException e) {
+      throw new IOException(e);
     }
   }
 
@@ -77,15 +80,9 @@ public class CreateSchemaPartitionReq extends ConfigRequest {
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      assignedSchemaPartition.put(storageGroup, new HashMap<>());
-      int seriesPartitionSlotNum = buffer.getInt();
-      for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-        assignedSchemaPartition
-            .get(storageGroup)
-            .put(seriesPartitionSlot, ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer));
-      }
+      SchemaPartitionTable schemaPartitionTable = new SchemaPartitionTable();
+      schemaPartitionTable.deserialize(buffer);
+      assignedSchemaPartition.put(storageGroup, schemaPartitionTable);
     }
   }
 
