@@ -275,8 +275,8 @@ template.add_template(m_node_x)
 
 session.create_schema_template(template)
 ```
-#### Modify Schema Template nodes
-Modify nodes in a template, the template must be already created. These are functions that add or delete some measurement nodes.
+#### Modify Schema Template measurements
+Modify measurements in a template, the template must be already created. These are functions that add or delete some measurement nodes.
 * add node in template
 ```python
 session.add_measurements_in_template(template_name, measurements_path, data_types, encodings, compressors, is_aligned)
@@ -302,7 +302,7 @@ session.unset_schema_template(template_name, prefix_path)
 ```python
 session.show_all_templates()
 ```
-* Count all nodes in templates
+* Count all measurements in templates
 ```python
 session.count_measurements_in_template(template_name)
 ```
