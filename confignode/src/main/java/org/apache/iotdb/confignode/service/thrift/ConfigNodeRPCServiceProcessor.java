@@ -411,7 +411,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
     TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
-    if (!configManager
+    if (configManager
         .getNodeManager()
         .getOnlineConfigNodes()
         .contains(req.getConfigNodeLocation())) {
