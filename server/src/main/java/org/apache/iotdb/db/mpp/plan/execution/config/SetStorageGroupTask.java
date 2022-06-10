@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+<<<<<<< HEAD
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -33,18 +34,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+=======
+>>>>>>> abbe779bb7 (add interface)
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 
 public class SetStorageGroupTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SetStorageGroupTask.class);
-
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final SetStorageGroupStatement setStorageGroupStatement;
 
@@ -54,7 +50,12 @@ public class SetStorageGroupTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
+<<<<<<< HEAD
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
+=======
+<<<<<<< HEAD
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager) {
+>>>>>>> 8e3e7554e5 (add interface)
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // TODO:(this judgement needs to be integrated in a high level framework)
     if (config.isClusterMode()) {
@@ -94,30 +95,11 @@ public class SetStorageGroupTask implements IConfigTask {
         future.setException(e);
       }
     }
+=======
+          IConfigTaskFetcher configTaskFetcher) {
+>>>>>>> abbe779bb7 (add interface)
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return future;
-  }
-
-  /** construct set storage group schema according to statement */
-  private TStorageGroupSchema constructStorageGroupSchema() {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
-    if (setStorageGroupStatement.getTTL() != null) {
-      storageGroupSchema.setTTL(setStorageGroupStatement.getTTL());
-    }
-    if (setStorageGroupStatement.getSchemaReplicationFactor() != null) {
-      storageGroupSchema.setSchemaReplicationFactor(
-          setStorageGroupStatement.getSchemaReplicationFactor());
-    }
-    if (setStorageGroupStatement.getDataReplicationFactor() != null) {
-      storageGroupSchema.setDataReplicationFactor(
-          setStorageGroupStatement.getDataReplicationFactor());
-    }
-    if (setStorageGroupStatement.getTimePartitionInterval() != null) {
-      storageGroupSchema.setTimePartitionInterval(
-          setStorageGroupStatement.getTimePartitionInterval());
-    }
-    return storageGroupSchema;
+    return configTaskFetcher.setStorageGroup(setStorageGroupStatement);
   }
 }

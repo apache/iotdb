@@ -19,33 +19,35 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+<<<<<<< HEAD
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+<<<<<<< HEAD
+=======
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+>>>>>>> abbe779bb7 (add interface)
+>>>>>>> 8e3e7554e5 (add interface)
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
-
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,11 +65,19 @@ public class ShowStorageGroupTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
+<<<<<<< HEAD
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+=======
+<<<<<<< HEAD
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+=======
+          IConfigTaskFetcher configTaskFetcher)
+>>>>>>> abbe779bb7 (add interface)
+>>>>>>> 8e3e7554e5 (add interface)
       throws InterruptedException {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    Map<String, TStorageGroupSchema> storageGroupSchemaMap = new HashMap<>();
+
     if (config.isClusterMode()) {
+<<<<<<< HEAD
       List<String> storageGroupPathPattern =
           Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
       try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
@@ -78,6 +88,9 @@ public class ShowStorageGroupTask implements IConfigTask {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
       }
+=======
+
+>>>>>>> abbe779bb7 (add interface)
     } else {
       try {
         LocalConfigNode localConfigNode = LocalConfigNode.getInstance();

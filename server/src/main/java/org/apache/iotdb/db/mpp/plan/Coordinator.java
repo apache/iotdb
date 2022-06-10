@@ -68,10 +68,17 @@ public class Coordinator {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
+<<<<<<< HEAD
   private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+=======
+<<<<<<< HEAD
+  private static final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
+>>>>>>> 8e3e7554e5 (add interface)
       CONFIG_NODE_CLIENT_MANAGER =
           new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+=======
+>>>>>>> abbe779bb7 (add interface)
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
@@ -96,7 +103,7 @@ public class Coordinator {
       ISchemaFetcher schemaFetcher) {
     if (statement instanceof IConfigStatement) {
       queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor, CONFIG_NODE_CLIENT_MANAGER);
+      return new ConfigExecution(queryContext, statement, executor);
     }
     return new QueryExecution(
         statement,

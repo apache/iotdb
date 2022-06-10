@@ -19,25 +19,34 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.commons.utils.TestOnly;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
+=======
+<<<<<<< HEAD
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+>>>>>>> abbe779bb7 (add interface)
+>>>>>>> 8e3e7554e5 (add interface)
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.ClusterConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.StandsloneConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -45,6 +54,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 public class ConfigExecution implements IQueryExecution {
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final MPPQueryContext context;
   private final Statement statement;
@@ -56,14 +67,30 @@ public class ConfigExecution implements IQueryExecution {
   private DatasetHeader datasetHeader;
   private boolean resultSetConsumed;
   private final IConfigTask task;
+<<<<<<< HEAD
 
+<<<<<<< HEAD
   private IClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+=======
+  private IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager;
+=======
+  private IConfigTaskFetcher fetcher;
+>>>>>>> abbe779bb7 (add interface)
+>>>>>>> 8e3e7554e5 (add interface)
 
   public ConfigExecution(
       MPPQueryContext context,
       Statement statement,
+<<<<<<< HEAD
       ExecutorService executor,
+<<<<<<< HEAD
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
+=======
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager) {
+=======
+      ExecutorService executor) {
+>>>>>>> abbe779bb7 (add interface)
+>>>>>>> 8e3e7554e5 (add interface)
     this.context = context;
     this.statement = statement;
     this.executor = executor;
@@ -71,7 +98,11 @@ public class ConfigExecution implements IQueryExecution {
     this.taskFuture = SettableFuture.create();
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
     this.resultSetConsumed = false;
-    this.clientManager = clientManager;
+    if (config.isClusterMode()) {
+      fetcher = ClusterConfigTaskFetcher.getInstance();
+    } else {
+      fetcher = StandsloneConfigTaskFetcher.getInstance();
+    }
   }
 
   @TestOnly
@@ -88,7 +119,7 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public void start() {
     try {
-      ListenableFuture<ConfigTaskResult> future = task.execute(clientManager);
+      ListenableFuture<ConfigTaskResult> future = task.execute(fetcher);
       Futures.addCallback(
           future,
           new FutureCallback<ConfigTaskResult>() {
