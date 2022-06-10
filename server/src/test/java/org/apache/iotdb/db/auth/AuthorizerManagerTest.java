@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -27,7 +26,6 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -43,10 +41,10 @@ import java.util.Set;
 
 public class AuthorizerManagerTest {
 
-  AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  ClusterAuthorityFetcher authorityFetcher = ClusterAuthorityFetcher.getInstance();
 
   @Test
-  public void permissionCacheTest() throws ConfigNodeConnectionException, AuthException {
+  public void permissionCacheTest() {
     User user = new User();
     Role role1 = new Role();
     Role role2 = new Role();
@@ -92,8 +90,8 @@ public class AuthorizerManagerTest {
     result.setRoleInfo(new HashMap<>());
 
     // User authentication permission without role
-    authorizerManager.getUserCache().put(user.getName(), authorizerManager.cacheUser(result));
-    User user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
+    authorityFetcher.getUserCache().put(user.getName(), authorityFetcher.cacheUser(result));
+    User user1 = authorityFetcher.getUserCache().getIfPresent(user.getName());
     assert user1 != null;
     Assert.assertEquals(user.getName(), user1.getName());
     Assert.assertEquals(user.getPassword(), user1.getPassword());
@@ -102,20 +100,20 @@ public class AuthorizerManagerTest {
     // User has permission
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        authorizerManager
-            .checkPermissionCache(
+        authorityFetcher
+            .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
             .getCode());
     // User does not have permission
     Assert.assertEquals(
         TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(),
-        authorizerManager
-            .checkPermissionCache(
+        authorityFetcher
+            .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
             .getCode());
 
     // Authenticate users with roles
-    authorizerManager.invalidateCache(user.getName(), "");
+    authorityFetcher.invalidateCache(user.getName(), "");
     tUserResp.setPrivilegeList(new ArrayList<>());
     tUserResp.setRoleList(user.getRoleList());
 
@@ -133,30 +131,30 @@ public class AuthorizerManagerTest {
       tRoleRespMap.put(role.getName(), tRoleResp);
     }
     result.setRoleInfo(tRoleRespMap);
-    authorizerManager.getUserCache().put(user.getName(), authorizerManager.cacheUser(result));
-    Role role3 = authorizerManager.getRoleCache().getIfPresent(role1.getName());
+    authorityFetcher.getUserCache().put(user.getName(), authorityFetcher.cacheUser(result));
+    Role role3 = authorityFetcher.getRoleCache().getIfPresent(role1.getName());
     Assert.assertEquals(role1.getName(), role3.getName());
     Assert.assertEquals(role1.getPrivilegeList(), role3.getPrivilegeList());
 
     // role has permission
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        authorizerManager
-            .checkPermissionCache(
+        authorityFetcher
+            .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
             .getCode());
     // role does not have permission
     Assert.assertEquals(
         TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(),
-        authorizerManager
-            .checkPermissionCache(
+        authorityFetcher
+            .checkUserPrivileges(
                 "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
             .getCode());
 
-    authorizerManager.invalidateCache(user.getName(), "");
+    authorityFetcher.invalidateCache(user.getName(), "");
 
-    user1 = authorizerManager.getUserCache().getIfPresent(user.getName());
-    role1 = authorizerManager.getRoleCache().getIfPresent(role1.getName());
+    user1 = authorityFetcher.getUserCache().getIfPresent(user.getName());
+    role1 = authorityFetcher.getRoleCache().getIfPresent(role1.getName());
 
     Assert.assertNull(user1);
     Assert.assertNull(role1);

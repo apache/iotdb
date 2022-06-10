@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -56,10 +55,10 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -259,15 +258,6 @@ public class ConfigManager implements Manager {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
-      for (Map.Entry<String, TStorageGroupSchema> storageGroupSchemaEntry :
-          deleteStorageSchemaMap.entrySet()) {
-        String sgName = storageGroupSchemaEntry.getKey();
-        TStorageGroupSchema deleteStorageSchema = storageGroupSchemaEntry.getValue();
-        deleteStorageSchema.setSchemaRegionGroupIds(
-            getClusterSchemaManager().getRegionGroupIds(sgName, TConsensusGroupType.SchemaRegion));
-        deleteStorageSchema.setDataRegionGroupIds(
-            getClusterSchemaManager().getRegionGroupIds(sgName, TConsensusGroupType.DataRegion));
-      }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
           new ArrayList<>(deleteStorageSchemaMap.values());
       return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);

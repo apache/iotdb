@@ -77,6 +77,7 @@ public class StandaloneCoordinatorTest {
   @After
   public void tearDown() throws Exception {
     configNode.clear();
+    WALManager.getInstance().clear();
     WALManager.getInstance().stop();
     StorageEngineV2.getInstance().stop();
     FlushManager.getInstance().stop();
@@ -113,7 +114,7 @@ public class StandaloneCoordinatorTest {
             put("tag2", "v2");
           }
         });
-    executeStatement(createTimeSeriesStatement);
+    executeStatement(createTimeSeriesStatement, false);
   }
 
   @Test
@@ -121,18 +122,28 @@ public class StandaloneCoordinatorTest {
 
     String insertSql = "insert into root.sg.d1(time,s1,s2) values (100,222,333)";
     Statement insertStmt = StatementGenerator.createStatement(insertSql, ZoneId.systemDefault());
-    executeStatement(insertStmt);
+    executeStatement(insertStmt, false);
   }
 
-  private void executeStatement(Statement statement) {
-    long queryId = SessionManager.getInstance().requestQueryId(false);
+  @Test
+  public void createUser() {
+    String createUserSql = "create user username 'password'";
+    Statement createStmt =
+        StatementGenerator.createStatement(createUserSql, ZoneId.systemDefault());
+    executeStatement(createStmt, false);
+  }
+
+  private void executeStatement(Statement statement, boolean isDataQuery) {
+    long queryId = SessionManager.getInstance().requestQueryId(isDataQuery);
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, schemaFetcher);
     try {
       int statusCode = executionResult.status.getCode();
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);
     } finally {
-      coordinator.getQueryExecution(queryId).stopAndCleanup();
+      if (isDataQuery) {
+        coordinator.getQueryExecution(queryId).stopAndCleanup();
+      }
     }
   }
 }

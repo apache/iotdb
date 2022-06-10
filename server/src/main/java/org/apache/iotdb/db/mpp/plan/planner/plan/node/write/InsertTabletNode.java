@@ -235,6 +235,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     for (Map.Entry<TRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
       // generate a new times and values
       locs = entry.getValue();
+      // Avoid using system arraycopy when there is no need to split
+      if (splitMap.size() == 1) {
+        setRange(locs);
+        setDataRegionReplicaSet(entry.getKey());
+        result.add(this);
+        return result;
+      }
       int count = 0;
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);

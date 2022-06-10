@@ -24,6 +24,11 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -42,6 +47,18 @@ public class DataNodeSchemaCache {
 
   private DataNodeSchemaCache() {
     cache = Caffeine.newBuilder().maximumSize(config.getDataNodeSchemaCacheSize()).build();
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      // add metrics
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.CACHE_HIT.toString(),
+              MetricLevel.IMPORTANT,
+              cache,
+              l -> (long) (l.stats().hitRate() * 100),
+              Tag.NAME.toString(),
+              "schemaCache");
+    }
   }
 
   public static DataNodeSchemaCache getInstance() {
