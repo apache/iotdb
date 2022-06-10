@@ -22,20 +22,19 @@ package org.apache.iotdb.db.localconfignode;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.storagegroup.dataregion.HashVirtualPartitioner;
-import org.apache.iotdb.db.engine.storagegroup.dataregion.VirtualPartitioner;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 // This class is used for data partition maintaining the map between storage group and
 // dataRegionIds.
 public class LocalDataPartitionTable {
 
-  VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
+  private AtomicInteger dataRegionIdGenerator;
 
   private Map<PartialPath, List<DataRegionId>> table;
 
@@ -54,11 +53,18 @@ public class LocalDataPartitionTable {
   public synchronized void init(Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo)
       throws IllegalPathException {
     table = new ConcurrentHashMap<>();
+    dataRegionIdGenerator = new AtomicInteger(0);
     for (Map.Entry<String, List<DataRegionId>> entry : recoveredLocalDataRegionInfo.entrySet()) {
       String storageGroup = entry.getKey();
       List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
       table.put(new PartialPath(storageGroup), dataRegionIdList);
-      dataRegionIdList.addAll(entry.getValue());
+      for (DataRegionId dataRegionId : recoveredLocalDataRegionInfo.get(storageGroup)) {
+        dataRegionIdList.add(dataRegionId);
+
+        if (dataRegionId.getId() >= dataRegionIdGenerator.get()) {
+          dataRegionIdGenerator.set(dataRegionId.getId() + 1);
+        }
+      }
     }
   }
 
@@ -66,6 +72,10 @@ public class LocalDataPartitionTable {
     if (table != null) {
       table.clear();
       table = null;
+    }
+
+    if (dataRegionIdGenerator != null) {
+      dataRegionIdGenerator = null;
     }
   }
 
@@ -81,7 +91,7 @@ public class LocalDataPartitionTable {
     if (!table.containsKey(storageGroup)) {
       return null;
     }
-    return calculateDataRegionId(path);
+    return table.get(storageGroup).get(0);
   }
 
   public List<DataRegionId> getInvolvedDataRegionIds(
@@ -97,14 +107,14 @@ public class LocalDataPartitionTable {
     return new ArrayList<>(table.get(storageGroup));
   }
 
-  public synchronized void setDataPartitionInfo(PartialPath storageGroup, PartialPath device) {
+  public synchronized void setDataPartitionInfo(PartialPath storageGroup) {
     List<DataRegionId> dataRegionIdList;
     if (table.containsKey(storageGroup)) {
       dataRegionIdList = table.get(storageGroup);
     } else {
       dataRegionIdList = new CopyOnWriteArrayList<>();
     }
-    dataRegionIdList.add(calculateDataRegionId(device));
+    dataRegionIdList.add(generateDataRegionId());
     table.put(storageGroup, dataRegionIdList);
   }
 
@@ -114,7 +124,7 @@ public class LocalDataPartitionTable {
 
   // This method may be extended to implement multi dataRegion for one storageGroup
   // todo keep consistent with the partition method of config node in new cluster
-  private DataRegionId calculateDataRegionId(PartialPath device) {
-    return new DataRegionId(partitioner.deviceToDataRegionId(device));
+  private DataRegionId generateDataRegionId() {
+    return new DataRegionId(dataRegionIdGenerator.getAndIncrement());
   }
 }
