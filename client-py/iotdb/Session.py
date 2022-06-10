@@ -1040,8 +1040,15 @@ class Session(object):
         return -1
 
     def execute_raw_data_query(
-        self, paths: list, start_time: int, end_time: int
+            self, paths: list, start_time: int, end_time: int
     ) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param start_time: Query start time
+        :param end_time: Query end time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
         request = TSRawDataQueryReq(
             self.__session_id,
             paths,
@@ -1066,6 +1073,12 @@ class Session(object):
         )
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param last_time: Query last time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
         request = TSLastDataQueryReq(
             self.__session_id,
             paths,
@@ -1097,6 +1110,16 @@ class Session(object):
         values_list: list,
         have_sorted: bool = False,
     ):
+        """
+        insert multiple row of string record into database:
+                 timestamp,     m1,    m2,     m3
+                         0,  text1,  text2, text3
+        :param device_id: String, device id
+        :param times: Timestamp list
+        :param measurements_list: Measurements list
+        :param values_list: Value list
+        :param have_sorted: have these list been sorted by timestamp
+        """
         if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
             raise RuntimeError(
                 "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
