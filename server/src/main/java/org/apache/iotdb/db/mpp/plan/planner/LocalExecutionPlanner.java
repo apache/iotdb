@@ -1071,6 +1071,9 @@ public class LocalExecutionPlanner {
 
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
+
+      checkArgument(DATA_BLOCK_MANAGER != null, "DATA_BLOCK_MANAGER should not be null");
+
       ISinkHandle sinkHandle =
           DATA_BLOCK_MANAGER.createSinkHandle(
               localInstanceId.toThrift(),
