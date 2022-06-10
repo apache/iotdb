@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.commons.UDFBinary;
+import org.apache.iotdb.udf.api.commons.UDFDataType;
 
 import java.io.IOException;
 
@@ -68,8 +70,8 @@ public class ElasticSerializableTVListBackedSingleColumnRow implements Row {
   }
 
   @Override
-  public Binary getBinary(int columnIndex) throws IOException {
-    return tvList.getBinary(currentRowIndex);
+  public UDFBinary getBinary(int columnIndex) throws IOException {
+    return UDFBinaryTransformer.transformToUDFBinary(tvList.getBinary(currentRowIndex));
   }
 
   @Override
@@ -78,8 +80,8 @@ public class ElasticSerializableTVListBackedSingleColumnRow implements Row {
   }
 
   @Override
-  public TSDataType getDataType(int columnIndex) {
-    return tvList.getDataType();
+  public UDFDataType getDataType(int columnIndex) {
+    return UDFDataTypeTransformer.transformToUDFDataType(tvList.getDataType());
   }
 
   @Override

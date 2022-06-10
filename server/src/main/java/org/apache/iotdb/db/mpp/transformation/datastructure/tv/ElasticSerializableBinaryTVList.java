@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.mpp.transformation.datastructure.tv;
 
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.commons.UDFBinary;
 
 import java.io.IOException;
 
@@ -42,7 +44,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   }
 
   @Override
-  public void putBinary(long timestamp, Binary value) throws IOException {
+  public void putBinary(long timestamp, UDFBinary value) throws IOException {
     super.putBinary(timestamp, value);
     totalByteArrayLengthLimit += byteArrayLengthForMemoryControl;
     totalByteArrayLength += value.getLength();
@@ -52,7 +54,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   @Override
   public void putString(long timestamp, String value) throws IOException {
     Binary binary = Binary.valueOf(value);
-    super.putBinary(timestamp, binary);
+    super.putBinary(timestamp, UDFBinaryTransformer.transformToUDFBinary(binary));
     totalByteArrayLengthLimit += byteArrayLengthForMemoryControl;
     totalByteArrayLength += binary.getLength();
     checkMemoryUsage();
@@ -113,13 +115,14 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     newElasticSerializableTVList.size = internalListEvictionUpperBound * newInternalTVListCapacity;
     Binary empty = Binary.valueOf("");
     for (int i = newElasticSerializableTVList.size; i < evictionUpperBound; ++i) {
-      newElasticSerializableTVList.putBinary(i, empty);
+      newElasticSerializableTVList.putBinary(i, UDFBinaryTransformer.transformToUDFBinary(empty));
     }
     for (int i = evictionUpperBound; i < size; ++i) {
       if (isNull(i)) {
         newElasticSerializableTVList.putNull(getTime(i));
       } else {
-        newElasticSerializableTVList.putBinary(getTime(i), getBinary(i));
+        newElasticSerializableTVList.putBinary(
+            getTime(i), UDFBinaryTransformer.transformToUDFBinary(getBinary(i)));
       }
     }
 

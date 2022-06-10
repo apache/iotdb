@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
 import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.commons.UDFDataType;
 
 import java.io.IOException;
 
@@ -65,8 +67,8 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
   }
 
   @Override
-  public TSDataType getDataType(int columnIndex) {
-    return dataTypes[columnIndex];
+  public UDFDataType getDataType(int columnIndex) {
+    return UDFDataTypeTransformer.transformToUDFDataType(dataTypes[columnIndex]);
   }
 
   @Override

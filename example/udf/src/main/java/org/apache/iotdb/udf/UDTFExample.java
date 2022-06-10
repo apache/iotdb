@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.udf;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -51,7 +52,8 @@ public class UDTFExample implements UDTF {
         // this udf only accepts 1 time series
         .validateInputSeriesNumber(1)
         // the data type of the first input time series should be INT32
-        .validateInputSeriesDataType(0, TSDataType.INT32)
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32))
         // this udf doesn't accept any extra parameters
         // the validation rule is not required because extra parameters will be ignored
         .validate(
@@ -64,7 +66,7 @@ public class UDTFExample implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.INT32);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
   }
 
   @Override
