@@ -113,7 +113,7 @@ public class SeriesPartitionTable {
    * @param partitionSlots TimePartitionSlots
    * @return Unassigned PartitionSlots
    */
-  public synchronized List<TTimePartitionSlot> filterNoAssignedSchemaPartitionSlots(
+  public synchronized List<TTimePartitionSlot> filterUnassignedDataPartitionSlots(
       List<TTimePartitionSlot> partitionSlots) {
     List<TTimePartitionSlot> result = new Vector<>();
 

@@ -128,7 +128,7 @@ public class DataPartitionTable {
                 seriesPartitionSlot,
                 dataPartitionMap
                     .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
-                    .filterNoAssignedSchemaPartitionSlots(timePartitionSlots)));
+                    .filterUnassignedDataPartitionSlots(timePartitionSlots)));
 
     return result;
   }
