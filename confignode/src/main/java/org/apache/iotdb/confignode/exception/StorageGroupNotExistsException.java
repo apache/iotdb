@@ -16,6 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer;
+package org.apache.iotdb.confignode.exception;
 
-public class SeriesPartitionSlotBalancer {}
+public class StorageGroupNotExistsException extends ConfigNodeException {
+
+  public StorageGroupNotExistsException(String storageGroup) {
+    super(String.format("StorageGroup: %s doesn't exist.", storageGroup));
+  }
+}
