@@ -19,6 +19,7 @@
 
 class TsFileConstant:
     TSFILE_SUFFIX = ".tsfile"
+    INDEX_SUFFIX = ".index"
     TSFILE_HOME = "TSFILE_HOME"
     TSFILE_CONF = "TSFILE_CONF"
     PATH_ROOT = "root"
