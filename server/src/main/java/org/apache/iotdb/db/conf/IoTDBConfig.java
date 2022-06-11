@@ -1526,7 +1526,7 @@ public class IoTDBConfig {
     return walBufferQueueCapacity;
   }
 
-  void setWalBufferQueueCapacity(int walBufferQueueCapacity) {
+  public void setWalBufferQueueCapacity(int walBufferQueueCapacity) {
     this.walBufferQueueCapacity = walBufferQueueCapacity;
   }
 

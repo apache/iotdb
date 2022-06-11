@@ -286,6 +286,7 @@ public class EnvironmentUtils {
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     // use async wal mode in test
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    config.setWalBufferQueueCapacity(100);
     if (daemon == null) {
       daemon = new IoTDB();
     }
