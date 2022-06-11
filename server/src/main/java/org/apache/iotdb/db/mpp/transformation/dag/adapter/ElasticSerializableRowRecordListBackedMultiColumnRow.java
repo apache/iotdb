@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -70,7 +71,7 @@ public class ElasticSerializableRowRecordListBackedMultiColumnRow implements Row
 
   @Override
   public UDFBinary getBinary(int columnIndex) {
-    return (UDFBinary) rowRecord[columnIndex];
+    return UDFBinaryTransformer.transformToUDFBinary((Binary) rowRecord[columnIndex]);
   }
 
   @Override

@@ -173,7 +173,7 @@ public class ElasticSerializableTVList implements PointCollector {
         putBoolean(timestamp, (Boolean) value);
         break;
       case TEXT:
-        putBinary(timestamp, (UDFBinary) value);
+        putBinary(timestamp, UDFBinaryTransformer.transformToUDFBinary((Binary) value));
         break;
       default:
         throw new UnSupportedDataTypeException(

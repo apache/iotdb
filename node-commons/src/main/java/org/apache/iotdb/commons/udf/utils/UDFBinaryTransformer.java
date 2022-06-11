@@ -26,10 +26,10 @@ public class UDFBinaryTransformer {
   private UDFBinaryTransformer() {}
 
   public static Binary transformToBinary(UDFBinary udfBinary) {
-    return new Binary(udfBinary.getValues());
+    return udfBinary == null ? null : new Binary(udfBinary.getValues());
   }
 
   public static UDFBinary transformToUDFBinary(Binary binary) {
-    return new UDFBinary(binary.getValues());
+    return binary == null ? null : new UDFBinary(binary.getValues());
   }
 }

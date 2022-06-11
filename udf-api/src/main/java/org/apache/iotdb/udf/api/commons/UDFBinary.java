@@ -29,7 +29,6 @@ import java.util.Arrays;
 public class UDFBinary implements Comparable<UDFBinary>, Serializable {
 
   private static final long serialVersionUID = 1250049718612917815L;
-  public static final UDFBinary EMPTY_VALUE = new UDFBinary("");
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
 

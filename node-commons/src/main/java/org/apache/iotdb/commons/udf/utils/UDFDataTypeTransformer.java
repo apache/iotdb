@@ -30,22 +30,26 @@ public class UDFDataTypeTransformer {
   private UDFDataTypeTransformer() {}
 
   public static TSDataType transformToTsDataType(UDFDataType udfDataType) {
-    return TSDataType.getTsDataType(udfDataType.getType());
+    return udfDataType == null ? null : TSDataType.getTsDataType(udfDataType.getType());
   }
 
   public static List<TSDataType> transformToTsDataTypeList(List<UDFDataType> udfDataTypeList) {
-    return udfDataTypeList.stream()
-        .map(UDFDataTypeTransformer::transformToTsDataType)
-        .collect(Collectors.toList());
+    return udfDataTypeList == null
+        ? null
+        : udfDataTypeList.stream()
+            .map(UDFDataTypeTransformer::transformToTsDataType)
+            .collect(Collectors.toList());
   }
 
   public static UDFDataType transformToUDFDataType(TSDataType tsDataType) {
-    return UDFDataType.getUDFDataType(tsDataType.getType());
+    return tsDataType == null ? null : UDFDataType.getUDFDataType(tsDataType.getType());
   }
 
   public static List<UDFDataType> transformToUDFDataTypeList(List<TSDataType> tsDataTypeList) {
-    return tsDataTypeList.stream()
-        .map(UDFDataTypeTransformer::transformToUDFDataType)
-        .collect(Collectors.toList());
+    return tsDataTypeList == null
+        ? null
+        : tsDataTypeList.stream()
+            .map(UDFDataTypeTransformer::transformToUDFDataType)
+            .collect(Collectors.toList());
   }
 }

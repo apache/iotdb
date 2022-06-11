@@ -30,18 +30,20 @@ public class UDFPartialPathTransformer {
   private UDFPartialPathTransformer() {}
 
   public static UDFPartialPath transformToUDFPartialPath(PartialPath partialPath) {
-    return new UDFPartialPath(partialPath.getNodes());
+    return partialPath == null ? null : new UDFPartialPath(partialPath.getNodes());
   }
 
   public static List<UDFPartialPath> transformToUDFPartialPathList(
       List<PartialPath> partialPathList) {
-    return partialPathList.stream()
-        .map(UDFPartialPathTransformer::transformToUDFPartialPath)
-        .collect(Collectors.toList());
+    return partialPathList == null
+        ? null
+        : partialPathList.stream()
+            .map(UDFPartialPathTransformer::transformToUDFPartialPath)
+            .collect(Collectors.toList());
   }
 
   public static PartialPath transformToPartialPath(UDFPartialPath udfPartialPath)
       throws IllegalPathException {
-    return new PartialPath(udfPartialPath.getFullPath());
+    return udfPartialPath == null ? null : new PartialPath(udfPartialPath.getFullPath());
   }
 }
