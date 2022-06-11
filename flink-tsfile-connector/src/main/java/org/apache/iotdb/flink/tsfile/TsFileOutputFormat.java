@@ -71,6 +71,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
   }
 
   @Override
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   public void open(int taskNumber, int numTasks) throws IOException {
     super.open(taskNumber, numTasks);
     if (config != null) {

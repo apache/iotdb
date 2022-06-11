@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.junit.Assert;
@@ -132,6 +133,10 @@ public class SyncTestUtil {
       File resourceFile = new File(dir, tsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
       if (resourceFile.exists()) {
         resourceFile.renameTo(new File(dir, prefix + resourceFile.getName()));
+      }
+      File indexFile = new File(dir, tsFile.getName() + TsFileConstant.INDEX_SUFFIX);
+      if (indexFile.exists()) {
+        indexFile.renameTo(new File(dir, prefix + indexFile.getName()));
       }
       File modsFile = new File(dir, tsFile.getName() + ModificationFile.FILE_SUFFIX);
       if (modsFile.exists()) {

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.receiver.load.ILoader;
 import org.apache.iotdb.db.sync.receiver.load.TsFileLoader;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -130,6 +131,7 @@ public class TsFilePipeData extends PipeData {
   public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {
     File tsFile = new File(getTsFilePath()).getAbsoluteFile();
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    File index = new File(tsFile.getAbsolutePath() + TsFileConstant.INDEX_SUFFIX);
     File mods = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
 
     List<File> files = new ArrayList<>();
@@ -144,6 +146,15 @@ public class TsFilePipeData extends PipeData {
         throw new FileNotFoundException(
             String.format(
                 "Can not find %s, maybe the tsfile is not closed yet", resource.getAbsolutePath()));
+      }
+    }
+    if (index.exists()) {
+      files.add(index);
+    } else {
+      if (shouldWaitForTsFileClose && !waitForTsFileClose()) {
+        throw new FileNotFoundException(
+            String.format(
+                "Can not find %s, maybe the tsfile is not closed yet", index.getAbsolutePath()));
       }
     }
     if (mods.exists()) {
@@ -172,8 +183,9 @@ public class TsFilePipeData extends PipeData {
 
   private boolean isTsFileClosed() {
     File tsFile = new File(getTsFilePath()).getAbsoluteFile();
+    File index = new File(tsFile.getAbsolutePath() + TsFileConstant.INDEX_SUFFIX);
     File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
-    return resource.exists();
+    return index.exists() && resource.exists();
   }
 
   @Override

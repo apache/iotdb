@@ -94,7 +94,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
   @Override
   public void open(FileInputSplit split) throws IOException {
     super.open(split);
-    if (!currentSplit.getPath().getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+    if (currentSplit.getPath().getPath().contains(TsFileConstant.INDEX_SUFFIX)) {
       return;
     }
     if (config != null) {
