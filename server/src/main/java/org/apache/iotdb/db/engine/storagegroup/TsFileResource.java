@@ -861,8 +861,10 @@ public class TsFileResource {
     return newResource;
   }
 
-  public synchronized void setModFile(ModificationFile modFile) {
-    this.modFile = modFile;
+  public void setModFile(ModificationFile modFile) {
+    synchronized (this) {
+      this.modFile = modFile;
+    }
   }
 
   /** @return resource map size */
