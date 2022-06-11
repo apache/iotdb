@@ -564,9 +564,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
-      try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         TSExecuteStatementResp resp;
-        if (queryExecution.isQuery()) {
+        if (queryExecution != null && queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
           resp.setQueryDataSet(

@@ -858,7 +858,7 @@ public class LocalConfigNode {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
-      dataPartitionTable.setDataPartitionInfo(storageGroup, path);
+      dataPartitionTable.setDataPartitionInfo(storageGroup);
       dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);

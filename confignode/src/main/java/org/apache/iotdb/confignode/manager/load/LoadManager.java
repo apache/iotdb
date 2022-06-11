@@ -23,24 +23,27 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.Manager;
 import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +64,9 @@ public class LoadManager implements Runnable {
       ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
   private final HeartbeatCache heartbeatCache;
 
+  // Balancers
   private final RegionBalancer regionBalancer;
+  private final PartitionBalancer partitionBalancer;
 
   private final Map<TConsensusGroupId, TRegionReplicaSet> replicaScoreMap;
 
@@ -72,6 +77,7 @@ public class LoadManager implements Runnable {
     this.heartbeatCache = new HeartbeatCache();
 
     this.regionBalancer = new RegionBalancer(configManager);
+    this.partitionBalancer = new PartitionBalancer(configManager);
 
     this.replicaScoreMap = new TreeMap<>();
   }
@@ -86,7 +92,7 @@ public class LoadManager implements Runnable {
    */
   public void initializeRegions(
       List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
-      throws NotEnoughDataNodeException, MetadataException {
+      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
     CreateRegionsReq createRegionsReq =
         regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, regionNum);
     createRegionsOnDataNodes(createRegionsReq);
@@ -95,7 +101,7 @@ public class LoadManager implements Runnable {
   }
 
   private void createRegionsOnDataNodes(CreateRegionsReq createRegionsReq)
-      throws MetadataException {
+      throws StorageGroupNotExistsException {
     Map<String, Long> ttlMap = new HashMap<>();
     for (String storageGroup : createRegionsReq.getRegionMap().keySet()) {
       ttlMap.put(
@@ -105,86 +111,35 @@ public class LoadManager implements Runnable {
     AsyncDataNodeClientPool.getInstance().createRegions(createRegionsReq, ttlMap);
   }
 
+  /**
+   * Allocate SchemaPartitions
+   *
+   * @param unassignedSchemaPartitionSlotsMap SchemaPartitionSlots that should be assigned
+   * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
+   */
+  public Map<String, SchemaPartitionTable> allocateSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap) {
+    return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
+  }
+
+  /**
+   * Allocate DataPartitions
+   *
+   * @param unassignedDataPartitionSlotsMap DataPartitionSlots that should be assigned
+   * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
+   */
+  public Map<String, DataPartitionTable> allocateDataPartition(
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+          unassignedDataPartitionSlotsMap) {
+    return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
+  }
+
   private THeartbeatReq genHeartbeatReq() {
     return new THeartbeatReq(System.currentTimeMillis());
   }
 
-  private void regionExpansion() {
-    // Currently, we simply expand the number of regions held by each storage group to
-    // 50% of the total CPU cores to facilitate performance testing of multiple regions
-
-    int totalCoreNum = 0;
-    List<TDataNodeInfo> dataNodeInfos = getNodeManager().getOnlineDataNodes(-1);
-    for (TDataNodeInfo dataNodeInfo : dataNodeInfos) {
-      totalCoreNum += dataNodeInfo.getCpuCoreNum();
-    }
-
-    List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
-    for (String storageGroup : storageGroups) {
-      try {
-        TStorageGroupSchema storageGroupSchema =
-            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
-        int totalReplicaNum =
-            storageGroupSchema.getSchemaReplicationFactor()
-                    * storageGroupSchema.getSchemaRegionGroupIdsSize()
-                + storageGroupSchema.getDataReplicationFactor()
-                    * storageGroupSchema.getDataRegionGroupIdsSize();
-
-        if (totalReplicaNum < totalCoreNum * 0.5) {
-          // Allocate more Regions
-          CreateRegionsReq createRegionsReq = null;
-
-          // Assume that cluster will get the best efficiency when SchemaRegion:DataRegion is 1:5
-          // TODO: Find an optimal SchemaRegion:DataRegion rate.
-          if (storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
-                  > storageGroupSchema.getDataRegionGroupIdsSize()
-              && storageGroupSchema.getDataRegionGroupIdsSize()
-                  < storageGroupSchema.getMaximumDataRegionCount()) {
-            // Allocate more DataRegions
-
-            // regionNum equals to min(remain cpu core,
-            // min(SchemaRegionCnt * 5 - DataRegionCnt, MaxDataRegionCnt - DataRegionCnt))
-            int regionNum =
-                Math.min(
-                    ((int) (totalCoreNum * 0.5) - totalReplicaNum)
-                        / storageGroupSchema.getDataReplicationFactor(),
-                    Math.min(
-                        storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
-                            - storageGroupSchema.getDataRegionGroupIdsSize(),
-                        storageGroupSchema.getMaximumDataRegionCount()
-                            - storageGroupSchema.getDataRegionGroupIdsSize()));
-
-            createRegionsReq =
-                regionBalancer.genRegionsAllocationPlan(
-                    Collections.singletonList(storageGroup),
-                    TConsensusGroupType.DataRegion,
-                    regionNum);
-          } else if (storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
-                  <= storageGroupSchema.getDataRegionGroupIdsSize()
-              && storageGroupSchema.getSchemaRegionGroupIdsSize()
-                  < storageGroupSchema.getMaximumSchemaRegionCount()) {
-            // Allocate one more SchemaRegion
-            createRegionsReq =
-                regionBalancer.genRegionsAllocationPlan(
-                    Collections.singletonList(storageGroup), TConsensusGroupType.SchemaRegion, 1);
-          }
-
-          // TODO: use procedure to protect this
-          if (createRegionsReq != null) {
-            createRegionsOnDataNodes(createRegionsReq);
-            getConsensusManager().write(createRegionsReq);
-          }
-        }
-      } catch (MetadataException e) {
-        LOGGER.warn("Meet error when doing regionExpansion", e);
-      } catch (NotEnoughDataNodeException ignore) {
-        // The LoadManager will expand Regions automatically after there are enough DataNodes.
-      }
-    }
-  }
-
   private void doLoadBalancing() {
-    regionExpansion();
+    // regionExpansion();
     // TODO: update replicaScoreMap
   }
 

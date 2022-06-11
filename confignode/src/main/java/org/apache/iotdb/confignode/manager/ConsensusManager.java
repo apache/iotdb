@@ -193,6 +193,4 @@ public class ConsensusManager {
   public IConsensus getConsensusImpl() {
     return consensusImpl;
   }
-
-  // TODO: Interfaces for LoadBalancer control
 }

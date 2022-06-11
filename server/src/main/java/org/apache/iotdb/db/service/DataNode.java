@@ -51,7 +51,6 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
-import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
@@ -119,10 +118,15 @@ public class DataNode implements DataNodeMBean {
 
   protected void doAddNode(String[] args) {
     try {
-      // TODO : contact with config node to join into the cluster
+      // setup InternalService
       prepareJoinCluster();
-      joinCluster();
+      // setup DataNode
       active();
+      // contact with config node to join into the cluster
+      joinCluster();
+      // setup rpc service
+      setUpRPCService();
+      logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
     } catch (StartupException e) {
       logger.error("Fail to start server", e);
       stop();
@@ -139,7 +143,7 @@ public class DataNode implements DataNodeMBean {
     return true;
   }
 
-  public void prepareJoinCluster() throws StartupException {
+  private void prepareJoinCluster() throws StartupException {
     // check iotdb server first
     StartupChecks checks = new StartupChecks().withDefaultTest();
     checks.verify();
@@ -155,7 +159,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(InternalService.getInstance());
   }
 
-  public void joinCluster() throws StartupException {
+  private void joinCluster() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
     ConfigNodeInfo.getInstance()
@@ -234,7 +238,7 @@ public class DataNode implements DataNodeMBean {
     throw new StartupException("Cannot join the cluster.");
   }
 
-  public void active() throws StartupException {
+  private void active() throws StartupException {
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
@@ -252,12 +256,6 @@ public class DataNode implements DataNodeMBean {
     } catch (IOException e) {
       throw new StartupException(e);
     }
-
-    // TODO: move rpc service initialization from iotdb instance here
-    // init influxDB MManager
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
-      IoTDB.initInfluxDBMManager();
-    }
   }
 
   private void setUp() throws StartupException, QueryProcessException {
@@ -269,14 +267,6 @@ public class DataNode implements DataNodeMBean {
 
     // init metric service
     registerManager.register(MetricsService.getInstance());
-    // init rpc service
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
-    // in cluster mode, RPC service is not enabled.
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
-    }
 
     logger.info("recover the schema...");
     initConfigManager();
@@ -297,10 +287,6 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(ReceiverService.getInstance());
 
     initProtocols();
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
-      InfluxDBMetaManager.getInstance().recover();
-    }
 
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
@@ -325,8 +311,16 @@ public class DataNode implements DataNodeMBean {
 
     // start reporter
     MetricsService.getInstance().startAllReporter();
+  }
 
-    logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
+  private void setUpRPCService() throws StartupException {
+    // init rpc service
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
   }
 
   private void registerUdfServices() throws StartupException {
@@ -365,9 +359,10 @@ public class DataNode implements DataNodeMBean {
     serviceProvider = new StandaloneServiceProvider();
   }
 
-  public static void initProtocols() throws StartupException {
+  private void initProtocols() throws StartupException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       registerManager.register(InfluxDBRPCService.getInstance());
+      IoTDB.initInfluxDBMManager();
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());

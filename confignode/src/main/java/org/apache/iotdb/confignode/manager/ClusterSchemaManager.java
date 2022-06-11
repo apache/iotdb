@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -33,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -88,39 +87,14 @@ public class ClusterSchemaManager {
   }
 
   /**
-   * Only leader use this interface. Get the SchemaRegionGroupIds or DataRegionGroupIds from the
-   * specific StorageGroup.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   * @return All SchemaRegionGroupIds when type is SchemaRegion, and all DataRegionGroupIds when
-   *     type is DataRegion
-   */
-  public List<TConsensusGroupId> getRegionGroupIds(String storageGroup, TConsensusGroupType type) {
-    return clusterSchemaInfo.getRegionGroupIds(storageGroup, type);
-  }
-
-  /**
    * Only leader use this interface.
    *
    * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   * @return Number of Regions currently owned by the specific StorageGroup
-   */
-  public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
-      throws MetadataException {
-    return clusterSchemaInfo.getRegionGroupCount(storageGroup, type);
-  }
-
-  /**
-   * Only leader use this interface.
-   *
-   * @param storageGroup StorageGroupName
-   * @return the matched StorageGroupSchema
-   * @throws MetadataException when the specific StorageGroup doesn't exist
+   * @return The specific StorageGroupSchema
+   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
    */
   public TStorageGroupSchema getStorageGroupSchemaByName(String storageGroup)
-      throws MetadataException {
+      throws StorageGroupNotExistsException {
     return clusterSchemaInfo.getMatchedStorageGroupSchemaByName(storageGroup);
   }
 
@@ -133,18 +107,6 @@ public class ClusterSchemaManager {
   public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
       List<String> rawPathList) {
     return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
-  }
-
-  /**
-   * Only leader use this interface. Contending the Region allocation particle
-   *
-   * @param storageGroup The specific StorageGroup
-   * @param consensusGroupType SchemaRegion or DataRegion
-   * @return True if successfully get the Region allocation particle, false otherwise.
-   */
-  public boolean getRegionAllocationParticle(
-      String storageGroup, TConsensusGroupType consensusGroupType) {
-    return clusterSchemaInfo.getRegionAllocationParticle(storageGroup, consensusGroupType);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {
