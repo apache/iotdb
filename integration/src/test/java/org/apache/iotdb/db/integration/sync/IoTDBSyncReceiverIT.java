@@ -51,6 +51,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -281,6 +282,7 @@ public class IoTDBSyncReceiverIT {
   }
 
   @Test
+  @Ignore
   public void testReceiveDataAndLoad() {
     logger.info("testReceiveDataAndLoad");
     try {

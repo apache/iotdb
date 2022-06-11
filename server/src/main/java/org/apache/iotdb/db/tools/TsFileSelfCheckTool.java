@@ -44,16 +44,17 @@ public class TsFileSelfCheckTool {
 
   public Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithPath(String filename)
       throws IOException, TsFileTimeseriesMetadataException {
-    TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
-    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap;
-    try {
-      timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
-    } catch (Exception e) {
-      logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
-      throw new TsFileTimeseriesMetadataException(
-          "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+    try (TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename)) {
+      Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap;
+      try {
+        timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
+      } catch (Exception e) {
+        logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+        throw new TsFileTimeseriesMetadataException(
+            "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      }
+      return timeseriesMetadataMap;
     }
-    return timeseriesMetadataMap;
   }
 
   /**
