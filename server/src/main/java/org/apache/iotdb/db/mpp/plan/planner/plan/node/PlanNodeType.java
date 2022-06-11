@@ -114,7 +114,6 @@ public enum PlanNodeType {
   DEVICE_MERGE((short) 35),
   SCHEMA_FETCH_MERGE((short) 36),
   TRANSFORM((short) 37),
-  DELETE_REGION((short) 38),
   CREATE_MULTI_TIME_SERIES((short) 39),
   NODE_PATHS_SCAN((short) 40),
   NODE_PATHS_CONVERT((short) 41),
@@ -233,8 +232,6 @@ public enum PlanNodeType {
         return SchemaFetchMergeNode.deserialize(buffer);
       case 37:
         return TransformNode.deserialize(buffer);
-      case 38:
-        return DeleteRegionNode.deserialize(buffer);
       case 39:
         return CreateMultiTimeSeriesNode.deserialize(buffer);
       case 40:
