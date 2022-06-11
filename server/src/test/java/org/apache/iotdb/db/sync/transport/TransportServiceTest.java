@@ -38,6 +38,7 @@ import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.TransportClient;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -93,6 +94,7 @@ public class TransportServiceTest {
     // 1. prepare fake file
     File tsfile = new File(tmpDir, "test.tsfile");
     File resourceFile = new File(tsfile.getAbsoluteFile() + TsFileResource.RESOURCE_SUFFIX);
+    File indexFile = new File(tsfile.getAbsoluteFile() + TsFileConstant.INDEX_SUFFIX);
     File modsFile = new File(tsfile.getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     FileWriter out = new FileWriter(tsfile);
     out.write("tsfile");
@@ -100,6 +102,10 @@ public class TransportServiceTest {
     out.close();
     out = new FileWriter(resourceFile);
     out.write("resource");
+    out.flush();
+    out.close();
+    out = new FileWriter(indexFile);
+    out.write("indexFile");
     out.flush();
     out.close();
     out = new FileWriter(modsFile);
