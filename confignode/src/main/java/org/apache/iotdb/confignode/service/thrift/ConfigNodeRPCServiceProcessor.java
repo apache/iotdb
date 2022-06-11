@@ -503,6 +503,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
             () -> {
               try {
                 ConfigNode.getInstance().stop();
+                System.exit(0);
               } catch (IOException e) {
                 LOGGER.error("Meet error when stop ConfigNode!", e);
               }
@@ -538,9 +539,6 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   private boolean checkConfigNodeDuplicateNum() {
     if (configManager.getNodeManager().getOnlineConfigNodes().size() <= 1) {
-      LOGGER.info(
-          "Only {} ConfigNode in current Cluster!",
-          configManager.getNodeManager().getOnlineConfigNodes().size());
       return true;
     }
     return false;

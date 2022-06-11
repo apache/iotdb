@@ -478,6 +478,9 @@ public class ConfigNodeStartupCheck {
     // ConfigNodeList
     List<TConfigNodeLocation> configNodeLocations =
         NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
+    if (configNodeLocations.size() != resp.getConfigNodeList().size()) {
+      return false;
+    }
     for (TConfigNodeLocation nodeLocation : resp.getConfigNodeList()) {
       if (!configNodeLocations.contains(nodeLocation)) {
         return false;

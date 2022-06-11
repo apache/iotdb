@@ -203,9 +203,8 @@ public class NodeManager {
       return redirectionLeader();
     }
 
-    LOGGER.info("removeConfigNodePeer start...");
     if (getConsensusManager().removeConfigNodePeer(removeConfigNodeReq)) {
-      LOGGER.info("removeConfigNodePeer end..., start write...");
+      // TODO: removeConsensusGroup
       return getConsensusManager().write(removeConfigNodeReq).getStatus();
     } else {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())

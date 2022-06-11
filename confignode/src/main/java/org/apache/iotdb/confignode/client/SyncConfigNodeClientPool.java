@@ -174,7 +174,7 @@ public class SyncConfigNodeClientPool {
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client =
           clientManager.borrowClient(configNodeLocation.getInternalEndPoint())) {
-        return client.removeConfigNode(configNodeLocation);
+        return client.stopConfigNode(configNodeLocation);
       } catch (Exception e) {
         LOGGER.warn("Stop ConfigNode failed, retrying...", e);
         doRetryWait();

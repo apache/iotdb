@@ -183,7 +183,6 @@ public class ConfigNode implements ConfigNodeMBean {
         return;
       }
 
-      LOGGER.info("start removeConfigNode: {}", removeConfigNodeLocation);
       removeConfigNode(removeConfigNodeLocation);
     } catch (BadNodeUrlException e) {
       LOGGER.warn("No ConfigNodes need to be removed.", e);
