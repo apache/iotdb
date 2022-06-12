@@ -176,7 +176,7 @@ public class WALManager implements IService {
   private void registerScheduleTask(long initDelayMs, long periodMs) {
     walDeleteThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-    ScheduledExecutorUtil.unsafelyScheduleWithFixedDelay(
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         walDeleteThread, this::deleteOutdatedFiles, initDelayMs, periodMs, TimeUnit.MILLISECONDS);
   }
 
