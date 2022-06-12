@@ -83,7 +83,8 @@ public class LastQueryMergeNode extends MultiChildNode {
 
   @Override
   public String toString() {
-    return "LastQueryMergeNode-" + this.getPlanNodeId();
+    return String.format(
+        "LastQueryMergeNode-%s:[TimeFilter: %s]", this.getPlanNodeId(), timeFilter);
   }
 
   @Override

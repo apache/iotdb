@@ -1189,7 +1189,9 @@ class Session(object):
         )
         status = self.__client.createSchemaTemplate(request)
         logger.debug(
-            "create one template {} template name: {}".format(self.__session_id, template.get_name())
+            "create one template {} template name: {}".format(
+                self.__session_id, template.get_name()
+            )
         )
         return Session.verify_success(status)
 
@@ -1206,3 +1208,34 @@ class Session(object):
             )
         )
         return Session.verify_success(status)
+
+    def execute_statement(self, sql: str, timeout=0):
+        request = TSExecuteStatementReq(
+            self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
+        )
+        try:
+            resp = self.__client.executeStatement(request)
+            status = resp.status
+            logger.debug("execute statement {} message: {}".format(sql, status.message))
+            if Session.verify_success(status) == 0:
+                if resp.columns:
+                    return SessionDataSet(
+                        sql,
+                        resp.columns,
+                        resp.dataTypeList,
+                        resp.columnNameIndexMap,
+                        resp.queryId,
+                        self.__client,
+                        self.__statement_id,
+                        self.__session_id,
+                        resp.queryDataSet,
+                        resp.ignoreTimeStamp,
+                    )
+                else:
+                    return None
+            else:
+                raise RuntimeError(
+                    "execution of statement fails because: {}", status.message
+                )
+        except TTransport.TException as e:
+            raise RuntimeError("execution of statement fails because: ", e)

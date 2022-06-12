@@ -200,7 +200,11 @@ public class WALBuffer extends AbstractWALBuffer {
       return false;
     }
 
-    /** @return true if serialization is successful. */
+    /**
+     * Handle a normal WALEntry.
+     *
+     * @return true if serialization is successful.
+     */
     private boolean handleInfoEntry(WALEntry walEntry) {
       try {
         walEntry.serialize(byteBufferVew);
@@ -476,7 +480,11 @@ public class WALBuffer extends AbstractWALBuffer {
     // first waiting serialize and sync tasks finished, then release all resources
     if (serializeThread != null) {
       // add close signal WALEntry to notify serializeThread
-      walEntries.add(new SignalWALEntry(SignalWALEntry.SignalType.CLOSE_SIGNAL));
+      try {
+        walEntries.put(new SignalWALEntry(SignalWALEntry.SignalType.CLOSE_SIGNAL));
+      } catch (InterruptedException e) {
+        logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
+      }
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
     }
     if (syncBufferThread != null) {
