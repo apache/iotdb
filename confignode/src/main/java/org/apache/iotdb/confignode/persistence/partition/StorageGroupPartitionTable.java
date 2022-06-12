@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupPartitionTable {
-
+  private boolean isPredeleted = false;
   // Total number of SeriesPartitionSlots occupied by schema,
   // determines whether a new Region needs to be created
   private final AtomicInteger seriesPartitionSlotsCount;
@@ -70,6 +70,14 @@ public class StorageGroupPartitionTable {
 
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
+  }
+
+  public boolean isPredeleted() {
+    return isPredeleted;
+  }
+
+  public void setPredeleted(boolean predeleted) {
+    isPredeleted = predeleted;
   }
 
   /**
@@ -274,6 +282,7 @@ public class StorageGroupPartitionTable {
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
+    ReadWriteIOUtils.write(isPredeleted, outputStream);
     ReadWriteIOUtils.write(seriesPartitionSlotsCount.get(), outputStream);
 
     ReadWriteIOUtils.write(regionInfoMap.size(), outputStream);
@@ -288,6 +297,7 @@ public class StorageGroupPartitionTable {
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
+    isPredeleted = ReadWriteIOUtils.readBool(inputStream);
     seriesPartitionSlotsCount.set(ReadWriteIOUtils.readInt(inputStream));
 
     int length = ReadWriteIOUtils.readInt(inputStream);
@@ -308,13 +318,14 @@ public class StorageGroupPartitionTable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     StorageGroupPartitionTable that = (StorageGroupPartitionTable) o;
-    return regionInfoMap.equals(that.regionInfoMap)
+    return isPredeleted == that.isPredeleted
+        && regionInfoMap.equals(that.regionInfoMap)
         && schemaPartitionTable.equals(that.schemaPartitionTable)
         && dataPartitionTable.equals(that.dataPartitionTable);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionInfoMap, schemaPartitionTable, dataPartitionTable);
+    return Objects.hash(isPredeleted, regionInfoMap, schemaPartitionTable, dataPartitionTable);
   }
 }
