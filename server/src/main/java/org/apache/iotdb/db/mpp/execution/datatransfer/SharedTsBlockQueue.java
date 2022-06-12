@@ -100,7 +100,7 @@ public class SharedTsBlockQueue {
         .getQueryPool()
         .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
-    if (blocked.isDone() && queue.isEmpty()) {
+    if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
     }
     return tsBlock;
