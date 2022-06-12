@@ -37,10 +37,10 @@ public class UDTFTrim implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-          throws Exception {
+      throws Exception {
     configurations
-            .setAccessStrategy(new RowByRowAccessStrategy())
-            .setOutputDataType(TSDataType.TEXT);
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.TEXT);
   }
 
   @Override

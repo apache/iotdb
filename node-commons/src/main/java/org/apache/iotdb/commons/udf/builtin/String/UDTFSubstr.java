@@ -38,35 +38,35 @@ public class UDTFSubstr implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     int start = validator.getParameters().getInt("start");
     validator
-            .validateInputSeriesNumber(1)
-            .validateInputSeriesDataType(0, TSDataType.TEXT)
-            .validate(
-                    startPosition -> ((int) startPosition) >= 0,
-                    "start should be more or equal than 0",
-                    start)
-            .validate(
-                    end -> ((int) end) >= start,
-                    "end should be more or equal than start",
-                    validator.getParameters().getIntOrDefault("end", Integer.MAX_VALUE));
+        .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(0, TSDataType.TEXT)
+        .validate(
+            startPosition -> ((int) startPosition) >= 0,
+            "start should be more or equal than 0",
+            start)
+        .validate(
+            end -> ((int) end) >= start,
+            "end should be more or equal than start",
+            validator.getParameters().getIntOrDefault("end", Integer.MAX_VALUE));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-          throws Exception {
+      throws Exception {
     start = parameters.getInt("start");
     end = parameters.getIntOrDefault("end", Integer.MAX_VALUE);
     configurations
-            .setAccessStrategy(new RowByRowAccessStrategy())
-            .setOutputDataType(TSDataType.TEXT);
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.TEXT);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     String series = row.getString(0);
     collector.putString(
-            row.getTime(),
-            (end >= series.length())
-                    ? row.getString(0).substring(start)
-                    : row.getString(0).substring(start, end));
+        row.getTime(),
+        (end >= series.length())
+            ? row.getString(0).substring(start)
+            : row.getString(0).substring(start, end));
   }
 }

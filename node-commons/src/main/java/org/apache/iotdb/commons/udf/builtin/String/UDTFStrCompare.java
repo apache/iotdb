@@ -34,17 +34,17 @@ public class UDTFStrCompare implements UDTF {
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
-            .validateInputSeriesNumber(2)
-            .validateInputSeriesDataType(0, TSDataType.TEXT)
-            .validateInputSeriesDataType(1, TSDataType.TEXT);
+        .validateInputSeriesNumber(2)
+        .validateInputSeriesDataType(0, TSDataType.TEXT)
+        .validateInputSeriesDataType(1, TSDataType.TEXT);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-          throws Exception {
+      throws Exception {
     configurations
-            .setAccessStrategy(new RowByRowAccessStrategy())
-            .setOutputDataType(TSDataType.INT32);
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.INT32);
   }
 
   @Override

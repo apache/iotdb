@@ -44,17 +44,17 @@ public class UDTFConcat implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-          throws Exception {
+      throws Exception {
     parameters
-            .getAttributes()
-            .forEach(
-                    (key, value) -> {
-                      if (key.startsWith("target") && value != null) concatTargets.append(value);
-                    });
+        .getAttributes()
+        .forEach(
+            (key, value) -> {
+              if (key.startsWith("target") && value != null) concatTargets.append(value);
+            });
     seriesBehind = parameters.getBooleanOrDefault("series_behind", false);
     configurations
-            .setAccessStrategy(new RowByRowAccessStrategy())
-            .setOutputDataType(TSDataType.TEXT);
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.TEXT);
   }
 
   @Override
@@ -68,9 +68,9 @@ public class UDTFConcat implements UDTF {
     }
 
     collector.putString(
-            row.getTime(),
-            seriesBehind
-                    ? concatSeries.insert(0, concatTargets).toString()
-                    : concatSeries.append(concatTargets).toString());
+        row.getTime(),
+        seriesBehind
+            ? concatSeries.insert(0, concatTargets).toString()
+            : concatSeries.append(concatTargets).toString());
   }
 }
