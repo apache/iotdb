@@ -91,7 +91,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -181,10 +180,6 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     // Mark the StorageGroup as SchemaRegions and DataRegions not yet created
     storageGroupSchema.setMaximumSchemaRegionCount(0);
     storageGroupSchema.setMaximumDataRegionCount(0);
-
-    // Initialize RegionGroupId List
-    storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
-    storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
     SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);

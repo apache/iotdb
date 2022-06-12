@@ -29,6 +29,8 @@ public class SchemaPartitionResp implements DataSet {
 
   private TSStatus status;
 
+  private boolean allPartitionsExist;
+
   private SchemaPartition schemaPartition;
 
   public SchemaPartitionResp() {
@@ -41,6 +43,14 @@ public class SchemaPartitionResp implements DataSet {
 
   public void setStatus(TSStatus status) {
     this.status = status;
+  }
+
+  public boolean isAllPartitionsExist() {
+    return allPartitionsExist;
+  }
+
+  public void setAllPartitionsExist(boolean allPartitionsExist) {
+    this.allPartitionsExist = allPartitionsExist;
   }
 
   public void setSchemaPartition(SchemaPartition schemaPartition) {

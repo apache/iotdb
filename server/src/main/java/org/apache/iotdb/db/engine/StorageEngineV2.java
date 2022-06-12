@@ -378,26 +378,18 @@ public class StorageEngineV2 implements IService {
   }
 
   private void timedFlushSeqMemTable() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.timedFlushSeqMemTable();
-        }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushSeqMemTable();
       }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing sequence memtables", e);
     }
   }
 
   private void timedFlushUnseqMemTable() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.timedFlushUnseqMemTable();
-        }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushUnseqMemTable();
       }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing unsequence memtables", e);
     }
   }
 
@@ -575,7 +567,10 @@ public class StorageEngineV2 implements IService {
   }
 
   public void deleteDataRegion(DataRegionId regionId) {
-    dataRegionMap.remove(regionId);
+    DataRegion region = dataRegionMap.remove(regionId);
+    if (region != null) {
+      region.syncDeleteDataFiles();
+    }
   }
 
   public DataRegion getDataRegion(DataRegionId regionId) {

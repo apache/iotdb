@@ -343,22 +343,14 @@ public class StorageEngine implements IService {
   }
 
   private void timedFlushSeqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushSeqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing sequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushSeqMemTable();
     }
   }
 
   private void timedFlushUnseqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushUnseqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing unsequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushUnseqMemTable();
     }
   }
 

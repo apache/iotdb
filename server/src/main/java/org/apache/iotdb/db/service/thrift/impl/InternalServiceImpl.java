@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -38,6 +39,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -47,16 +49,12 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -78,8 +76,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TMigrateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -231,7 +229,7 @@ public class InternalServiceImpl implements InternalService.Iface {
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (IllegalPathException e1) {
@@ -242,7 +240,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     } catch (MetadataException e2) {
       LOGGER.error(
           "Create Schema Region {} failed because {}", req.getStorageGroup(), e2.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
     }
@@ -269,13 +267,13 @@ public class InternalServiceImpl implements InternalService.Iface {
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
     } catch (DataRegionException e) {
       LOGGER.error(
           "Create Data Region {} failed because {}", req.getStorageGroup(), e.getMessage());
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     }
     return tsStatus;
@@ -291,16 +289,6 @@ public class InternalServiceImpl implements InternalService.Iface {
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) throws TException {
     DataNodeSchemaCache.getInstance().cleanUp();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  @Override
-  public TSStatus migrateSchemaRegion(TMigrateSchemaRegionReq req) throws TException {
-    return null;
-  }
-
-  @Override
-  public TSStatus migrateDataRegion(TMigrateDataRegionReq req) throws TException {
-    return null;
   }
 
   @Override
@@ -365,22 +353,82 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) throws TException {
-    QueryId queryId = Coordinator.getInstance().createQueryId();
-    PlanNodeId planNodeId = queryId.genPlanNodeId();
-    DeleteRegionNode deleteRegionNode = new DeleteRegionNode(queryId.genPlanNodeId());
     ConsensusGroupId consensusGroupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
-    deleteRegionNode.setConsensusGroupId(consensusGroupId);
-    deleteRegionNode.setPlanNodeId(planNodeId);
     if (consensusGroupId instanceof DataRegionId) {
-      return DataRegionConsensusImpl.getInstance()
-          .write(consensusGroupId, deleteRegionNode)
-          .getStatus();
+      ConsensusGenericResponse response =
+          DataRegionConsensusImpl.getInstance().removeConsensusGroup(consensusGroupId);
+      if (!response.isSuccess()
+          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
+      }
+      StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) consensusGroupId);
     } else {
-      return SchemaRegionConsensusImpl.getInstance()
-          .write(consensusGroupId, deleteRegionNode)
-          .getStatus();
+      ConsensusGenericResponse response =
+          SchemaRegionConsensusImpl.getInstance().removeConsensusGroup(consensusGroupId);
+      if (!response.isSuccess()
+          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
+      }
+      try {
+        SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) consensusGroupId);
+      } catch (MetadataException e) {
+        LOGGER.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+      }
     }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  @Override
+  public TMigrateRegionResp migrateRegion(TMigrateRegionReq req) throws TException {
+    TRegionReplicaSet regionReplicaSet = req.migrateRegion;
+    TSStatus tsStatus;
+    ConsensusGenericResponse consensusGenericResponse;
+    switch (regionReplicaSet.regionId.type) {
+      case DataRegion:
+        DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
+        List<Peer> newPeers = new ArrayList<>();
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          TEndPoint endpoint =
+              new TEndPoint(
+                  dataNodeLocation.getDataRegionConsensusEndPoint().getIp(),
+                  dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
+          newPeers.add(new Peer(dataRegionId, endpoint));
+        }
+        consensusGenericResponse =
+            DataRegionConsensusImpl.getInstance().changePeer(dataRegionId, newPeers);
+        break;
+      case SchemaRegion:
+        SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
+        newPeers = new ArrayList<>();
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          TEndPoint endpoint =
+              new TEndPoint(
+                  dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
+                  dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
+          newPeers.add(new Peer(schemaRegionId, endpoint));
+        }
+        consensusGenericResponse =
+            SchemaRegionConsensusImpl.getInstance().changePeer(schemaRegionId, newPeers);
+        break;
+      default:
+        // unsupported region type
+        tsStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        tsStatus.setMessage("Region type is invalid");
+        return new TMigrateRegionResp(tsStatus);
+    }
+
+    if (consensusGenericResponse.isSuccess()) {
+      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      tsStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
+    }
+
+    return new TMigrateRegionResp(tsStatus);
   }
 
   @Override
