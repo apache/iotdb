@@ -119,31 +119,33 @@ class Cursor(object):
             sql = "\n".join(sql_seqs)
 
         try:
-            with self.__session.execute_statement(sql) as data_set:
-                col_names = None
-                col_types = None
-                rows = []
-                if data_set:
-                    data = data_set.todf()
+            data_set = self.__session.execute_statement(sql)
+            col_names = None
+            col_types = None
+            rows = []
 
-                    if self.__sqlalchemy_mode and time_index:
-                        time_column = data.columns[0]
-                        time_column_value = data.Time
-                        del data[time_column]
-                        for index in time_index:
-                            data.insert(index, time_column + str(index), time_column_value)
+            if data_set:
+                data = data_set.todf()
 
-                    col_names = data.columns.tolist()
-                    col_types = data_set.get_column_types()
-                    rows = data.values.tolist()
+                if self.__sqlalchemy_mode and time_index:
+                    time_column = data.columns[0]
+                    time_column_value = data.Time
+                    del data[time_column]
+                    for index in time_index:
+                        data.insert(index, time_column + str(index), time_column_value)
 
-                self.__result = {
-                    "col_names": col_names,
-                    "col_types": col_types,
-                    "rows": rows,
-                    "row_count": len(rows)
-                }
-        except RuntimeError:
+                col_names = data.columns.tolist()
+                col_types = data_set.get_column_types()
+                rows = data.values.tolist()
+                data_set.close_operation_handle()
+
+            self.__result = {
+                "col_names": col_names,
+                "col_types": col_types,
+                "rows": rows,
+                "row_count": len(rows)
+            }
+        except Exception:
             self.__result = {
                 "col_names": None,
                 "col_types": None,
