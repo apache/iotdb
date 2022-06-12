@@ -29,6 +29,8 @@ public class DataPartitionResp implements DataSet {
 
   private TSStatus status;
 
+  private boolean allPartitionsExist;
+
   private DataPartition dataPartition;
 
   public DataPartitionResp() {
@@ -41,6 +43,14 @@ public class DataPartitionResp implements DataSet {
 
   public void setStatus(TSStatus status) {
     this.status = status;
+  }
+
+  public boolean isAllPartitionsExist() {
+    return allPartitionsExist;
+  }
+
+  public void setAllPartitionsExist(boolean allPartitionsExist) {
+    this.allPartitionsExist = allPartitionsExist;
   }
 
   public void setDataPartition(DataPartition dataPartition) {

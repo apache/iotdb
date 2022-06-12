@@ -124,7 +124,7 @@ public class Coordinator {
               statement,
               new MPPQueryContext(
                   sql,
-                  queryIdGenerator.createNextQueryId(),
+                  globalQueryId,
                   session,
                   DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
                   DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),

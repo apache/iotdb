@@ -283,6 +283,17 @@ with session.execute_query_statement(
     while session_data_set.has_next():
         print(session_data_set.next())
 
+# execute statement
+with session.execute_statement(
+    "select * from root.sg_test_01.d_01"
+) as session_data_set:
+    while session_data_set.has_next():
+        print(session_data_set.next())
+
+session.execute_statement(
+    "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
+)
+
 # insert string records of one device
 time_list = [1, 2, 3]
 measurements_list = [
