@@ -104,6 +104,8 @@ public class ConfigNode extends ClusterNodeBase {
       configProperties.setProperty(
           "data_region_consensus_protocol_class",
           "org.apache.iotdb.consensus.ratis.RatisConsensus");
+      configProperties.setProperty("data_replication_factor", "2");
+      configProperties.setProperty("schema_replication_factor", "2");
       if (properties != null && !properties.isEmpty()) {
         configProperties.putAll(properties);
       }
