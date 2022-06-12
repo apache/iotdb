@@ -323,7 +323,7 @@ public class StorageEngineV2 implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         ttlCheckThread,
         this::checkTTL,
         TTL_CHECK_INTERVAL,
@@ -378,26 +378,18 @@ public class StorageEngineV2 implements IService {
   }
 
   private void timedFlushSeqMemTable() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.timedFlushSeqMemTable();
-        }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushSeqMemTable();
       }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing sequence memtables", e);
     }
   }
 
   private void timedFlushUnseqMemTable() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.timedFlushUnseqMemTable();
-        }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushUnseqMemTable();
       }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing unsequence memtables", e);
     }
   }
 
