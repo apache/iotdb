@@ -249,6 +249,14 @@ public class TsFilePipe implements Pipe {
     }
   }
 
+  public void collectRealTimeIndexFile(File tsFile) {
+    try {
+      pipeLog.createIndexFileHardlink(tsFile);
+    } catch (IOException e) {
+      logger.warn(String.format("Record index file %s on disk error.", tsFile.getPath()), e);
+    }
+  }
+
   /** transport data * */
   @Override
   public PipeData take() throws InterruptedException {

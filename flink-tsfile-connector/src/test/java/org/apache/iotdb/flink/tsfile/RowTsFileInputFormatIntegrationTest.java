@@ -26,6 +26,7 @@ import org.apache.flink.streaming.api.datastream.DataStreamUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.types.Row;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -78,6 +79,7 @@ public class RowTsFileInputFormatIntegrationTest extends RowTsFileInputFormatTes
   }
 
   @Test
+  @Ignore
   public void testStreamExecution() {
     // read files in a directory
     TsFileInputFormat<Row> inputFormat = prepareInputFormat(tmpDir);

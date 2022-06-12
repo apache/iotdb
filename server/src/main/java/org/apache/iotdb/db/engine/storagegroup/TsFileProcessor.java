@@ -1405,7 +1405,9 @@ public class TsFileProcessor {
     writer.endFile();
     tsFileResource.serialize();
     if (tsFileSyncManager.isEnableSync()) {
-      tsFileSyncManager.collectRealTimeResource(tsFileResource.getTsFile());
+      File tsfile = tsFileResource.getTsFile();
+      tsFileSyncManager.collectRealTimeResource(tsfile);
+      tsFileSyncManager.collectRealTimeIndexFile(tsfile);
     }
     logger.info("Ended file {}", tsFileResource);
 

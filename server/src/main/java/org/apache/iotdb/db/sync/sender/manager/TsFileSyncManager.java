@@ -24,9 +24,6 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.dataregion.StorageGroupManager;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -39,7 +36,6 @@ import java.util.Map;
  * TsFilePipe}.
  */
 public class TsFileSyncManager {
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSyncManager.class);
 
   private TsFilePipe syncPipe;
 
@@ -84,6 +80,10 @@ public class TsFileSyncManager {
 
   public void collectRealTimeResource(File tsFile) {
     syncPipe.collectRealTimeResource(tsFile);
+  }
+
+  public void collectRealTimeIndexFile(File tsFile) {
+    syncPipe.collectRealTimeIndexFile(tsFile);
   }
 
   public List<File> registerAndCollectHistoryTsFile(TsFilePipe syncPipe, long dataStartTime) {

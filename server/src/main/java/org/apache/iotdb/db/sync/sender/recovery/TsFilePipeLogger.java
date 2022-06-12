@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,7 @@ public class TsFilePipeLogger {
               mods.getPath(), modsOffset));
     }
     createTsFileResourceHardlink(tsFile);
+    createIndexFileHardlink(tsFile);
     return createTsFileHardlink(tsFile);
   }
 
@@ -104,6 +106,20 @@ public class TsFilePipeLogger {
               tsFileResource.getPath()));
       SyncPathUtil.createFile(
           new File(tsFileDir, getRelativeFilePath(tsFileResource))); // create an empty resource
+    }
+  }
+
+  public void createIndexFileHardlink(File tsFile) throws IOException {
+    File indexFile = new File(tsFile.getPath() + TsFileConstant.INDEX_SUFFIX);
+    try {
+      createHardLink(indexFile);
+    } catch (IOException e) {
+      logger.warn(
+          String.format(
+              "Record index file %s on disk error, make a empty to close it.",
+              indexFile.getPath()));
+      SyncPathUtil.createFile(
+          new File(tsFileDir, getRelativeFilePath(indexFile))); // create an empty index file
     }
   }
 
