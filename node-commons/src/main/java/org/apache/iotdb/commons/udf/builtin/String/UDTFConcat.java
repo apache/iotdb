@@ -27,49 +27,50 @@ import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-
 /*This function Returns the concat string by input series and targets.
-  startsEnd: Indicates whether series behind targets. The default value is false.*/
+startsEnd: Indicates whether series behind targets. The default value is false.*/
 public class UDTFConcat implements UDTF {
 
-    private boolean seriesBehind;
-    private final StringBuilder concatTargets = new StringBuilder();
+  private boolean seriesBehind;
+  private final StringBuilder concatTargets = new StringBuilder();
 
-    @Override
-    public void validate(UDFParameterValidator validator) throws Exception {
-        int size = validator.getParameters().getChildExpressions().size();
-        for (int i = 0; i < size; i++) {
-            validator
-                    .validateInputSeriesDataType(i, TSDataType.TEXT);
-        }
+  @Override
+  public void validate(UDFParameterValidator validator) throws Exception {
+    int size = validator.getParameters().getChildExpressions().size();
+    for (int i = 0; i < size; i++) {
+      validator.validateInputSeriesDataType(i, TSDataType.TEXT);
+    }
+  }
+
+  @Override
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+          throws Exception {
+    parameters
+            .getAttributes()
+            .forEach(
+                    (key, value) -> {
+                      if (key.startsWith("target") && value != null) concatTargets.append(value);
+                    });
+    seriesBehind = parameters.getBooleanOrDefault("series_behind", false);
+    configurations
+            .setAccessStrategy(new RowByRowAccessStrategy())
+            .setOutputDataType(TSDataType.TEXT);
+  }
+
+  @Override
+  public void transform(Row row, PointCollector collector) throws Exception {
+    StringBuilder concatSeries = new StringBuilder();
+    for (int i = 0; i < row.size(); i++) {
+      if (row.isNull(i)) {
+        continue;
+      }
+      concatSeries.append(row.getString(i));
     }
 
-    @Override
-    public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-            throws Exception {
-        parameters.getAttributes().forEach((key, value) -> {
-            if (key.startsWith("target") && value != null)
-                concatTargets.append(value);
-        });
-        seriesBehind = parameters.getBooleanOrDefault("series_behind", false);
-        configurations
-                .setAccessStrategy(new RowByRowAccessStrategy())
-                .setOutputDataType(TSDataType.TEXT);
-    }
-
-    @Override
-    public void transform(Row row, PointCollector collector) throws Exception {
-        StringBuilder concatSeries = new StringBuilder();
-        for (int i = 0; i < row.size(); i++) {
-            if (row.isNull(i)) {
-                continue;
-            }
-            concatSeries.append(row.getString(i));
-        }
-
-        collector.putString(row.getTime(),
-                seriesBehind ?
-                        concatTargets.append(concatSeries).toString() :
-                        concatSeries.append(concatTargets).toString());
-    }
+    collector.putString(
+            row.getTime(),
+            seriesBehind
+                    ? concatSeries.insert(0, concatTargets).toString()
+                    : concatSeries.append(concatTargets).toString());
+  }
 }

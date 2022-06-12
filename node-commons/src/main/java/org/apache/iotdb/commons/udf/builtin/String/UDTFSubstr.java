@@ -28,44 +28,45 @@ import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrate
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /*This function return a substring from target string, starting at position start and ending at position end - 1.
-  If parameter "end" is not existed or more than length of target, return the substring from start to end of target.*/
+If parameter "end" is not existed or more than length of target, return the substring from start to end of target.*/
 public class UDTFSubstr implements UDTF {
 
-    int start;
-    int end;
+  int start;
+  int end;
 
-    @Override
-    public void validate(UDFParameterValidator validator) throws Exception {
-        int start = validator.getParameters().getInt("start");
-        validator
-                .validateInputSeriesNumber(1)
-                .validateInputSeriesDataType(0, TSDataType.TEXT)
-                .validate(
-                        startPosition -> ((int) startPosition) >= 0,
-                        "start should be more or equal than 0",
-                        start)
-                .validate(
-                        end -> ((int) end) >= start,
-                        "end should be more or equal than start",
-                        validator.getParameters().getIntOrDefault("end", Integer.MAX_VALUE));
-    }
+  @Override
+  public void validate(UDFParameterValidator validator) throws Exception {
+    int start = validator.getParameters().getInt("start");
+    validator
+            .validateInputSeriesNumber(1)
+            .validateInputSeriesDataType(0, TSDataType.TEXT)
+            .validate(
+                    startPosition -> ((int) startPosition) >= 0,
+                    "start should be more or equal than 0",
+                    start)
+            .validate(
+                    end -> ((int) end) >= start,
+                    "end should be more or equal than start",
+                    validator.getParameters().getIntOrDefault("end", Integer.MAX_VALUE));
+  }
 
-    @Override
-    public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-            throws Exception {
-        start = parameters.getInt("start");
-        end = parameters.getIntOrDefault("end", Integer.MAX_VALUE);
-        configurations
-                .setAccessStrategy(new RowByRowAccessStrategy())
-                .setOutputDataType(TSDataType.TEXT);
-    }
+  @Override
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+          throws Exception {
+    start = parameters.getInt("start");
+    end = parameters.getIntOrDefault("end", Integer.MAX_VALUE);
+    configurations
+            .setAccessStrategy(new RowByRowAccessStrategy())
+            .setOutputDataType(TSDataType.TEXT);
+  }
 
-    @Override
-    public void transform(Row row, PointCollector collector) throws Exception {
-        String series = row.getString(0);
-        collector.putString(row.getTime(),
-                (end >= series.length()) ?
-                        row.getString(0).substring(start) :
-                        row.getString(0).substring(start, end));
-    }
+  @Override
+  public void transform(Row row, PointCollector collector) throws Exception {
+    String series = row.getString(0);
+    collector.putString(
+            row.getTime(),
+            (end >= series.length())
+                    ? row.getString(0).substring(start)
+                    : row.getString(0).substring(start, end));
+  }
 }

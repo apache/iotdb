@@ -34,9 +34,7 @@ public class UDTFEndsWith implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator
-            .validateInputSeriesNumber(1)
-            .validateInputSeriesDataType(0, TSDataType.TEXT);
+    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.TEXT);
   }
 
   @Override
