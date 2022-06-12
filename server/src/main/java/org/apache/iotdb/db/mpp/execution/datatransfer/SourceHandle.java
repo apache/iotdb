@@ -253,7 +253,7 @@ public class SourceHandle implements ISourceHandle {
   // Return true indicates two points:
   //   1. Remote SinkHandle has told SourceHandle the total count of TsBlocks by lastSequenceId
   //   2. All the TsBlocks has been consumed up
-  private boolean remoteTsBlockedConsumedUp() {
+  private synchronized boolean remoteTsBlockedConsumedUp() {
     return currSequenceId - 1 == lastSequenceId;
   }
 
