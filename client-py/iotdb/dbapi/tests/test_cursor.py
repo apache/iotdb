@@ -111,6 +111,8 @@ def test_cursor():
             print_message("fetchone test failed")
 
         cursor.execute("delete storage group root.cursor")
+        cursor.close()
+        conn.close()
 
 
 if final_flag:
