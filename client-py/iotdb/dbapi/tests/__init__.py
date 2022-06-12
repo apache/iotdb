@@ -15,12 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-from .Connection import Connection as connect
-from .Exceptions import Error
-
-__all__ = [connect, Error]
-
-apilevel = "2.0"
-threadsafety = 2
-paramstyle = "pyformat"
