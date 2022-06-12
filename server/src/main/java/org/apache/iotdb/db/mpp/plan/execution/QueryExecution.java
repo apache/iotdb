@@ -293,8 +293,9 @@ public class QueryExecution implements IQueryExecution {
       }
     } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
-      throwIfUnchecked(e.getCause());
-      throw new RuntimeException(e.getCause());
+      Throwable t = e.getCause() == null ? e : e.getCause();
+      throwIfUnchecked(t);
+      throw new RuntimeException(t);
     } catch (InterruptedException e) {
       stateMachine.transitionToFailed(e);
       Thread.currentThread().interrupt();
