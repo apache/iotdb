@@ -145,6 +145,7 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
+              logger.info("release resource because Query State is: {}", state);
               releaseResource();
             }
           }
