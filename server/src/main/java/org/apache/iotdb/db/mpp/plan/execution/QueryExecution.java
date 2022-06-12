@@ -359,7 +359,7 @@ public class QueryExecution implements IQueryExecution {
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   context.getResultNodeContext().getVirtualResultNodeId().getId(),
                   context.getResultNodeContext().getUpStreamEndpoint(),
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
                   stateMachine::transitionToFailed);
     }
   }
