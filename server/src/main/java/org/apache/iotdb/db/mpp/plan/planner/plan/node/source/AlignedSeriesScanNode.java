@@ -284,7 +284,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   public String toString() {
     return String.format(
         "AlignedSeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getAlignedPath(), this.getRegionReplicaSet());
+        this.getPlanNodeId(),
+        this.getAlignedPath().getFormattedString(),
+        this.getRegionReplicaSet());
   }
 
   @Override

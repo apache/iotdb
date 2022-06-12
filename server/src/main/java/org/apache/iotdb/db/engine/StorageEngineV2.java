@@ -323,7 +323,7 @@ public class StorageEngineV2 implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+    ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
         ttlCheckThread,
         this::checkTTL,
         TTL_CHECK_INTERVAL,
@@ -575,7 +575,10 @@ public class StorageEngineV2 implements IService {
   }
 
   public void deleteDataRegion(DataRegionId regionId) {
-    dataRegionMap.remove(regionId);
+    DataRegion region = dataRegionMap.remove(regionId);
+    if (region != null) {
+      region.syncDeleteDataFiles();
+    }
   }
 
   public DataRegion getDataRegion(DataRegionId regionId) {

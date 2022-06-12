@@ -21,12 +21,9 @@ package org.apache.iotdb.db.metadata.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -199,17 +196,6 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           node.getTagsList(),
           node.getAttributesList());
     }
-  }
-
-  @Override
-  public TSStatus visitDeleteRegion(DeleteRegionNode node, ISchemaRegion schemaRegion) {
-    try {
-      SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) node.getConsensusGroupId());
-    } catch (MetadataException e) {
-      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
 
   private static class TransformerContext {}
