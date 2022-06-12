@@ -159,6 +159,4 @@ public class ConsensusManager {
   public ConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
   }
-
-  // TODO: Interfaces for LoadBalancer control
 }

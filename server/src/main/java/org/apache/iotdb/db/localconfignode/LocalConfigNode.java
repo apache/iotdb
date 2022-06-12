@@ -179,7 +179,7 @@ public class LocalConfigNode {
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
             IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
             timedForceMLogThread,
             this::forceMlog,
             config.getSyncMlogPeriodInMs(),
@@ -858,7 +858,7 @@ public class LocalConfigNode {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
-      dataPartitionTable.setDataPartitionInfo(storageGroup, path);
+      dataPartitionTable.setDataPartitionInfo(storageGroup);
       dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);

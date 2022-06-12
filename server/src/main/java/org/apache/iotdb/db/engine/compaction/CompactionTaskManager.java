@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.concurrent.threadpool.WrappedScheduledExecutorService;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -62,10 +62,10 @@ public class CompactionTaskManager implements IService {
 
   // The thread pool that executes the compaction task. The default number of threads for this pool
   // is 10.
-  private WrappedScheduledExecutorService taskExecutionPool;
+  private WrappedThreadPoolExecutor taskExecutionPool;
 
   // The thread pool that executes the sub compaction task.
-  private ScheduledExecutorService subCompactionTaskExecutionPool;
+  private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
@@ -94,15 +94,16 @@ public class CompactionTaskManager implements IService {
     if (taskExecutionPool == null
         && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
       this.taskExecutionPool =
-          (WrappedScheduledExecutorService)
-              IoTDBThreadPoolFactory.newScheduledThreadPool(
+          (WrappedThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
       this.subCompactionTaskExecutionPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                  * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
-              ThreadName.COMPACTION_SUB_SERVICE.getName());
+          (WrappedThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                      * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+                  ThreadName.COMPACTION_SUB_SERVICE.getName());
       currentTaskNum = new AtomicInteger(0);
       compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
@@ -415,15 +416,16 @@ public class CompactionTaskManager implements IService {
         }
       }
       this.taskExecutionPool =
-          (WrappedScheduledExecutorService)
-              IoTDBThreadPoolFactory.newScheduledThreadPool(
+          (WrappedThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
       this.subCompactionTaskExecutionPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                  * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
-              ThreadName.COMPACTION_SUB_SERVICE.getName());
+          (WrappedThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                      * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+                  ThreadName.COMPACTION_SUB_SERVICE.getName());
       this.compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       candidateCompactionTaskQueue.regsitPollLastHook(
