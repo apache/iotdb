@@ -59,11 +59,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -72,6 +74,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -133,16 +136,19 @@ public class QueryExecution implements IQueryExecution {
     // So that the other components can only focus on the state change.
     stateMachine.addStateChangeListener(
         state -> {
-          if (!state.isDone()) {
-            return;
-          }
-          this.stop();
-          // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
-          // invoked
-          if (state == QueryState.FAILED
-              || state == QueryState.ABORTED
-              || state == QueryState.CANCELED) {
-            releaseResource();
+          try (SetThreadName queryName = new SetThreadName(context.getQueryId().getId())) {
+            if (!state.isDone()) {
+              return;
+            }
+            this.stop();
+            // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
+            // invoked
+            if (state == QueryState.FAILED
+                || state == QueryState.ABORTED
+                || state == QueryState.CANCELED) {
+              logger.info("release resource because Query State is: {}", state);
+              releaseResource();
+            }
           }
         });
   }
@@ -347,18 +353,29 @@ public class QueryExecution implements IQueryExecution {
 
   private void initResultHandle() {
     if (this.resultHandle == null) {
+      TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
+
       this.resultHandle =
-          DataBlockService.getInstance()
-              .getDataBlockManager()
-              .createSourceHandle(
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                  context.getResultNodeContext().getUpStreamEndpoint(),
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                  stateMachine::transitionToFailed);
+          isSameNode(upstreamEndPoint)
+              ? DataBlockService.getInstance()
+                  .getDataBlockManager()
+                  .createLocalSourceHandle(
+                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                      stateMachine::transitionToFailed)
+              : DataBlockService.getInstance()
+                  .getDataBlockManager()
+                  .createSourceHandle(
+                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                      upstreamEndPoint,
+                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                      stateMachine::transitionToFailed);
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
     TSStatusCode statusCode =
         // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING
@@ -371,8 +388,12 @@ public class QueryExecution implements IQueryExecution {
     // collect redirect info to client for writing
     if (analysis.getStatement() instanceof InsertBaseStatement) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
-      List<TEndPoint> redirectNodeList =
-          insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
+      List<TEndPoint> redirectNodeList;
+      if (config.isClusterMode()) {
+        redirectNodeList = insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
+      } else {
+        redirectNodeList = Collections.emptyList();
+      }
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {
         // multiple devices
@@ -387,7 +408,9 @@ public class QueryExecution implements IQueryExecution {
         }
       } else {
         // single device
-        tsstatus.setRedirectNode(redirectNodeList.get(0));
+        if (config.isClusterMode()) {
+          tsstatus.setRedirectNode(redirectNodeList.get(0));
+        }
       }
     }
 
@@ -405,6 +428,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
+  }
+
+  @Override
+  public String getQueryId() {
+    return context.getQueryId().getId();
   }
 
   public String toString() {

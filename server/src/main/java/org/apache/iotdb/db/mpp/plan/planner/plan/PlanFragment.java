@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
@@ -27,6 +28,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -82,7 +85,7 @@ public class PlanFragment {
     }
     for (PlanNode child : root.getChildren()) {
       TRegionReplicaSet result = getNodeRegion(child);
-      if (result != null) {
+      if (result != null && result != DataPartition.NOT_ASSIGNED) {
         return result;
       }
     }
@@ -114,6 +117,17 @@ public class PlanFragment {
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       typeProvider.serialize(byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    id.serialize(stream);
+    root.serialize(stream);
+    if (typeProvider == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      typeProvider.serialize(stream);
     }
   }
 

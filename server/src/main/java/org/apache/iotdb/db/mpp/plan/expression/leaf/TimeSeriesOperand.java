@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -182,5 +183,10 @@ public class TimeSeriesOperand extends LeafOperand {
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     path.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    path.serialize(stream);
   }
 }

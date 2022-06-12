@@ -32,7 +32,10 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -171,10 +174,21 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.CREATE_MULTI_TIME_SERIES.serialize(byteBuffer);
 
-    byteBuffer.putInt(measurementGroupMap.size());
+    ReadWriteIOUtils.write(measurementGroupMap.size(), byteBuffer);
     for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
       entry.getKey().serialize(byteBuffer);
       entry.getValue().serialize(byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.CREATE_MULTI_TIME_SERIES.serialize(stream);
+
+    ReadWriteIOUtils.write(measurementGroupMap.size(), stream);
+    for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+      entry.getKey().serialize(stream);
+      entry.getValue().serialize(stream);
     }
   }
 

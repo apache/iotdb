@@ -39,6 +39,8 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -189,6 +191,29 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     }
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.ALIGNED_SERIES_AGGREGATE_SCAN.serialize(stream);
+    alignedPath.serialize(stream);
+    ReadWriteIOUtils.write(aggregationDescriptorList.size(), stream);
+    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
+      aggregationDescriptor.serialize(stream);
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      timeFilter.serialize(stream);
+    }
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
+    }
+  }
+
   public static AlignedSeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
     AlignedPath alignedPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
     int aggregateDescriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
@@ -258,5 +283,15 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
   @Override
   public Filter getPartitionTimeFilter() {
     return timeFilter;
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "SeriesAggregationScanNode-%s:[SeriesPath: %s, Descriptor: %s, DataRegion: %s]",
+        this.getPlanNodeId(),
+        this.getAlignedPath().getFormattedString(),
+        this.getAggregationDescriptorList(),
+        this.getRegionReplicaSet());
   }
 }

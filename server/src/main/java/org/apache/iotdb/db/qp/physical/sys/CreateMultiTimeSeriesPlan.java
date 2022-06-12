@@ -167,7 +167,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
-    stream.write(type);
+    stream.write((byte) type);
     stream.writeInt(paths.size());
     stream.writeInt(dataTypes.size()); // size of datatypes, encodings for aligned timeseries
 

@@ -216,10 +216,6 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteRegion(DeleteRegionNode node, C context) {
-    return visitPlan(node, context);
-  }
-
   public R visitInsertRow(InsertRowNode node, C context) {
     return visitPlan(node, context);
   }

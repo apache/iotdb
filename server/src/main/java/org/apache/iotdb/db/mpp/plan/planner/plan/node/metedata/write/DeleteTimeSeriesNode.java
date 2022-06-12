@@ -29,6 +29,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -86,6 +88,15 @@ public class DeleteTimeSeriesNode extends PlanNode implements IPartitionRelatedN
     ReadWriteIOUtils.write(pathList.size(), byteBuffer);
     for (PartialPath path : pathList) {
       path.serialize(byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DELETE_TIMESERIES.serialize(stream);
+    ReadWriteIOUtils.write(pathList.size(), stream);
+    for (PartialPath path : pathList) {
+      path.serialize(stream);
     }
   }
 

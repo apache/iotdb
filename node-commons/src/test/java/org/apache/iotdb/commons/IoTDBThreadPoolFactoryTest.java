@@ -120,7 +120,7 @@ public class IoTDBThreadPoolFactoryTest {
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
-      ScheduledFuture<?> future = exec.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
+      ScheduledFuture<?> future = exec.schedule(task, 0, TimeUnit.SECONDS);
       try {
         future.get();
       } catch (ExecutionException e) {
@@ -147,7 +147,7 @@ public class IoTDBThreadPoolFactoryTest {
         IoTDBThreadPoolFactory.newScheduledThreadPool(threadCount / 2, POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
-      ScheduledFuture<?> future = exec.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
+      ScheduledFuture<?> future = exec.schedule(task, 0, TimeUnit.SECONDS);
       try {
         future.get();
       } catch (ExecutionException e) {

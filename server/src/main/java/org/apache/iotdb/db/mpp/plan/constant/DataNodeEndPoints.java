@@ -32,4 +32,8 @@ public class DataNodeEndPoints {
       new TEndPoint(
           IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
           IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+
+  public static boolean isSameNode(TEndPoint endPoint) {
+    return endPoint.equals(LOCAL_HOST_DATA_BLOCK_ENDPOINT);
+  }
 }

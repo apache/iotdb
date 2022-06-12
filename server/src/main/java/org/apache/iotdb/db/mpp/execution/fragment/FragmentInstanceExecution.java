@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 
 import com.google.common.collect.ImmutableList;
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 
 import static java.util.Objects.requireNonNull;
@@ -102,18 +103,20 @@ public class FragmentInstanceExecution {
     requireNonNull(failedInstances, "failedInstances is null");
     stateMachine.addStateChangeListener(
         newState -> {
-          if (!newState.isDone()) {
-            return;
-          }
+          try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
+            if (!newState.isDone()) {
+              return;
+            }
 
-          // Update failed tasks counter
-          if (newState == FAILED) {
-            failedInstances.update(1);
-          }
+            // Update failed tasks counter
+            if (newState == FAILED) {
+              failedInstances.update(1);
+            }
 
-          driver.close();
-          sinkHandle.abort();
-          scheduler.abortFragmentInstance(instanceId);
+            driver.close();
+            sinkHandle.abort();
+            scheduler.abortFragmentInstance(instanceId);
+          }
         });
   }
 }
