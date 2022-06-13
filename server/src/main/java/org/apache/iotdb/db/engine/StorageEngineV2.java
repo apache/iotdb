@@ -528,11 +528,17 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq, boolean isSync) {
+  public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion.getLogicalStorageGroupName().equals(storageGroupPath)) {
-        for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
-          dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+        if (isSeq) {
+          for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
+            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+          }
+        } else {
+          for (TsFileProcessor tsFileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
+            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+          }
         }
       }
     }
@@ -545,11 +551,11 @@ public class StorageEngineV2 implements IService {
     } else {
       for (String storageGroup : req.storageGroups) {
         if (req.isSeq == null) {
-          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, true, true);
-          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, false, true);
+          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, true);
+          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, false);
         } else {
           StorageEngineV2.getInstance()
-              .closeStorageGroupProcessor(storageGroup, Boolean.parseBoolean(req.isSeq), true);
+              .closeStorageGroupProcessor(storageGroup, Boolean.parseBoolean(req.isSeq));
         }
       }
     }

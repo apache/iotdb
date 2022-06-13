@@ -420,21 +420,20 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.STORAGE_GROUP_NOT_EXIST,
-            "storageGroup " + sb.subSequence(0, sb.length() - 1).toString() + " does not exist");
+            "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
       }
     }
 
-    List<TDataNodeInfo> onlineDataNodes;
-    if (req.isLocal) {
-      onlineDataNodes = configManager.getNodeManager().getOnlineDataNodes(req.dataNodeId);
-    } else {
-      onlineDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
-    }
+    List<TDataNodeInfo> onlineDataNodes =
+        configManager.getNodeManager().getOnlineDataNodes(req.dataNodeId);
     TSStatus tsStatus = new TSStatus();
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       tsStatus =
           SyncDataNodeClientPool.getInstance()
               .flush(dataNodeInfo.getLocation().getInternalEndPoint(), req);
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return tsStatus;
+      }
     }
     return tsStatus;
   }

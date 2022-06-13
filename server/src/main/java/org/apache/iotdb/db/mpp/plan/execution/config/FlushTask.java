@@ -69,9 +69,12 @@ public class FlushTask implements IConfigTask {
     if (flushStatement.isSeq() != null) {
       tFlushReq.setIsSeq(flushStatement.isSeq().toString());
     }
-    tFlushReq.setIsLocal(flushStatement.isLocal());
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    tFlushReq.setDataNodeId(config.getDataNodeId());
+    if (flushStatement.isLocal()) {
+      tFlushReq.setDataNodeId(config.getDataNodeId());
+    } else {
+      tFlushReq.setDataNodeId(-1);
+    }
     try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
       tsStatus = client.flush(tFlushReq);
