@@ -124,7 +124,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -1622,14 +1621,7 @@ public class DataRegion {
       File dataRegionSystemFolder =
           SystemFileFactory.INSTANCE.getFile(
               systemDir + File.separator + logicalStorageGroupName, dataRegionId);
-      if (dataRegionSystemFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(dataRegionSystemFolder);
-      }
-      final File storageGroupSystemFolder = dataRegionSystemFolder.getParentFile();
-      if (storageGroupSystemFolder.isDirectory()
-          && Objects.requireNonNull(storageGroupSystemFolder.listFiles()).length == 0) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupSystemFolder);
-      }
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndParent(dataRegionSystemFolder);
     } finally {
       writeUnlock();
     }
@@ -1685,12 +1677,7 @@ public class DataRegion {
       File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
       if (dataRegionDataFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(dataRegionDataFolder);
-      }
-      final File storageGroupDataFolder = dataRegionDataFolder.getParentFile();
-      if (storageGroupDataFolder.isDirectory()
-          && Objects.requireNonNull(storageGroupDataFolder.listFiles()).length == 0) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupDataFolder);
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndParent(dataRegionDataFolder);
       }
     }
   }
