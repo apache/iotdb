@@ -39,9 +39,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -79,9 +79,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private PartitionCache partitionCache;
 
-  private final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  private final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
+      configNodeClientManager =
+          new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
+              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private static final class ClusterPartitionFetcherHolder {
     private static final ClusterPartitionFetcher INSTANCE = new ClusterPartitionFetcher();

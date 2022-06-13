@@ -78,7 +78,8 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DataNodeToConfigNodeClient implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
+public class DataNodeToConfigNodeClient
+    implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeToConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
@@ -629,7 +630,8 @@ public class DataNodeToConfigNodeClient implements ConfigIService.Iface, SyncThr
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public static class Factory extends BaseClientFactory<PartitionRegionId, DataNodeToConfigNodeClient> {
+  public static class Factory
+      extends BaseClientFactory<PartitionRegionId, DataNodeToConfigNodeClient> {
 
     public Factory(
         ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager,
@@ -639,7 +641,8 @@ public class DataNodeToConfigNodeClient implements ConfigIService.Iface, SyncThr
 
     @Override
     public void destroyObject(
-        PartitionRegionId partitionRegionId, PooledObject<DataNodeToConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId,
+        PooledObject<DataNodeToConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
@@ -660,7 +663,8 @@ public class DataNodeToConfigNodeClient implements ConfigIService.Iface, SyncThr
 
     @Override
     public boolean validateObject(
-        PartitionRegionId partitionRegionId, PooledObject<DataNodeToConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId,
+        PooledObject<DataNodeToConfigNodeClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
     }
   }

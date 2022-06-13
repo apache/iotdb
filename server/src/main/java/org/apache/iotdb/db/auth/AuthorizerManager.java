@@ -389,7 +389,8 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   public SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) throws TException {
+      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient)
+      throws TException {
     authReadWriteLock.readLock().lock();
     try {
       return authorityFetcher.queryPermission(authorizerReq, dataNodeToConfigNodeClient);

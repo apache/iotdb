@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
@@ -76,7 +76,8 @@ public class CreateFunctionTask implements IConfigTask {
   private void executeCluster(
       IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager,
       SettableFuture<ConfigTaskResult> future) {
-    try (DataNodeToConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+    try (DataNodeToConfigNodeClient client =
+        clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       final TSStatus executionStatus =
           client.createFunction(new TCreateFunctionReq(udfName, className, uris));
 

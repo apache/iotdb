@@ -24,8 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -77,7 +77,8 @@ public class FlushTask implements IConfigTask {
       tFlushReq.setDataNodeId(-1);
     }
     if (config.isClusterMode()) {
-      try (DataNodeToConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      try (DataNodeToConfigNodeClient client =
+          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         // Send request to some API server
         tsStatus = client.flush(tFlushReq);
         // Get response or throw exception

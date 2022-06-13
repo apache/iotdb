@@ -48,7 +48,8 @@ import java.util.concurrent.CountDownLatch;
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncConfigNodeToDataNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncConfigNodeToDataNodeClientPool.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AsyncConfigNodeToDataNodeClientPool.class);
 
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
 
@@ -267,7 +268,8 @@ public class AsyncConfigNodeToDataNodeClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncConfigNodeToDataNodeClientPool INSTANCE = new AsyncConfigNodeToDataNodeClientPool();
+    private static final AsyncConfigNodeToDataNodeClientPool INSTANCE =
+        new AsyncConfigNodeToDataNodeClientPool();
 
     private ClientPoolHolder() {
       // Empty constructor

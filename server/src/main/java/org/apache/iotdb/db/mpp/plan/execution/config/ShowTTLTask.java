@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -68,7 +68,8 @@ public class ShowTTLTask implements IConfigTask {
     List<PartialPath> storageGroupPaths = showTTLStatement.getPaths();
     Map<String, Long> storageGroupToTTL = new HashMap<>();
     if (config.isClusterMode()) {
-      try (DataNodeToConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      try (DataNodeToConfigNodeClient client =
+          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         if (showTTLStatement.isAll()) {
           List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
           TStorageGroupSchemaResp resp =

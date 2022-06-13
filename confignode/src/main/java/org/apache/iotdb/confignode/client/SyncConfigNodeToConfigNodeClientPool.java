@@ -39,7 +39,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class SyncConfigNodeToConfigNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeToConfigNodeClientPool.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyncConfigNodeToConfigNodeClientPool.class);
 
   private static final int retryNum = 5;
 
@@ -89,7 +90,8 @@ public class SyncConfigNodeToConfigNodeClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class SyncConfigNodeClientPoolHolder {
 
-    private static final SyncConfigNodeToConfigNodeClientPool INSTANCE = new SyncConfigNodeToConfigNodeClientPool();
+    private static final SyncConfigNodeToConfigNodeClientPool INSTANCE =
+        new SyncConfigNodeToConfigNodeClientPool();
 
     private SyncConfigNodeClientPoolHolder() {
       // Empty constructor

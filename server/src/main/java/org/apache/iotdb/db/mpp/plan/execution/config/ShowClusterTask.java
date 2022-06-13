@@ -22,8 +22,8 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -62,7 +62,8 @@ public class ShowClusterTask implements IConfigTask {
     TClusterNodeInfos clusterNodeInfos = new TClusterNodeInfos();
 
     if (config.isClusterMode()) {
-      try (DataNodeToConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      try (DataNodeToConfigNodeClient client =
+          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         clusterNodeInfos = client.getAllClusterNodeInfos();
       } catch (TException | IOException e) {
         LOGGER.error("Failed to connect to config node.");

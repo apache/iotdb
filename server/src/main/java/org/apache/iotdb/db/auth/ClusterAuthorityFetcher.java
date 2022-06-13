@@ -32,9 +32,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -75,9 +75,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build();
 
-  private static final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  private static final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
+      configNodeClientManager =
+          new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
+              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private static final class ClusterAuthorityFetcherHolder {
     private static final ClusterAuthorityFetcher INSTANCE = new ClusterAuthorityFetcher();
