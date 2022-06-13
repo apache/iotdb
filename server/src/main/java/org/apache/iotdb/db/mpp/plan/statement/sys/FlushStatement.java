@@ -26,27 +26,18 @@ import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class FlushStatement extends Statement implements IConfigStatement {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushPlan.class);
-  /**
-   * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>,
-   *
-   * <p>Notice, the value maybe null, when it is null, all partitions under the storage groups are
-   * flushed, so do not use {@link java.util.concurrent.ConcurrentHashMap} when initializing as
-   * ConcurrentMap dose not support null key and value
-   */
-  private Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
+  /** list of storage group */
+  private List<PartialPath> storageGroups;
 
   // being null indicates flushing both seq and unseq data
   private Boolean isSeq;
@@ -57,13 +48,12 @@ public class FlushStatement extends Statement implements IConfigStatement {
     this.statementType = flushType;
   }
 
-  public Map<PartialPath, List<Pair<Long, Boolean>>> getStorageGroupPartitionIds() {
-    return storageGroupPartitionIds;
+  public List<PartialPath> getStorageGroups() {
+    return storageGroups;
   }
 
-  public void setStorageGroupPartitionIds(
-      Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds) {
-    this.storageGroupPartitionIds = storageGroupPartitionIds;
+  public void setStorageGroups(List<PartialPath> storageGroups) {
+    this.storageGroups = storageGroups;
   }
 
   public Boolean isSeq() {
@@ -89,14 +79,10 @@ public class FlushStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    if (storageGroupPartitionIds == null) {
+    if (storageGroups == null) {
       return Collections.emptyList();
     }
-    List<PartialPath> partialPaths = new ArrayList<>();
-    for (PartialPath partialPath : storageGroupPartitionIds.keySet()) {
-      partialPaths.add(partialPath);
-    }
-    return partialPaths;
+    return storageGroups;
   }
 
   @Override

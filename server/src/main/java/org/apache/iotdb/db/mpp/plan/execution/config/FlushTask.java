@@ -28,6 +28,7 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,8 +61,8 @@ public class FlushTask implements IConfigTask {
     TSStatus tsStatus = new TSStatus();
     TFlushReq tFlushReq = new TFlushReq();
     List<String> storageGroups = new ArrayList<>();
-    if (flushStatement.getStorageGroupPartitionIds() != null) {
-      for (PartialPath partialPath : flushStatement.getStorageGroupPartitionIds().keySet()) {
+    if (flushStatement.getStorageGroups() != null) {
+      for (PartialPath partialPath : flushStatement.getStorageGroups()) {
         storageGroups.add(partialPath.getFullPath());
       }
       tFlushReq.setStorageGroups(storageGroups);
@@ -75,13 +76,18 @@ public class FlushTask implements IConfigTask {
     } else {
       tFlushReq.setDataNodeId(-1);
     }
-    try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // Send request to some API server
-      tsStatus = client.flush(tFlushReq);
-      // Get response or throw exception
-    } catch (IOException | TException e) {
-      logger.error("Failed to connect to config node.");
-      future.setException(e);
+    if (config.isClusterMode()) {
+      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        // Send request to some API server
+        tsStatus = client.flush(tFlushReq);
+        // Get response or throw exception
+      } catch (IOException | TException e) {
+        logger.error("Failed to connect to config node.");
+        future.setException(e);
+      }
+    } else {
+      LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+      tsStatus = localConfigNode.executeFlushOperation(tFlushReq);
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
