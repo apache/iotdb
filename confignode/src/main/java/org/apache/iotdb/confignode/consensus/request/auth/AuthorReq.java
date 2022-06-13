@@ -247,4 +247,10 @@ public class AuthorReq extends ConfigRequest {
         && Objects.equals(permissions, that.permissions)
         && Objects.equals(nodeName, that.nodeName);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        authorType, userName, roleName, password, newPassword, permissions, nodeName);
+  }
 }
