@@ -536,7 +536,7 @@ public class StorageEngineV2 implements IService {
     }
   }
 
-  public TSStatus operatorFlush(TFlushReq req) {
+  public TSStatus operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngineV2.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().deleteOutdatedWALFiles();

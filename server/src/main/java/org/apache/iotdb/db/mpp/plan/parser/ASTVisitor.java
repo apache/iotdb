@@ -2196,26 +2196,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
     FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds = null;
+    List<PartialPath> storageGroups = null;
     if (ctx.BOOLEAN_LITERAL() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     }
     if (ctx.CLUSTER() != null) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
+      }
       flushStatement.setLocal(false);
     } else {
       flushStatement.setLocal(true);
     }
     if (ctx.prefixPath(0) != null) {
-      List<PartialPath> storageGroups = new ArrayList<>();
+      storageGroups = new ArrayList<>();
       for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         storageGroups.add(parsePrefixPath(prefixPathContext));
       }
-      storageGroupPartitionIds = new HashMap<>();
-      for (PartialPath path : storageGroups) {
-        storageGroupPartitionIds.put(path, null);
-      }
     }
-    flushStatement.setStorageGroupPartitionIds(storageGroupPartitionIds);
+    flushStatement.setStorageGroups(storageGroups);
     return flushStatement;
   }
 }
