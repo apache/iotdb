@@ -549,9 +549,8 @@ public class ConfigManager implements Manager {
       return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
           .setMessage(
               "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
-    
     }
-          }
+  }
 
   /**
    * @param storageGroups the storage groups to check
