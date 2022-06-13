@@ -125,13 +125,13 @@ public class RatisConsensusTest {
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     // pick a random leader
-    int leader = 1;
+    int leader = getLeaderOrdinal();
     int follower1 = (leader + 1) % 3;
     int follower2 = (leader + 2) % 3;
 
     // 3. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
-    servers.get(follower1).transferLeader(gid, peers.get(leader));
+    // servers.get(follower1).transferLeader(gid, peers.get(leader));
     // Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(leader).removePeer(gid, peers.get(follower1));
@@ -162,11 +162,11 @@ public class RatisConsensusTest {
     doConsensus(servers.get(2), gid, 10, 30);
 
     // pick a random leader
-    leader = 0;
+    leader = getLeaderOrdinal();
     follower1 = (leader + 1) % 3;
     follower2 = (leader + 2) % 3;
     // 7. again, group contains only peer0
-    servers.get(0).transferLeader(group.getGroupId(), peers.get(leader));
+    // servers.get(0).transferLeader(group.getGroupId(), peers.get(leader));
     servers
         .get(leader)
         .changePeer(group.getGroupId(), Collections.singletonList(peers.get(leader)));
