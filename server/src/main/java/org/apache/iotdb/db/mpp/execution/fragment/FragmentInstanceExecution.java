@@ -35,9 +35,11 @@ public class FragmentInstanceExecution {
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
-  private final IDriver driver;
+  // it will be set to null while this FI is FINISHED
+  private IDriver driver;
 
-  private final ISinkHandle sinkHandle;
+  // it will be set to null while this FI is FINISHED
+  private ISinkHandle sinkHandle;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -114,7 +116,11 @@ public class FragmentInstanceExecution {
             }
 
             driver.close();
+            // help for gc
+            driver = null;
             sinkHandle.abort();
+            // help for gc
+            sinkHandle = null;
             scheduler.abortFragmentInstance(instanceId);
           }
         });
