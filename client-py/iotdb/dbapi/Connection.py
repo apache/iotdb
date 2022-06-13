@@ -33,9 +33,9 @@ class Connection(object):
         port,
         username=Session.DEFAULT_USER,
         password=Session.DEFAULT_PASSWORD,
-        enable_rpc_compression=False,
         fetch_size=Session.DEFAULT_FETCH_SIZE,
         zone_id=Session.DEFAULT_ZONE_ID,
+        enable_rpc_compression=False,
         sqlalchemy_mode=False,
     ):
         self.__session = Session(host, port, username, password, fetch_size, zone_id)
