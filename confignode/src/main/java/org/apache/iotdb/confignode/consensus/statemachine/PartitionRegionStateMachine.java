@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -39,7 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 /** Statemachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
@@ -146,11 +144,6 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     } else {
       configManager.getProcedureManager().shiftExecutor(false);
     }
-  }
-
-  @Override
-  public void notifyConfigurationChanged(long term, long index, List<Peer> newConfiguration) {
-
   }
 
   @Override
