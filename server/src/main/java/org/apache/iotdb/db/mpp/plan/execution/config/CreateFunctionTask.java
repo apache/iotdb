@@ -36,16 +36,12 @@ import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class CreateFunctionTask implements IConfigTask {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateFunctionTask.class);
 
   private final String udfName;
   private final String className;

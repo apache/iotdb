@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -37,17 +38,14 @@ import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 >>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+=======
+>>>>>>> ac78689436 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DeleteStorageGroupTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteStorageGroupTask.class);
-
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final DeleteStorageGroupStatement deleteStorageGroupStatement;
 

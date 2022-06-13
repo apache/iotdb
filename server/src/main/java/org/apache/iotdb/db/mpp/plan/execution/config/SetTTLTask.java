@@ -36,11 +36,8 @@ import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SetTTLTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLTask.class);
 
   protected final SetTTLStatement statement;
   protected String taskName;

@@ -20,26 +20,26 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+=======
+<<<<<<< HEAD
+import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+>>>>>>> ac78689436 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> cd60f89675 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,11 +54,17 @@ public class FlushTask implements IConfigTask {
   }
 
   @Override
+<<<<<<< HEAD
   public ListenableFuture<ConfigTaskResult> execute(
+<<<<<<< HEAD
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+=======
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+=======
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
+>>>>>>> ac78689436 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> cd60f89675 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
       throws InterruptedException {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TSStatus tsStatus = new TSStatus();
     TFlushReq tFlushReq = new TFlushReq();
     List<String> storageGroups = new ArrayList<>();
     if (flushStatement.getStorageGroups() != null) {
@@ -76,6 +82,7 @@ public class FlushTask implements IConfigTask {
     } else {
       tFlushReq.setDataNodeId(-1);
     }
+<<<<<<< HEAD
     if (config.isClusterMode()) {
       try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         // Send request to some API server
@@ -94,8 +101,10 @@ public class FlushTask implements IConfigTask {
     } else {
       future.setException(new StatementExecutionException(tsStatus));
     }
+=======
+>>>>>>> ac78689436 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return future;
+    return configTaskFetcher.flush(tFlushReq);
   }
 }

@@ -35,12 +35,8 @@ import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AuthorizerTask implements IConfigTask {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizerTask.class);
 
   private AuthorStatement authorStatement;
   private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();

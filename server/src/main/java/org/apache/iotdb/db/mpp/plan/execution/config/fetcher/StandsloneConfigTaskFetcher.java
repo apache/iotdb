@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.fetcher;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -17,10 +18,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -190,16 +190,27 @@ public class StandsloneConfigTaskFetcher implements IConfigTaskFetcher {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> flush(FlushStatement flushStatement) {
+  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
-    return null;
+    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+    TSStatus tsStatus = localConfigNode.executeFlushOperation(tFlushReq);
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement) {
+  public SettableFuture<ConfigTaskResult> showCluster() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    return null;
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing this command in standalone mode is not supported")));
+    return future;
   }
 
   @Override

@@ -41,13 +41,10 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 
 public class CountStorageGroupTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(CountStorageGroupTask.class);
 
   private CountStorageGroupStatement countStorageGroupStatement;
 

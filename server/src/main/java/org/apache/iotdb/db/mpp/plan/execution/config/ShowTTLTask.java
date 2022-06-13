@@ -43,13 +43,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class ShowTTLTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ShowTTLTask.class);
 
   private ShowTTLStatement showTTLStatement;
 

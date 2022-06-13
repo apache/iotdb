@@ -1,14 +1,13 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.fetcher;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -35,9 +34,9 @@ public interface IConfigTaskFetcher {
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> flush(FlushStatement flushStatement);
+  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq);
 
-  SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement);
+  SettableFuture<ConfigTaskResult> showCluster();
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 }
