@@ -42,13 +42,14 @@ import java.util.Map;
 import java.util.Set;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
-public class SyncDataNodeClientPool {
+public class SyncConfigNodeToDataNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyncConfigNodeToDataNodeClientPool.class);
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
-  private SyncDataNodeClientPool() {
+  private SyncConfigNodeToDataNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
@@ -156,14 +157,15 @@ public class SyncDataNodeClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final SyncDataNodeClientPool INSTANCE = new SyncDataNodeClientPool();
+    private static final SyncConfigNodeToDataNodeClientPool INSTANCE =
+        new SyncConfigNodeToDataNodeClientPool();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static SyncDataNodeClientPool getInstance() {
+  public static SyncConfigNodeToDataNodeClientPool getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

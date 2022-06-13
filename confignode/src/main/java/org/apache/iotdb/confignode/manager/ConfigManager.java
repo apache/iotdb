@@ -21,11 +21,9 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
@@ -36,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -439,16 +436,6 @@ public class ConfigManager implements Manager {
     }
   }
 
-  private TSStatus confirmLeader() {
-    if (getConsensusManager().isLeader()) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-          .setMessage(
-              "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
-    }
-  }
-
   @Override
   public NodeManager getNodeManager() {
     return nodeManager;
@@ -523,76 +510,12 @@ public class ConfigManager implements Manager {
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    // Check global configuration
-    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-    TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
-    errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
-    if (!req.getDataRegionConsensusProtocolClass()
-        .equals(conf.getDataRegionConsensusProtocolClass())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the data_region_consensus_protocol_class "
-                  + "are consistent.");
-      return errorResp;
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.registerConfigNode(req);
+    } else {
+      return new TConfigNodeRegisterResp(status, getNodeManager().getOnlineConfigNodes());
     }
-    if (!req.getSchemaRegionConsensusProtocolClass()
-        .equals(conf.getSchemaRegionConsensusProtocolClass())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the schema_region_consensus_protocol_class "
-                  + "are consistent.");
-      return errorResp;
-    }
-    if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the series_partition_slot_num are consistent.");
-      return errorResp;
-    }
-    if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the series_partition_executor_class are consistent.");
-      return errorResp;
-    }
-    if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTL()) {
-      errorResp
-          .getStatus()
-          .setMessage("Reject register, please ensure that the default_ttl are consistent.");
-      return errorResp;
-    }
-    if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the time_partition_interval are consistent.");
-      return errorResp;
-    }
-    if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the schema_replication_factor are consistent.");
-      return errorResp;
-    }
-    if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the data_replication_factor are consistent.");
-      return errorResp;
-    }
-
-    return nodeManager.registerConfigNode(req);
-  }
-
-  @Override
-  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
-    return nodeManager.applyConfigNode(applyConfigNodeReq);
   }
 
   @Override
@@ -618,6 +541,16 @@ public class ConfigManager implements Manager {
 
   public ProcedureManager getProcedureManager() {
     return procedureManager;
+  }
+
+  private TSStatus confirmLeader() {
+    if (getConsensusManager().isLeader()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+          .setMessage(
+              "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
+    }
   }
 
   /**

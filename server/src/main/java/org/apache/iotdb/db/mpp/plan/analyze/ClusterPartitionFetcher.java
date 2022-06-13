@@ -40,9 +40,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -80,9 +80,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private PartitionCache partitionCache;
 
-  private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  private final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
+      configNodeClientManager =
+          new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
+              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private static final class ClusterPartitionFetcherHolder {
     private static final ClusterPartitionFetcher INSTANCE = new ClusterPartitionFetcher();
@@ -105,7 +106,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-    try (ConfigNodeClient client =
+    try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.findAllDevicePaths();
@@ -129,7 +130,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
-    try (ConfigNodeClient client =
+    try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.findAllDevicePaths();
@@ -154,7 +155,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level) {
-    try (ConfigNodeClient client =
+    try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
@@ -171,7 +172,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    try (ConfigNodeClient client =
+    try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TDataPartitionResp dataPartitionResp =
           client.getDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
@@ -187,7 +188,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    try (ConfigNodeClient client =
+    try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
           splitDataPartitionQueryParam(dataPartitionQueryParams, false);
@@ -212,7 +213,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     // Do not use data partition cache
-    try (ConfigNodeClient client =
+    try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TDataPartitionResp dataPartitionResp =
           client.getOrCreateDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
@@ -229,7 +230,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    try (ConfigNodeClient client =
+    try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
           splitDataPartitionQueryParam(dataPartitionQueryParams, true);
@@ -274,7 +275,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     boolean firstTryResult = partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup);
     if (!firstTryResult) {
       List<String> storageGroupPathPattern = ROOT_PATH;
-      try (ConfigNodeClient client =
+      try (DataNodeToConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TStorageGroupSchemaResp storageGroupSchemaResp =
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);

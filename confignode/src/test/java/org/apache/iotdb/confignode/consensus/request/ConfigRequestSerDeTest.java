@@ -40,13 +40,13 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -472,12 +472,12 @@ public class ConfigRequestSerDeTest {
 
   @Test
   public void registerConfigNodeReqTest() throws IOException {
-    ApplyConfigNodeReq req0 =
-        new ApplyConfigNodeReq(
+    RegisterConfigNodeReq req0 =
+        new RegisterConfigNodeReq(
             new TConfigNodeLocation(
                 new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
-    ApplyConfigNodeReq req1 =
-        (ApplyConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    RegisterConfigNodeReq req1 =
+        (RegisterConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
