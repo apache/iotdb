@@ -325,6 +325,58 @@ class MyTestCase(unittest.TestCase):
 
 默认情况下，它会拉取最新的 IoTDB 镜像 `apache/iotdb:latest`进行测试，如果您想指定待测 IoTDB 的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的 IoTDB 实例。
 
+### IoTDB DBAPI
+
+IoTDB DBAPI 遵循 Python DB API 2.0 规范 (https://peps.python.org/pep-0249/)，实现了通过Python语言访问数据库的通用接口。
+
+#### 例子
++ 初始化
+
+初始化的参数与Session部分保持一致（sqlalchemy_mode参数除外，该参数仅在SQLAlchemy方言中使用）
+```python
+from iotdb.dbapi import connect
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = "root"
+password_ = "root"
+conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="UTC+8",sqlalchemy_mode=False)
+cursor = conn.cursor()
+```
++ 执行简单的SQL语句
+```python
+cursor.execute("SELECT * FROM root.*")
+for row in cursor.fetchall():
+    print(row)
+```
+
++ 执行带有参数的SQL语句
+
+IoTDB DBAPI 支持pyformat风格的参数
+```python
+cursor.execute("SELECT * FROM root.* WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
+for row in cursor.fetchall():
+    print(row)
+```
+
++ 批量执行带有参数的SQL语句
+```python
+seq_of_parameters = [
+    {"timestamp": 1, "temperature": 1},
+    {"timestamp": 2, "temperature": 2},
+    {"timestamp": 3, "temperature": 3},
+    {"timestamp": 4, "temperature": 4},
+    {"timestamp": 5, "temperature": 5},
+]
+sql = "insert into root.cursor(timestamp,temperature) values(%(timestamp)s,%(temperature)s)"
+cursor.executemany(sql,seq_of_parameters)
+```
+
++ 关闭连接
+```python
+cursor.close()
+conn.close()
+```
 
 ## 给开发人员
 

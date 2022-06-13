@@ -330,6 +330,59 @@ class MyTestCase(unittest.TestCase):
 
 by default it will load the image `apache/iotdb:latest`, if you want a specific version just pass it like e.g. `IoTDBContainer("apache/iotdb:0.12.0")` to get version `0.12.0` running.
 
+### IoTDB DBAPI
+
+IoTDB DBAPI implements the Python DB API 2.0 specification (https://peps.python.org/pep-0249/), which defines a common
+interface for accessing databases in Python.
+
+#### Examples
++ Initialization
+
+The initialized parameters are consistent with the session part (except for the sqlalchemy_mode).
+```python
+from iotdb.dbapi import connect
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = "root"
+password_ = "root"
+conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="UTC+8",sqlalchemy_mode=False)
+cursor = conn.cursor()
+```
++ simple SQL statement execution
+```python
+cursor.execute("SELECT * FROM root.*")
+for row in cursor.fetchall():
+    print(row)
+```
+
++ execute SQL with parameter
+
+IoTDB DBAPI supports pyformat style parameters
+```python
+cursor.execute("SELECT * FROM root.* WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
+for row in cursor.fetchall():
+    print(row)
+```
+
++ execute SQL with parameter sequences
+```python
+seq_of_parameters = [
+    {"timestamp": 1, "temperature": 1},
+    {"timestamp": 2, "temperature": 2},
+    {"timestamp": 3, "temperature": 3},
+    {"timestamp": 4, "temperature": 4},
+    {"timestamp": 5, "temperature": 5},
+]
+sql = "insert into root.cursor(timestamp,temperature) values(%(timestamp)s,%(temperature)s)"
+cursor.executemany(sql,seq_of_parameters)
+```
+
++ close the connection and cursor
+```python
+cursor.close()
+conn.close()
+```
 
 ## Developers
 
