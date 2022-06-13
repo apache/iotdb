@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.udf.api.type;
 
-/** To make udf-api a independent module, this class provides same functions as TsDataType. */
+/** A substitution class for TsDataType. */
 public enum Type {
   /** BOOLEAN */
   BOOLEAN((byte) 0),
