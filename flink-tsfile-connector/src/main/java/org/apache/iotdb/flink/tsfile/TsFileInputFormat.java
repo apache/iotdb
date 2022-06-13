@@ -104,13 +104,6 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
     TsFileInput tsFileInput;
     TsFileInput indexFileInput;
     try {
-      System.out.println("currentSplit.getPath().getPath(): " + currentSplit.getPath().getPath());
-      System.out.println(
-          "new URI(currentSplit.getPath().getPath(): " + new URI(currentSplit.getPath().getPath()));
-      System.out.println(
-          "new org.apache.hadoop.fs.Path(new URI(currentSplit.getPath().getPath()): "
-              + new org.apache.hadoop.fs.Path(new URI(currentSplit.getPath().getPath())));
-
       if (currentSplit.getPath().getFileSystem().isDistributedFS()) {
         // HDFS
         tsFileInput =

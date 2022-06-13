@@ -21,18 +21,13 @@ package org.apache.iotdb.flink.tsfile;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.DataStreamUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.types.Row;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Spliterators;
-import java.util.stream.StreamSupport;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -75,34 +70,5 @@ public class RowTsFileInputFormatIntegrationTest extends RowTsFileInputFormatTes
       "+I[9, 1.2, 20, null, 2.3, 11, 19]"
     };
     assertArrayEquals(expected, result.toArray());
-  }
-
-  @Test
-  public void testStreamExecution() {
-    // read files in a directory
-    TsFileInputFormat<Row> inputFormat = prepareInputFormat(tmpDir);
-    DataStream<Row> source = senv.createInput(inputFormat);
-    Iterator<String> rowStringIterator = DataStreamUtils.collect(source.map(Row::toString));
-    String[] result =
-        StreamSupport.stream(Spliterators.spliteratorUnknownSize(rowStringIterator, 0), false)
-            .sorted()
-            .toArray(String[]::new);
-    String[] expected = {
-      "+I[1, 1.2, 20, null, 2.3, 11, 19]",
-      "+I[10, null, 20, 50, 25.4, 10, 21]",
-      "+I[11, 1.4, 21, null, null, null, null]",
-      "+I[12, 1.2, 20, 51, null, null, null]",
-      "+I[14, 7.2, 10, 11, null, null, null]",
-      "+I[15, 6.2, 20, 21, null, null, null]",
-      "+I[16, 9.2, 30, 31, null, null, null]",
-      "+I[2, null, 20, 50, 25.4, 10, 21]",
-      "+I[3, 1.4, 21, null, null, null, null]",
-      "+I[4, 1.2, 20, 51, null, null, null]",
-      "+I[6, 7.2, 10, 11, null, null, null]",
-      "+I[7, 6.2, 20, 21, null, null, null]",
-      "+I[8, 9.2, 30, 31, null, null, null]",
-      "+I[9, 1.2, 20, null, 2.3, 11, 19]"
-    };
-    assertArrayEquals(expected, result);
   }
 }
