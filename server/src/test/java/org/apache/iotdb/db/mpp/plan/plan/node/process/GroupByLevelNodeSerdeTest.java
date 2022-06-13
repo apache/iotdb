@@ -54,7 +54,7 @@ public class GroupByLevelNodeSerdeTest {
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_TIME,
+                    AggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
@@ -68,7 +68,7 @@ public class GroupByLevelNodeSerdeTest {
             new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_TIME,
+                    AggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
@@ -83,7 +83,7 @@ public class GroupByLevelNodeSerdeTest {
             Arrays.asList(seriesAggregationScanNode1, seriesAggregationScanNode2),
             Collections.singletonList(
                 new GroupByLevelDescriptor(
-                    AggregationType.MAX_TIME,
+                    AggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
