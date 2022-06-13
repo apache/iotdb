@@ -19,6 +19,7 @@
 import operator
 
 from sqlalchemy import create_engine, inspect
+from sqlalchemy.dialects import registry
 
 from iotdb.IoTDBContainer import IoTDBContainer
 
@@ -48,6 +49,7 @@ def test_dialect():
             + ":"
             + db.get_exposed_port(6667)
         )
+        registry.register("iotdb", "iotdb.sqlalchemy.IoTDBDialect", "IoTDBDialect")
         eng = create_engine(url)
         eng.execute("create storage group root.cursor")
         eng.execute("create storage group root.cursor_s1")
