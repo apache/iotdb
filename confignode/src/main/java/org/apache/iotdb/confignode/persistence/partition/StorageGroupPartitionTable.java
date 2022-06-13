@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupPartitionTable {
-  private boolean isPredeleted = false;
+  private volatile boolean isPredeleted = false;
   // Total number of SeriesPartitionSlots occupied by schema,
   // determines whether a new Region needs to be created
   private final AtomicInteger seriesPartitionSlotsCount;
