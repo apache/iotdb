@@ -577,34 +577,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TConfigNodeRegisterResp resp = client.registerConfigNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
-  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.applyConfigNode(configNodeLocation);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return null;
   }
 
   @Override

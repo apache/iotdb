@@ -105,7 +105,7 @@ struct TStorageGroupSchema {
   7: optional i32 maximumDataRegionCount
 }
 
-// Schema
+// SchemaPartition
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
 }
@@ -116,8 +116,19 @@ struct TSchemaPartitionResp {
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
-// Node Management
+// DataPartition
+struct TDataPartitionReq {
+  // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
+  1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
+}
 
+struct TDataPartitionResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
+}
+
+// Node Management
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
@@ -128,18 +139,6 @@ struct TSchemaNodeManagementResp {
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
   3: optional set<string> matchedNode
-}
-
-// Data
-struct TDataPartitionReq {
-  // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
-  1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
-}
-
-struct TDataPartitionResp {
-  1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
-  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
 // Authorize
@@ -189,21 +188,17 @@ struct TCheckUserPrivilegesReq {
 
 // ConfigNode
 struct TConfigNodeRegisterReq {
-  1: required common.TConfigNodeLocation configNodeLocation
-  2: required string dataRegionConsensusProtocolClass
-  3: required string schemaRegionConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
-  6: required i64 defaultTTL
-  7: required i64 timePartitionInterval
-  8: required i32 schemaReplicationFactor
-  9: required i32 dataReplicationFactor
+  1: required common.TConsensusGroupId partitionRegionId
+  2: required common.TConfigNodeLocation configNodeLocation
+  3: required TGlobalConfig globalConfig
+  4: required i64 defaultTTL
+  5: required i32 schemaReplicationFactor
+  6: required i32 dataReplicationFactor
 }
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional common.TConsensusGroupId partitionRegionId
-  3: optional list<common.TConfigNodeLocation> configNodeList
+  2: required list<common.TConfigNodeLocation> configNodeList
 }
 
 // Show cluster
@@ -284,8 +279,6 @@ service ConfigIService {
   /* ConfigNode */
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
-
-  common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /* UDF */
 

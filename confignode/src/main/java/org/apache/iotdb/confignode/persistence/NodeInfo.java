@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -235,23 +235,23 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Update ConfigNodeList both in memory and confignode-system.properties file
    *
-   * @param applyConfigNodeReq ApplyConfigNodeReq
+   * @param registerConfigNodeReq RegisterConfigNodeReq
    * @return APPLY_CONFIGNODE_FAILED if update online ConfigNode failed.
    */
-  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
+  public TSStatus registerConfigNode(RegisterConfigNodeReq registerConfigNodeReq) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
-      onlineConfigNodes.add(applyConfigNodeReq.getConfigNodeLocation());
+      onlineConfigNodes.add(registerConfigNodeReq.getConfigNodeLocation());
       storeConfigNode();
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
-          applyConfigNodeReq.getConfigNodeLocation(),
+          registerConfigNodeReq.getConfigNodeLocation(),
           onlineConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Update online ConfigNode failed.", e);
-      status.setCode(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode());
+      status.setCode(TSStatusCode.REGISTER_CONFIGNODE_FAILED.getStatusCode());
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {

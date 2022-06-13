@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -384,17 +383,6 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
 
     return resp;
-  }
-
-  @Override
-  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
-    TSStatus status = configManager.applyConfigNode(applyConfigNodeReq);
-
-    // Print log to record the ConfigNode that performs the ApplyConfigNodeRequest
-    LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
-
-    return status;
   }
 
   @Override

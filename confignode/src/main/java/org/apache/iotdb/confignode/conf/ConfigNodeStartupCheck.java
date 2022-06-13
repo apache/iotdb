@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -39,8 +40,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ConfigNodeStartupCheck checks the cluster status and parameters in iotdb-confignode.properties
@@ -62,14 +66,12 @@ public class ConfigNodeStartupCheck {
   }
 
   public void startUpCheck() throws StartupException, IOException, ConfigurationException {
-    checkGlobalConfig();
+    checkConfigConflict();
     if (isFirstStart()) {
       // Do initialization when first start
       if (!isSeedConfigNode()) {
         // Register when the current ConfigNode isn't Seed-ConfigNode
         registerConfigNode();
-        // Apply after constructing PartitionRegion
-        conf.setNeedApply(true);
       }
       // Persistence the unchangeable parameters
       writeSystemProperties();
@@ -80,8 +82,8 @@ public class ConfigNodeStartupCheck {
     }
   }
 
-  /** Check whether the global configuration of the cluster is correct */
-  private void checkGlobalConfig() throws ConfigurationException {
+  /** Check whether the parameters conflict */
+  private void checkConfigConflict() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_configNode needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
@@ -157,23 +159,29 @@ public class ConfigNodeStartupCheck {
   }
 
   /**
-   * Check if the current ConfigNode is SeedConfigNode. If true, do the SeedConfigNode configuration
-   * as well.
+   * Check if the current ConfigNode is SeedConfigNode.
    *
-   * @return True if the target_confignode points to itself
+   * @return True if the target_confignode points to itself, false otherwise.
    */
   private boolean isSeedConfigNode() {
     boolean result =
         conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
             && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
+
     if (result) {
-      // TODO: Set PartitionRegionId from iotdb-confignode.properties
+      // If the current ConfigNode is seed, set configNodeList to itself
       conf.setConfigNodeList(
           Collections.singletonList(
               new TConfigNodeLocation(
                   new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                   new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
+    } else {
+      // If the current ConfigNode isn't seed, set configNodeList to targetConfigNode
+      conf.setConfigNodeList(
+          Collections.singletonList(
+              new TConfigNodeLocation(conf.getTargetConfigNode(), new TEndPoint())));
     }
+
     return result;
   }
 
@@ -181,26 +189,74 @@ public class ConfigNodeStartupCheck {
   private void registerConfigNode() throws StartupException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
+            conf.getPartitionRegionId(),
             new TConfigNodeLocation(
                 new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
-            conf.getDataRegionConsensusProtocolClass(),
-            conf.getSchemaRegionConsensusProtocolClass(),
-            conf.getSeriesPartitionSlotNum(),
-            conf.getSeriesPartitionExecutorClass(),
+            new TGlobalConfig(
+                conf.getDataRegionConsensusProtocolClass(),
+                conf.getSchemaRegionConsensusProtocolClass(),
+                conf.getSeriesPartitionSlotNum(),
+                conf.getSeriesPartitionExecutorClass(),
+                conf.getTimePartitionInterval()),
             CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
-            conf.getTimePartitionInterval(),
             conf.getSchemaReplicationFactor(),
             conf.getDataReplicationFactor());
 
-    TConfigNodeRegisterResp resp =
-        SyncConfigNodeClientPool.getInstance().registerConfigNode(conf.getTargetConfigNode(), req);
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+    long timeout = 100;
+    TEndPoint leader = null;
+    Random random = new Random();
+    for (int retry = 0; retry < 10; retry++) {
+      TEndPoint target = null;
+      TConfigNodeRegisterResp resp;
+      if (leader == null) {
+        // Pick a random ConfigNode and send request
+        List<TConfigNodeLocation> configNodeList = conf.getConfigNodeList();
+        while (target == null
+            || target.equals(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))) {
+          target = configNodeList.get(random.nextInt(configNodeList.size())).getInternalEndPoint();
+        }
+        resp = SyncConfigNodeClientPool.getInstance().registerConfigNode(target, req);
+      } else {
+        // Send request to leader
+        resp = SyncConfigNodeClientPool.getInstance().registerConfigNode(leader, req);
+      }
+
+      // Update configNodeList
       conf.setConfigNodeList(resp.getConfigNodeList());
-    } else {
-      throw new StartupException("Register ConfigNode failed!");
+
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      } else if (resp.getStatus().getCode()
+          == TSStatusCode.INCONSISTENT_SYSTEM_CONFIG.getStatusCode()) {
+        // Log the inconsistent parameters
+        LOGGER.error(resp.getStatus().getMessage());
+        break;
+      } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        // Try to cache leader
+        if (resp.getStatus().isSetRedirectNode()) {
+          leader = resp.getStatus().getRedirectNode();
+        }
+      } else if (resp.getStatus().getCode() == TSStatusCode.NEED_RETRY.getStatusCode()) {
+        // In this case, we're already locate the leader
+        leader = target;
+        try {
+          TimeUnit.MILLISECONDS.sleep(timeout);
+          timeout *= 2;
+        } catch (InterruptedException e) {
+          // Just ignore and retry
+        }
+      } else {
+        // There are network failure
+        try {
+          TimeUnit.MILLISECONDS.sleep(100);
+        } catch (InterruptedException e) {
+          // Just ignore and retry
+        }
+      }
     }
+
+    throw new StartupException("Register ConfigNode failed!");
   }
 
   /**
@@ -260,7 +316,7 @@ public class ConfigNodeStartupCheck {
     }
   }
 
-  /** Ensure that special parameters are consistent with each startup except the first one */
+  /** Ensure that system parameters are consistent with each startup except the first one */
   private void checkSystemProperties()
       throws ConfigurationException, IOException, StartupException {
     boolean needReWrite = false;

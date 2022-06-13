@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -211,13 +210,6 @@ public interface Manager {
    * @return TConfigNodeRegisterResp
    */
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
-
-  /**
-   * Apply ConfigNode when it is first startup
-   *
-   * @return status
-   */
-  TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
 
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
