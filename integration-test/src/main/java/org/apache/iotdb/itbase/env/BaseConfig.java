@@ -137,4 +137,16 @@ public interface BaseConfig {
   default int getMaxNumberOfPointsInPage() {
     return 1024 * 1024;
   }
+
+  default boolean isAutoCreateSchemaEnabled() {
+    return true;
+  }
+
+  default BaseConfig setPrimitiveArraySize(int primitiveArraySize) {
+    return this;
+  }
+
+  default int getPrimitiveArraySize() {
+    return 32;
+  }
 }
