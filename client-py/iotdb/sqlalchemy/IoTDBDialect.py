@@ -32,13 +32,13 @@ TYPES_MAP = {
     "FLOAT": types.Float,
     "DOUBLE": types.DECIMAL,
     "TEXT": types.Text,
-    "LONG": types.BigInteger
+    "LONG": types.BigInteger,
 }
 
 
 class IoTDBDialect(default.DefaultDialect):
-    name = 'iotdb'
-    driver = 'iotdb-python'
+    name = "iotdb"
+    driver = "iotdb-python"
     statement_compiler = IoTDBSQLCompiler
     type_compiler = IoTDBTypeCompiler
     convert_unicode = True
@@ -50,6 +50,7 @@ class IoTDBDialect(default.DefaultDialect):
     if hasattr(String, "RETURNS_UNICODE"):
         returns_unicode_strings = String.RETURNS_UNICODE
     else:
+
         def _check_unicode_returns(self, connection, additional_tests=None):
             return True
 
@@ -82,9 +83,7 @@ class IoTDBDialect(default.DefaultDialect):
         return table_name in self.get_table_names(connection, schema=schema)
 
     def get_schema_names(self, connection, **kw):
-        cursor = connection.execute(
-            "SHOW STORAGE GROUP"
-        )
+        cursor = connection.execute("SHOW STORAGE GROUP")
         return [row[0] for row in cursor.fetchall()]
 
     def get_table_names(self, connection, schema=None, **kw):
@@ -94,9 +93,7 @@ class IoTDBDialect(default.DefaultDialect):
         return [row[0].replace(schema + ".", "", 1) for row in cursor.fetchall()]
 
     def get_columns(self, connection, table_name, schema=None, **kw):
-        cursor = connection.execute(
-            "SHOW TIMESERIES %s.%s.*" % (schema, table_name)
-        )
+        cursor = connection.execute("SHOW TIMESERIES %s.%s.*" % (schema, table_name))
         columns = [self._general_time_column_info()]
         for row in cursor.fetchall():
             columns.append(self._create_column_info(row, schema, table_name))
@@ -116,7 +113,7 @@ class IoTDBDialect(default.DefaultDialect):
             "name": "Time",
             "type": self._resolve_type("LONG"),
             "nullable": True,
-            "default": None
+            "default": None,
         }
 
     def _create_column_info(self, row, schema, table_name):
@@ -127,7 +124,7 @@ class IoTDBDialect(default.DefaultDialect):
             # Primary Key Constraints are not nullable anyway, no matter what
             # we return here, so it's fine to return always `True`
             "nullable": True,
-            "default": None
+            "default": None,
         }
 
     def _resolve_type(self, type_):

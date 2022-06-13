@@ -42,13 +42,24 @@ def print_message(message):
 def test_dialect():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        url = "iotdb://root:root@" + db.get_container_host_ip() + ":" + db.get_exposed_port(6667)
+        url = (
+            "iotdb://root:root@"
+            + db.get_container_host_ip()
+            + ":"
+            + db.get_exposed_port(6667)
+        )
         eng = create_engine(url)
         eng.execute("create storage group root.cursor")
         eng.execute("create storage group root.cursor_s1")
-        eng.execute("create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE")
-        eng.execute("create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE")
-        eng.execute("create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE")
+        eng.execute(
+            "create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE"
+        )
+        eng.execute(
+            "create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE"
+        )
+        eng.execute(
+            "create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE"
+        )
         insp = inspect(eng)
         # test get_schema_names
         schema_names = insp.get_schema_names()

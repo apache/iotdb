@@ -463,6 +463,47 @@ cursor.close()
 conn.close()
 ```
 
+### IoTDB SQLAlchemy Dialect (Experimental)
+The SQLAlchemy dialect of IoTDB is written to adapt to Apache Superset.
+This part is still being improved.
+Please do not use it in the production environment!
+#### Mapping of the metadata
+The data model used by SQLAlchemy is a relational data model, which describes the relationships between different entities through tables.
+While the data model of IoTDB is a hierarchical data model, which organizes the data through a tree structure.
+In order to adapt IoTDB to the dialect of SQLAlchemy, the original data model in IoTDB needs to be reorganized.
+Converting the data model of IoTDB into the data model of SQLAlchemy.
+
+The metadata in the IoTDB are：
+
+1. Storage Group
+2. Path
+3. Entity
+4. Measurement
+
+The metadata in the SQLAlchemy are：
+1. Schema
+2. Table
+3. Column
+
+The mapping relationship between them is：
+
+| The metadata in the SQLAlchemy | The metadata in the IoTDB                            |
+| -------------------- | ---------------------------------------------- |
+| Schema               | Storage Group                                  |
+| Table                | Path ( from storage group to entity ) + Entity |
+| Column               | Measurement                                    |
+
+#### Example
+```python
+from sqlalchemy import create_engine
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+connect = engine.connect()
+result = connect.execute("SELECT ** FROM root")
+for row in result.fetchall():
+    print(row)
+```
+
+
 ## Developers
 
 ### Introduction

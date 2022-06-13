@@ -44,7 +44,7 @@ setuptools.setup(
         "pandas>=1.0.0,<1.99.99",
         "numpy>=1.0.0",
         "testcontainers>=2.0.0",
-        "sqlalchemy>=1.3.20"
+        "sqlalchemy>=1.3.20",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -57,8 +57,8 @@ setuptools.setup(
     license="Apache License, Version 2.0",
     website="https://iotdb.apache.org",
     entry_points={
-        'sqlalchemy.dialects': [
-            'iotdb = iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect',
+        "sqlalchemy.dialects": [
+            "iotdb = iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect",
         ],
     },
 )

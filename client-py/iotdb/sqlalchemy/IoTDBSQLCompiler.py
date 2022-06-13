@@ -20,15 +20,14 @@ from sqlalchemy.sql.compiler import SQLCompiler
 
 
 class IoTDBSQLCompiler(SQLCompiler):
-
-    def _compose_select_body(
-            self, text, select, inner_columns, froms, byfrom, kwargs
-    ):
+    def _compose_select_body(self, text, select, inner_columns, froms, byfrom, kwargs):
         colunms = []
         for i in range(len(inner_columns)):
             if "Time" in inner_columns[i].replace('"', "").split():
                 colunms.append(str(i))
-        inner_columns = filter(lambda x: "Time" not in x.replace('"', "").split(), inner_columns)
+        inner_columns = filter(
+            lambda x: "Time" not in x.replace('"', "").split(), inner_columns
+        )
         text += ", ".join(inner_columns)
 
         if colunms:
@@ -50,7 +49,9 @@ class IoTDBSQLCompiler(SQLCompiler):
             else:
                 text += ", ".join(
                     [
-                        f._compiler_dispatch(self, asfrom=True, **kwargs).replace('"', '')
+                        f._compiler_dispatch(self, asfrom=True, **kwargs).replace(
+                            '"', ""
+                        )
                         for f in froms
                     ]
                 )
@@ -73,10 +74,7 @@ class IoTDBSQLCompiler(SQLCompiler):
         if select._order_by_clause.clauses:
             text += self.order_by_clause(select, **kwargs)
 
-        if (
-                select._limit_clause is not None
-                or select._offset_clause is not None
-        ):
+        if select._limit_clause is not None or select._offset_clause is not None:
             text += self.limit_clause(select, **kwargs)
 
         if select._for_update_arg is not None:
