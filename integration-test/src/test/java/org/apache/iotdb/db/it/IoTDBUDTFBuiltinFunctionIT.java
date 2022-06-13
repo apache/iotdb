@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
@@ -38,7 +37,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+// TODO @Category({LocalStandaloneIT.class, ClusterIT.class})
+// After bug of init MultiInputColumnIntermediateLayer fixed
+@Category({LocalStandaloneIT.class})
 public class IoTDBUDTFBuiltinFunctionIT {
 
   private static final double E = 0.0001;
@@ -1072,27 +1073,158 @@ public class IoTDBUDTFBuiltinFunctionIT {
       testSubStr(statement);
       testUpper(statement);
       testLower(statement);
+      testTrim(statement);
       testStrCmp(statement);
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
-  private void testStrCmp(Statement statement) {}
+  private void testTrim(Statement statement) {
+    String s2;
+    try (ResultSet resultSet =
+        statement.executeQuery("select s2, trim(s2) " + "from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        s2 = resultSet.getString(3);
+        if (s2 == null) {
+          continue;
+        }
+        assertEquals(resultSet.getString(2).trim(), resultSet.getString(3));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testLower(Statement statement) {}
+  private void testStrCmp(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select s1, s2, strcmp(s1, s2) " + "from root.testStringFunctions.d1")) {
+      String s1, s2;
+      while (resultSet.next()) {
+        s1 = resultSet.getString(2);
+        s2 = resultSet.getString(3);
+        if (s1 == null || s2 == null) {
+          continue;
+        }
+        assertEquals(s1.compareTo(s2), resultSet.getInt(4));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testUpper(Statement statement) {}
+  private void testLower(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery("select s1, lower(s1) " + "from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(resultSet.getString(2).toLowerCase(), resultSet.getString(3));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testSubStr(Statement statement) {}
+  private void testUpper(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery("select s1, upper(s1) " + "from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(resultSet.getString(2).toUpperCase(), resultSet.getString(3));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testConcat(Statement statement) {}
+  private void testSubStr(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select s1, substr(s1, \"start\"=\"3\", \"end\"=\"7\") "
+                + "from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(resultSet.getString(2).substring(3, 7), resultSet.getString(3));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testEndsWith(Statement statement) {}
+  private void testConcat(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select s1, s2, "
+                + "concat(s1, s2, \"target1\"=\"IoT\", \"target2\"=\"DB\"), "
+                + "concat(s1, s2, \"target1\"=\"IoT\", \"target2\"=\"DB\", \"series_behind\"=\"true\") "
+                + "from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(
+            (resultSet.getString(2) + resultSet.getString(3) + "IoTDB").replace("null", ""),
+            resultSet.getString(4));
+        assertEquals(
+            ("IoTDB" + (resultSet.getString(2) + resultSet.getString(3))).replace("null", ""),
+            resultSet.getString(5));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testStartsWith(Statement statement) {}
+  private void testEndsWith(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select s1, endsWith(s1, \"target\"=\"1111\") " + "from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(resultSet.getString(2).endsWith("1111"), resultSet.getBoolean(3));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testStrLocate(Statement statement) {}
+  private void testStartsWith(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select s1, startsWith(s1, \"target\"=\"1111\") "
+                + "from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(resultSet.getString(2).startsWith("1111"), resultSet.getBoolean(3));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
-  private void testStrLength(Statement statement) {}
+  private void testStrLocate(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "select s1, locate(s1, \"target\"=\"1111\"), locate(s1, \"target\"=\"1111\", \"reverse\"=\"true\") from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(resultSet.getString(2).indexOf("1111"), resultSet.getInt(3));
+        assertEquals(resultSet.getString(2).lastIndexOf("1111"), resultSet.getInt(4));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void testStrLength(Statement statement) {
+    try (ResultSet resultSet =
+        statement.executeQuery("select s1, length(s1) from root.testStringFunctions.d1")) {
+      while (resultSet.next()) {
+        assertEquals(resultSet.getString(2).length(), resultSet.getInt(3));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
