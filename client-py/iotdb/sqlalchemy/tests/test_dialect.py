@@ -20,6 +20,8 @@ import operator
 
 from sqlalchemy import create_engine, inspect
 
+from iotdb.IoTDBContainer import IoTDBContainer
+
 final_flag = True
 failed_count = 0
 
@@ -38,32 +40,35 @@ def print_message(message):
 
 
 def test_dialect():
-    eng = create_engine("iotdb://root:root@127.0.0.1:6667")
-    eng.execute("create storage group root.cursor")
-    eng.execute("create storage group root.cursor_s1")
-    eng.execute("create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE")
-    eng.execute("create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE")
-    eng.execute("create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE")
-    insp = inspect(eng)
-    # test get_schema_names
-    schema_names = insp.get_schema_names()
-    if not operator.eq(schema_names, ["root.cursor", "root.cursor_s1"]):
-        test_fail()
-        print_message("test get_schema_names failed!")
-    # test get_table_names
-    table_names = insp.get_table_names("root.cursor")
-    if not operator.eq(table_names, ["device1", "device2"]):
-        test_fail()
-        print_message("test get_table_names failed!")
-    # test get_columns
-    columns = insp.get_columns(table_name="device1", schema="root.cursor")
-    if len(columns) != 3:
-        test_fail()
-        print_message("test get_columns failed!")
-    eng.execute("delete storage group root.cursor")
-    eng.execute("delete storage group root.cursor_s1")
-    # close engine
-    eng.dispose()
+    with IoTDBContainer("iotdb:dev") as db:
+        db: IoTDBContainer
+        url = "iotdb://root:root@" + db.get_container_host_ip() + ":" + db.get_exposed_port(6667)
+        eng = create_engine(url)
+        eng.execute("create storage group root.cursor")
+        eng.execute("create storage group root.cursor_s1")
+        eng.execute("create timeseries root.cursor.device1.temperature with datatype=FLOAT,encoding=RLE")
+        eng.execute("create timeseries root.cursor.device1.status with datatype=FLOAT,encoding=RLE")
+        eng.execute("create timeseries root.cursor.device2.temperature with datatype=FLOAT,encoding=RLE")
+        insp = inspect(eng)
+        # test get_schema_names
+        schema_names = insp.get_schema_names()
+        if not operator.eq(schema_names, ["root.cursor", "root.cursor_s1"]):
+            test_fail()
+            print_message("test get_schema_names failed!")
+        # test get_table_names
+        table_names = insp.get_table_names("root.cursor")
+        if not operator.eq(table_names, ["device1", "device2"]):
+            test_fail()
+            print_message("test get_table_names failed!")
+        # test get_columns
+        columns = insp.get_columns(table_name="device1", schema="root.cursor")
+        if len(columns) != 3:
+            test_fail()
+            print_message("test get_columns failed!")
+        eng.execute("delete storage group root.cursor")
+        eng.execute("delete storage group root.cursor_s1")
+        # close engine
+        eng.dispose()
 
 
 if final_flag:
