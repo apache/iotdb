@@ -828,15 +828,15 @@ public class LocalExecutionPlanner {
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (GroupByLevelDescriptor descriptor : node.getGroupByLevelDescriptors()) {
         List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+        TSDataType seriesDataType =
+            context
+                .getTypeProvider()
+                // get the type of first inputExpression
+                .getType(descriptor.getInputExpressions().get(0).getExpressionString());
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
-                    descriptor.getAggregationType(),
-                    context
-                        .getTypeProvider()
-                        // get the type of first inputExpression
-                        .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
-                    ascending),
+                    descriptor.getAggregationType(), seriesDataType, ascending),
                 descriptor.getStep(),
                 inputLocationList));
       }
@@ -906,8 +906,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitRowBasedSeriesAggregate(
-        AggregationNode node, LocalExecutionPlanContext context) {
+    public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
       checkArgument(
           node.getAggregationDescriptorList().size() >= 1,
           "Aggregation descriptorList cannot be empty");
@@ -1071,6 +1070,9 @@ public class LocalExecutionPlanner {
 
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
+
+      checkArgument(DATA_BLOCK_MANAGER != null, "DATA_BLOCK_MANAGER should not be null");
+
       ISinkHandle sinkHandle =
           DATA_BLOCK_MANAGER.createSinkHandle(
               localInstanceId.toThrift(),

@@ -104,6 +104,7 @@ public class AuthorInfo implements SnapshotProcessor {
       for (String path : paths) {
         if (!checkOnePath(username, path, permission)) {
           status = false;
+          break;
         }
       }
     } catch (AuthException e) {

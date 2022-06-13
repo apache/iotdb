@@ -56,7 +56,7 @@
             <property name="format" value="schedule(AtFixedRate|WithFixedDelay)\("/>
             <property name="severity" value="error"/>
             <property name="ignoreComments" value="true"/>
-            <property name="message" value="Using ScheduledExecutorService::schedule(AtFixedRate|WithFixedDelay) directly is unsafe, please use ScheduledExecutorUtil::safelySchedule(AtFixedRate|WithFixedDelay) instead."/>
+            <property name="message" value="Using ScheduledExecutorService::schedule(AtFixedRate|WithFixedDelay) directly is unsafe, please use ScheduledExecutorUtil::(unsafely|safely)Schedule(AtFixedRate|WithFixedDelay) instead."/>
         </module>
         <!--WARNING severity rules, which may be promoted to error level-->
         <module name="OuterTypeFilename"/>
