@@ -1621,7 +1621,8 @@ public class DataRegion {
       File dataRegionSystemFolder =
           SystemFileFactory.INSTANCE.getFile(
               systemDir + File.separator + logicalStorageGroupName, dataRegionId);
-      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(dataRegionSystemFolder);
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+          dataRegionSystemFolder);
     } finally {
       writeUnlock();
     }
@@ -1677,7 +1678,8 @@ public class DataRegion {
       File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
       if (dataRegionDataFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(dataRegionDataFolder);
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+            dataRegionDataFolder);
       }
     }
   }

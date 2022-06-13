@@ -62,7 +62,9 @@ public class FileUtils {
     final File parentFolder = folder.getParentFile();
     if (parentFolder.isDirectory()
         && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {
-      parentFolder.delete();
+      if (!parentFolder.delete()) {
+        logger.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
+      }
     }
   }
 
