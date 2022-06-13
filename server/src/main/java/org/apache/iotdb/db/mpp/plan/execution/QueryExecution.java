@@ -145,6 +145,7 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
+              logger.info("release resource because Query State is: {}", state);
               releaseResource();
             }
           }
@@ -358,7 +359,7 @@ public class QueryExecution implements IQueryExecution {
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   context.getResultNodeContext().getVirtualResultNodeId().getId(),
                   context.getResultNodeContext().getUpStreamEndpoint(),
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
                   stateMachine::transitionToFailed);
     }
   }
