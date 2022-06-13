@@ -38,10 +38,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -67,7 +67,7 @@ public class IoTDBLastQueryWithDeletionIT {
         Statement statement = connection.createStatement()) {
       // TODO replace it while delete timeseries is supported in cluster mode
       //      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete timeseries root.sg1.d1.s2 where time <= 40");
+      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
       statement.execute("delete from root.sg1.d1.s1 where time <= 27");
     } catch (Exception e) {
       e.printStackTrace();
@@ -108,8 +108,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 + resultSet.getString(DATA_TYPE_STR);
         Assert.assertTrue(retSet.contains(ans));
         cnt++;
-        assertEquals(retSet.size(), cnt);
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -179,8 +179,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 + resultSet.getString(DATA_TYPE_STR);
         Assert.assertTrue(retSet.contains(ans));
         cnt++;
-        assertEquals(retSet.size(), cnt);
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -211,8 +211,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 + resultSet.getString(DATA_TYPE_STR);
         Assert.assertTrue(retSet.contains(ans));
         cnt++;
-        assertEquals(retSet.size(), cnt);
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -241,8 +241,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 + resultSet.getString(DATA_TYPE_STR);
         Assert.assertTrue(retSet.contains(ans));
         cnt++;
-        assertEquals(retSet.size(), cnt);
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -273,8 +273,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 + resultSet.getString(DATA_TYPE_STR);
         Assert.assertTrue(retSet.contains(ans));
         cnt++;
-        assertEquals(retSet.size(), cnt);
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -309,8 +309,8 @@ public class IoTDBLastQueryWithDeletionIT {
                 + resultSet.getString(DATA_TYPE_STR);
         Assert.assertTrue(retSet.contains(ans));
         cnt++;
-        assertEquals(retSet.size(), cnt);
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();

@@ -149,4 +149,8 @@ public interface BaseConfig {
   default int getPrimitiveArraySize() {
     return 32;
   }
+
+  default String getFlushCommand() {
+    return "flush";
+  }
 }

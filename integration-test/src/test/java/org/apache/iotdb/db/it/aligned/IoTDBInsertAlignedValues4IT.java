@@ -62,8 +62,7 @@ public class IoTDBInsertAlignedValues4IT {
       statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(4,'test','test')");
       statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(5,'test','test')");
       statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(6,'test','test')");
-      // TODO we need to recover it while flush is supported in cluster mode
-      //      statement.execute("flush");
+      statement.execute(ConfigFactory.getConfig().getFlushCommand());
       statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(7,'test','test')");
     } catch (SQLException e) {
       fail();

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
 import org.junit.Before;
@@ -42,7 +41,7 @@ public class IoTDBInsertAlignedValues3IT {
     numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
     autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
     ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(4);
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(4);
     EnvFactory.getEnv().initBeforeClass();
   }
 
@@ -83,8 +82,7 @@ public class IoTDBInsertAlignedValues3IT {
                   + ")");
         }
       }
-      // TODO we need to recover it while flush is supported in cluster mode
-      //      statement.execute("flush");
+      statement.execute(ConfigFactory.getConfig().getFlushCommand());
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select S3 from root.lz.dev.GPS")) {
         while (resultSet.next()) {

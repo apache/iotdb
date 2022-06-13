@@ -191,4 +191,9 @@ public class ClusterEnvConfig implements BaseConfig {
     engineProperties.setProperty("primitive_array_size", String.valueOf(primitiveArraySize));
     return this;
   }
+
+  @Override
+  public String getFlushCommand() {
+    return "flush on cluster";
+  }
 }
