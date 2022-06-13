@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 
 import java.io.File;
+import java.util.Objects;
 
 public class SchemaRegionUtils {
 
@@ -60,6 +61,10 @@ public class SchemaRegionUtils {
       throw new MetadataException(
           String.format(
               "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
+    }
+    final File storageGroupDir = schemaRegionDir.getParentFile();
+    if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {
+      storageGroupDir.delete();
     }
   }
 

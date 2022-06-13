@@ -28,7 +28,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -68,7 +67,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -86,8 +84,6 @@ public class PartitionInfo implements SnapshotProcessor {
   // Map<StorageGroupName, StorageGroupPartitionInfo>
   private final ConcurrentHashMap<String, StorageGroupPartitionTable> storageGroupPartitionTables;
 
-  // preDeleted TODO: Combine it with Partition.class
-  private final Set<String> preDeletedStorageGroup;
   private final Set<TRegionReplicaSet> deletedRegionSet;
 
   private final String snapshotFileName = "partition_info.bin";
@@ -98,7 +94,6 @@ public class PartitionInfo implements SnapshotProcessor {
 
     // Ensure that the PartitionTables of the StorageGroups who've been logically deleted
     // are unreadable and un-writable
-    this.preDeletedStorageGroup = new CopyOnWriteArraySet<>();
     // For RegionCleaner
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
   }
@@ -167,10 +162,10 @@ public class PartitionInfo implements SnapshotProcessor {
     final String storageGroup = preDeleteStorageGroupReq.getStorageGroup();
     switch (preDeleteType) {
       case EXECUTE:
-        preDeletedStorageGroup.add(storageGroup);
+        storageGroupPartitionTables.get(storageGroup).setPredeleted(true);
         break;
       case ROLLBACK:
-        preDeletedStorageGroup.remove(storageGroup);
+        storageGroupPartitionTables.get(storageGroup).setPredeleted(false);
         break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -213,7 +208,7 @@ public class PartitionInfo implements SnapshotProcessor {
       // Return all SchemaPartitions when the queried PartitionSlots are empty
       storageGroupPartitionTables.forEach(
           (storageGroup, storageGroupPartitionTable) -> {
-            if (!preDeletedStorageGroup.contains(storageGroup)) {
+            if (!storageGroupPartitionTable.isPredeleted()) {
               schemaPartition.put(storageGroup, new ConcurrentHashMap<>());
               storageGroupPartitionTable.getSchemaPartition(
                   new ArrayList<>(), schemaPartition.get(storageGroup));
@@ -229,8 +224,7 @@ public class PartitionInfo implements SnapshotProcessor {
       req.getPartitionSlotsMap()
           .forEach(
               (storageGroup, partitionSlots) -> {
-                if (storageGroupPartitionTables.containsKey(storageGroup)
-                    && !preDeletedStorageGroup.contains(storageGroup)) {
+                if (isStorageGroupExisted(storageGroup)) {
                   schemaPartition.put(storageGroup, new ConcurrentHashMap<>());
 
                   if (!storageGroupPartitionTables
@@ -274,8 +268,7 @@ public class PartitionInfo implements SnapshotProcessor {
     req.getPartitionSlotsMap()
         .forEach(
             (storageGroup, partitionSlots) -> {
-              if (storageGroupPartitionTables.containsKey(storageGroup)
-                  && !preDeletedStorageGroup.contains(storageGroup)) {
+              if (isStorageGroupExisted(storageGroup)) {
                 dataPartition.put(storageGroup, new ConcurrentHashMap<>());
                 if (!storageGroupPartitionTables
                     .get(storageGroup)
@@ -302,6 +295,12 @@ public class PartitionInfo implements SnapshotProcessor {
     return dataPartitionResp;
   }
 
+  private boolean isStorageGroupExisted(String storageGroup) {
+    final StorageGroupPartitionTable storageGroupPartitionTable =
+        storageGroupPartitionTables.get(storageGroup);
+    return storageGroupPartitionTable != null && !storageGroupPartitionTable.isPredeleted();
+  }
+
   /**
    * Create SchemaPartition
    *
@@ -312,8 +311,7 @@ public class PartitionInfo implements SnapshotProcessor {
     req.getAssignedSchemaPartition()
         .forEach(
             (storageGroup, schemaPartitionTable) -> {
-              if (storageGroupPartitionTables.containsKey(storageGroup)
-                  && !preDeletedStorageGroup.contains(storageGroup)) {
+              if (isStorageGroupExisted(storageGroup)) {
                 storageGroupPartitionTables
                     .get(storageGroup)
                     .createSchemaPartition(schemaPartitionTable);
@@ -333,8 +331,7 @@ public class PartitionInfo implements SnapshotProcessor {
     req.getAssignedDataPartition()
         .forEach(
             (storageGroup, dataPartitionTable) -> {
-              if (storageGroupPartitionTables.containsKey(storageGroup)
-                  && !preDeletedStorageGroup.contains(storageGroup)) {
+              if (isStorageGroupExisted(storageGroup)) {
                 storageGroupPartitionTables
                     .get(storageGroup)
                     .createDataPartition(dataPartitionTable);
@@ -350,18 +347,20 @@ public class PartitionInfo implements SnapshotProcessor {
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
         new ConcurrentHashMap<>();
 
-    matchedStorageGroups.forEach(
-        storageGroup -> {
-          schemaPartitionMap.put(storageGroup, new ConcurrentHashMap<>());
-          storageGroupPartitionTables
-              .get(storageGroup)
-              .getSchemaPartition(new ArrayList<>(), schemaPartitionMap.get(storageGroup));
+    matchedStorageGroups.stream()
+        .filter(this::isStorageGroupExisted)
+        .forEach(
+            storageGroup -> {
+              schemaPartitionMap.put(storageGroup, new ConcurrentHashMap<>());
+              storageGroupPartitionTables
+                  .get(storageGroup)
+                  .getSchemaPartition(new ArrayList<>(), schemaPartitionMap.get(storageGroup));
 
-          if (schemaPartitionMap.get(storageGroup).size() == 0) {
-            // Remove empty Map
-            schemaPartitionMap.remove(storageGroup);
-          }
-        });
+              if (schemaPartitionMap.get(storageGroup).size() == 0) {
+                // Remove empty Map
+                schemaPartitionMap.remove(storageGroup);
+              }
+            });
 
     schemaNodeManagementResp.setSchemaPartition(
         new SchemaPartition(
@@ -389,8 +388,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {
-          if (storageGroupPartitionTables.containsKey(storageGroup)
-              && !preDeletedStorageGroup.contains(storageGroup)) {
+          if (isStorageGroupExisted(storageGroup)) {
             result.put(
                 storageGroup,
                 storageGroupPartitionTables
@@ -418,8 +416,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {
-          if (storageGroupPartitionTables.containsKey(storageGroup)
-              && !preDeletedStorageGroup.contains(storageGroup)) {
+          if (isStorageGroupExisted(storageGroup)) {
             result.put(
                 storageGroup,
                 storageGroupPartitionTables
@@ -457,8 +454,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public int getRegionCount(String storageGroup, TConsensusGroupType type)
       throws StorageGroupNotExistsException {
-    if (!storageGroupPartitionTables.containsKey(storageGroup)
-        || preDeletedStorageGroup.contains(storageGroup)) {
+    if (!isStorageGroupExisted(storageGroup)) {
       throw new StorageGroupNotExistsException(storageGroup);
     }
 
@@ -516,11 +512,6 @@ public class PartitionInfo implements SnapshotProcessor {
         ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), fileOutputStream);
         storageGroupPartitionTableEntry.getValue().serialize(fileOutputStream, protocol);
       }
-      // serialize preDeletedStorageGroup
-      ReadWriteIOUtils.write(preDeletedStorageGroup.size(), fileOutputStream);
-      for (String storageGroup : preDeletedStorageGroup) {
-        ReadWriteIOUtils.write(storageGroup, fileOutputStream);
-      }
       // serialize deletedRegionSet
       ReadWriteIOUtils.write(deletedRegionSet.size(), fileOutputStream);
       for (TRegionReplicaSet regionReplicaSet : deletedRegionSet) {
@@ -572,12 +563,6 @@ public class PartitionInfo implements SnapshotProcessor {
         storageGroupPartitionTable.deserialize(fileInputStream, protocol);
         storageGroupPartitionTables.put(storageGroup, storageGroupPartitionTable);
       }
-      // restore preDeletedStorageGroup
-      length = ReadWriteIOUtils.readInt(fileInputStream);
-      for (int i = 0; i < length; i++) {
-        String storageGroup = ReadWriteIOUtils.readString(fileInputStream);
-        preDeletedStorageGroup.add(storageGroup);
-      }
       // restore deletedRegionSet
       length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
@@ -591,13 +576,7 @@ public class PartitionInfo implements SnapshotProcessor {
   public void clear() {
     nextRegionGroupId.set(0);
     storageGroupPartitionTables.clear();
-    preDeletedStorageGroup.clear();
     deletedRegionSet.clear();
-  }
-
-  @TestOnly
-  public Set<String> getPreDeletedStorageGroup() {
-    return preDeletedStorageGroup;
   }
 
   @Override
@@ -606,12 +585,11 @@ public class PartitionInfo implements SnapshotProcessor {
     if (o == null || getClass() != o.getClass()) return false;
     PartitionInfo that = (PartitionInfo) o;
     return storageGroupPartitionTables.equals(that.storageGroupPartitionTables)
-        && preDeletedStorageGroup.equals(that.preDeletedStorageGroup)
         && deletedRegionSet.equals(that.deletedRegionSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupPartitionTables, preDeletedStorageGroup, deletedRegionSet);
+    return Objects.hash(storageGroupPartitionTables, deletedRegionSet);
   }
 }

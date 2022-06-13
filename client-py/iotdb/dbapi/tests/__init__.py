@@ -15,33 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-
-class TemplateNode(object):
-    """
-    Template class, this class should be used to schema template node
-    """
-
-    def __init__(self, name):
-        self.name = name
-
-    def get_name(self):
-        return self.name
-
-    def get_children(self):
-        return None
-
-    def add_child(self, node):
-        ...
-
-    def delete_child(self, node):
-        ...
-
-    def is_measurement(self):
-        return False
-
-    def is_share_time(self):
-        return False
-
-    def serialize(self, *args, **kwargs):
-        ...
