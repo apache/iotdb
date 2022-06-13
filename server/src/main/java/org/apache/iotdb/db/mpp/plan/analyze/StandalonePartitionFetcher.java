@@ -170,7 +170,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       List<PartialPath> allStorageGroups = localConfigNode.getAllStorageGroupPaths();
       for (String devicePath : devicePaths) {
         for (PartialPath storageGroup : allStorageGroups) {
-          if (PathUtils.match(devicePath, storageGroup.getFullPath())) {
+          if (PathUtils.isStartWith(devicePath, storageGroup.getFullPath())) {
             deviceToStorageGroup.put(devicePath, storageGroup.getFullPath());
           }
         }

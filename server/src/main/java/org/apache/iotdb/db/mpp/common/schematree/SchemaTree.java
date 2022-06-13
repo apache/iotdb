@@ -268,7 +268,7 @@ public class SchemaTree {
    */
   public String getBelongedStorageGroup(String pathName) {
     for (String storageGroup : storageGroups) {
-      if (PathUtils.match(pathName, storageGroup)) {
+      if (PathUtils.isStartWith(pathName, storageGroup)) {
         return storageGroup;
       }
     }

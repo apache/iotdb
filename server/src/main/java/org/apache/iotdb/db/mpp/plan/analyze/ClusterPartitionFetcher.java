@@ -461,7 +461,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         for (String devicePath : devicePaths) {
           boolean hit = false;
           for (String storageGroup : storageGroupCache) {
-            if (PathUtils.match(devicePath, storageGroup)) {
+            if (PathUtils.isStartWith(devicePath, storageGroup)) {
               deviceToStorageGroupMap.put(devicePath, storageGroup);
               hit = true;
               break;
@@ -598,7 +598,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         if (!device.contains("*")) {
           String storageGroup = null;
           for (String storageGroupName : storageGroupNames) {
-            if (PathUtils.match(device, storageGroup)) {
+            if (PathUtils.isStartWith(device, storageGroup)) {
               storageGroup = storageGroupName;
               break;
             }

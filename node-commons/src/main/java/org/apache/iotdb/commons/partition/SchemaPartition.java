@@ -70,7 +70,7 @@ public class SchemaPartition extends Partition {
 
   private String getStorageGroupByDevice(String deviceName) {
     for (String storageGroup : schemaPartitionMap.keySet()) {
-      if (PathUtils.match(deviceName, storageGroup)) {
+      if (PathUtils.isStartWith(deviceName, storageGroup)) {
         return storageGroup;
       }
     }

@@ -115,7 +115,7 @@ public class DataPartition extends Partition {
 
   private String getStorageGroupByDevice(String deviceName) {
     for (String storageGroup : dataPartitionMap.keySet()) {
-      if (PathUtils.match(deviceName, storageGroup)) {
+      if (PathUtils.isStartWith(deviceName, storageGroup)) {
         return storageGroup;
       }
     }

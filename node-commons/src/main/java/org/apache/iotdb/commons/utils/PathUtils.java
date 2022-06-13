@@ -126,7 +126,7 @@ public class PathUtils {
     }
   }
 
-  public static boolean match(String deviceName, String storageGroup) {
+  public static boolean isStartWith(String deviceName, String storageGroup) {
     return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
   }
 
