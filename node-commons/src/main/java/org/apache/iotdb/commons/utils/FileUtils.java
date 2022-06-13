@@ -57,7 +57,7 @@ public class FileUtils {
     }
   }
 
-  public static void deleteDirectoryAndParent(File folder) {
+  public static void deleteDirectoryAndEmptyParent(File folder) {
     deleteDirectory(folder);
     final File parentFolder = folder.getParentFile();
     if (parentFolder.isDirectory()
