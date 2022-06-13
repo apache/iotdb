@@ -838,7 +838,7 @@ public class TsFileProcessor {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
       if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion);
+        tsFileSyncManager.collectRealTimeDeletion(deletion, storageGroupName);
       }
     } finally {
       flushQueryLock.writeLock().unlock();

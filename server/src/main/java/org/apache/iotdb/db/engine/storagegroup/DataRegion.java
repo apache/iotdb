@@ -2376,7 +2376,7 @@ public class DataRegion {
       }
 
       if (tsFileSyncManager.isEnableSync()) {
-        tsFileSyncManager.collectRealTimeDeletion(deletion);
+        tsFileSyncManager.collectRealTimeDeletion(deletion, storageGroupName);
       }
 
       // add a record in case of rollback

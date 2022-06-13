@@ -1178,7 +1178,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     for (IMeasurementMNode leaf : allMatchedNodes) {
       if (plan.isPrefixMatch()
-          ? pathPattern.matchPrefixPath(leaf.getPartialPath())
+          ? pathPattern.prefixMatchFullPath(leaf.getPartialPath())
           : pathPattern.matchFullPath(leaf.getPartialPath())) {
         if (limit != 0 || offset != 0) {
           curOffset++;

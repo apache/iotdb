@@ -49,7 +49,7 @@ public class ExtPipeSinkWriterImpl implements IExternalPipeSinkWriter {
   }
 
   @Override
-  public synchronized void insertBoolean(String[] path, long timestamp, boolean value)
+  public void insertBoolean(String sgName, String[] path, long timestamp, boolean value)
       throws IOException {
     //== Here, handle inserted Boolean type data from IoTDB.
     //extSession.insertBoolean(...);
@@ -57,7 +57,7 @@ public class ExtPipeSinkWriterImpl implements IExternalPipeSinkWriter {
   }
 
   @Override
-  public synchronized void insertInt32(String[] path, long timestamp, int value)
+  public void insertInt32(String sgName, String[] path, long timestamp, int value)
       throws IOException {
     //== Here, handle inserted Int32 type data from IoTDB.
     //extSession.insertInt32(...);
@@ -65,72 +65,60 @@ public class ExtPipeSinkWriterImpl implements IExternalPipeSinkWriter {
   }
 
   @Override
-  public synchronized void insertInt64(String[] path, long timestamp, long value)
-      throws IOException {
+  public void insertInt64(String sgName, String[] path, long time, long value) throws IOException {
     //== Here, handle inserted Int64 type data from IoTDB.
     //...
   }
 
   @Override
-  public synchronized void insertFloat(String[] path, long timestamp, float value)
-      throws IOException {
+  public void insertFloat(String sgName, String[] path, long time, float value) throws IOException {
     //== Here, handle inserted float type data from IoTDB.
     //extSession.insertFloat(...);
     //...
   }
 
   @Override
-  public synchronized void insertDouble(String[] path, long timestamp, double value)
-      throws IOException {
+  public void insertDouble(String sgName, String[] path, long time, double value) throws IOException {
     //== Here, handle inserted double type data from IoTDB.
     //extSession.insertDouble(...);
     //...
   }
 
   @Override
-  public synchronized void insertText(String[] path, long timestamp, String value)
-      throws IOException {
+  public void insertText(String sgName, String[] path, long time, String value) throws IOException {
     //== Here, handle inserted Text type data from IoTDB.
     //extSession.insertText(...);
     //..
   }
 
   @Override
-  public synchronized void insertVector(String[] path, DataType[] dataTypes, long timestamp,
-                                        Object[] values)
-      throws IOException {
-    //== Here, handle inserted Vector type data from IoTDB.
-    //extSession.insertVector(...);
-    //...
-  }
+  public void delete(String sgName, String delPath, long startTime, long endTime) throws IOException {
 
-  @Override
-  public synchronized void delete(String[] s, long l) {
     //== Here, handle delete operation.
     //extSession.delete(...);
     //...
   }
 
-  @Override
-  public synchronized void createTimeSeries(String[] path, DataType dataType) {
-    //== Here, handle create TimeSeries operation.
-    //extSession.createTable(...);
-    //...
-  }
-
-  @Override
-  public synchronized void deleteTimeSeries(String[] path) {
-    //== Here, handle delete TimeSeries operation.
-    //extSession.deleteTable(...);
-    //...
-  }
+//  @Override
+//  public void createTimeSeries(String[] path, DataType dataType) {
+//    //== Here, handle create TimeSeries operation.
+//    //extSession.createTable(...);
+//    //...
+//  }
+//
+//  @Override
+//  public void deleteTimeSeries(String[] path) {
+//    //== Here, handle delete TimeSeries operation.
+//    //extSession.deleteTable(...);
+//    //...
+//  }
 
   /**
    * IoTDB call this method to flush data in plugin buf to external DB system, if data buf exist.
    * @throws IOException
    */
   @Override
-  public synchronized void flush() throws IOException {
+  public void flush() throws IOException {
     //extSession.flush(...);
     //...
   }
@@ -141,7 +129,7 @@ public class ExtPipeSinkWriterImpl implements IExternalPipeSinkWriter {
    * @throws IOException
    */
   @Override
-  public synchronized void close() throws IOException {
+  public void close() throws IOException {
     flush();
 
     //== Close connection to external DB system.

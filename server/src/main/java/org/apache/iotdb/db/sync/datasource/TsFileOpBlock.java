@@ -127,8 +127,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
   public TsFileOpBlock(
       String sg, String tsFileName, String modsFileName, long pipeDataSerialNumber, long beginIndex)
       throws IOException {
-    super(sg, beginIndex);
-    this.filePipeSerialNumber = pipeDataSerialNumber;
+    super(sg, pipeDataSerialNumber, beginIndex);
     this.tsFileName = tsFileName;
 
     this.modsFileName = null;
@@ -873,17 +872,6 @@ public class TsFileOpBlock extends AbstractOpBlock {
 
   @Override
   public String toString() {
-    return "storageGroup="
-        + storageGroup
-        + ", tsFileName="
-        + tsFileName
-        + ", modsFileName="
-        + modsFileName
-        + ", filePipeSerialNumber="
-        + filePipeSerialNumber
-        + ", beginIndex="
-        + beginIndex
-        + ", dataCount="
-        + dataCount;
+    return super.toString() + ", tsFileName=" + tsFileName + ", modsFileName=" + modsFileName;
   }
 }

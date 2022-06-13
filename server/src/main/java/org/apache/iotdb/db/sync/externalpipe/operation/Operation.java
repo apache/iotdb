@@ -19,20 +19,35 @@
 
 package org.apache.iotdb.db.sync.externalpipe.operation;
 
-/**
- * Operations represents changes of the server's state, including metadata changes and data changes.
- */
-public class Operation {
+/** Operation represents the data changes of the server. */
+public abstract class Operation {
+  public enum OperationType {
+    INSERT,
+    DELETE;
+  }
+
+  private OperationType operationType;
+
   private final String storageGroup;
   // The data rang is [startIndex, endIndex),
   // i.e. valid data include startIndex and not include endIndex
   private long startIndex;
   private long endIndex;
 
-  public Operation(String storageGroup, long startIndex, long endIndex) {
+  public Operation(
+      OperationType operationType, String storageGroup, long startIndex, long endIndex) {
+    this.operationType = operationType;
     this.storageGroup = storageGroup;
     this.startIndex = startIndex;
     this.endIndex = endIndex;
+  }
+
+  public OperationType getOperationType() {
+    return operationType;
+  }
+
+  public String getOperationTypeName() {
+    return operationType.name();
   }
 
   public long getStartIndex() {
@@ -49,5 +64,17 @@ public class Operation {
 
   public long getDataCount() {
     return endIndex - startIndex;
+  }
+
+  @Override
+  public String toString() {
+    return "operationType="
+        + getOperationTypeName()
+        + ", storageGroup="
+        + storageGroup
+        + ", startIndex="
+        + startIndex
+        + ", endIndex="
+        + endIndex;
   }
 }
