@@ -608,7 +608,9 @@ public class StorageEngineV2 implements IService {
   public void deleteDataRegion(DataRegionId regionId) {
     DataRegion region = dataRegionMap.remove(regionId);
     if (region != null) {
+      region.abortCompaction();
       region.syncDeleteDataFiles();
+      region.deleteFolder(systemDir);
     }
   }
 
