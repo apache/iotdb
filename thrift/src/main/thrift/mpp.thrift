@@ -256,6 +256,8 @@ service InternalService {
    * @param string:username, list<string>:roleList
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
+
+  common.TSStatus flush(common.TFlushReq req)
 }
 
 service DataBlockService {

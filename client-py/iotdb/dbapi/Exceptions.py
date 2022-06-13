@@ -17,31 +17,45 @@
 #
 
 
-class TemplateNode(object):
-    """
-    Template class, this class should be used to schema template node
-    """
+class Error(Exception):
+    pass
 
-    def __init__(self, name):
-        self.name = name
 
-    def get_name(self):
-        return self.name
+class Warning(Exception):
+    pass
 
-    def get_children(self):
-        return None
 
-    def add_child(self, node):
-        ...
+class DatabaseError(Error):
+    pass
 
-    def delete_child(self, node):
-        ...
 
-    def is_measurement(self):
-        return False
+class DataError(DatabaseError):
+    pass
 
-    def is_share_time(self):
-        return False
 
-    def serialize(self, *args, **kwargs):
-        ...
+class InterfaceError(Error):
+    pass
+
+
+class InternalError(DatabaseError):
+    pass
+
+
+class IntegrityError(DatabaseError):
+    pass
+
+
+class OperationalError(DatabaseError):
+    pass
+
+
+class ProgrammingError(DatabaseError):
+    pass
+
+
+class NotSupportedError(DatabaseError):
+    pass
+
+
+class ConnectionError(DatabaseError):
+    pass

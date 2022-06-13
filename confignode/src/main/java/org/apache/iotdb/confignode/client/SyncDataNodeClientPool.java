@@ -21,11 +21,13 @@ package org.apache.iotdb.confignode.client;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -121,6 +123,35 @@ public class SyncDataNodeClientPool {
     } catch (TException e) {
       LOGGER.error("Delete Region on DataNode {} failed", endPoint, e);
     }
+  }
+
+  public TSStatus flush(TEndPoint endPoint, TFlushReq flushReq) {
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+      status = client.flush(flushReq);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
+    } catch (TException e) {
+      LOGGER.error("flush on DataNode {} failed", endPoint, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+    return status;
+  }
+
+  public TSStatus invalidatePermissionCache(
+      TEndPoint endPoint, TInvalidatePermissionCacheReq invalidatePermissionCacheReq) {
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+      status = client.invalidatePermissionCache(invalidatePermissionCacheReq);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
+    } catch (TException e) {
+      LOGGER.error("Invalid Permission Cache on DataNode {} failed", endPoint, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+    return status;
   }
 
   // TODO: Is the ClientPool must be a singleton?

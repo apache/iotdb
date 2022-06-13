@@ -143,6 +143,7 @@ public class DataNode implements DataNodeMBean {
     return true;
   }
 
+  /** prepare iotdb and start InternalService */
   private void prepareJoinCluster() throws StartupException {
     // check iotdb server first
     StartupChecks checks = new StartupChecks().withDefaultTest();
@@ -159,6 +160,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(InternalService.getInstance());
   }
 
+  /** register DataNode with ConfigNode */
   private void joinCluster() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
@@ -238,6 +240,7 @@ public class DataNode implements DataNodeMBean {
     throw new StartupException("Cannot join the cluster.");
   }
 
+  /** register services and set up DataNode */
   private void active() throws StartupException {
     try {
       setUp();
@@ -286,8 +289,6 @@ public class DataNode implements DataNodeMBean {
 
     registerManager.register(ReceiverService.getInstance());
 
-    initProtocols();
-
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
 
@@ -313,6 +314,7 @@ public class DataNode implements DataNodeMBean {
     MetricsService.getInstance().startAllReporter();
   }
 
+  /** set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
     // init rpc service
     IoTDBDescriptor.getInstance()
@@ -321,6 +323,8 @@ public class DataNode implements DataNodeMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }
+    // init service protocols
+    initProtocols();
   }
 
   private void registerUdfServices() throws StartupException {
