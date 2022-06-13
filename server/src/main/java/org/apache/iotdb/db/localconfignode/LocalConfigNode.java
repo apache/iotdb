@@ -1038,7 +1038,8 @@ public class LocalConfigNode {
     String password = authorStatement.getPassWord();
     String newPassword = authorStatement.getNewPassword();
     Set<Integer> permissions = AuthUtils.strToPermissions(authorStatement.getPrivilegeList());
-    String nodeName = authorStatement.getNodeName().getFullPath();
+    PartialPath partialPath = authorStatement.getNodeName();
+    String nodeName = partialPath == null ? null : partialPath.getFullPath();
     switch (authorType) {
       case UPDATE_USER:
         iAuthorizer.updateUserPassword(userName, newPassword);
