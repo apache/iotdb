@@ -401,7 +401,7 @@ cursor = conn.cursor()
 ```
 + 执行简单的SQL语句
 ```python
-cursor.execute("SELECT * FROM root.*")
+cursor.execute("SELECT ** FROM root")
 for row in cursor.fetchall():
     print(row)
 ```
@@ -410,7 +410,7 @@ for row in cursor.fetchall():
 
 IoTDB DBAPI 支持pyformat风格的参数
 ```python
-cursor.execute("SELECT * FROM root.* WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
+cursor.execute("SELECT ** FROM root WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
 for row in cursor.fetchall():
     print(row)
 ```
@@ -434,6 +434,43 @@ cursor.close()
 conn.close()
 ```
 
+### IoTDB SQLAlchemy Dialect（实验性）
+IoTDB的SQLAlchemy方言主要是为了适配Apache superset而编写的，该部分仍在完善中，请勿在生产环境中使用！
+#### 元数据模型映射
+SQLAlchemy 所使用的数据模型为关系数据模型，这种数据模型通过表格来描述不同实体之间的关系。
+而 IoTDB 的数据模型为层次数据模型，通过树状结构来对数据进行组织。
+为了使 IoTDB 能够适配 SQLAlchemy 的方言，需要对 IoTDB 中原有的数据模型进行重新组织，
+把 IoTDB 的数据模型转换成 SQLAlchemy 的数据模型。
+
+IoTDB 中的元数据有：
+
+1. Storage Group：存储组
+2. Path：存储路径
+3. Entity：实体
+4. Measurement：物理量
+
+SQLAlchemy 中的元数据有：
+1. Schema：数据模式
+2. Table：数据表
+3. Column：数据列
+
+它们之间的映射关系为：
+
+| SQLAlchemy中的元数据 | IoTDB中对应的元数据                            |
+| -------------------- | ---------------------------------------------- |
+| Schema               | Storage Group                                  |
+| Table                | Path ( from storage group to entity ) + Entity |
+| Column               | Measurement                                    |
+
+#### 简单示例
+```python
+from sqlalchemy import create_engine
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+connect = engine.connect()
+result = connect.execute("SELECT ** FROM root")
+for row in result.fetchall():
+    print(row)
+```
 ## 给开发人员
 
 ### 介绍
