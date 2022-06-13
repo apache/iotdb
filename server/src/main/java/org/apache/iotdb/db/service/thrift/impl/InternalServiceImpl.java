@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -349,6 +350,11 @@ public class InternalServiceImpl implements InternalService.Iface {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
+  }
+
+  @Override
+  public TSStatus flush(TFlushReq req) throws TException {
+    return StorageEngineV2.getInstance().operatorFlush(req);
   }
 
   @Override
