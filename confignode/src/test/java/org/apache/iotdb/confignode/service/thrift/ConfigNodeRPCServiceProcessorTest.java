@@ -382,7 +382,7 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     // Test getOrCreateSchemaPartition, the result should be NOT_ENOUGH_DATANODE
     buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
-    schemaPartitionReq = new TSchemaPartitionReq(buffer);
+    schemaPartitionReq = new TSchemaPartitionReq(buffer, true);
     schemaPartitionResp = processor.getOrCreateSchemaPartition(schemaPartitionReq);
     Assert.assertEquals(
         TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(),
@@ -394,7 +394,7 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     // Test getSchemaPartition, the result should be empty
     buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
-    schemaPartitionReq = new TSchemaPartitionReq(buffer);
+    schemaPartitionReq = new TSchemaPartitionReq(buffer, true);
     schemaPartitionResp = processor.getSchemaPartition(schemaPartitionReq);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), schemaPartitionResp.getStatus().getCode());

@@ -66,7 +66,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean matchTimeseries) {
     patternTree.constructTree();
     return new SchemaPartition(
         localConfigNode.getSchemaPartition(patternTree),

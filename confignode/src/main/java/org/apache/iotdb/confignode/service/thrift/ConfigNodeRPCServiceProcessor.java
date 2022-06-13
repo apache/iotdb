@@ -259,7 +259,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     SchemaPartitionResp schemaResp =
-        (SchemaPartitionResp) configManager.getSchemaPartition(patternTree);
+        (SchemaPartitionResp) configManager.getSchemaPartition(patternTree, req.matchTimeseries);
 
     TSchemaPartitionResp resp = new TSchemaPartitionResp();
     schemaResp.convertToRpcSchemaPartitionResp(resp);

@@ -153,7 +153,7 @@ public interface Manager {
    *
    * @return SchemaPartitionDataSet
    */
-  DataSet getSchemaPartition(PathPatternTree patternTree);
+  DataSet getSchemaPartition(PathPatternTree patternTree, boolean matchTimeseries);
 
   /**
    * Get or create SchemaPartition

@@ -1015,7 +1015,7 @@ public class Analyzer {
       SchemaPartition schemaPartitionInfo;
       schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(alterTimeSeriesStatement.getPath()));
+              new PathPatternTree(alterTimeSeriesStatement.getPath()), true);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }
@@ -1140,7 +1140,7 @@ public class Analyzer {
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
+              new PathPatternTree(showTimeSeriesStatement.getPathPattern()), true);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
 
       if (showTimeSeriesStatement.isOrderByHeat()) {
@@ -1202,10 +1202,7 @@ public class Analyzer {
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(
-                  showDevicesStatement
-                      .getPathPattern()
-                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)));
+              new PathPatternTree(showDevicesStatement.getPathPattern()), false);
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(
@@ -1253,7 +1250,8 @@ public class Analyzer {
               new PathPatternTree(
                   countDevicesStatement
                       .getPartialPath()
-                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)));
+                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)),
+              false);
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.countDevicesHeader);
@@ -1268,7 +1266,7 @@ public class Analyzer {
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(countTimeSeriesStatement.getPartialPath()));
+              new PathPatternTree(countTimeSeriesStatement.getPartialPath()), true);
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.countTimeSeriesHeader);
@@ -1283,7 +1281,7 @@ public class Analyzer {
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(countLevelTimeSeriesStatement.getPartialPath()));
+              new PathPatternTree(countLevelTimeSeriesStatement.getPartialPath()), true);
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.countLevelTimeSeriesHeader);
@@ -1362,7 +1360,7 @@ public class Analyzer {
 
       PathPatternTree patternTree = new PathPatternTree(deleteDataStatement.getPathList());
 
-      SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+      SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree, true);
 
       SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, schemaPartition);
       analysis.setSchemaTree(schemaTree);
