@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -169,7 +170,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       List<PartialPath> allStorageGroups = localConfigNode.getAllStorageGroupPaths();
       for (String devicePath : devicePaths) {
         for (PartialPath storageGroup : allStorageGroups) {
-          if (devicePath.startsWith(storageGroup.getFullPath() + ".")) {
+          if (PathUtils.match(devicePath, storageGroup.getFullPath())) {
             deviceToStorageGroup.put(devicePath, storageGroup.getFullPath());
           }
         }

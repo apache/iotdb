@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -267,7 +268,7 @@ public class SchemaTree {
    */
   public String getBelongedStorageGroup(String pathName) {
     for (String storageGroup : storageGroups) {
-      if (pathName.startsWith(storageGroup + ".")) {
+      if (PathUtils.match(pathName, storageGroup)) {
         return storageGroup;
       }
     }
