@@ -157,17 +157,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Construct request using statement
-      TAuthorizerReq authorizerReq =
-          new TAuthorizerReq(
-              authorStatement.getAuthorType().ordinal(),
-              authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
-              authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
-              authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
-              authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
-              AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
-              authorStatement.getNodeName() == null
-                  ? ""
-                  : authorStatement.getNodeName().getFullPath());
+      TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
       // Get response or throw exception
@@ -210,17 +200,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Construct request using statement
-      TAuthorizerReq authorizerReq =
-          new TAuthorizerReq(
-              authorStatement.getAuthorType().ordinal(),
-              authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
-              authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
-              authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
-              authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
-              AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
-              authorStatement.getNodeName() == null
-                  ? ""
-                  : authorStatement.getNodeName().getFullPath());
+      TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
       // Send request to some API server
       authorizerResp = configNodeClient.queryPermission(authorizerReq);
       // Get response or throw exception
@@ -408,6 +388,18 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     pathPrivilege.setPrivileges(privilegeIds);
     pathPrivilege.setPath(path);
     return pathPrivilege;
+  }
+
+  private TAuthorizerReq statementToAuthorizerReq(AuthorStatement authorStatement)
+      throws AuthException {
+    return new TAuthorizerReq(
+        authorStatement.getAuthorType().ordinal(),
+        authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
+        authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
+        authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
+        authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
+        AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
+        authorStatement.getNodeName() == null ? "" : authorStatement.getNodeName().getFullPath());
   }
 
   public Cache<String, User> getUserCache() {
