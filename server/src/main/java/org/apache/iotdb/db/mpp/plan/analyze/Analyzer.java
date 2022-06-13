@@ -674,9 +674,6 @@ public class Analyzer {
       Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
           groupByLevelController.getGroupedPathMap();
       rawPathToGroupedPathMap.putAll(groupByLevelController.getRawPathToGroupedPathMap());
-      // check whether the datatype of paths which has the same output column name are consistent
-      // if not, throw a SemanticException
-      rawGroupByLevelExpressions.values().forEach(this::checkDataTypeConsistencyInGroupByLevel);
 
       Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
       ColumnPaginationController paginationController =
@@ -853,19 +850,6 @@ public class Analyzer {
         if (typeProvider.getType(expression.getExpressionString()) != checkedDataType) {
           throw new SemanticException(
               "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
-        }
-      }
-    }
-
-    /** Check datatype consistency in GROUP BY LEVEL. */
-    private void checkDataTypeConsistencyInGroupByLevel(Set<Expression> expressions) {
-      List<Expression> expressionList = new ArrayList<>(expressions);
-      TSDataType checkedDataType =
-          typeProvider.getType(expressionList.get(0).getExpressionString());
-      for (Expression expression : expressionList) {
-        if (typeProvider.getType(expression.getExpressionString()) != checkedDataType) {
-          throw new SemanticException(
-              "GROUP BY LEVEL: the data types of the same output column should be the same.");
         }
       }
     }
