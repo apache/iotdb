@@ -27,7 +27,6 @@ import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
@@ -101,6 +100,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -556,23 +556,26 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               PARTITION_FETCHER,
               SCHEMA_FETCHER);
 
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
-      TSExecuteStatementResp resp;
-      if (queryExecution.isQuery()) {
-        resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-        resp.setStatus(result.status);
-        resp.setQueryDataSet(
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
-      } else {
-        resp = RpcUtils.getTSExecuteStatementResp(result.status);
-      }
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          resp.setStatus(result.status);
+          resp.setQueryDataSet(
+              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
+        } else {
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
 
-      return resp;
+        return resp;
+      }
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSExecuteStatementResp(
@@ -610,18 +613,21 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
-      TSQueryDataSet result =
-          QueryDataSetUtils.convertTsBlockByFetchSize(
-              COORDINATOR.getQueryExecution(req.queryId), req.fetchSize);
-      boolean hasResultSet = result.bufferForTime().limit() != 0;
 
-      resp.setHasResultSet(hasResultSet);
-      resp.setQueryDataSet(result);
-      resp.setIsAlign(true);
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
+      try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
 
-      QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
-      return resp;
+        TSQueryDataSet result =
+            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize);
+        boolean hasResultSet = result.bufferForTime().limit() != 0;
 
+        resp.setHasResultSet(hasResultSet);
+        resp.setQueryDataSet(result);
+        resp.setIsAlign(true);
+
+        QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+        return resp;
+      }
     } catch (Exception e) {
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     }
@@ -1292,11 +1298,10 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   private void cleanupQueryExecution(Long queryId) {
     IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
     if (queryExecution != null) {
-      queryExecution.stopAndCleanup();
+      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+        LOGGER.info("stop and clean up");
+        queryExecution.stopAndCleanup();
+      }
     }
-  }
-
-  private QueryId genQueryId(long id) {
-    return new QueryId(String.valueOf(id));
   }
 }

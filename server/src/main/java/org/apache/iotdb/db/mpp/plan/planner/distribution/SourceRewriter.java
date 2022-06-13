@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanBuilder;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -309,7 +310,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                       AggregationStep.PARTIAL,
                       descriptor.getInputExpressions()));
             });
-
+    leafAggDescriptorList.forEach(
+        d ->
+            LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                d, analysis.getTypeProvider()));
     List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
         .forEach(
@@ -368,6 +372,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public PlanNode visitLastQueryMerge(LastQueryMergeNode node, DistributionPlanContext context) {
+    // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
+    // force every region group have a parent node even if there is only 1 child for it.
+    context.setForceAddParent(true);
     return processRawMultiChildNode(node, context);
   }
 
@@ -415,7 +422,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, seriesScanNodes) -> {
-          if (seriesScanNodes.size() == 1) {
+          if (seriesScanNodes.size() == 1 && !context.forceAddParent) {
             root.addChild(seriesScanNodes.get(0));
           } else {
             if (!addParent[0]) {
@@ -482,10 +489,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 rootAggDescriptorList.add(
                     new AggregationDescriptor(
                         descriptor.getAggregationType(),
-                        context.isRoot ? AggregationStep.FINAL : AggregationStep.PARTIAL,
+                        context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
                         descriptor.getInputExpressions()));
               });
     }
+    rootAggDescriptorList.forEach(
+        d ->
+            LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                d, analysis.getTypeProvider()));
     checkArgument(
         sources.size() > 0, "Aggregation sources should not be empty when distribution planning");
     SeriesAggregationSourceNode seed = sources.get(0);
@@ -629,6 +640,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         }
         if (keep) {
           descriptorList.add(originalDescriptor);
+          LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+              originalDescriptor, analysis.getTypeProvider());
         }
       }
       handle.setAggregationDescriptorList(descriptorList);
@@ -640,27 +653,28 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // AggregationDescriptor
       List<GroupByLevelDescriptor> descriptorList = new ArrayList<>();
       for (GroupByLevelDescriptor originalDescriptor : handle.getGroupByLevelDescriptors()) {
-        List<Expression> descriptorExpression = new ArrayList<>();
+        Set<Expression> descriptorExpressions = new HashSet<>();
         for (String childColumn : childrenOutputColumns) {
           // If this condition matched, the childColumn should come from GroupByLevelNode
           if (isAggColumnMatchExpression(childColumn, originalDescriptor.getOutputExpression())) {
-            descriptorExpression.add(originalDescriptor.getOutputExpression());
+            descriptorExpressions.add(originalDescriptor.getOutputExpression());
             continue;
           }
           for (Expression exp : originalDescriptor.getInputExpressions()) {
             if (isAggColumnMatchExpression(childColumn, exp)) {
-              descriptorExpression.add(exp);
+              descriptorExpressions.add(exp);
             }
           }
         }
-        if (descriptorExpression.size() == 0) {
+        if (descriptorExpressions.size() == 0) {
           continue;
         }
         GroupByLevelDescriptor descriptor = originalDescriptor.deepClone();
-        descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.PARTIAL);
-        descriptor.setInputExpressions(descriptorExpression);
-
+        descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
+        descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);
+        LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+            descriptor, analysis.getTypeProvider());
       }
       handle.setGroupByLevelDescriptors(descriptorList);
     }
@@ -705,7 +719,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       boolean isFinal = false;
       source
           .getAggregationDescriptorList()
-          .forEach(d -> d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL));
+          .forEach(
+              d -> {
+                d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL);
+                LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                    d, analysis.getTypeProvider());
+              });
     }
     return sources;
   }

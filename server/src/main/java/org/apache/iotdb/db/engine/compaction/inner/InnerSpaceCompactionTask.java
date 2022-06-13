@@ -202,7 +202,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
-            "{} [Compaction] Meet errors in inner space compaction.", fullStorageGroupName);
+            "{} [Compaction] Meet errors in inner space compaction.",
+            fullStorageGroupName,
+            throwable);
       }
 
       // handle exception

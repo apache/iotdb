@@ -30,14 +30,11 @@ public class SchemaCacheEntry {
 
   private final boolean isAligned;
 
-  private final String version;
-
   private volatile ILastCacheContainer lastCacheContainer = null;
 
-  SchemaCacheEntry(MeasurementSchema measurementSchema, boolean isAligned, String version) {
+  SchemaCacheEntry(MeasurementSchema measurementSchema, boolean isAligned) {
     this.measurementSchema = measurementSchema;
     this.isAligned = isAligned;
-    this.version = version;
   }
 
   public String getSchemaEntryId() {
@@ -54,10 +51,6 @@ public class SchemaCacheEntry {
 
   public boolean isAligned() {
     return isAligned;
-  }
-
-  public String getVersion() {
-    return version;
   }
 
   public ILastCacheContainer getLastCacheContainer() {

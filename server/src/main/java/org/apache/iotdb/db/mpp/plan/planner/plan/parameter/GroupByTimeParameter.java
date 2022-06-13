@@ -22,12 +22,17 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
-
-/** The parameter of `GROUP BY TIME` */
+/**
+ * The parameter of `GROUP BY TIME`.
+ *
+ * <p>Remember: interval and slidingStep is always in timestamp unit before transforming to
+ * timeRangeIterator even if it's by month unit.
+ */
 public class GroupByTimeParameter {
 
   // [startTime, endTime)
@@ -138,9 +143,7 @@ public class GroupByTimeParameter {
   }
 
   public boolean hasOverlap() {
-    long tmpInterval = isIntervalByMonth ? interval * MS_TO_MONTH : interval;
-    long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
-    return tmpInterval > tmpSlidingStep;
+    return interval > slidingStep;
   }
 
   public void serialize(ByteBuffer buffer) {
@@ -151,6 +154,16 @@ public class GroupByTimeParameter {
     ReadWriteIOUtils.write(isIntervalByMonth, buffer);
     ReadWriteIOUtils.write(isSlidingStepByMonth, buffer);
     ReadWriteIOUtils.write(leftCRightO, buffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(startTime, stream);
+    ReadWriteIOUtils.write(endTime, stream);
+    ReadWriteIOUtils.write(interval, stream);
+    ReadWriteIOUtils.write(slidingStep, stream);
+    ReadWriteIOUtils.write(isIntervalByMonth, stream);
+    ReadWriteIOUtils.write(isSlidingStepByMonth, stream);
+    ReadWriteIOUtils.write(leftCRightO, stream);
   }
 
   public static GroupByTimeParameter deserialize(ByteBuffer buffer) {

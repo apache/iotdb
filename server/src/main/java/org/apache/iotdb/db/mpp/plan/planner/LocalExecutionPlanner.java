@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -178,6 +179,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
+import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -349,8 +351,10 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitSchemaQueryOrderByHeat(
         SchemaQueryOrderByHeatNode node, LocalExecutionPlanContext context) {
-      Operator left = node.getLeft().accept(this, context);
-      Operator right = node.getRight().accept(this, context);
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
 
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
@@ -358,7 +362,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SchemaQueryOrderByHeatOperator.class.getSimpleName());
 
-      return new SchemaQueryOrderByHeatOperator(operatorContext, left, right);
+      return new SchemaQueryOrderByHeatOperator(operatorContext, children);
     }
 
     @Override
@@ -825,21 +829,16 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (GroupByLevelDescriptor descriptor : node.getGroupByLevelDescriptors()) {
-        List<String> inputColumnNames = descriptor.getInputColumnNames();
-        List<InputLocation[]> inputLocationList = new ArrayList<>(inputColumnNames.size());
-        inputColumnNames.forEach(
-            inputColumnName ->
-                inputLocationList.add(layout.get(inputColumnName).toArray(new InputLocation[0])));
-
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+        TSDataType seriesDataType =
+            context
+                .getTypeProvider()
+                // get the type of first inputExpression
+                .getType(descriptor.getInputExpressions().get(0).getExpressionString());
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
-                    descriptor.getAggregationType(),
-                    context
-                        .getTypeProvider()
-                        // get the type of first inputExpression
-                        .getType(descriptor.getInputExpressions().get(0).toString()),
-                    ascending),
+                    descriptor.getAggregationType(), seriesDataType, ascending),
                 descriptor.getStep(),
                 inputLocationList));
       }
@@ -849,7 +848,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               AggregationOperator.class.getSimpleName());
       return new AggregationOperator(
-          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter(), false);
     }
 
     @Override
@@ -909,8 +908,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitRowBasedSeriesAggregate(
-        AggregationNode node, LocalExecutionPlanContext context) {
+    public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
       checkArgument(
           node.getAggregationDescriptorList().size() >= 1,
           "Aggregation descriptorList cannot be empty");
@@ -956,26 +954,33 @@ public class LocalExecutionPlanner {
                 node.getPlanNodeId(),
                 AggregationOperator.class.getSimpleName());
         return new AggregationOperator(
-            operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+            operatorContext,
+            aggregators,
+            children,
+            ascending,
+            node.getGroupByTimeParameter(),
+            true);
       }
     }
 
     private List<InputLocation[]> calcInputLocationList(
         AggregationDescriptor descriptor, Map<String, List<InputLocation>> layout) {
-      List<String> inputColumnNames = descriptor.getInputColumnNames();
-      // it may include double parts
-      List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
-      inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
-
+      List<List<String>> inputColumnNames = descriptor.getInputColumnNamesList();
       List<InputLocation[]> inputLocationList = new ArrayList<>();
-      for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-        if (inputColumnNames.size() == 1) {
-          inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
-        } else {
-          inputLocationList.add(
-              new InputLocation[] {
-                inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
-              });
+
+      for (List<String> inputColumnNamesOfOneInput : inputColumnNames) {
+        // it may include double parts
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>();
+        inputColumnNamesOfOneInput.forEach(o -> inputLocationParts.add(layout.get(o)));
+        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+          if (inputColumnNamesOfOneInput.size() == 1) {
+            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+                });
+          }
         }
       }
       return inputLocationList;
@@ -1047,17 +1052,24 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SeriesScanOperator.class.getSimpleName());
+              ExchangeOperator.class.getSimpleName());
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
 
+      TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
       ISourceHandle sourceHandle =
-          DATA_BLOCK_MANAGER.createSourceHandle(
-              localInstanceId.toThrift(),
-              node.getPlanNodeId().getId(),
-              node.getUpstreamEndpoint(),
-              remoteInstanceId.toThrift(),
-              context.instanceContext::failed);
+          isSameNode(upstreamEndPoint)
+              ? DATA_BLOCK_MANAGER.createLocalSourceHandle(
+                  localInstanceId.toThrift(),
+                  node.getPlanNodeId().getId(),
+                  remoteInstanceId.toThrift(),
+                  context.instanceContext::failed)
+              : DATA_BLOCK_MANAGER.createSourceHandle(
+                  localInstanceId.toThrift(),
+                  node.getPlanNodeId().getId(),
+                  upstreamEndPoint,
+                  remoteInstanceId.toThrift(),
+                  context.instanceContext::failed);
       return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     }
 
@@ -1067,13 +1079,23 @@ public class LocalExecutionPlanner {
 
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
+      TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
+
+      checkArgument(DATA_BLOCK_MANAGER != null, "DATA_BLOCK_MANAGER should not be null");
+
       ISinkHandle sinkHandle =
-          DATA_BLOCK_MANAGER.createSinkHandle(
-              localInstanceId.toThrift(),
-              node.getDownStreamEndpoint(),
-              targetInstanceId.toThrift(),
-              node.getDownStreamPlanNodeId().getId(),
-              context.instanceContext);
+          isSameNode(downStreamEndPoint)
+              ? DATA_BLOCK_MANAGER.createLocalSinkHandle(
+                  localInstanceId.toThrift(),
+                  targetInstanceId.toThrift(),
+                  node.getDownStreamPlanNodeId().getId(),
+                  context.instanceContext)
+              : DATA_BLOCK_MANAGER.createSinkHandle(
+                  localInstanceId.toThrift(),
+                  downStreamEndPoint,
+                  targetInstanceId.toThrift(),
+                  node.getDownStreamPlanNodeId().getId(),
+                  context.instanceContext);
       context.setSinkHandle(sinkHandle);
       return child;
     }

@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -56,10 +55,10 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -259,15 +258,6 @@ public class ConfigManager implements Manager {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
-      for (Map.Entry<String, TStorageGroupSchema> storageGroupSchemaEntry :
-          deleteStorageSchemaMap.entrySet()) {
-        String sgName = storageGroupSchemaEntry.getKey();
-        TStorageGroupSchema deleteStorageSchema = storageGroupSchemaEntry.getValue();
-        deleteStorageSchema.setSchemaRegionGroupIds(
-            getClusterSchemaManager().getRegionGroupIds(sgName, TConsensusGroupType.SchemaRegion));
-        deleteStorageSchema.setDataRegionGroupIds(
-            getClusterSchemaManager().getRegionGroupIds(sgName, TConsensusGroupType.DataRegion));
-      }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
           new ArrayList<>(deleteStorageSchemaMap.values());
       return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);
@@ -484,20 +474,20 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus operatePermission(ConfigRequest configRequest) {
+  public TSStatus operatePermission(AuthorReq authorReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.operatePermission((AuthorReq) configRequest);
+      return permissionManager.operatePermission(authorReq);
     } else {
       return status;
     }
   }
 
   @Override
-  public DataSet queryPermission(ConfigRequest configRequest) {
+  public DataSet queryPermission(AuthorReq authorReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.queryPermission((AuthorReq) configRequest);
+      return permissionManager.queryPermission(authorReq);
     } else {
       PermissionInfoResp dataSet = new PermissionInfoResp();
       dataSet.setStatus(status);
@@ -511,9 +501,9 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.login(username, password);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 
@@ -524,9 +514,9 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
-      TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(status);
-      return permissionInfoResp;
+      TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 
@@ -627,5 +617,22 @@ public class ConfigManager implements Manager {
 
   public ProcedureManager getProcedureManager() {
     return procedureManager;
+  }
+
+  /**
+   * @param storageGroups the storage groups to check
+   * @return List of PartialPath the storage groups that not exist
+   */
+  public List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
+    List<PartialPath> noExistSg = new ArrayList<>();
+    if (storageGroups == null) {
+      return noExistSg;
+    }
+    for (PartialPath storageGroup : storageGroups) {
+      if (!clusterSchemaManager.getStorageGroupNames().contains(storageGroup.toString())) {
+        noExistSg.add(storageGroup);
+      }
+    }
+    return noExistSg;
   }
 }

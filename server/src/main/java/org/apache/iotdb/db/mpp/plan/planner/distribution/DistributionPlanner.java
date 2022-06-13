@@ -125,7 +125,7 @@ public class DistributionPlanner {
   }
 
   private PlanFragmentId getNextFragmentId() {
-    return new PlanFragmentId(this.logicalPlan.getContext().getQueryId(), this.planFragmentIndex++);
+    return this.logicalPlan.getContext().getQueryId().genPlanFragmentId();
   }
 
   private class FragmentBuilder {

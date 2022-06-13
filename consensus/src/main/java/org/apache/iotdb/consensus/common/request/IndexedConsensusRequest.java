@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.consensus.common.request;
 
-import org.apache.iotdb.consensus.multileader.thrift.TLogType;
-
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -32,22 +30,18 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   private final long safelyDeletedSearchIndex;
 
-  /** we do not need to serialize this field as it will be serialized by TLogBatch. */
-  private final TLogType type;
-
   private final IConsensusRequest request;
 
   public IndexedConsensusRequest(
-      long searchIndex, long safelyDeletedSearchIndex, TLogType type, IConsensusRequest request) {
+      long searchIndex, long safelyDeletedSearchIndex, IConsensusRequest request) {
     this.searchIndex = searchIndex;
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
-    this.type = type;
     this.request = request;
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    request.serializeRequest(buffer);
+  public ByteBuffer serializeToByteBuffer() {
+    return request.serializeToByteBuffer();
   }
 
   public IConsensusRequest getRequest() {
@@ -62,10 +56,6 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return safelyDeletedSearchIndex;
   }
 
-  public TLogType getType() {
-    return type;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -77,12 +67,11 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     IndexedConsensusRequest that = (IndexedConsensusRequest) o;
     return searchIndex == that.searchIndex
         && safelyDeletedSearchIndex == that.safelyDeletedSearchIndex
-        && type == that.type
         && Objects.equals(request, that.request);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(searchIndex, safelyDeletedSearchIndex, type, request);
+    return Objects.hash(searchIndex, safelyDeletedSearchIndex, request);
   }
 }

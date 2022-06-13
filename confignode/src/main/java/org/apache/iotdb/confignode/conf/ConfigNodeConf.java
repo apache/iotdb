@@ -59,10 +59,10 @@ public class ConfigNodeConf {
   private final String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.MultiLeaderConsensus;
 
   /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -121,16 +121,10 @@ public class ConfigNodeConf {
   private long timePartitionInterval = 604800;
 
   /** Default number of SchemaRegion replicas */
-  private int schemaReplicationFactor = 3;
+  private int schemaReplicationFactor = 1;
 
   /** Default number of DataRegion replicas */
-  private int dataReplicationFactor = 3;
-
-  /** The maximum number of SchemaRegions of each StorageGroup */
-  private int maximumSchemaRegionCount = 4;
-
-  /** The maximum number of DataRegions of each StorageGroup */
-  private int maximumDataRegionCount = 20;
+  private int dataReplicationFactor = 1;
 
   /** Procedure Evict ttl */
   private int procedureCompletedEvictTTL = 800;
@@ -391,22 +385,6 @@ public class ConfigNodeConf {
 
   public void setDataReplicationFactor(int dataReplicationFactor) {
     this.dataReplicationFactor = dataReplicationFactor;
-  }
-
-  public int getMaximumSchemaRegionCount() {
-    return maximumSchemaRegionCount;
-  }
-
-  public void setMaximumSchemaRegionCount(int maximumSchemaRegionCount) {
-    this.maximumSchemaRegionCount = maximumSchemaRegionCount;
-  }
-
-  public int getMaximumDataRegionCount() {
-    return maximumDataRegionCount;
-  }
-
-  public void setMaximumDataRegionCount(int maximumDataRegionCount) {
-    this.maximumDataRegionCount = maximumDataRegionCount;
   }
 
   public int getProcedureCompletedEvictTTL() {

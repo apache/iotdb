@@ -55,13 +55,13 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public TsBlock receive() {
+  public synchronized TsBlock receive() {
     hasNext = false;
     return result;
   }
 
   @Override
-  public boolean isFinished() {
+  public synchronized boolean isFinished() {
     return !hasNext;
   }
 

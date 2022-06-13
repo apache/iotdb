@@ -20,10 +20,12 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -60,11 +62,11 @@ public class ProcedureWAL {
     Files.deleteIfExists(walTmpPath);
     Files.createFile(walTmpPath);
     try (FileOutputStream fos = new FileOutputStream(walTmp);
-        FileChannel channel = fos.getChannel()) {
-      ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);
-      procedure.serialize(byteBuffer);
-      byteBuffer.flip();
-      channel.write(byteBuffer);
+        FileChannel channel = fos.getChannel();
+        PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream dataOutputStream = new DataOutputStream(publicBAOS)) {
+      procedure.serialize(dataOutputStream);
+      channel.write(ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size()));
     }
     Files.deleteIfExists(walFilePath);
     Files.move(walTmpPath, walFilePath);

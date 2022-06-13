@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -120,13 +122,21 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   public String toString() {
     return String.format(
         "AlignedLastQueryScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getSeriesPath(), this.getRegionReplicaSet());
+        this.getPlanNodeId(),
+        this.getSeriesPath().getFormattedString(),
+        this.getRegionReplicaSet());
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(stream);
+    seriesPath.serialize(stream);
   }
 
   public static AlignedLastQueryScanNode deserialize(ByteBuffer byteBuffer) {

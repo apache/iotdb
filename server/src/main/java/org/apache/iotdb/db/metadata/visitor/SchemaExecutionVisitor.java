@@ -21,12 +21,9 @@ package org.apache.iotdb.db.metadata.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -57,7 +54,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
       PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
-      schemaRegion.createTimeseries((CreateTimeSeriesPlan) plan, -1, node.getVersion());
+      schemaRegion.createTimeseries((CreateTimeSeriesPlan) plan, -1);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -70,8 +67,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       CreateAlignedTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
       PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
-      schemaRegion.createAlignedTimeSeries(
-          (CreateAlignedTimeSeriesPlan) plan, node.getVersionList());
+      schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) plan);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -112,7 +108,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
                     ? null
                     : measurementGroup.getAliasList().get(i));
         try {
-          schemaRegion.createTimeseries(plan, -1, measurementGroup.getVersionList().get(i));
+          schemaRegion.createTimeseries(plan, -1);
         } catch (MetadataException e) {
           logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
           failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -200,17 +196,6 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           node.getTagsList(),
           node.getAttributesList());
     }
-  }
-
-  @Override
-  public TSStatus visitDeleteRegion(DeleteRegionNode node, ISchemaRegion schemaRegion) {
-    try {
-      SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) node.getConsensusGroupId());
-    } catch (MetadataException e) {
-      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
 
   private static class TransformerContext {}

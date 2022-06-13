@@ -52,6 +52,7 @@ public class MetaFormatUtils {
     }
     for (String name : timeseries.getNodes()) {
       try {
+        checkNameFormat(name);
         checkReservedNames(name);
       } catch (MetadataException e) {
         throw new IllegalPathException(timeseries.getFullPath(), e.getMessage());
@@ -59,9 +60,10 @@ public class MetaFormatUtils {
     }
   }
 
-  /** check whether the node name uses "." correctly */
+  /** check whether the node name uses "." or "*" correctly */
   private static void checkNameFormat(String name) throws MetadataException {
-    if (!((name.startsWith("`") && name.endsWith("`"))) && name.contains(".")) {
+    if (!((name.startsWith("`") && name.endsWith("`")))
+        && (name.contains(".") || name.contains("*"))) {
       throw new MetadataException(String.format("%s is an illegal name.", name));
     }
   }

@@ -164,11 +164,11 @@ public class IoTDBConfig {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
   };
 
-  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private volatile long fsyncWalDelayInMs = 10;
-
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
+
+  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
+  private volatile long fsyncWalDelayInMs = 3;
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 16 * 1024 * 1024;
@@ -177,7 +177,7 @@ public class IoTDBConfig {
   private int walBufferEntrySize = 16 * 1024;
 
   /** Blocking queue capacity of each wal buffer */
-  private int walBufferQueueCapacity = 10_000;
+  private int walBufferQueueCapacity = 50;
 
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
@@ -1490,20 +1490,20 @@ public class IoTDBConfig {
     this.walDirs = walDirs;
   }
 
-  public long getFsyncWalDelayInMs() {
-    return fsyncWalDelayInMs;
-  }
-
-  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
-    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
-  }
-
   public int getMaxWalNodesNum() {
     return maxWalNodesNum;
   }
 
   void setMaxWalNodesNum(int maxWalNodesNum) {
     this.maxWalNodesNum = maxWalNodesNum;
+  }
+
+  public long getFsyncWalDelayInMs() {
+    return fsyncWalDelayInMs;
+  }
+
+  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
+    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
   }
 
   public int getWalBufferSize() {

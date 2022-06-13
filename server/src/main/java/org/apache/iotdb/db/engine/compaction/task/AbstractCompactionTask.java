@@ -81,8 +81,8 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
       LOGGER.error("{} [Compaction] Running compaction task failed", fullStorageGroupName, e);
     } finally {
       this.currentTaskNum.decrementAndGet();
-      CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       timeCost = System.currentTimeMillis() - startTime;
+      CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       finished = true;
     }
     return new CompactionTaskSummary(isSuccess);

@@ -25,6 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
@@ -41,8 +44,11 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.TimeoutException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -52,8 +58,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -79,245 +83,13 @@ public class PartitionManager {
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
-    regionCleaner.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        regionCleaner,
         this::clearDeletedRegions,
         REGION_CLEANER_WORK_INITIAL_DELAY,
         REGION_CLEANER_WORK_INTERVAL,
         TimeUnit.SECONDS);
     setSeriesPartitionExecutor();
-  }
-
-  public ScheduledExecutorService getRegionCleaner() {
-    return regionCleaner;
-  }
-
-  /**
-   * Get SchemaPartition
-   *
-   * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
-   * @return SchemaPartitionDataSet that contains only existing SchemaPartition
-   */
-  public DataSet getSchemaPartition(GetSchemaPartitionReq physicalPlan) {
-    SchemaPartitionResp schemaPartitionResp;
-    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-    schemaPartitionResp = (SchemaPartitionResp) consensusReadResponse.getDataset();
-    return schemaPartitionResp;
-  }
-
-  /**
-   * Get SchemaPartition and create a new one if it does not exist
-   *
-   * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
-   * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   */
-  public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionReq physicalPlan) {
-    Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlots =
-        partitionInfo.filterNoAssignedSchemaPartitionSlots(physicalPlan.getPartitionSlotsMap());
-
-    if (noAssignedSchemaPartitionSlots.size() > 0) {
-
-      // Make sure each StorageGroup has at least one SchemaRegion
-      try {
-        checkAndAllocateRegionsIfNecessary(
-            new ArrayList<>(noAssignedSchemaPartitionSlots.keySet()),
-            TConsensusGroupType.SchemaRegion);
-      } catch (NotEnoughDataNodeException e) {
-        SchemaPartitionResp resp = new SchemaPartitionResp();
-        resp.setStatus(new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode()));
-        return resp;
-      }
-
-      // Allocate SchemaPartition
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
-          allocateSchemaPartition(noAssignedSchemaPartitionSlots);
-
-      // Persist SchemaPartition
-      CreateSchemaPartitionReq createPlan = new CreateSchemaPartitionReq();
-      createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
-      getConsensusManager().write(createPlan);
-
-      // TODO: Allocate more Regions if necessary
-    }
-
-    return getSchemaPartition(physicalPlan);
-  }
-
-  /**
-   * TODO: allocate schema partition by LoadManager
-   *
-   * @param noAssignedSchemaPartitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
-   * @return assign result, Map<StorageGroupName, Map<SeriesPartitionSlot, RegionReplicaSet>>
-   */
-  private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlotsMap) {
-
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap =
-        partitionInfo.getRegionReplicaMap();
-
-    for (String storageGroup : noAssignedSchemaPartitionSlotsMap.keySet()) {
-
-      List<TSeriesPartitionSlot> noAssignedPartitionSlots =
-          noAssignedSchemaPartitionSlotsMap.get(storageGroup);
-      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
-      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
-          partitionInfo.getSortedRegionSlotsCounter(
-              getClusterSchemaManager()
-                  .getRegionGroupIds(storageGroup, TConsensusGroupType.SchemaRegion));
-
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> allocateResult = new HashMap<>();
-      for (TSeriesPartitionSlot seriesPartitionSlot : noAssignedPartitionSlots) {
-        // Do greedy allocation
-        Pair<Long, TConsensusGroupId> bestRegion = regionSlotsCounter.get(0);
-        allocateResult.put(seriesPartitionSlot, regionReplicaMap.get(bestRegion.getRight()));
-
-        // Bubble sort
-        int index = 0;
-        regionSlotsCounter.set(0, new Pair<>(bestRegion.getLeft() + 1, bestRegion.getRight()));
-        while (index < regionSlotsCounter.size() - 1
-            && regionSlotsCounter.get(index).getLeft()
-                > regionSlotsCounter.get(index + 1).getLeft()) {
-          Collections.swap(regionSlotsCounter, index, index + 1);
-          index += 1;
-        }
-      }
-
-      result.put(storageGroup, allocateResult);
-    }
-
-    return result;
-  }
-
-  /**
-   * Get DataPartition
-   *
-   * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return DataPartitionDataSet that contains only existing DataPartition
-   */
-  public DataSet getDataPartition(GetDataPartitionReq physicalPlan) {
-    DataPartitionResp dataPartitionResp;
-    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-    dataPartitionResp = (DataPartitionResp) consensusReadResponse.getDataset();
-    return dataPartitionResp;
-  }
-
-  /**
-   * Get DataPartition and create a new one if it does not exist
-   *
-   * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   */
-  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq physicalPlan) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> noAssignedDataPartitionSlots =
-        partitionInfo.filterNoAssignedDataPartitionSlots(physicalPlan.getPartitionSlotsMap());
-
-    if (noAssignedDataPartitionSlots.size() > 0) {
-
-      // Make sure each StorageGroup has at least one DataRegion
-      try {
-        checkAndAllocateRegionsIfNecessary(
-            new ArrayList<>(noAssignedDataPartitionSlots.keySet()), TConsensusGroupType.DataRegion);
-      } catch (NotEnoughDataNodeException e) {
-        DataPartitionResp resp = new DataPartitionResp();
-        resp.setStatus(new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode()));
-        return resp;
-      }
-
-      // Allocate DataPartition
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          assignedDataPartition = allocateDataPartition(noAssignedDataPartitionSlots);
-
-      // Persist DataPartition
-      CreateDataPartitionReq createPlan = new CreateDataPartitionReq();
-      createPlan.setAssignedDataPartition(assignedDataPartition);
-      getConsensusManager().write(createPlan);
-
-      // TODO: Allocate more Regions if necessary
-    }
-
-    return getDataPartition(physicalPlan);
-  }
-
-  /**
-   * TODO: allocate by LoadManager
-   *
-   * @param noAssignedDataPartitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return assign result, Map<StorageGroupName, Map<SeriesPartitionSlot, Map<TimePartitionSlot,
-   *     List<RegionReplicaSet>>>>
-   */
-  private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-      allocateDataPartition(
-          Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-              noAssignedDataPartitionSlotsMap) {
-
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        result = new HashMap<>();
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap =
-        partitionInfo.getRegionReplicaMap();
-
-    for (String storageGroup : noAssignedDataPartitionSlotsMap.keySet()) {
-
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> noAssignedPartitionSlotsMap =
-          noAssignedDataPartitionSlotsMap.get(storageGroup);
-      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
-      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
-          partitionInfo.getSortedRegionSlotsCounter(
-              getClusterSchemaManager()
-                  .getRegionGroupIds(storageGroup, TConsensusGroupType.DataRegion));
-
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> allocateResult =
-          new HashMap<>();
-      for (Map.Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesPartitionEntry :
-          noAssignedPartitionSlotsMap.entrySet()) {
-        allocateResult.put(seriesPartitionEntry.getKey(), new HashMap<>());
-        for (TTimePartitionSlot timePartitionSlot : seriesPartitionEntry.getValue()) {
-
-          // Do greedy allocation
-          Pair<Long, TConsensusGroupId> bestRegion = regionSlotsCounter.get(0);
-          allocateResult
-              .get(seriesPartitionEntry.getKey())
-              .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
-              .add(regionReplicaMap.get(bestRegion.getRight()));
-
-          // Bubble sort
-          int index = 0;
-          regionSlotsCounter.set(0, new Pair<>(bestRegion.getLeft() + 1, bestRegion.getRight()));
-          while (index < regionSlotsCounter.size() - 1
-              && regionSlotsCounter.get(index).getLeft()
-                  > regionSlotsCounter.get(index + 1).getLeft()) {
-            Collections.swap(regionSlotsCounter, index, index + 1);
-            index += 1;
-          }
-        }
-      }
-
-      result.put(storageGroup, allocateResult);
-    }
-    return result;
-  }
-
-  private void checkAndAllocateRegionsIfNecessary(
-      List<String> storageGroups, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException {
-    List<String> storageGroupWithoutRegion = new ArrayList<>();
-    for (String storageGroup : storageGroups) {
-      List<TConsensusGroupId> groupIds =
-          getClusterSchemaManager().getRegionGroupIds(storageGroup, consensusGroupType);
-      if (groupIds.size() == 0) {
-        storageGroupWithoutRegion.add(storageGroup);
-      }
-    }
-    getLoadManager().initializeRegions(storageGroupWithoutRegion, consensusGroupType);
-  }
-
-  /** Get all allocated RegionReplicaSets */
-  public List<TRegionReplicaSet> getAllocatedRegions() {
-    return partitionInfo.getAllocatedRegions();
   }
 
   /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
@@ -328,33 +100,313 @@ public class PartitionManager {
             conf.getSeriesPartitionExecutorClass(), conf.getSeriesPartitionSlotNum());
   }
 
+  // ======================================================
+  // Consensus read/write interfaces
+  // ======================================================
+
   /**
-   * Get TSeriesPartitionSlot
+   * Thread-safely get SchemaPartition
    *
-   * @param devicePath Full path ending with device name
-   * @return SeriesPartitionSlot
+   * @param req SchemaPartitionPlan with partitionSlotsMap
+   * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
-    return executor.getSeriesPartitionSlot(devicePath);
+  public DataSet getSchemaPartition(GetSchemaPartitionReq req) {
+    return getConsensusManager().read(req).getDataset();
+  }
+
+  /**
+   * Thread-safely get DataPartition
+   *
+   * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
+   *     List<TimePartitionSlot>>>
+   * @return DataPartitionDataSet that contains only existing DataPartition
+   */
+  public DataSet getDataPartition(GetDataPartitionReq req) {
+    return getConsensusManager().read(req).getDataset();
+  }
+
+  /**
+   * Get SchemaPartition and create a new one if it does not exist
+   *
+   * @param req SchemaPartitionPlan with partitionSlotsMap
+   * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
+   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
+   *     StorageGroup doesn't exist.
+   */
+  public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionReq req) {
+    // After all the SchemaPartitions are allocated,
+    // all the read requests about SchemaPartitionTable are parallel.
+    SchemaPartitionResp resp = (SchemaPartitionResp) getSchemaPartition(req);
+    if (resp.isAllPartitionsExist()) {
+      return resp;
+    }
+
+    // Otherwise, fist ensure that each StorageGroup has at least one SchemaRegion.
+    // This block of code is still parallel and concurrent safe.
+    // Thus, we can prepare the SchemaRegions with maximum efficiency.
+    try {
+      checkAndAllocateRegionsIfNecessary(
+          new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.SchemaRegion);
+    } catch (NotEnoughDataNodeException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because there are not enough DataNodes"));
+      return resp;
+    } catch (TimeoutException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.TIME_OUT.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout."));
+      return resp;
+    } catch (StorageGroupNotExistsException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist."));
+      return resp;
+    }
+
+    // Next, we serialize the creation process of SchemaPartitions to
+    // ensure that each SchemaPartition is created by a unique CreateSchemaPartitionReq.
+    // Because the number of SchemaPartitions per storage group is limited by the number of
+    // SeriesPartitionSlots,
+    // the number of serialized CreateSchemaPartitionReqs is acceptable.
+    synchronized (this) {
+      // Filter unassigned SchemaPartitionSlots
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlots =
+          partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
+      if (unassignedSchemaPartitionSlots.size() > 0) {
+        // Allocate SchemaPartitions
+        Map<String, SchemaPartitionTable> assignedSchemaPartition =
+            getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlots);
+        // Cache allocating result
+        CreateSchemaPartitionReq createPlan = new CreateSchemaPartitionReq();
+        createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
+        getConsensusManager().write(createPlan);
+      }
+    }
+
+    // TODO: Allocate more SchemaRegions if necessary
+
+    return getSchemaPartition(req);
+  }
+
+  /**
+   * Get DataPartition and create a new one if it does not exist
+   *
+   * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
+   *     List<TimePartitionSlot>>>
+   * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
+   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
+   *     StorageGroup doesn't exist.
+   */
+  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq req) {
+    // After all the SchemaPartitions are allocated,
+    // all the read requests about SchemaPartitionTable are parallel.
+    DataPartitionResp resp = (DataPartitionResp) getDataPartition(req);
+    if (resp.isAllPartitionsExist()) {
+      return resp;
+    }
+
+    // Otherwise, fist ensure that each StorageGroup has at least one DataRegion.
+    // This block of code is still parallel and concurrent safe.
+    // Thus, we can prepare the DataRegions with maximum efficiency.
+    try {
+      checkAndAllocateRegionsIfNecessary(
+          new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.DataRegion);
+    } catch (NotEnoughDataNodeException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because there are not enough DataNodes"));
+      return resp;
+    } catch (TimeoutException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.TIME_OUT.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because waiting for another thread's Region allocation timeout."));
+      return resp;
+    } catch (StorageGroupNotExistsException e) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage(
+                  "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist."));
+      return resp;
+    }
+
+    // Next, we serialize the creation process of DataPartitions to
+    // ensure that each DataPartition is created by a unique CreateDataPartitionReq.
+    // Because the number of DataPartitions per storage group per day is limited by the number of
+    // SeriesPartitionSlots,
+    // the number of serialized CreateDataPartitionReqs is acceptable.
+    synchronized (this) {
+      // Filter unassigned DataPartitionSlots
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+          unassignedDataPartitionSlots =
+              partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
+      if (unassignedDataPartitionSlots.size() > 0) {
+        // Allocate DataPartitions
+        Map<String, DataPartitionTable> assignedDataPartition =
+            getLoadManager().allocateDataPartition(unassignedDataPartitionSlots);
+        // Cache allocating result
+        CreateDataPartitionReq createPlan = new CreateDataPartitionReq();
+        createPlan.setAssignedDataPartition(assignedDataPartition);
+        getConsensusManager().write(createPlan);
+      }
+    }
+
+    // TODO: Allocate more Regions if necessary
+
+    return getDataPartition(req);
+  }
+
+  /**
+   * Check whether each StorageGroup already has a Region of the specified type, and allocate one
+   * Region for each StorageGroup who doesn't have any.
+   *
+   * @param storageGroups List<StorageGroupName>
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @throws NotEnoughDataNodeException When the number of online DataNodes are too small to
+   *     allocate Regions
+   * @throws TimeoutException When waiting other threads to allocate Regions for too long
+   * @throws StorageGroupNotExistsException When some StorageGroups don't exist
+   */
+  private void checkAndAllocateRegionsIfNecessary(
+      List<String> storageGroups, TConsensusGroupType consensusGroupType)
+      throws NotEnoughDataNodeException, TimeoutException, StorageGroupNotExistsException {
+
+    int leastDataNode = 0;
+    List<String> unreadyStorageGroups = new ArrayList<>();
+    for (String storageGroup : storageGroups) {
+      if (getRegionCount(storageGroup, consensusGroupType) == 0) {
+        // Update leastDataNode
+        TStorageGroupSchema storageGroupSchema =
+            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
+        switch (consensusGroupType) {
+          case SchemaRegion:
+            leastDataNode =
+                Math.max(leastDataNode, storageGroupSchema.getSchemaReplicationFactor());
+            break;
+          case DataRegion:
+            leastDataNode = Math.max(leastDataNode, storageGroupSchema.getDataReplicationFactor());
+        }
+
+        // Recording StorageGroups without Region
+        unreadyStorageGroups.add(storageGroup);
+      }
+    }
+    if (getNodeManager().getOnlineDataNodeCount() < leastDataNode) {
+      // Make sure DataNodes enough
+      throw new NotEnoughDataNodeException();
+    }
+
+    List<String> storageGroupsNeedAllocation = new ArrayList<>();
+    List<String> storageGroupsInAllocation = new ArrayList<>();
+    for (String storageGroup : unreadyStorageGroups) {
+      // Try to get the allocation particle
+      if (partitionInfo.getRegionAllocationParticle(storageGroup, consensusGroupType)) {
+        storageGroupsNeedAllocation.add(storageGroup);
+      } else {
+        storageGroupsInAllocation.add(storageGroup);
+      }
+    }
+
+    // Calculate the number of Regions
+    // TODO: This is a temporary code, delete it later
+    int regionNum;
+    if (consensusGroupType == TConsensusGroupType.SchemaRegion) {
+      regionNum =
+          Math.max(
+              1,
+              getNodeManager().getOnlineDataNodeCount()
+                  / ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+    } else {
+      regionNum =
+          Math.max(
+              2,
+              (int)
+                  (getNodeManager().getTotalCpuCoreCount()
+                      * 0.3
+                      / ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor()));
+    }
+
+    // Do Region allocation for those StorageGroups who get the particle
+    // TODO: Use Procedure to put back Region allocation particles when creation process failed.
+    getLoadManager().initializeRegions(storageGroupsNeedAllocation, consensusGroupType, regionNum);
+    // TODO: Put back particles after creation
+
+    // Waiting allocation for those StorageGroups who don't get the particle
+    for (int retry = 0; retry < 100; retry++) {
+      boolean allocationFinished = true;
+      for (String storageGroup : storageGroupsInAllocation) {
+        if (getRegionCount(storageGroup, consensusGroupType) == 0) {
+          allocationFinished = false;
+          break;
+        }
+      }
+      if (allocationFinished) {
+        return;
+      }
+
+      try {
+        // Sleep 200ms to wait Region allocation
+        TimeUnit.MILLISECONDS.sleep(200);
+      } catch (InterruptedException e) {
+        LOGGER.warn("The PartitionManager is interrupted.", e);
+      }
+    }
+    throw new TimeoutException("");
+  }
+
+  // ======================================================
+  // Leader scheduling interfaces
+  // ======================================================
+
+  /**
+   * Only leader use this interface
+   *
+   * @return All Regions' RegionReplicaSet
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets() {
+    return partitionInfo.getAllReplicaSets();
+  }
+
+  /**
+   * Only leader use this interface. Get the number of Regions currently owned by the specific
+   * StorageGroup
+   *
+   * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return Number of Regions currently owned by the specific StorageGroup
+   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   */
+  public int getRegionCount(String storageGroup, TConsensusGroupType type)
+      throws StorageGroupNotExistsException {
+    return partitionInfo.getRegionCount(storageGroup, type);
   }
 
   /**
    * Only leader use this interface.
+   *
+   * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
+   */
+  public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
+      String storageGroup, TConsensusGroupType type) {
+    return partitionInfo.getSortedRegionSlotsCounter(storageGroup, type);
+  }
+
+  /**
+   * Only leader use this interface
    *
    * @return the next RegionGroupId
    */
   public int generateNextRegionGroupId() {
     return partitionInfo.generateNextRegionGroupId();
-  }
-
-  /**
-   * Only leader use this interface.
-   *
-   * @param groupIds List<TConsensusGroupId>
-   * @return RegionReplicaSet by the specific TConsensusGroupIds
-   */
-  public List<TRegionReplicaSet> getRegionReplicaSets(List<TConsensusGroupId> groupIds) {
-    return partitionInfo.getRegionReplicaSets(groupIds);
   }
 
   /**
@@ -382,7 +434,7 @@ public class PartitionManager {
    * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
    * groups periodically.
    */
-  private void clearDeletedRegions() {
+  public void clearDeletedRegions() {
     if (getConsensusManager().isLeader()) {
       final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
       if (!deletedRegionSet.isEmpty()) {
@@ -396,8 +448,26 @@ public class PartitionManager {
     }
   }
 
+  /**
+   * Get TSeriesPartitionSlot
+   *
+   * @param devicePath Full path ending with device name
+   * @return SeriesPartitionSlot
+   */
+  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
+    return executor.getSeriesPartitionSlot(devicePath);
+  }
+
+  public ScheduledExecutorService getRegionCleaner() {
+    return regionCleaner;
+  }
+
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {

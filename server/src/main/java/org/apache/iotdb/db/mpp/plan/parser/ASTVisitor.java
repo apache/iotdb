@@ -22,12 +22,14 @@ package org.apache.iotdb.db.mpp.plan.parser;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
@@ -99,6 +101,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -137,6 +140,8 @@ import java.util.regex.Pattern;
 
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
@@ -674,6 +679,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
+    if (ctx.intoClause() != null) {
+      throw new SemanticException(
+          "The SELECT-INTO statement is not supported in the current version.");
+    }
+
     // initialize query statement
     queryStatement = new QueryStatement();
 
@@ -1299,15 +1309,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       size++;
     }
-    String[] path;
+    String[] path = new String[size];
     if (ctx.ROOT() != null) {
-      path = new String[size + 1];
       path[0] = ctx.ROOT().getText();
       for (int i = 0; i < nodeNames.size(); i++) {
         path[i + 1] = parseNodeName(nodeNames.get(i));
       }
     } else {
-      path = new String[size];
       for (int i = 0; i < nodeNames.size(); i++) {
         path[i] = parseNodeName(nodeNames.get(i));
       }
@@ -2055,13 +2063,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.INTEGER_LITERAL() != null) {
       return new ConstantOperand(TSDataType.INT64, text);
     } else if (constantContext.realLiteral() != null) {
-      return new ConstantOperand(TSDataType.DOUBLE, text);
+      return parseRealLiteral(text);
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
           TSDataType.INT64, String.valueOf(parseDateExpression(constantContext.dateExpression())));
     } else {
       throw new SQLParserException("Unsupported constant operand: " + text);
     }
+  }
+
+  private Expression parseRealLiteral(String value) {
+    // 3.33 is float by default
+    return new ConstantOperand(
+        CONFIG.getFloatingStringInferType().equals(TSDataType.DOUBLE)
+            ? TSDataType.DOUBLE
+            : TSDataType.FLOAT,
+        value);
   }
 
   /**
@@ -2168,5 +2185,33 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       default:
         throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
+  }
+
+  // Flush
+
+  @Override
+  public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
+    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds = null;
+    if (ctx.BOOLEAN_LITERAL() != null) {
+      flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    }
+    if (ctx.CLUSTER() != null) {
+      flushStatement.setLocal(false);
+    } else {
+      flushStatement.setLocal(true);
+    }
+    if (ctx.prefixPath(0) != null) {
+      List<PartialPath> storageGroups = new ArrayList<>();
+      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+      storageGroupPartitionIds = new HashMap<>();
+      for (PartialPath path : storageGroups) {
+        storageGroupPartitionIds.put(path, null);
+      }
+    }
+    flushStatement.setStorageGroupPartitionIds(storageGroupPartitionIds);
+    return flushStatement;
   }
 }
