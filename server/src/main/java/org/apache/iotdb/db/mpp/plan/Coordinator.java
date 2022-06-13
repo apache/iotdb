@@ -22,8 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+<<<<<<< HEAD
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
+=======
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;

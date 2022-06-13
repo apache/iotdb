@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+<<<<<<< HEAD
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -28,22 +29,18 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+=======
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class DropFunctionTask implements IConfigTask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropFunctionTask.class);
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final String udfName;
 
@@ -52,6 +49,7 @@ public class DropFunctionTask implements IConfigTask {
   }
 
   @Override
+<<<<<<< HEAD
   public ListenableFuture<ConfigTaskResult> execute(
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws InterruptedException {
@@ -95,5 +93,10 @@ public class DropFunctionTask implements IConfigTask {
               new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
                   .setMessage(message)));
     }
+=======
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
+      throws InterruptedException {
+    return configTaskFetcher.dropFunction(udfName);
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
   }
 }

@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
+=======
+<<<<<<< HEAD
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,8 +63,16 @@ public class ShowFunctionsTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowFunctionsTask.class);
 
   @Override
+<<<<<<< HEAD
   public ListenableFuture<ConfigTaskResult> execute(
+<<<<<<< HEAD
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+=======
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+=======
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
       throws InterruptedException {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 

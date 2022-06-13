@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.commons.utils.TestOnly;
 <<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -47,6 +43,11 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -78,6 +79,7 @@ public class ConfigExecution implements IQueryExecution {
 >>>>>>> abbe779bb7 (add interface)
 >>>>>>> 8e3e7554e5 (add interface)
 
+<<<<<<< HEAD
   public ConfigExecution(
       MPPQueryContext context,
       Statement statement,
@@ -90,7 +92,13 @@ public class ConfigExecution implements IQueryExecution {
 =======
       ExecutorService executor) {
 >>>>>>> abbe779bb7 (add interface)
+<<<<<<< HEAD
 >>>>>>> 8e3e7554e5 (add interface)
+=======
+=======
+  public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     this.context = context;
     this.statement = statement;
     this.executor = executor;

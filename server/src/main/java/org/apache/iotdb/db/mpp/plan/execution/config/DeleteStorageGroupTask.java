@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+<<<<<<< HEAD
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -28,22 +29,20 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+<<<<<<< HEAD
+=======
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class DeleteStorageGroupTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteStorageGroupTask.class);
@@ -57,6 +56,7 @@ public class DeleteStorageGroupTask implements IConfigTask {
   }
 
   @Override
+<<<<<<< HEAD
   public ListenableFuture<ConfigTaskResult> execute(
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -97,8 +97,11 @@ public class DeleteStorageGroupTask implements IConfigTask {
       }
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     }
+=======
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher) {
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return future;
+    return configTaskFetcher.deleteStorageGroup(deleteStorageGroupStatement);
   }
 }

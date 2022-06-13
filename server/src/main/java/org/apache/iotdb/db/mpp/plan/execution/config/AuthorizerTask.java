@@ -19,32 +19,28 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.auth.AuthorizerManager;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
+=======
+<<<<<<< HEAD
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class AuthorizerTask implements IConfigTask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizerTask.class);
-
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private AuthorStatement authorStatement;
   private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
@@ -54,6 +50,7 @@ public class AuthorizerTask implements IConfigTask {
   }
 
   @Override
+<<<<<<< HEAD
   public ListenableFuture<ConfigTaskResult> execute(
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -94,8 +91,15 @@ public class AuthorizerTask implements IConfigTask {
     } catch (AuthException e) {
       future.setException(e);
     }
+=======
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher) {
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return future;
+    if (authorStatement.getQueryType() == QueryType.WRITE) {
+      return authorizerManager.operatePermission(authorStatement);
+    } else {
+      return authorizerManager.queryPermission(authorStatement);
+    }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+<<<<<<< HEAD
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -30,8 +31,11 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -39,20 +43,13 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class ShowTTLTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowTTLTask.class);
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ShowTTLStatement showTTLStatement;
 
@@ -61,6 +58,7 @@ public class ShowTTLTask implements IConfigTask {
   }
 
   @Override
+<<<<<<< HEAD
   public ListenableFuture<ConfigTaskResult> execute(
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws InterruptedException {
@@ -118,6 +116,15 @@ public class ShowTTLTask implements IConfigTask {
       }
     }
     // build TSBlock
+=======
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
+      throws InterruptedException {
+    return configTaskFetcher.showTTL(showTTLStatement);
+  }
+
+  public static void buildTSBlock(
+      Map<String, Long> storageGroupToTTL, SettableFuture<ConfigTaskResult> future) {
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showTTLHeader.getRespDataTypes());
     for (Map.Entry<String, Long> entry : storageGroupToTTL.entrySet()) {
       builder.getTimeColumnBuilder().writeLong(0);
@@ -131,6 +138,5 @@ public class ShowTTLTask implements IConfigTask {
     }
     DatasetHeader datasetHeader = HeaderConstant.showTTLHeader;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    return future;
   }
 }

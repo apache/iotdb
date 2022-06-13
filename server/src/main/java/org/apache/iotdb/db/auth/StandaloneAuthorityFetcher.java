@@ -22,10 +22,18 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.utils.AuthUtils;
+<<<<<<< HEAD
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
+=======
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -33,7 +41,6 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -102,12 +109,20 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
+<<<<<<< HEAD
   public SettableFuture<ConfigTaskResult> operatePermission(
+<<<<<<< HEAD
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+=======
+      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
+=======
+  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     boolean status = true;
     try {
-      LocalConfigNode.getInstance().operatorPermission(authorizerReq);
+      LocalConfigNode.getInstance().operatorPermission(authorStatement);
     } catch (AuthException e) {
       future.setException(e);
       status = false;
@@ -119,15 +134,25 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
+<<<<<<< HEAD
   public SettableFuture<ConfigTaskResult> queryPermission(
+<<<<<<< HEAD
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+=======
+      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
+=======
+  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    Map<String, List<String>> authorizerResp = new HashMap<>();
+    Map<String, List<String>> authorizerResp;
     try {
-      authorizerResp = LocalConfigNode.getInstance().queryPermission(authorizerReq);
+      authorizerResp = LocalConfigNode.getInstance().queryPermission(authorStatement);
+      // build TSBlock
+      AuthorizerManager.getInstance().buildTSBlock(authorizerResp, future);
     } catch (AuthException e) {
       future.setException(e);
     }
-    return AuthorizerManager.getInstance().buildTSBlock(authorizerResp);
+    return future;
   }
 }

@@ -20,9 +20,17 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+<<<<<<< HEAD
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
+=======
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -34,9 +42,19 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUserPrivileges(String username, List<String> allPath, int permission);
 
+<<<<<<< HEAD
   SettableFuture<ConfigTaskResult> operatePermission(
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
 
   SettableFuture<ConfigTaskResult> queryPermission(
+<<<<<<< HEAD
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
+=======
+      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient);
+=======
+  SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
+
+  SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement);
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 }

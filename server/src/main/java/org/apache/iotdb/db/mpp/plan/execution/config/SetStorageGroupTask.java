@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -37,8 +38,13 @@ import org.apache.iotdb.rpc.TSStatusCode;
 =======
 >>>>>>> abbe779bb7 (add interface)
 import com.google.common.util.concurrent.ListenableFuture;
+=======
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+
+import com.google.common.util.concurrent.ListenableFuture;
 
 public class SetStorageGroupTask implements IConfigTask {
 
@@ -49,6 +55,7 @@ public class SetStorageGroupTask implements IConfigTask {
   }
 
   @Override
+<<<<<<< HEAD
   public ListenableFuture<ConfigTaskResult> execute(
 <<<<<<< HEAD
       IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
@@ -98,8 +105,34 @@ public class SetStorageGroupTask implements IConfigTask {
 =======
           IConfigTaskFetcher configTaskFetcher) {
 >>>>>>> abbe779bb7 (add interface)
+=======
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher) {
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return configTaskFetcher.setStorageGroup(setStorageGroupStatement);
+  }
+
+  /** construct set storage group schema according to statement */
+  public static TStorageGroupSchema constructStorageGroupSchema(
+      SetStorageGroupStatement setStorageGroupStatement) {
+    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+    storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
+    if (setStorageGroupStatement.getTTL() != null) {
+      storageGroupSchema.setTTL(setStorageGroupStatement.getTTL());
+    }
+    if (setStorageGroupStatement.getSchemaReplicationFactor() != null) {
+      storageGroupSchema.setSchemaReplicationFactor(
+          setStorageGroupStatement.getSchemaReplicationFactor());
+    }
+    if (setStorageGroupStatement.getDataReplicationFactor() != null) {
+      storageGroupSchema.setDataReplicationFactor(
+          setStorageGroupStatement.getDataReplicationFactor());
+    }
+    if (setStorageGroupStatement.getTimePartitionInterval() != null) {
+      storageGroupSchema.setTimePartitionInterval(
+          setStorageGroupStatement.getTimePartitionInterval());
+    }
+    return storageGroupSchema;
   }
 }

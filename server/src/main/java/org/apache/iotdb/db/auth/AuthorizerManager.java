@@ -25,12 +25,20 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+<<<<<<< HEAD
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+<<<<<<< HEAD
 import org.apache.iotdb.db.client.ConfigNodeClient;
+=======
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+=======
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -388,29 +396,51 @@ public class AuthorizerManager implements IAuthorizer {
     return ClusterAuthorityFetcher.getInstance().invalidateCache(username, roleName);
   }
 
+<<<<<<< HEAD
   public SettableFuture<ConfigTaskResult> queryPermission(
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) throws TException {
     authReadWriteLock.readLock().lock();
     try {
+<<<<<<< HEAD
       return authorityFetcher.queryPermission(authorizerReq, configNodeClient);
+=======
+      return authorityFetcher.queryPermission(authorizerReq, dataNodeToConfigNodeClient);
+=======
+  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
+    authReadWriteLock.readLock().lock();
+    try {
+      return authorityFetcher.queryPermission(authorStatement);
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     } finally {
       authReadWriteLock.readLock().unlock();
     }
   }
 
+<<<<<<< HEAD
   public SettableFuture<ConfigTaskResult> operatePermission(
       TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     authReadWriteLock.writeLock().lock();
     try {
+<<<<<<< HEAD
       return authorityFetcher.operatePermission(authorizerReq, configNodeClient);
+=======
+      return authorityFetcher.operatePermission(authorizerReq, dataNodeToConfigNodeClient);
+=======
+  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
+    authReadWriteLock.writeLock().lock();
+    try {
+      return authorityFetcher.operatePermission(authorStatement);
+>>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
+>>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
   }
 
   /** build TSBlock */
-  public SettableFuture<ConfigTaskResult> buildTSBlock(Map<String, List<String>> authorizerInfo) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public void buildTSBlock(
+      Map<String, List<String>> authorizerInfo, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> types = new ArrayList<>();
     for (int i = 0; i < authorizerInfo.size(); i++) {
       types.add(TSDataType.TEXT);
@@ -436,6 +466,5 @@ public class AuthorizerManager implements IAuthorizer {
 
     DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    return future;
   }
 }
