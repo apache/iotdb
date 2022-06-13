@@ -1725,6 +1725,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseStorageGroupAttributesClause(
       SetStorageGroupStatement setStorageGroupStatement,
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
+    if (ctx.storageGroupAttributeClause().size() != 0) {
+      throw new RuntimeException(
+          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific storage group.");
+    }
     for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
         ctx.storageGroupAttributeClause()) {
       if (attribute.TTL() != null) {
