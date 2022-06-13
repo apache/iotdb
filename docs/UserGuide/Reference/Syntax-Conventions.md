@@ -27,7 +27,7 @@ In previous versions of syntax conventions, we introduced some ambiguity to main
 
 ### Issues related to identifier
 
-In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers, and are allowed to contain some special characters. **In version 0.14, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. **
+In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 0.14, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. **
 
 ### Issues related to node name
 
