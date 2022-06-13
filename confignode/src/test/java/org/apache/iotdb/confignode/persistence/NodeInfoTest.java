@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 
 import org.apache.commons.io.FileUtils;
@@ -32,6 +33,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,6 +47,7 @@ public class NodeInfoTest {
 
   @BeforeClass
   public static void setup() {
+    ConfigNodeDescriptor.getInstance().getConf().setConfigNodeList(new ArrayList<>());
     nodeInfo = new NodeInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
@@ -71,7 +74,7 @@ public class NodeInfoTest {
     nodeInfo.registerDataNode(registerDataNodeReq);
 
     Set<TDataNodeLocation> drainingDataNodes_before = new HashSet<>();
-    // parameter i is used to be flag in generateTDataNodeLocation
+    // parameter i is used as flag in generateTDataNodeLocation
     for (int i = 3; i < 8; i++) {
       drainingDataNodes_before.add(generateTDataNodeLocation(i));
     }
