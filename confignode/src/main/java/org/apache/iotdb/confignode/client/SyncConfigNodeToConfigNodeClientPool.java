@@ -69,7 +69,7 @@ public class SyncConfigNodeToConfigNodeClientPool {
         return client.registerConfigNode(req);
       } catch (Exception e) {
         LOGGER.warn("Register ConfigNode failed, retrying...", e);
-        doRetryWait();
+        doRetryWait(retry);
       }
     }
     LOGGER.error("Register ConfigNode failed because network failure.");
@@ -79,9 +79,9 @@ public class SyncConfigNodeToConfigNodeClientPool {
                 .setMessage("All retry failed."));
   }
 
-  private void doRetryWait() {
+  private void doRetryWait(int retryNum) {
     try {
-      TimeUnit.MILLISECONDS.sleep(100);
+      TimeUnit.MILLISECONDS.sleep((long) Math.pow(2, retryNum) * 100);
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }
