@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.SyncConfigNodeToConfigNodeClientPool;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -216,10 +216,10 @@ public class ConfigNodeStartupCheck {
             || target.equals(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))) {
           target = configNodeList.get(random.nextInt(configNodeList.size())).getInternalEndPoint();
         }
-        resp = SyncConfigNodeClientPool.getInstance().registerConfigNode(target, req);
+        resp = SyncConfigNodeToConfigNodeClientPool.getInstance().registerConfigNode(target, req);
       } else {
         // Send request to leader
-        resp = SyncConfigNodeClientPool.getInstance().registerConfigNode(leader, req);
+        resp = SyncConfigNodeToConfigNodeClientPool.getInstance().registerConfigNode(leader, req);
       }
 
       // Update configNodeList

@@ -37,15 +37,15 @@ import java.util.concurrent.TimeUnit;
  * logic is included to avoid network failures like interruption and timeout. For more details about
  * the interfaces, see confignode.thrift file.
  */
-public class SyncConfigNodeClientPool {
+public class SyncConfigNodeToConfigNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeClientPool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeToConfigNodeClientPool.class);
 
   private static final int retryNum = 5;
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
-  private SyncConfigNodeClientPool() {
+  private SyncConfigNodeToConfigNodeClientPool() {
     this.clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
@@ -89,14 +89,14 @@ public class SyncConfigNodeClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class SyncConfigNodeClientPoolHolder {
 
-    private static final SyncConfigNodeClientPool INSTANCE = new SyncConfigNodeClientPool();
+    private static final SyncConfigNodeToConfigNodeClientPool INSTANCE = new SyncConfigNodeToConfigNodeClientPool();
 
     private SyncConfigNodeClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static SyncConfigNodeClientPool getInstance() {
+  public static SyncConfigNodeToConfigNodeClientPool getInstance() {
     return SyncConfigNodeClientPoolHolder.INSTANCE;
   }
 }

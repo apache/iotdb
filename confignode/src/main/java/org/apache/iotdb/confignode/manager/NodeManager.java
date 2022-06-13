@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.AsyncConfigNodeToDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -89,7 +89,7 @@ public class NodeManager {
 
     if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
       // Reset client
-      AsyncDataNodeClientPool.getInstance()
+      AsyncConfigNodeToDataNodeClientPool.getInstance()
           .resetClient(req.getInfo().getLocation().getInternalEndPoint());
 
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());

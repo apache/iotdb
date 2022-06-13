@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.SyncConfigNodeToDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -100,11 +100,11 @@ public class ConfigNodeProcedureEnv {
     invalidateCacheReq.setFullPath(storageGroupName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
-          SyncDataNodeClientPool.getInstance()
+          SyncConfigNodeToDataNodeClientPool.getInstance()
               .invalidateSchemaCache(
                   dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
       final TSStatus invalidatePartitionStatus =
-          SyncDataNodeClientPool.getInstance()
+          SyncConfigNodeToDataNodeClientPool.getInstance()
               .invalidatePartitionCache(
                   dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {

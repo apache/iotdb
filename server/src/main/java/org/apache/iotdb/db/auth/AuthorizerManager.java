@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -389,20 +389,20 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   public SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) throws TException {
+      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) throws TException {
     authReadWriteLock.readLock().lock();
     try {
-      return authorityFetcher.queryPermission(authorizerReq, configNodeClient);
+      return authorityFetcher.queryPermission(authorizerReq, dataNodeToConfigNodeClient);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
   }
 
   public SettableFuture<ConfigTaskResult> operatePermission(
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
     authReadWriteLock.writeLock().lock();
     try {
-      return authorityFetcher.operatePermission(authorizerReq, configNodeClient);
+      return authorityFetcher.operatePermission(authorizerReq, dataNodeToConfigNodeClient);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }

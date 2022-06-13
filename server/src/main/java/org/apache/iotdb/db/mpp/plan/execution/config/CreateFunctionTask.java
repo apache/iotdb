@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -62,7 +62,7 @@ public class CreateFunctionTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (CONFIG.isClusterMode()) {
@@ -74,9 +74,9 @@ public class CreateFunctionTask implements IConfigTask {
   }
 
   private void executeCluster(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager,
       SettableFuture<ConfigTaskResult> future) {
-    try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+    try (DataNodeToConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       final TSStatus executionStatus =
           client.createFunction(new TCreateFunctionReq(udfName, className, uris));
 

@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.SyncConfigNodeToDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
@@ -105,7 +105,7 @@ public class PermissionManager {
     req.setRoleName(roleName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       status =
-          SyncDataNodeClientPool.getInstance()
+          SyncConfigNodeToDataNodeClientPool.getInstance()
               .invalidatePermissionCache(dataNodeInfo.getLocation().getInternalEndPoint(), req);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
