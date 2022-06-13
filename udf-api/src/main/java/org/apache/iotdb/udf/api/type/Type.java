@@ -16,19 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.udf.utils;
+package org.apache.iotdb.udf.api.type;
 
-/** Transform Binary to Binary / Binary to Binary */
-public class UDFBinaryTransformer {
-  private UDFBinaryTransformer() {}
+/** To make udf-api a independent module, this class provides same functions as TsDataType. */
+public enum Type {
+  /** BOOLEAN */
+  BOOLEAN((byte) 0),
 
-  public static org.apache.iotdb.tsfile.utils.Binary transformToBinary(
-      org.apache.iotdb.udf.api.type.Binary binary) {
-    return binary == null ? null : new org.apache.iotdb.tsfile.utils.Binary(binary.getValues());
+  /** INT32 */
+  INT32((byte) 1),
+
+  /** INT64 */
+  INT64((byte) 2),
+
+  /** FLOAT */
+  FLOAT((byte) 3),
+
+  /** DOUBLE */
+  DOUBLE((byte) 4),
+
+  /** TEXT */
+  TEXT((byte) 5);
+
+  private final byte type;
+
+  Type(byte type) {
+    this.type = type;
   }
 
-  public static org.apache.iotdb.udf.api.type.Binary transformToUDFBinary(
-      org.apache.iotdb.tsfile.utils.Binary binary) {
-    return binary == null ? null : new org.apache.iotdb.udf.api.type.Binary(binary.getValues());
+  public byte getType() {
+    return type;
   }
 }

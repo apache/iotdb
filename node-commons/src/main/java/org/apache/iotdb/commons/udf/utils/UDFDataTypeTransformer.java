@@ -19,37 +19,56 @@
 package org.apache.iotdb.commons.udf.utils;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.udf.api.commons.UDFDataType;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** Transform UDFDataType to TsDataType / TsDataType to UDFDataType */
+/** Transform Type to TsDataType / TsDataType to Type */
 public class UDFDataTypeTransformer {
 
   private UDFDataTypeTransformer() {}
 
-  public static TSDataType transformToTsDataType(UDFDataType udfDataType) {
-    return udfDataType == null ? null : TSDataType.getTsDataType(udfDataType.getType());
+  public static TSDataType transformToTsDataType(Type type) {
+    return type == null ? null : TSDataType.getTsDataType(type.getType());
   }
 
-  public static List<TSDataType> transformToTsDataTypeList(List<UDFDataType> udfDataTypeList) {
-    return udfDataTypeList == null
+  public static List<TSDataType> transformToTsDataTypeList(List<Type> typeList) {
+    return typeList == null
         ? null
-        : udfDataTypeList.stream()
+        : typeList.stream()
             .map(UDFDataTypeTransformer::transformToTsDataType)
             .collect(Collectors.toList());
   }
 
-  public static UDFDataType transformToUDFDataType(TSDataType tsDataType) {
-    return tsDataType == null ? null : UDFDataType.getUDFDataType(tsDataType.getType());
+  public static Type transformToUDFDataType(TSDataType tsDataType) {
+    return tsDataType == null ? null : getUDFDataType(tsDataType.getType());
   }
 
-  public static List<UDFDataType> transformToUDFDataTypeList(List<TSDataType> tsDataTypeList) {
+  public static List<Type> transformToUDFDataTypeList(List<TSDataType> tsDataTypeList) {
     return tsDataTypeList == null
         ? null
         : tsDataTypeList.stream()
             .map(UDFDataTypeTransformer::transformToUDFDataType)
             .collect(Collectors.toList());
+  }
+
+  private static Type getUDFDataType(byte type) {
+    switch (type) {
+      case 0:
+        return Type.BOOLEAN;
+      case 1:
+        return Type.INT32;
+      case 2:
+        return Type.INT64;
+      case 3:
+        return Type.FLOAT;
+      case 4:
+        return Type.DOUBLE;
+      case 5:
+        return Type.TEXT;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + type);
+    }
   }
 }

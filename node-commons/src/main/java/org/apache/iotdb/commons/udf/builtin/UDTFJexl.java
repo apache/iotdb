@@ -50,7 +50,7 @@ public class UDTFJexl implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
-    inputSeriesNumber = validator.getParameters().getPaths().size();
+    inputSeriesNumber = validator.getParameters().getChildExpressionsSize();
     for (int i = 0; i < inputSeriesNumber; i++) {
       validator.validateInputSeriesDataType(
           i,

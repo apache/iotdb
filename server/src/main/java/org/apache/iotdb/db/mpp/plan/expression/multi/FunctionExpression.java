@@ -265,7 +265,6 @@ public class FunctionExpression extends Expression {
             new UDTFTypeInferrer(functionName)
                 .inferOutputType(
                     expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-                    getPaths(),
                     expressions.stream()
                         .map(f -> typeProvider.getType(f.toString()))
                         .collect(Collectors.toList()),
@@ -400,7 +399,6 @@ public class FunctionExpression extends Expression {
         queryId,
         memoryAssigner.assign(),
         expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        getPaths(),
         expressions.stream()
             .map(f -> typeProvider.getType(f.toString()))
             .collect(Collectors.toList()),
@@ -514,7 +512,6 @@ public class FunctionExpression extends Expression {
         queryId,
         memoryAssigner.assign(),
         expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        getPaths(),
         expressions.stream().map(expressionDataTypeMap::get).collect(Collectors.toList()),
         functionAttributes);
 

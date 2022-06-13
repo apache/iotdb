@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.udf.api.commons;
+package org.apache.iotdb.udf.api.type;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
@@ -26,7 +26,7 @@ import java.util.Arrays;
  * Override compareTo() and equals() function to Binary class. This class is used to accept Java
  * String type
  */
-public class UDFBinary implements Comparable<UDFBinary>, Serializable {
+public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 1250049718612917815L;
   public static final String STRING_ENCODING = "UTF-8";
@@ -35,20 +35,20 @@ public class UDFBinary implements Comparable<UDFBinary>, Serializable {
   private byte[] values;
 
   /** if the bytes v is modified, the modification is visible to this binary. */
-  public UDFBinary(byte[] v) {
+  public Binary(byte[] v) {
     this.values = v;
   }
 
-  public UDFBinary(String s) {
+  public Binary(String s) {
     this.values = (s == null) ? null : s.getBytes(STRING_CHARSET);
   }
 
-  public static UDFBinary valueOf(String value) {
-    return new UDFBinary(stringToBytes(value));
+  public static Binary valueOf(String value) {
+    return new Binary(stringToBytes(value));
   }
 
   @Override
-  public int compareTo(UDFBinary other) {
+  public int compareTo(Binary other) {
     if (other == null) {
       if (this.values == null) {
         return 0;
@@ -80,7 +80,7 @@ public class UDFBinary implements Comparable<UDFBinary>, Serializable {
       return false;
     }
 
-    return compareTo((UDFBinary) other) == 0;
+    return compareTo((Binary) other) == 0;
   }
 
   @Override

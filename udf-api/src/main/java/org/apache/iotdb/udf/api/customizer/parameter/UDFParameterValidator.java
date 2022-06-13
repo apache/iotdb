@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.udf.api.customizer.parameter;
 
-import org.apache.iotdb.udf.api.commons.UDFDataType;
 import org.apache.iotdb.udf.api.exception.UDFAttributeNotProvidedException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesIndexNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesNumberNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class UDFParameterValidator {
 
@@ -64,11 +64,11 @@ public class UDFParameterValidator {
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
    *     specified column is not as expected
    */
-  public UDFParameterValidator validateInputSeriesDataType(int index, UDFDataType expectedDataType)
+  public UDFParameterValidator validateInputSeriesDataType(int index, Type expectedDataType)
       throws UDFException {
     validateInputSeriesIndex(index);
 
-    UDFDataType actualDataType;
+    Type actualDataType;
     actualDataType = parameters.getDataType(index);
 
     if (!expectedDataType.equals(actualDataType)) {
@@ -87,14 +87,14 @@ public class UDFParameterValidator {
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
    *     specified column is not as expected
    */
-  public UDFParameterValidator validateInputSeriesDataType(
-      int index, UDFDataType... expectedDataTypes) throws UDFException {
+  public UDFParameterValidator validateInputSeriesDataType(int index, Type... expectedDataTypes)
+      throws UDFException {
     validateInputSeriesIndex(index);
 
-    UDFDataType actualDataType;
+    Type actualDataType;
     actualDataType = parameters.getDataType(index);
 
-    for (UDFDataType expectedDataType : expectedDataTypes) {
+    for (Type expectedDataType : expectedDataTypes) {
       if (expectedDataType.equals(actualDataType)) {
         return this;
       }
@@ -112,7 +112,7 @@ public class UDFParameterValidator {
    */
   public UDFParameterValidator validateInputSeriesNumber(int expectedSeriesNumber)
       throws UDFInputSeriesNumberNotValidException {
-    int actualSeriesNumber = parameters.getPaths().size();
+    int actualSeriesNumber = parameters.getChildExpressionsSize();
     if (actualSeriesNumber != expectedSeriesNumber) {
       throw new UDFInputSeriesNumberNotValidException(actualSeriesNumber, expectedSeriesNumber);
     }
@@ -132,7 +132,7 @@ public class UDFParameterValidator {
   public UDFParameterValidator validateInputSeriesNumber(
       int expectedSeriesNumberLowerBound, int expectedSeriesNumberUpperBound)
       throws UDFInputSeriesNumberNotValidException {
-    int actualSeriesNumber = parameters.getPaths().size();
+    int actualSeriesNumber = parameters.getChildExpressionsSize();
     if (actualSeriesNumber < expectedSeriesNumberLowerBound
         || expectedSeriesNumberUpperBound < actualSeriesNumber) {
       throw new UDFInputSeriesNumberNotValidException(
@@ -194,7 +194,7 @@ public class UDFParameterValidator {
    *     bound
    */
   private void validateInputSeriesIndex(int index) throws UDFInputSeriesIndexNotValidException {
-    int actualSeriesNumber = parameters.getPaths().size();
+    int actualSeriesNumber = parameters.getChildExpressionsSize();
     if (index < 0 || actualSeriesNumber <= index) {
       throw new UDFInputSeriesIndexNotValidException(index, actualSeriesNumber);
     }

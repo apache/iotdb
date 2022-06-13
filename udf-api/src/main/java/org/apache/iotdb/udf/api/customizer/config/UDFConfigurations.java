@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.udf.api.customizer.config;
 
-import org.apache.iotdb.udf.api.commons.UDFDataType;
+import org.apache.iotdb.udf.api.type.Type;
 
 public abstract class UDFConfigurations {
 
-  protected UDFDataType outputDataType;
+  protected Type outputDataType;
 
-  public UDFDataType getOutputDataType() {
+  public Type getOutputDataType() {
     return outputDataType;
   }
 

@@ -23,12 +23,12 @@ import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
-import org.apache.iotdb.udf.api.commons.UDFDataType;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.time.ZoneId;
 
@@ -64,7 +64,7 @@ public class UDTFConfigurations extends UDFConfigurations {
    * @return this
    * @see PointCollector
    */
-  public UDTFConfigurations setOutputDataType(UDFDataType outputDataType) {
+  public UDTFConfigurations setOutputDataType(Type outputDataType) {
     this.outputDataType = outputDataType;
     return this;
   }

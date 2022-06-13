@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.udf.api.access.Row;
-import org.apache.iotdb.udf.api.commons.UDFBinary;
-import org.apache.iotdb.udf.api.commons.UDFDataType;
+import org.apache.iotdb.udf.api.type.Binary;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -67,7 +67,7 @@ public class LayerPointReaderBackedSingleColumnRow implements Row {
   }
 
   @Override
-  public UDFBinary getBinary(int columnIndex) throws IOException {
+  public Binary getBinary(int columnIndex) throws IOException {
     return UDFBinaryTransformer.transformToUDFBinary(layerPointReader.currentBinary());
   }
 
@@ -77,7 +77,7 @@ public class LayerPointReaderBackedSingleColumnRow implements Row {
   }
 
   @Override
-  public UDFDataType getDataType(int columnIndex) {
+  public Type getDataType(int columnIndex) {
     return UDFDataTypeTransformer.transformToUDFDataType(layerPointReader.getDataType());
   }
 

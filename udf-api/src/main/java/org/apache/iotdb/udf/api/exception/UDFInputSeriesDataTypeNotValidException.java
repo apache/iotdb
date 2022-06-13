@@ -19,22 +19,20 @@
 
 package org.apache.iotdb.udf.api.exception;
 
-import org.apache.iotdb.udf.api.commons.UDFDataType;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.Arrays;
 
 public class UDFInputSeriesDataTypeNotValidException extends UDFParameterNotValidException {
 
-  public UDFInputSeriesDataTypeNotValidException(
-      int index, UDFDataType actual, UDFDataType expected) {
+  public UDFInputSeriesDataTypeNotValidException(int index, Type actual, Type expected) {
     super(
         String.format(
             "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",
             index, expected, actual));
   }
 
-  public UDFInputSeriesDataTypeNotValidException(
-      int index, UDFDataType actual, UDFDataType... expected) {
+  public UDFInputSeriesDataTypeNotValidException(int index, Type actual, Type... expected) {
     super(
         String.format(
             "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",

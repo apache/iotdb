@@ -24,8 +24,7 @@ import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.datastructure.SerializableList;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.udf.api.commons.UDFBinary;
+import org.apache.iotdb.udf.api.type.Binary;
 
 import org.junit.After;
 import org.junit.Before;
@@ -153,7 +152,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
             if (i % 7 == 0) {
               tvList.putNull(i);
             } else {
-              tvList.putBinary(i, UDFBinary.valueOf(String.valueOf(i)));
+              tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
             }
           }
           break;
@@ -229,7 +228,9 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
               assertTrue(tvList.isNull(i));
             } else {
               assertFalse(tvList.isNull(i));
-              assertEquals(Binary.valueOf(String.valueOf(i)), tvList.getBinary(i));
+              assertEquals(
+                  org.apache.iotdb.tsfile.utils.Binary.valueOf(String.valueOf(i)),
+                  tvList.getBinary(i));
             }
           }
           break;
@@ -254,7 +255,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
         } else {
           tvList.putBinary(
               i,
-              UDFBinary.valueOf(
+              Binary.valueOf(
                   generateRandomString(
                       byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
         }
@@ -280,7 +281,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
         } else {
           tvList.putBinary(
               i,
-              UDFBinary.valueOf(
+              Binary.valueOf(
                   generateRandomString(
                       byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
         }
@@ -305,7 +306,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
         } else {
           tvList.putBinary(
               i,
-              UDFBinary.valueOf(
+              Binary.valueOf(
                   generateRandomString(
                       byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
         }
@@ -329,7 +330,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
         } else {
           tvList.putBinary(
               i,
-              UDFBinary.valueOf(
+              Binary.valueOf(
                   generateRandomString(
                       byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
         }

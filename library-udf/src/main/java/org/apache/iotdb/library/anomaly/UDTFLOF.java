@@ -135,7 +135,7 @@ public class UDTFLOF implements UDTF {
             new SlidingSizeWindowAccessStrategy(parameters.getIntOrDefault("window", 10000)))
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
     this.multipleK = parameters.getIntOrDefault("k", 3);
-    this.dim = parameters.getPaths().size();
+    this.dim = parameters.getChildExpressionsSize();
     this.method = parameters.getStringOrDefault("method", "default");
     this.window = parameters.getIntOrDefault("window", 5);
   }

@@ -20,9 +20,8 @@
 package org.apache.iotdb.udf.api.customizer.parameter;
 
 import org.apache.iotdb.udf.api.UDTF;
-import org.apache.iotdb.udf.api.commons.UDFDataType;
-import org.apache.iotdb.udf.api.commons.UDFPartialPath;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.List;
 import java.util.Map;
@@ -42,17 +41,14 @@ import java.util.Map;
 public class UDFParameters {
 
   private final List<String> childExpressions;
-  private final List<UDFPartialPath> maybeTimeSeriesPaths;
-  private final List<UDFDataType> childExpressionDataTypes;
+  private final List<Type> childExpressionDataTypes;
   private final Map<String, String> attributes;
 
   public UDFParameters(
       List<String> childExpressions,
-      List<UDFPartialPath> maybeTimeSeriesPaths,
-      List<UDFDataType> childExpressionDataTypes,
+      List<Type> childExpressionDataTypes,
       Map<String, String> attributes) {
     this.childExpressions = childExpressions;
-    this.maybeTimeSeriesPaths = maybeTimeSeriesPaths;
     this.childExpressionDataTypes = childExpressionDataTypes;
     this.attributes = attributes;
   }
@@ -61,23 +57,19 @@ public class UDFParameters {
     return childExpressions;
   }
 
-  public List<UDFPartialPath> getPaths() {
-    return maybeTimeSeriesPaths;
-  }
-
   public Map<String, String> getAttributes() {
     return attributes;
   }
 
-  public List<UDFDataType> getDataTypes() {
+  public List<Type> getDataTypes() {
     return childExpressionDataTypes;
   }
 
-  public UDFPartialPath getPath(int index) {
-    return maybeTimeSeriesPaths.get(index);
+  public int getChildExpressionsSize() {
+    return childExpressions.size();
   }
 
-  public UDFDataType getDataType(int index) {
+  public Type getDataType(int index) {
     return childExpressionDataTypes.get(index);
   }
 
