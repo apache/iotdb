@@ -122,6 +122,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   * **In 0.13, the SQL syntax has been changed. The identifiers not enclosed in backquotes can only contain the following characters, otherwise they need to be enclosed in backquotes.**
     * **[0-9 a-z A-Z _ : @ # $ { }] (letters, digits, some special characters)**
     * **['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)**
+  * **In 0.13, if the path node name in the `SELECT` clause consists of pure numbers, it needs to be enclosed in backquotes to distinguish it from the constant in the expression. For example, in the statement "select 123 + \`123\` from root.sg", the former 123 represents a constant, and the latter \`123\` will be spliced with root.sg, indicating the path root.sg.\`123\`.**
 
 - How to upgrade from v.11.x or v0.10.x to v0.12.x?
   * Upgrading from v0.11 or v0.10 to v0.12 is similar as v0.9 to v0.10. The upgrade tool will rewrite the data files automatically.
