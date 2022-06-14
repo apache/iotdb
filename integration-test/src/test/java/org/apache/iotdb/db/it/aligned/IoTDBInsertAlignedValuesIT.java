@@ -256,8 +256,6 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  // TODO remove Ignore annotation while fixing this bug
-  @Ignore
   @Test
   public void testInsertAlignedValuesWithThreeLevelPath() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
