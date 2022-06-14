@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.udf.api.type;
 
-/** A substitution class for TsDataType. */
+/** A substitution class for TsDataType in UDF APIs. */
 public enum Type {
   /** BOOLEAN */
   BOOLEAN((byte) 0),
