@@ -29,7 +29,7 @@ import java.util.Map;
 
 public interface IPartitionFetcher {
 
-  SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean matchTimeseries);
+  SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 

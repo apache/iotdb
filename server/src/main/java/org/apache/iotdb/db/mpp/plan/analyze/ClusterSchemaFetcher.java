@@ -78,7 +78,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree, true));
+    return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
   }
 
   @Override
@@ -144,8 +144,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     SchemaTree remoteSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      remoteSchemaTree =
-          fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree, true));
+      remoteSchemaTree = fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
       schemaTree.mergeSchemaTree(remoteSchemaTree);
       schemaCache.put(remoteSchemaTree);
       return schemaTree;
@@ -198,8 +197,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     SchemaTree remoteSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      remoteSchemaTree =
-          fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree, true));
+      remoteSchemaTree = fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
       schemaTree.mergeSchemaTree(remoteSchemaTree);
       schemaCache.put(remoteSchemaTree);
       return schemaTree;

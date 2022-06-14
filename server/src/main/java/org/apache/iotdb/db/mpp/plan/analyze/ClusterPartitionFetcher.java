@@ -105,7 +105,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean matchTimeseries) {
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     try (DataNodeToConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
@@ -114,7 +114,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
         TSchemaPartitionResp schemaPartitionResp =
-            client.getSchemaPartition(constructSchemaPartitionReq(patternTree, matchTimeseries));
+            client.getSchemaPartition(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionResp(schemaPartitionResp);
@@ -138,7 +138,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
         TSchemaPartitionResp schemaPartitionResp =
-            client.getOrCreateSchemaPartition(constructSchemaPartitionReq(patternTree, true));
+            client.getOrCreateSchemaPartition(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionResp(schemaPartitionResp);
@@ -348,15 +348,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return result;
   }
 
-  private TSchemaPartitionReq constructSchemaPartitionReq(
-      PathPatternTree patternTree, boolean matchTimeseries) {
+  private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree) {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);
       ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
       serializedPatternTree.put(baos.getBuf(), 0, baos.size());
       serializedPatternTree.flip();
-      return new TSchemaPartitionReq(serializedPatternTree, matchTimeseries);
+      return new TSchemaPartitionReq(serializedPatternTree);
     } catch (IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }

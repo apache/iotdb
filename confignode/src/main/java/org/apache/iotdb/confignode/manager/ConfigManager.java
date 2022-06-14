@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -63,6 +65,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -78,6 +81,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
@@ -268,27 +273,24 @@ public class ConfigManager implements Manager {
   }
 
   private List<TSeriesPartitionSlot> calculateRelatedSlot(
-      PartialPath path, boolean matchTimeseries) {
+      PartialPath path, PartialPath storageGroup) {
     // The path contains `**`
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
-    PartialPath innerPath;
-    if (!matchTimeseries
-        && path.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      return new ArrayList<>();
-    }
+    List<PartialPath> innerPathList = path.alterPrefixPath(storageGroup);
+    PartialPath pathInnerStorageGroup = innerPathList.get(0);
     // The path contains `*` and the only `*` is not in last level
-    if (path.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+    if (pathInnerStorageGroup.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
 
     return Collections.singletonList(
-        getPartitionManager().getSeriesPartitionSlot(path.getDevice()));
+        getPartitionManager().getSeriesPartitionSlot(pathInnerStorageGroup.getDevice()));
   }
 
   @Override
-  public DataSet getSchemaPartition(PathPatternTree patternTree, boolean matchTimeseries) {
+  public DataSet getSchemaPartition(PathPatternTree patternTree) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
@@ -298,19 +300,36 @@ public class ConfigManager implements Manager {
       Map<String, Boolean> scanAllRegions = new HashMap<>();
       for (PartialPath path : relatedPaths) {
         for (String storageGroup : allStorageGroups) {
-          if (path.belongToStorageGroup(storageGroup)
-              && !scanAllRegions.containsKey(storageGroup)) {
-            List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, matchTimeseries);
-            if (relatedSlot.isEmpty()) {
-              scanAllRegions.put(storageGroup, true);
-              partitionSlotsMap.put(storageGroup, new HashSet<>());
-            } else {
-              partitionSlotsMap
-                  .computeIfAbsent(storageGroup, k -> new HashSet<>())
-                  .addAll(relatedSlot);
+          try {
+            PartialPath storageGroupPath = new PartialPath(storageGroup);
+            if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+                && !scanAllRegions.containsKey(storageGroup)) {
+              List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
+              if (relatedSlot.isEmpty()) {
+                scanAllRegions.put(storageGroup, true);
+                partitionSlotsMap.put(storageGroup, new HashSet<>());
+              } else {
+                partitionSlotsMap
+                    .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                    .addAll(relatedSlot);
+              }
             }
+          } catch (IllegalPathException e) {
+            e.printStackTrace();
           }
         }
+      }
+
+      // return empty partition
+      if (partitionSlotsMap.isEmpty()) {
+        SchemaPartitionResp resp = new SchemaPartitionResp();
+        resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        // TODO: (xingtanzjr) replace with new data structure
+        resp.setSchemaPartition(
+            new SchemaPartition(
+                new HashMap<>(),
+                IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+                IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum()));
       }
 
       getSchemaPartitionReq.setPartitionSlotsMap(

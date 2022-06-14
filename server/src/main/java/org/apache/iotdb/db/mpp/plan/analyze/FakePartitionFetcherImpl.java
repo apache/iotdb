@@ -42,7 +42,7 @@ import java.util.Map;
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
-  public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean matchTimeseries) {
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     return null;
   }
 

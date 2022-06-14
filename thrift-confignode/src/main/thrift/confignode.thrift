@@ -108,7 +108,6 @@ struct TStorageGroupSchema {
 // SchemaPartition
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-  2: required bool matchTimeseries
 }
 
 struct TSchemaPartitionResp {

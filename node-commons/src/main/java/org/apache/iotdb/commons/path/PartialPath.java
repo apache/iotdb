@@ -353,32 +353,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return this.nodes.length == rNodes.length;
   }
 
-  /**
-   * Test whether the path belongs to given storage group or not. Example: [result]: [current path],
-   * [storage group path] 1) True: root.sg, root.sg 2) True: root.**, root.sg 3) True: root.sg.d1,
-   * root.sg 4) True: root.**.d1, root.sg 5) False: root.sg, root.sg2 6) False: root.sg.d1, root.sg2
-   *
-   * @param storageGroup the storage group to be tested
-   */
-  public boolean belongToStorageGroup(String storageGroup) {
-    try {
-      // We divide the judgement into two scenarios:
-      // 1) the size of nodes of the path is larger than size of storage groups nodes
-      //    Then we can test the overlap of them
-      PartialPath storageGroupPath =
-          new PartialPath(storageGroup).concatNode(MULTI_LEVEL_PATH_WILDCARD);
-      if (overlapWith(storageGroupPath)) {
-        return true;
-      }
-      // 2) the size of nodes of the path is less or equal to size of storage groups nodes
-      //    Then we test the prefix match
-      return storageGroup.startsWith(getFullPath());
-    } catch (IllegalPathException e) {
-      // This code won't be reached in general
-      throw new RuntimeException(e);
-    }
-  }
-
   @Override
   public String getFullPath() {
     if (fullPath == null) {
