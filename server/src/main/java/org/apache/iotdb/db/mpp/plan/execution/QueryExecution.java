@@ -74,6 +74,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -145,6 +146,7 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
+              logger.info("release resource because Query State is: {}", state);
               releaseResource();
             }
           }
@@ -291,8 +293,9 @@ public class QueryExecution implements IQueryExecution {
       }
     } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
-      throwIfUnchecked(e.getCause());
-      throw new RuntimeException(e.getCause());
+      Throwable t = e.getCause() == null ? e : e.getCause();
+      throwIfUnchecked(t);
+      throw new RuntimeException(t);
     } catch (InterruptedException e) {
       stateMachine.transitionToFailed(e);
       Thread.currentThread().interrupt();
@@ -351,15 +354,25 @@ public class QueryExecution implements IQueryExecution {
 
   private void initResultHandle() {
     if (this.resultHandle == null) {
+      TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
+
       this.resultHandle =
-          DataBlockService.getInstance()
-              .getDataBlockManager()
-              .createSourceHandle(
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                  context.getResultNodeContext().getUpStreamEndpoint(),
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                  stateMachine::transitionToFailed);
+          isSameNode(upstreamEndPoint)
+              ? DataBlockService.getInstance()
+                  .getDataBlockManager()
+                  .createLocalSourceHandle(
+                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                      stateMachine::transitionToFailed)
+              : DataBlockService.getInstance()
+                  .getDataBlockManager()
+                  .createSourceHandle(
+                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                      upstreamEndPoint,
+                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                      stateMachine::transitionToFailed);
     }
   }
 

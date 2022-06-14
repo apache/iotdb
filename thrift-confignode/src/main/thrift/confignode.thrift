@@ -103,8 +103,6 @@ struct TStorageGroupSchema {
   5: optional i64 timePartitionInterval
   6: optional i32 maximumSchemaRegionCount
   7: optional i32 maximumDataRegionCount
-  8: optional list<common.TConsensusGroupId> dataRegionGroupIds
-  9: optional list<common.TConsensusGroupId> schemaRegionGroupIds
 }
 
 // Schema
@@ -294,4 +292,10 @@ service ConfigIService {
   common.TSStatus createFunction(TCreateFunctionReq req)
 
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /* Flush */
+
+  common.TSStatus flush(common.TFlushReq req)
+
 }
+

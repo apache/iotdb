@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -1725,6 +1727,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseStorageGroupAttributesClause(
       SetStorageGroupStatement setStorageGroupStatement,
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
+    if (ctx.storageGroupAttributeClause().size() != 0) {
+      throw new RuntimeException(
+          "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific storage group.");
+    }
     for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
         ctx.storageGroupAttributeClause()) {
       if (attribute.TTL() != null) {
@@ -2183,5 +2189,32 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       default:
         throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
+  }
+
+  // Flush
+
+  @Override
+  public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
+    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<PartialPath> storageGroups = null;
+    if (ctx.BOOLEAN_LITERAL() != null) {
+      flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    }
+    if (ctx.CLUSTER() != null) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
+      }
+      flushStatement.setLocal(false);
+    } else {
+      flushStatement.setLocal(true);
+    }
+    if (ctx.prefixPath(0) != null) {
+      storageGroups = new ArrayList<>();
+      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+    }
+    flushStatement.setStorageGroups(storageGroups);
+    return flushStatement;
   }
 }

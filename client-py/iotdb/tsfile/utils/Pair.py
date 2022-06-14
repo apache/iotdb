@@ -16,11 +16,9 @@
 # under the License.
 #
 
-from iotdb.template.TemplateNode import TemplateNode
-
 
 class Pair:
-    def __init__(self, left: str, right: TemplateNode):
+    def __init__(self, left: str, right):
         self.__serialVersionUID = -1398609631703707002
         self.left = left
         self.right = right

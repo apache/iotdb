@@ -302,7 +302,7 @@ class RatisConsensus implements IConsensus {
           client
               .getRaftClient()
               .getGroupManagementApi(myself.getId())
-              .remove(raftGroupId, false, false);
+              .remove(raftGroupId, true, false);
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }

@@ -128,7 +128,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitRowBasedSeriesAggregate(AggregationNode node, C context) {
+  public R visitAggregation(AggregationNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -213,10 +213,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitTransform(TransformNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitDeleteRegion(DeleteRegionNode node, C context) {
     return visitPlan(node, context);
   }
 

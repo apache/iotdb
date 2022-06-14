@@ -329,15 +329,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
-    try {
-      int statusCode = executionResult.status.getCode();
-      if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        throw new RuntimeException(
-            "cannot auto create schema, status is: " + executionResult.status);
-      }
-    } finally {
-      coordinator.getQueryExecution(queryId).stopAndCleanup();
+    int statusCode = executionResult.status.getCode();
+    if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+      throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
     }
   }
 
@@ -347,20 +342,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
-    try {
-      int statusCode = executionResult.status.getCode();
-      if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
-      }
+    int statusCode = executionResult.status.getCode();
+    if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return;
+    }
 
-      for (TSStatus subStatus : executionResult.status.subStatus) {
-        if (subStatus.code != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-          throw new RuntimeException(
-              "cannot auto create schema, status is: " + executionResult.status);
-        }
+    for (TSStatus subStatus : executionResult.status.subStatus) {
+      if (subStatus.code != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+        throw new RuntimeException(
+            "cannot auto create schema, status is: " + executionResult.status);
       }
-    } finally {
-      coordinator.getQueryExecution(queryId).stopAndCleanup();
     }
   }
 
