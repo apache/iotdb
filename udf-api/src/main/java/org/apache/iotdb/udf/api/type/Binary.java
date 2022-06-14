@@ -32,7 +32,11 @@ public class Binary implements Comparable<Binary>, Serializable {
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
 
-  private byte[] values;
+  private final byte[] values;
+
+  private int hash;
+
+  private String stringCache;
 
   /** if the bytes v is modified, the modification is visible to this binary. */
   public Binary(byte[] v) {
@@ -85,7 +89,10 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   @Override
   public int hashCode() {
-    return Arrays.hashCode(values);
+    if (hash == 0) {
+      hash = Arrays.hashCode(values);
+    }
+    return hash;
   }
 
   /**
@@ -95,13 +102,16 @@ public class Binary implements Comparable<Binary>, Serializable {
    */
   public int getLength() {
     if (this.values == null) {
-      return -1;
+      return 0;
     }
     return this.values.length;
   }
 
   public String getStringValue() {
-    return new String(this.values, STRING_CHARSET);
+    if (stringCache == null) {
+      stringCache = new String(this.values, STRING_CHARSET);
+    }
+    return stringCache;
   }
 
   public String getTextEncodingType() {
@@ -115,10 +125,6 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   public byte[] getValues() {
     return values;
-  }
-
-  public void setValues(byte[] values) {
-    this.values = values;
   }
 
   /**

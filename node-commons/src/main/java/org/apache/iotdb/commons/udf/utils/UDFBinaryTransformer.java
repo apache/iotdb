@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.commons.udf.utils;
 
-/** Transform Binary to Binary / Binary to Binary */
+/**
+ * Transform between {@link org.apache.iotdb.tsfile.utils.Binary} and {@link
+ * org.apache.iotdb.udf.api.type.Binary}
+ */
 public class UDFBinaryTransformer {
   private UDFBinaryTransformer() {}
 
