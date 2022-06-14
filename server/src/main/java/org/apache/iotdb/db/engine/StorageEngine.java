@@ -499,8 +499,8 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * This method is for sync, delete tsfile or sth like them, just get storage group directly by sg
-   * name
+   * This method is for sync, delete tsfile or sth like them, just get storage group directly by
+   * virtualStorageGroupId
    *
    * @param path storage group path
    * @param virtualStorageGroupId virtual storage group partition id
@@ -586,7 +586,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * get storage group processor by device path
+   * get storage group processor by virtualStorageGroupId
    *
    * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
    *     modification in mtree
