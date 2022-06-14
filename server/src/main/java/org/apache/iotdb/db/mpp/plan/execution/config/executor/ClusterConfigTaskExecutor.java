@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.fetcher;
+package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -64,21 +64,21 @@ import java.util.Map;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfigTaskExecutor.class);
 
   private static final IClientManager<PartitionRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
           new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
-  private static final class ClusterConfigTaskFetcherHolder {
+  private static final class ClusterConfigTaskExecutorHolder {
     private static final ClusterConfigTaskExecutor INSTANCE = new ClusterConfigTaskExecutor();
 
-    private ClusterConfigTaskFetcherHolder() {}
+    private ClusterConfigTaskExecutorHolder() {}
   }
 
   public static ClusterConfigTaskExecutor getInstance() {
-    return ClusterConfigTaskExecutor.ClusterConfigTaskFetcherHolder.INSTANCE;
+    return ClusterConfigTaskExecutor.ClusterConfigTaskExecutorHolder.INSTANCE;
   }
 
   @Override

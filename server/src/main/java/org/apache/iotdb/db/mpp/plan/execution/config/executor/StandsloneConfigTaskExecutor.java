@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.fetcher;
+package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -57,14 +57,14 @@ public class StandsloneConfigTaskExecutor implements IConfigTaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskExecutor.class);
 
-  private static final class StandsloneConfigTaskFetcherHolder {
+  private static final class StandsloneConfigTaskExecutorHolder {
     private static final StandsloneConfigTaskExecutor INSTANCE = new StandsloneConfigTaskExecutor();
 
-    private StandsloneConfigTaskFetcherHolder() {}
+    private StandsloneConfigTaskExecutorHolder() {}
   }
 
   public static StandsloneConfigTaskExecutor getInstance() {
-    return StandsloneConfigTaskExecutor.StandsloneConfigTaskFetcherHolder.INSTANCE;
+    return StandsloneConfigTaskExecutor.StandsloneConfigTaskExecutorHolder.INSTANCE;
   }
 
   @Override

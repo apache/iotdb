@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
