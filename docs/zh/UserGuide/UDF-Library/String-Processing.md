@@ -371,7 +371,7 @@ select s1, substr(s1, "start"="0", "end"="2") from root.sg1.d1
 用于查询的 SQL 语句:
 
 ```sql
-select s1, upper(s1) from root.sg1.d1 from root.sg1.d1
+select s1, upper(s1) from root.sg1.d1
 ```
 
 输出序列:
@@ -415,7 +415,7 @@ select s1, upper(s1) from root.sg1.d1 from root.sg1.d1
 用于查询的 SQL 语句:
 
 ```sql
-select s1, lower(s1) from root.sg1.d1 from root.sg1.d1
+select s1, lower(s1) from root.sg1.d1
 ```
 
 输出序列:

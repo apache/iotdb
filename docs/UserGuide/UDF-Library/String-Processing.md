@@ -371,7 +371,7 @@ Input series:
 SQL for query:
 
 ```sql
-select s1, upper(s1) from root.sg1.d1 from root.sg1.d1
+select s1, upper(s1) from root.sg1.d1
 ```
 
 Output series:
@@ -415,7 +415,7 @@ Input series:
 SQL for query:
 
 ```sql
-select s1, lower(s1) from root.sg1.d1 from root.sg1.d1
+select s1, lower(s1) from root.sg1.d1
 ```
 
 Output series:
