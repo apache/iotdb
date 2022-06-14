@@ -52,7 +52,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
           resultFutures.get(j).cancel(true);
         }
         throw new SQLException(
-            "Waiting for query results of {} failed. ", getEndpoints().get(i), e);
+            String.format("Waiting for query results of %s failed", getEndpoints().get(i)), e);
       }
     }
     return results;

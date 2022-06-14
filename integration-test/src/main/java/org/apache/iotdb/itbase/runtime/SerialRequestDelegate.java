@@ -39,7 +39,7 @@ public class SerialRequestDelegate<T> extends RequestDelegate<T> {
       try {
         results.add(getRequests().get(i).call());
       } catch (Exception e) {
-        throw new SQLException(String.format("Request %s error", getEndpoints().get(i)), e);
+        throw new SQLException(String.format("Request %s error.", getEndpoints().get(i)), e);
       }
     }
     return results;
