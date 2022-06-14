@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -34,7 +34,7 @@ public class SetStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher) {
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return configTaskFetcher.setStorageGroup(setStorageGroupStatement);

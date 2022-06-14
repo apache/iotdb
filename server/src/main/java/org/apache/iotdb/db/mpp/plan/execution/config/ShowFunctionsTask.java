@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -55,7 +55,7 @@ public class ShowFunctionsTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowFunctionsTask.class);
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
       throws InterruptedException {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -36,7 +36,7 @@ public class AuthorizerTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher) {
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     if (authorStatement.getQueryType() == QueryType.WRITE) {

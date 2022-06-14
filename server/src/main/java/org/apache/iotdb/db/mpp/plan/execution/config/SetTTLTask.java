@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -35,7 +35,7 @@ public class SetTTLTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
       throws InterruptedException {
     return configTaskFetcher.setTTL(statement, taskName);
   }

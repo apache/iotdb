@@ -53,18 +53,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class StandsloneConfigTaskFetcher implements IConfigTaskFetcher {
+public class StandsloneConfigTaskExecutor implements IConfigTaskExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskFetcher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskExecutor.class);
 
   private static final class StandsloneConfigTaskFetcherHolder {
-    private static final StandsloneConfigTaskFetcher INSTANCE = new StandsloneConfigTaskFetcher();
+    private static final StandsloneConfigTaskExecutor INSTANCE = new StandsloneConfigTaskExecutor();
 
     private StandsloneConfigTaskFetcherHolder() {}
   }
 
-  public static StandsloneConfigTaskFetcher getInstance() {
-    return StandsloneConfigTaskFetcher.StandsloneConfigTaskFetcherHolder.INSTANCE;
+  public static StandsloneConfigTaskExecutor getInstance() {
+    return StandsloneConfigTaskExecutor.StandsloneConfigTaskFetcherHolder.INSTANCE;
   }
 
   @Override

@@ -62,9 +62,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ClusterConfigTaskFetcher implements IConfigTaskFetcher {
+public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskFetcher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskExecutor.class);
 
   private static final IClientManager<PartitionRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
@@ -72,13 +72,13 @@ public class ClusterConfigTaskFetcher implements IConfigTaskFetcher {
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private static final class ClusterConfigTaskFetcherHolder {
-    private static final ClusterConfigTaskFetcher INSTANCE = new ClusterConfigTaskFetcher();
+    private static final ClusterConfigTaskExecutor INSTANCE = new ClusterConfigTaskExecutor();
 
     private ClusterConfigTaskFetcherHolder() {}
   }
 
-  public static ClusterConfigTaskFetcher getInstance() {
-    return ClusterConfigTaskFetcher.ClusterConfigTaskFetcherHolder.INSTANCE;
+  public static ClusterConfigTaskExecutor getInstance() {
+    return ClusterConfigTaskExecutor.ClusterConfigTaskFetcherHolder.INSTANCE;
   }
 
   @Override

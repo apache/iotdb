@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface IConfigTask {
-  ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
+  ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
       throws InterruptedException;
 }

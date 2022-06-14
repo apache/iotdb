@@ -32,7 +32,7 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.List;
 
-public interface IConfigTaskFetcher {
+public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setStorageGroup(
       SetStorageGroupStatement setStorageGroupStatement);

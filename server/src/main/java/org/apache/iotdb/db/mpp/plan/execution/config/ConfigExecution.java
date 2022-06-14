@@ -28,9 +28,9 @@ import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.ClusterConfigTaskFetcher;
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
-import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.StandsloneConfigTaskFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.StandsloneConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,7 +60,7 @@ public class ConfigExecution implements IQueryExecution {
   private DatasetHeader datasetHeader;
   private boolean resultSetConsumed;
   private final IConfigTask task;
-  private IConfigTaskFetcher fetcher;
+  private IConfigTaskExecutor fetcher;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
@@ -71,9 +71,9 @@ public class ConfigExecution implements IQueryExecution {
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
     this.resultSetConsumed = false;
     if (config.isClusterMode()) {
-      fetcher = ClusterConfigTaskFetcher.getInstance();
+      fetcher = ClusterConfigTaskExecutor.getInstance();
     } else {
-      fetcher = StandsloneConfigTaskFetcher.getInstance();
+      fetcher = StandsloneConfigTaskExecutor.getInstance();
     }
   }
 
