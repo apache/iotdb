@@ -21,11 +21,13 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -83,6 +85,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -405,6 +408,34 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus dropFunction(TDropFunctionReq req) throws TException {
     return configManager.dropFunction(req.getUdfName());
+  }
+
+  @Override
+  public TSStatus flush(TFlushReq req) throws TException {
+    if (req.storageGroups != null) {
+      List<PartialPath> noExistSg =
+          configManager.checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
+      if (!noExistSg.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
+        return RpcUtils.getStatus(
+            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
+      }
+    }
+
+    List<TDataNodeInfo> onlineDataNodes =
+        configManager.getNodeManager().getOnlineDataNodes(req.dataNodeId);
+    TSStatus tsStatus = new TSStatus();
+    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+      tsStatus =
+          SyncDataNodeClientPool.getInstance()
+              .flush(dataNodeInfo.getLocation().getInternalEndPoint(), req);
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return tsStatus;
+      }
+    }
+    return tsStatus;
   }
 
   public void handleClientExit() {}

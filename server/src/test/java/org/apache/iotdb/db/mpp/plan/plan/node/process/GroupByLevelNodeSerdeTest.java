@@ -36,6 +36,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,7 +48,7 @@ import static org.junit.Assert.assertEquals;
 public class GroupByLevelNodeSerdeTest {
 
   @Test
-  public void testSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException, IOException {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(1, 100, 1, 1, true, true, true);
     SeriesAggregationScanNode seriesAggregationScanNode1 =
@@ -96,5 +99,12 @@ public class GroupByLevelNodeSerdeTest {
     groupByLevelNode.serialize(byteBuffer);
     byteBuffer.flip();
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), groupByLevelNode);
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(baos);
+    groupByLevelNode.serialize(dataOutputStream);
+    byte[] byteArray = baos.toByteArray();
+    ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+    assertEquals(PlanNodeDeserializeHelper.deserialize(buffer), groupByLevelNode);
   }
 }

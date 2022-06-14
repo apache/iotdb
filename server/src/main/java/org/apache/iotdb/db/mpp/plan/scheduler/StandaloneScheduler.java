@@ -162,6 +162,9 @@ public class StandaloneScheduler implements IScheduler {
     // practice ?
     stateTracker.abort();
     // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
+    for (FragmentInstance fragmentInstance : instances) {
+      FragmentInstanceManager.getInstance().cancelTask(fragmentInstance.getId());
+    }
   }
 
   @Override

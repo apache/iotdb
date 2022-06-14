@@ -292,4 +292,10 @@ service ConfigIService {
   common.TSStatus createFunction(TCreateFunctionReq req)
 
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /* Flush */
+
+  common.TSStatus flush(common.TFlushReq req)
+
 }
+
