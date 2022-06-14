@@ -30,16 +30,15 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -52,9 +51,9 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -142,7 +141,11 @@ public class ConfigRequestExecutor {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodeReq) req);
       case SetStorageGroup:
-        return clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
+        TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        return partitionInfo.setStorageGroup((SetStorageGroupReq) req);
       case DeleteStorageGroup:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
@@ -157,13 +160,7 @@ public class ConfigRequestExecutor {
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
       case CreateRegions:
-        TSStatus status = clusterSchemaInfo.createRegions((CreateRegionsReq) req);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
-        }
         return partitionInfo.createRegions((CreateRegionsReq) req);
-      case DeleteRegions:
-        return partitionInfo.deleteRegions((DeleteRegionsReq) req);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:
@@ -184,8 +181,8 @@ public class ConfigRequestExecutor {
       case RevokeRoleFromUser:
       case UpdateUser:
         return authorInfo.authorNonQuery((AuthorReq) req);
-      case ApplyConfigNode:
-        return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
+      case RegisterConfigNode:
+        return nodeInfo.registerConfigNode((RegisterConfigNodeReq) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionReq) req);
       case DropFunction:
@@ -241,7 +238,6 @@ public class ConfigRequestExecutor {
   }
 
   public void loadSnapshot(File latestSnapshotRootDir) {
-
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
           "snapshot directory [{}] is not exist, can not load snapshot with this directory.",

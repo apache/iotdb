@@ -126,7 +126,7 @@ public class AggregationNode extends MultiChildNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRowBasedSeriesAggregate(this, context);
+    return visitor.visitAggregation(this, context);
   }
 
   @Override

@@ -27,7 +27,6 @@ import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
@@ -1299,11 +1298,10 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   private void cleanupQueryExecution(Long queryId) {
     IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
     if (queryExecution != null) {
-      queryExecution.stopAndCleanup();
+      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+        LOGGER.info("stop and clean up");
+        queryExecution.stopAndCleanup();
+      }
     }
-  }
-
-  private QueryId genQueryId(long id) {
-    return new QueryId(String.valueOf(id));
   }
 }

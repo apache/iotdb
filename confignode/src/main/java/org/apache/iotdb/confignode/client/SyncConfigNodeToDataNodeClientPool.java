@@ -21,11 +21,13 @@ package org.apache.iotdb.confignode.client;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -40,13 +42,14 @@ import java.util.Map;
 import java.util.Set;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
-public class SyncDataNodeClientPool {
+public class SyncConfigNodeToDataNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyncConfigNodeToDataNodeClientPool.class);
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
-  private SyncDataNodeClientPool() {
+  private SyncConfigNodeToDataNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
@@ -90,17 +93,16 @@ public class SyncDataNodeClientPool {
     Map<TDataNodeLocation, List<TConsensusGroupId>> regionLocationMap = new HashMap<>();
     deletedRegionSet.forEach(
         (tRegionReplicaSet) -> {
-          final List<TDataNodeLocation> dataNodeLocations =
-              tRegionReplicaSet.getDataNodeLocations();
-          regionLocationMap
-              .computeIfAbsent(dataNodeLocations.get(0), k -> new ArrayList<>())
-              .add(tRegionReplicaSet.getRegionId());
+          for (TDataNodeLocation dataNodeLocation : tRegionReplicaSet.getDataNodeLocations()) {
+            regionLocationMap
+                .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
+                .add(tRegionReplicaSet.getRegionId());
+          }
         });
     LOGGER.info("Current regionLocationMap {} ", regionLocationMap);
     regionLocationMap.forEach(
-        (dataNodeLocation, regionIds) -> {
-          deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet);
-        });
+        (dataNodeLocation, regionIds) ->
+            deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet));
   }
 
   private void deleteRegions(
@@ -123,17 +125,47 @@ public class SyncDataNodeClientPool {
     }
   }
 
+  public TSStatus flush(TEndPoint endPoint, TFlushReq flushReq) {
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+      status = client.flush(flushReq);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
+    } catch (TException e) {
+      LOGGER.error("flush on DataNode {} failed", endPoint, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+    return status;
+  }
+
+  public TSStatus invalidatePermissionCache(
+      TEndPoint endPoint, TInvalidatePermissionCacheReq invalidatePermissionCacheReq) {
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+      status = client.invalidatePermissionCache(invalidatePermissionCacheReq);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
+    } catch (TException e) {
+      LOGGER.error("Invalid Permission Cache on DataNode {} failed", endPoint, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+    return status;
+  }
+
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final SyncDataNodeClientPool INSTANCE = new SyncDataNodeClientPool();
+    private static final SyncConfigNodeToDataNodeClientPool INSTANCE =
+        new SyncConfigNodeToDataNodeClientPool();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static SyncDataNodeClientPool getInstance() {
+  public static SyncConfigNodeToDataNodeClientPool getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

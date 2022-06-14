@@ -151,9 +151,6 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
-    boolean hasRegionReplicaSet = ReadWriteIOUtils.readBool(buffer);
-    fragmentInstance.regionReplicaSet =
-        hasRegionReplicaSet ? ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer) : null;
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -170,10 +167,6 @@ public class FragmentInstance implements IConsensusRequest {
         timeFilter.serialize(outputStream);
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
-      ReadWriteIOUtils.write(regionReplicaSet != null, outputStream);
-      if (regionReplicaSet != null) {
-        ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, outputStream);
-      }
       ReadWriteIOUtils.write(hostDataNode != null, outputStream);
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);

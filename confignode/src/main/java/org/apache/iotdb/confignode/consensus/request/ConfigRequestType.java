@@ -58,7 +58,7 @@ public enum ConfigRequestType {
   ListRolePrivilege,
   ListUserRoles,
   ListRoleUsers,
-  ApplyConfigNode,
+  RegisterConfigNode,
   CreateFunction,
   DropFunction,
   GetNodePathsPartition;

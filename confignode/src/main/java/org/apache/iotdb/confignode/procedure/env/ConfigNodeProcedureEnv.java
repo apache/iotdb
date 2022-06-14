@@ -21,11 +21,10 @@ package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.SyncConfigNodeToDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -64,13 +63,13 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Delete config node information, includes (mTree, partitionInfo, regionMap)
+   * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo
    *
-   * @param deleteSgSchema storage group name
+   * @param name storage group name
    * @return tsStatus
    */
-  public TSStatus deleteConfig(TStorageGroupSchema deleteSgSchema) {
-    DeleteStorageGroupReq deleteStorageGroupReq = new DeleteStorageGroupReq(deleteSgSchema);
+  public TSStatus deleteConfig(String name) {
+    DeleteStorageGroupReq deleteStorageGroupReq = new DeleteStorageGroupReq(name);
     return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupReq);
   }
 
@@ -101,11 +100,11 @@ public class ConfigNodeProcedureEnv {
     invalidateCacheReq.setFullPath(storageGroupName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
-          SyncDataNodeClientPool.getInstance()
+          SyncConfigNodeToDataNodeClientPool.getInstance()
               .invalidateSchemaCache(
                   dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
       final TSStatus invalidatePartitionStatus =
-          SyncDataNodeClientPool.getInstance()
+          SyncConfigNodeToDataNodeClientPool.getInstance()
               .invalidatePartitionCache(
                   dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
