@@ -221,6 +221,7 @@ public class NodeInfo implements SnapshotProcessor {
     List<TDataNodeInfo> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
+      // TODO: Check DataNode status, ensure the returned DataNode isn't removed
       if (dataNodeId == -1) {
         result = new ArrayList<>(onlineDataNodes.values());
       } else {
@@ -276,6 +277,7 @@ public class NodeInfo implements SnapshotProcessor {
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
+      // TODO: Check ConfigNode status, ensure the returned ConfigNode isn't removed
       result = new ArrayList<>(onlineConfigNodes);
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();

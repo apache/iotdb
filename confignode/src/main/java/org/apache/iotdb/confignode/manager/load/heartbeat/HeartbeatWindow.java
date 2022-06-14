@@ -28,10 +28,13 @@ public class HeartbeatWindow {
 
   private static final int maximumWindowSize = 1000;
 
+  private float heartbeatIntervalMean;
+
   private final LinkedList<HeartbeatPackage> slidingWindow;
 
   public HeartbeatWindow() {
     this.slidingWindow = new LinkedList<>();
+    this.heartbeatIntervalMean = 0;
   }
 
   public void addHeartbeat(HeartbeatPackage newHeartbeat) {
@@ -47,5 +50,19 @@ public class HeartbeatWindow {
         slidingWindow.removeFirst();
       }
     }
+  }
+
+  public void updateLoadStatistic() {
+    synchronized (slidingWindow) {
+      if (slidingWindow.size() < 2) {
+
+      } else {
+
+      }
+    }
+  }
+
+  public float getHeartbeatIntervalMean() {
+    return heartbeatIntervalMean;
   }
 }

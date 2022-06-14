@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 public class HeartbeatPackage {
 
+  // Unit: ms
   private final long sendTimestamp;
   private final long receiveTimestamp;
 

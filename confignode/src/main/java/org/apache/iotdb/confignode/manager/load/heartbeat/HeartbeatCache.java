@@ -18,34 +18,48 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+
 import java.util.HashMap;
 import java.util.Map;
 
 /** HeartbeatCache caches and maintains all the heartbeat data */
 public class HeartbeatCache implements IHeartbeatStatistic {
 
-  private boolean containsCache = false;
+  // Cached heartbeat samples
+  private final HeartbeatWindow window;
 
-  // Map<DataNodeId, HeartbeatWindow>
-  private final Map<Integer, HeartbeatWindow> windowMap;
+  private volatile float loadScore;
+  private volatile NodeStatus status;
 
   public HeartbeatCache() {
-    this.windowMap = new HashMap<>();
+    this.window = new HeartbeatWindow();
+
+    this.loadScore = 0;
+    this.status = NodeStatus.Running;
   }
 
   @Override
-  public void cacheHeartBeat(int dataNodeId, HeartbeatPackage newHeartbeat) {
-    containsCache = true;
-    windowMap
-        .computeIfAbsent(dataNodeId, window -> new HeartbeatWindow())
-        .addHeartbeat(newHeartbeat);
+  public void cacheHeartBeat(HeartbeatPackage newHeartbeat) {
+    window.addHeartbeat(newHeartbeat);
   }
 
   @Override
-  public void discardAllCache() {
-    if (containsCache) {
-      containsCache = false;
-      windowMap.clear();
-    }
+  public void updateLoadStatistic() {
+    window.updateLoadStatistic();
+
+    // Temporary, only the average delay time is used
+    loadScore = window.getHeartbeatIntervalMean();
+
+  }
+
+  @Override
+  public float getLoadScore() {
+    return loadScore;
+  }
+
+  @Override
+  public NodeStatus getNodeStatus() {
+    return status;
   }
 }
