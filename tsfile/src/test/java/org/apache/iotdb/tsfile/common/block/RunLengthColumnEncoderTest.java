@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoderFactory;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
+import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -33,26 +40,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
-import java.util.Random;
 
-public class ByteArrayColumnEncoderTest {
-  @Test
-  public void testBooleanColumn() {
+public class RunLengthColumnEncoderTest {
+
+  private void testInternal(Column column) {
     final int positionCount = 10;
 
-    Random random = new Random();
-
-    boolean[] nullIndicators = new boolean[positionCount];
-    boolean[] values = new boolean[positionCount];
-    for (int i = 0; i < positionCount; i++) {
-      nullIndicators[i] = i % 2 == 0;
-      if (i % 2 != 0) {
-        values[i] = random.nextBoolean();
-      }
-    }
-    BooleanColumn input = new BooleanColumn(positionCount, Optional.of(nullIndicators), values);
+    Column input = new RunLengthEncodedColumn(column, positionCount);
     long expectedRetainedSize = input.getRetainedSizeInBytes();
-    ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.BYTE_ARRAY);
+    ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.RLE);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(byteArrayOutputStream);
@@ -64,16 +60,42 @@ public class ByteArrayColumnEncoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-    BooleanColumn output =
-        (BooleanColumn) encoder.readColumn(buffer, TSDataType.BOOLEAN, positionCount);
+    Column output = encoder.readColumn(buffer, input.getDataType(), positionCount);
     Assert.assertEquals(positionCount, output.getPositionCount());
-    Assert.assertTrue(output.mayHaveNull());
+    Assert.assertFalse(output.mayHaveNull());
     Assert.assertEquals(expectedRetainedSize, output.getRetainedSizeInBytes());
     for (int i = 0; i < positionCount; i++) {
-      Assert.assertEquals(i % 2 == 0, output.isNull(i));
-      if (i % 2 != 0) {
-        Assert.assertEquals(values[i], output.getBoolean(i));
-      }
+      Assert.assertEquals(column.getObject(0), output.getObject(i));
     }
+  }
+
+  @Test
+  public void testBooleanColumn() {
+    testInternal(new BooleanColumn(1, Optional.empty(), new boolean[] {true}));
+  }
+
+  @Test
+  public void testIntColumn() {
+    testInternal(new IntColumn(1, Optional.empty(), new int[] {0}));
+  }
+
+  @Test
+  public void testLongColumn() {
+    testInternal(new LongColumn(1, Optional.empty(), new long[] {0L}));
+  }
+
+  @Test
+  public void testFloatColumn() {
+    testInternal(new FloatColumn(1, Optional.empty(), new float[] {0.0F}));
+  }
+
+  @Test
+  public void testDoubleColumn() {
+    testInternal(new DoubleColumn(1, Optional.empty(), new double[] {0.0D}));
+  }
+
+  @Test
+  public void testTextColumn() {
+    testInternal(new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary("foo")}));
   }
 }
