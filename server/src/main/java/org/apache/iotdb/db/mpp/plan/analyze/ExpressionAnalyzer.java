@@ -727,13 +727,17 @@ public class ExpressionAnalyzer {
               (UnaryExpression) expression, Collections.singletonList(childExpression))
           .get(0);
     } else if (expression instanceof FunctionExpression) {
+      FunctionExpression functionExpression = (FunctionExpression) expression;
       List<Expression> childExpressions = new ArrayList<>();
       for (Expression suffixExpression : expression.getExpressions()) {
         childExpressions.add(removeAliasFromExpression(suffixExpression));
       }
-      return reconstructFunctionExpressions(
-              (FunctionExpression) expression, Collections.singletonList(childExpressions))
-          .get(0);
+      // Reconstruct the function name to lower case to finish the calculation afterwards while the
+      // origin name will be only as output name
+      return new FunctionExpression(
+          functionExpression.getFunctionName().toLowerCase(),
+          functionExpression.getFunctionAttributes(),
+          childExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
       MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
       if (rawPath.isMeasurementAliasExists()) {
