@@ -35,21 +35,21 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Processor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class DataBlockService extends ThriftService implements DataBlockServiceMBean {
 
-  private DataBlockManager dataBlockManager;
-  private ExecutorService executorService;
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataBlockService.class);
 
-  private DataBlockService() {}
+  private final DataBlockManager dataBlockManager;
+  private final ExecutorService executorService;
 
-  @Override
-  public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    initSyncedServiceImpl(null);
+  private DataBlockService() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     executorService =
         IoTDBThreadPoolFactory.newThreadPool(
@@ -69,6 +69,13 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
             new IClientManager.Factory<TEndPoint, SyncDataNodeDataBlockServiceClient>()
                 .createClientManager(
                     new DataNodeClientPoolFactory.SyncDataNodeDataBlockServiceClientPoolFactory()));
+    LOGGER.info("DataBlockManager init successfully");
+  }
+
+  @Override
+  public void initTProcessor()
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    initSyncedServiceImpl(null);
     processor = new Processor<>(dataBlockManager.getOrCreateDataBlockServiceImpl());
   }
 

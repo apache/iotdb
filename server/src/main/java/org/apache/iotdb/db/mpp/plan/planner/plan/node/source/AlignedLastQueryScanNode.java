@@ -122,7 +122,9 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   public String toString() {
     return String.format(
         "AlignedLastQueryScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getSeriesPath(), this.getRegionReplicaSet());
+        this.getPlanNodeId(),
+        this.getSeriesPath().getFormattedString(),
+        this.getRegionReplicaSet());
   }
 
   @Override

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -1048,7 +1049,7 @@ public class DataRegion {
       int before = loc;
       // before time partition
       long beforeTimePartition =
-          StorageEngine.getTimePartition(insertTabletNode.getTimes()[before]);
+          StorageEngineV2.getTimePartition(insertTabletNode.getTimes()[before]);
       // init map
       long lastFlushTime =
           lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
@@ -1617,10 +1618,11 @@ public class DataRegion {
         systemDir);
     writeLock("deleteFolder");
     try {
-      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
-      }
+      File dataRegionSystemFolder =
+          SystemFileFactory.INSTANCE.getFile(
+              systemDir + File.separator + logicalStorageGroupName, dataRegionId);
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+          dataRegionSystemFolder);
     } finally {
       writeUnlock();
     }
@@ -1673,10 +1675,11 @@ public class DataRegion {
 
   private void deleteAllSGFolders(List<String> folder) {
     for (String tsfilePath : folder) {
-      File storageGroupFolder =
+      File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
+      if (dataRegionDataFolder.exists()) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+            dataRegionDataFolder);
       }
     }
   }

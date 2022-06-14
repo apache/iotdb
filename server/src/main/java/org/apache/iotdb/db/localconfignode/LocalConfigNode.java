@@ -23,9 +23,18 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -37,6 +46,8 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -59,6 +70,7 @@ import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -119,6 +131,8 @@ public class LocalConfigNode {
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
 
+  private IAuthorizer iAuthorizer;
+
   private LocalConfigNode() {
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
@@ -128,6 +142,11 @@ public class LocalConfigNode {
       } else {
         logger.error("create system folder {} failed.", schemaFolder.getAbsolutePath());
       }
+    }
+    try {
+      iAuthorizer = BasicAuthorizer.getInstance();
+    } catch (AuthException e) {
+      logger.error(e.getMessage());
     }
   }
 
@@ -162,7 +181,7 @@ public class LocalConfigNode {
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
             IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
             timedForceMLogThread,
             this::forceMlog,
             config.getSyncMlogPeriodInMs(),
@@ -841,7 +860,7 @@ public class LocalConfigNode {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
-      dataPartitionTable.setDataPartitionInfo(storageGroup, path);
+      dataPartitionTable.setDataPartitionInfo(storageGroup);
       dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
@@ -1009,4 +1028,225 @@ public class LocalConfigNode {
   }
 
   // endregion
+
+  // author
+  public void operatorPermission(TAuthorizerReq authorizerReq) throws AuthException {
+    AuthorOperator.AuthorType authorType =
+        AuthorOperator.AuthorType.values()[authorizerReq.authorType];
+    String userName = authorizerReq.getUserName();
+    String roleName = authorizerReq.getRoleName();
+    String password = authorizerReq.getPassword();
+    String newPassword = authorizerReq.getNewPassword();
+    Set<Integer> permissions = authorizerReq.getPermissions();
+    String nodeName = authorizerReq.getNodeName();
+    switch (authorType) {
+      case UPDATE_USER:
+        iAuthorizer.updateUserPassword(userName, newPassword);
+        break;
+      case CREATE_USER:
+        iAuthorizer.createUser(userName, password);
+        break;
+      case CREATE_ROLE:
+        iAuthorizer.createRole(roleName);
+        break;
+      case DROP_USER:
+        iAuthorizer.deleteUser(userName);
+        break;
+      case DROP_ROLE:
+        iAuthorizer.deleteRole(roleName);
+        break;
+      case GRANT_ROLE:
+        for (int i : permissions) {
+          iAuthorizer.grantPrivilegeToRole(roleName, nodeName, i);
+        }
+        break;
+      case GRANT_USER:
+        for (int i : permissions) {
+          iAuthorizer.grantPrivilegeToUser(userName, nodeName, i);
+        }
+        break;
+      case GRANT_ROLE_TO_USER:
+        iAuthorizer.grantRoleToUser(roleName, userName);
+        break;
+      case REVOKE_USER:
+        for (int i : permissions) {
+          iAuthorizer.revokePrivilegeFromUser(userName, nodeName, i);
+        }
+        break;
+      case REVOKE_ROLE:
+        for (int i : permissions) {
+          iAuthorizer.revokePrivilegeFromRole(roleName, nodeName, i);
+        }
+        break;
+      case REVOKE_ROLE_FROM_USER:
+        iAuthorizer.revokeRoleFromUser(roleName, userName);
+        break;
+      default:
+        throw new AuthException("Unsupported operation " + authorType);
+    }
+  }
+
+  public Map<String, List<String>> queryPermission(TAuthorizerReq authorizerReq)
+      throws AuthException {
+    AuthorOperator.AuthorType authorType =
+        AuthorOperator.AuthorType.values()[authorizerReq.authorType];
+    switch (authorType) {
+      case LIST_USER:
+        return executeListUser();
+      case LIST_ROLE:
+        return executeListRole();
+      case LIST_USER_PRIVILEGE:
+        return executeListUserPrivileges(authorizerReq);
+      case LIST_ROLE_PRIVILEGE:
+        return executeListRolePrivileges(authorizerReq);
+      case LIST_USER_ROLES:
+        return executeListUserRoles(authorizerReq);
+      case LIST_ROLE_USERS:
+        return executeListRoleUsers(authorizerReq);
+      default:
+        throw new AuthException("Unsupported operation " + authorType);
+    }
+  }
+
+  public Map<String, List<String>> executeListRole() {
+    List<String> roleList = iAuthorizer.listAllRoles();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListUser() {
+    List<String> userList = iAuthorizer.listAllUsers();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListRoleUsers(TAuthorizerReq authorizerReq)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = iAuthorizer.getRole(authorizerReq.getRoleName());
+      if (role == null) {
+        throw new AuthException("No such role : " + authorizerReq.getRoleName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> roleUsersList = new ArrayList<>();
+    List<String> userList = iAuthorizer.listAllUsers();
+    for (String userN : userList) {
+      User userObj = iAuthorizer.getUser(userN);
+      if (userObj != null && userObj.hasRole(authorizerReq.getRoleName())) {
+        roleUsersList.add(userN);
+      }
+    }
+    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListUserRoles(TAuthorizerReq authorizerReq)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = iAuthorizer.getUser(authorizerReq.getUserName());
+      if (user == null) {
+        throw new AuthException("No such user : " + authorizerReq.getUserName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> userRoleList = new ArrayList<>();
+    for (String roleN : user.getRoleList()) {
+      userRoleList.add(roleN);
+    }
+
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListRolePrivileges(TAuthorizerReq authorizerReq)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = iAuthorizer.getRole(authorizerReq.getRoleName());
+      if (role == null) {
+        throw new AuthException("No such role : " + authorizerReq.getRoleName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> rolePrivilegesList = new ArrayList<>();
+    for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+      if (authorizerReq.getNodeName().equals("")
+          || AuthUtils.pathBelongsTo(authorizerReq.getNodeName(), pathPrivilege.getPath())) {
+        rolePrivilegesList.add(pathPrivilege.toString());
+      }
+    }
+
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListUserPrivileges(TAuthorizerReq authorizerReq)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = iAuthorizer.getUser(authorizerReq.getUserName());
+      if (user == null) {
+        throw new AuthException("No such user : " + authorizerReq.getUserName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> userPrivilegesList = new ArrayList<>();
+
+    if (IoTDBConstant.PATH_ROOT.equals(authorizerReq.getUserName())) {
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
+        userPrivilegesList.add(privilegeType.toString());
+      }
+    } else {
+      List<String> rolePrivileges = new ArrayList<>();
+      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+        if (authorizerReq.getNodeName().equals("")
+            || AuthUtils.pathBelongsTo(authorizerReq.getNodeName(), pathPrivilege.getPath())) {
+          rolePrivileges.add("");
+          userPrivilegesList.add(pathPrivilege.toString());
+        }
+      }
+      for (String roleN : user.getRoleList()) {
+        Role role = iAuthorizer.getRole(roleN);
+        if (roleN == null) {
+          continue;
+        }
+        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+          if (authorizerReq.getNodeName().equals("")
+              || AuthUtils.pathBelongsTo(authorizerReq.getNodeName(), pathPrivilege.getPath())) {
+            rolePrivileges.add(roleN);
+            userPrivilegesList.add(pathPrivilege.toString());
+          }
+        }
+      }
+      permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
+    }
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
+    return permissionInfo;
+  }
+
+  public boolean login(String username, String password) throws AuthException {
+    return iAuthorizer.login(username, password);
+  }
+
+  public boolean checkUserPrivileges(String username, String path, int permission)
+      throws AuthException {
+    return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
+
+  public TSStatus executeFlushOperation(TFlushReq tFlushReq) {
+    return storageEngine.operateFlush(tFlushReq);
+  }
 }

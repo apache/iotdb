@@ -1335,7 +1335,12 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSink().getPipeSinkName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+        if (pipe.getStatus().equals(Pipe.PipeStatus.RUNNING) && pipe.isDisconnected()) {
+          record.addField(
+              Binary.valueOf(pipe.getStatus().name() + "(DISCONNECTED)"), TSDataType.TEXT);
+        } else {
+          record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+        }
         record.addField(
             Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
 
@@ -2451,7 +2456,7 @@ public class PlanExecutor implements IPlanExecutor {
    * @param storageGroups the storage groups to check
    * @return List of PartialPath the storage groups that not exist
    */
-  List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
+  public static List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
     List<PartialPath> noExistSg = new ArrayList<>();
     if (storageGroups == null) {
       return noExistSg;
