@@ -29,7 +29,9 @@ public class HeartbeatCache implements IHeartbeatStatistic {
   // Cached heartbeat samples
   private final HeartbeatWindow window;
 
+  // For guiding queries, the higher the score the higher the load
   private volatile float loadScore;
+  // For showing cluster
   private volatile NodeStatus status;
 
   public HeartbeatCache() {
@@ -46,11 +48,14 @@ public class HeartbeatCache implements IHeartbeatStatistic {
 
   @Override
   public void updateLoadStatistic() {
-    window.updateLoadStatistic();
-
-    // Temporary, only the average delay time is used
-    loadScore = window.getHeartbeatIntervalMean();
-
+    long lastSendTime = window.getLastSendTime();
+    // TODO: Optimize
+    loadScore = -lastSendTime;
+    if (System.currentTimeMillis() - lastSendTime > 20_000) {
+      status = NodeStatus.Unknown;
+    } else {
+      status = NodeStatus.Running;
+    }
   }
 
   @Override
