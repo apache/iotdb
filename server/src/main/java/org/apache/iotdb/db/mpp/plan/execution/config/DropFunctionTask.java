@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
@@ -53,7 +53,7 @@ public class DropFunctionTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (CONFIG.isClusterMode()) {
@@ -65,10 +65,9 @@ public class DropFunctionTask implements IConfigTask {
   }
 
   private void executeCluster(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager,
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
       SettableFuture<ConfigTaskResult> future) {
-    try (DataNodeToConfigNodeClient client =
-        clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+    try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       final TSStatus executionStatus = client.dropFunction(new TDropFunctionReq(udfName));
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {

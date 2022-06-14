@@ -27,7 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.confignode.client.AsyncConfigNodeToDataNodeClientPool;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -108,7 +108,7 @@ public class LoadManager implements Runnable {
           storageGroup,
           getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
     }
-    AsyncConfigNodeToDataNodeClientPool.getInstance().createRegions(createRegionsReq, ttlMap);
+    AsyncDataNodeClientPool.getInstance().createRegions(createRegionsReq, ttlMap);
   }
 
   /**
@@ -155,7 +155,7 @@ public class LoadManager implements Runnable {
           for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
             HeartbeatHandler handler =
                 new HeartbeatHandler(dataNodeInfo.getLocation(), heartbeatCache);
-            AsyncConfigNodeToDataNodeClientPool.getInstance()
+            AsyncDataNodeClientPool.getInstance()
                 .getHeartBeat(
                     dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
           }

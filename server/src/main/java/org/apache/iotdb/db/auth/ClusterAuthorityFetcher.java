@@ -32,9 +32,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -75,10 +75,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build();
 
-  private static final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
-      configNodeClientManager =
-          new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
+      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private static final class ClusterAuthorityFetcherHolder {
     private static final ClusterAuthorityFetcher INSTANCE = new ClusterAuthorityFetcher();
@@ -131,11 +130,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
       // Send request to some API server
-      TSStatus tsStatus = dataNodeToConfigNodeClient.operatePermission(authorizerReq);
+      TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         logger.error(
@@ -159,12 +158,12 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
     try {
       // Send request to some API server
-      authorizerResp = dataNodeToConfigNodeClient.queryPermission(authorizerReq);
+      authorizerResp = configNodeClient.queryPermission(authorizerReq);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
         logger.error(
@@ -199,10 +198,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     } else {
       TLoginReq req = new TLoginReq(username, password);
       TPermissionInfoResp status = null;
-      try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
+      try (ConfigNodeClient configNodeClient =
           configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         // Send request to some API server
-        status = dataNodeToConfigNodeClient.login(req);
+        status = configNodeClient.login(req);
       } catch (TException | IOException e) {
         logger.error("Failed to connect to config node.");
         status = new TPermissionInfoResp();
@@ -226,10 +225,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public TSStatus checkPath(String username, List<String> allPath, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
     TPermissionInfoResp permissionInfoResp;
-    try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
+    try (ConfigNodeClient configNodeClient =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
-      permissionInfoResp = dataNodeToConfigNodeClient.checkUserPrivileges(req);
+      permissionInfoResp = configNodeClient.checkUserPrivileges(req);
     } catch (TException | IOException e) {
       logger.error("Failed to connect to config node.");
       permissionInfoResp = new TPermissionInfoResp();
