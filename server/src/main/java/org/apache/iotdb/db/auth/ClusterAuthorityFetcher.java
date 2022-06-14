@@ -76,22 +76,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build();
 
-<<<<<<< HEAD
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
-=======
-<<<<<<< HEAD
-  private static final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
-      configNodeClientManager =
-          new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
-=======
   private static final IClientManager<PartitionRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
           new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 
   private static final class ClusterAuthorityFetcherHolder {
     private static final ClusterAuthorityFetcher INSTANCE = new ClusterAuthorityFetcher();
@@ -143,16 +131,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-<<<<<<< HEAD
-  public SettableFuture<ConfigTaskResult> operatePermission(
-<<<<<<< HEAD
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
-=======
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
-=======
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
@@ -184,16 +163,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-<<<<<<< HEAD
-  public SettableFuture<ConfigTaskResult> queryPermission(
-<<<<<<< HEAD
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
-=======
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
-=======
   public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
 
@@ -239,17 +209,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     } else {
       TLoginReq req = new TLoginReq(username, password);
       TPermissionInfoResp status = null;
-<<<<<<< HEAD
-      try (ConfigNodeClient configNodeClient =
-=======
-<<<<<<< HEAD
-      try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
-          configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-=======
       try (ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
         // Send request to some API server
         status = configNodeClient.login(req);
       } catch (TException | IOException e) {
@@ -275,17 +236,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public TSStatus checkPath(String username, List<String> allPath, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
     TPermissionInfoResp permissionInfoResp;
-<<<<<<< HEAD
-    try (ConfigNodeClient configNodeClient =
-=======
-<<<<<<< HEAD
-    try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
-        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-=======
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkUserPrivileges(req);
     } catch (TException | IOException e) {

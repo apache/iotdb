@@ -22,14 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-<<<<<<< HEAD
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-<<<<<<< HEAD
-import org.apache.iotdb.db.client.ConfigNodeClient;
-=======
-=======
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -74,17 +66,6 @@ public class Coordinator {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
-<<<<<<< HEAD
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
-=======
-<<<<<<< HEAD
-  private static final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
->>>>>>> 8e3e7554e5 (add interface)
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
-=======
->>>>>>> abbe779bb7 (add interface)
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;

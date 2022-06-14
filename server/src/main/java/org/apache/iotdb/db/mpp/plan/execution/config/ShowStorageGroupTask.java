@@ -20,23 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-<<<<<<< HEAD
-<<<<<<< HEAD
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.client.ConfigNodeInfo;
-<<<<<<< HEAD
-=======
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
-=======
->>>>>>> abbe779bb7 (add interface)
->>>>>>> 8e3e7554e5 (add interface)
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-=======
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
@@ -59,67 +42,14 @@ public class ShowStorageGroupTask implements IConfigTask {
   }
 
   @Override
-<<<<<<< HEAD
-  public ListenableFuture<ConfigTaskResult> execute(
-<<<<<<< HEAD
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
-=======
-<<<<<<< HEAD
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
-=======
-          IConfigTaskFetcher configTaskFetcher)
->>>>>>> abbe779bb7 (add interface)
-<<<<<<< HEAD
->>>>>>> 8e3e7554e5 (add interface)
-=======
-=======
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
       throws InterruptedException {
     return configTaskFetcher.showStorageGroup(showStorageGroupStatement);
   }
 
-<<<<<<< HEAD
-    if (config.isClusterMode()) {
-<<<<<<< HEAD
-      List<String> storageGroupPathPattern =
-          Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
-      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-        TStorageGroupSchemaResp resp =
-            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-        storageGroupSchemaMap = resp.getStorageGroupSchemaMap();
-      } catch (TException | IOException e) {
-        LOGGER.error("Failed to connect to config node.");
-        future.setException(e);
-      }
-=======
-
->>>>>>> abbe779bb7 (add interface)
-    } else {
-      try {
-        LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-        List<PartialPath> partialPaths =
-            localConfigNode.getMatchedStorageGroups(
-                showStorageGroupStatement.getPathPattern(),
-                showStorageGroupStatement.isPrefixPath());
-        for (PartialPath storageGroupPath : partialPaths) {
-          IStorageGroupMNode storageGroupMNode =
-              localConfigNode.getStorageGroupNodeByPath(storageGroupPath);
-          String storageGroup = storageGroupMNode.getFullPath();
-          TStorageGroupSchema storageGroupSchema = storageGroupMNode.getStorageGroupSchema();
-          storageGroupSchemaMap.put(storageGroup, storageGroupSchema);
-        }
-      } catch (MetadataException e) {
-        future.setException(e);
-      }
-    }
-    // build TSBlock
-=======
   public static void buildTSBlock(
       Map<String, TStorageGroupSchema> storageGroupSchemaMap,
       SettableFuture<ConfigTaskResult> future) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showStorageGroupHeader.getRespDataTypes());
     for (Map.Entry<String, TStorageGroupSchema> entry : storageGroupSchemaMap.entrySet()) {

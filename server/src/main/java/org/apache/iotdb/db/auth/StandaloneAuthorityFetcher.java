@@ -22,15 +22,6 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.utils.AuthUtils;
-<<<<<<< HEAD
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-<<<<<<< HEAD
-import org.apache.iotdb.db.client.ConfigNodeClient;
-=======
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
-=======
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -109,16 +100,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-<<<<<<< HEAD
-  public SettableFuture<ConfigTaskResult> operatePermission(
-<<<<<<< HEAD
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
-=======
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
-=======
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     boolean status = true;
     try {
@@ -134,16 +116,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-<<<<<<< HEAD
-  public SettableFuture<ConfigTaskResult> queryPermission(
-<<<<<<< HEAD
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
-=======
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
-=======
   public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     Map<String, List<String>> authorizerResp;
     try {

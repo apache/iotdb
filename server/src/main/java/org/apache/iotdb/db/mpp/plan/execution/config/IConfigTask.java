@@ -19,31 +19,11 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.db.client.ConfigNodeClient;
-
-=======
->>>>>>> abbe779bb7 (add interface)
-import com.google.common.util.concurrent.ListenableFuture;
-=======
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface IConfigTask {
-<<<<<<< HEAD
-  ListenableFuture<ConfigTaskResult> execute(
-<<<<<<< HEAD
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
-=======
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
-=======
   ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
->>>>>>> abbe779bb7 (add interface)
->>>>>>> 8e3e7554e5 (add interface)
       throws InterruptedException;
 }

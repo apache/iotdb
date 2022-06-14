@@ -20,17 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-<<<<<<< HEAD
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
-import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-=======
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
@@ -53,42 +42,12 @@ public class CountStorageGroupTask implements IConfigTask {
   }
 
   @Override
-<<<<<<< HEAD
-  public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
-      throws InterruptedException {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    int storageGroupNum = 0;
-    if (config.isClusterMode()) {
-      List<String> storageGroupPathPattern =
-          Arrays.asList(countStorageGroupStatement.getPartialPath().getNodes());
-      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
-        storageGroupNum = resp.getCount();
-      } catch (TException | IOException e) {
-        LOGGER.error("Failed to connect to config node.");
-        future.setException(e);
-      }
-    } else {
-      try {
-        storageGroupNum =
-            LocalConfigNode.getInstance()
-                .getStorageGroupNum(
-                    countStorageGroupStatement.getPartialPath(),
-                    countStorageGroupStatement.isPrefixPath());
-      } catch (MetadataException e) {
-        future.setException(e);
-      }
-    }
-    // build TSBlock
-=======
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
       throws InterruptedException {
     return configTaskFetcher.countStorageGroup(countStorageGroupStatement);
   }
 
   public static void buildTSBlock(int storageGroupNum, SettableFuture<ConfigTaskResult> future) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(storageGroupNum);

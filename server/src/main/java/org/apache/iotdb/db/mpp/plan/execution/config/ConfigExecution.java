@@ -20,16 +20,8 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-<<<<<<< HEAD
-import org.apache.iotdb.db.client.ConfigNodeClient;
-=======
-<<<<<<< HEAD
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
-=======
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
->>>>>>> abbe779bb7 (add interface)
->>>>>>> 8e3e7554e5 (add interface)
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
@@ -68,37 +60,9 @@ public class ConfigExecution implements IQueryExecution {
   private DatasetHeader datasetHeader;
   private boolean resultSetConsumed;
   private final IConfigTask task;
-<<<<<<< HEAD
-
-<<<<<<< HEAD
-  private IClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
-=======
-  private IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager;
-=======
   private IConfigTaskFetcher fetcher;
->>>>>>> abbe779bb7 (add interface)
->>>>>>> 8e3e7554e5 (add interface)
 
-<<<<<<< HEAD
-  public ConfigExecution(
-      MPPQueryContext context,
-      Statement statement,
-<<<<<<< HEAD
-      ExecutorService executor,
-<<<<<<< HEAD
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
-=======
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager) {
-=======
-      ExecutorService executor) {
->>>>>>> abbe779bb7 (add interface)
-<<<<<<< HEAD
->>>>>>> 8e3e7554e5 (add interface)
-=======
-=======
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     this.context = context;
     this.statement = statement;
     this.executor = executor;

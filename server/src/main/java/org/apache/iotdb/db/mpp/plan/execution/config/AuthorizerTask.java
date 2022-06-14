@@ -20,16 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.db.auth.AuthorizerManager;
-<<<<<<< HEAD
-import org.apache.iotdb.db.client.ConfigNodeClient;
-=======
-<<<<<<< HEAD
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
-import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-=======
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -46,50 +36,7 @@ public class AuthorizerTask implements IConfigTask {
   }
 
   @Override
-<<<<<<< HEAD
-  public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try {
-      // Construct request using statement
-      TAuthorizerReq req =
-          new TAuthorizerReq(
-              authorStatement.getAuthorType().ordinal(),
-              authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
-              authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
-              authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
-              authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
-              AuthorPlan.strToPermissions(authorStatement.getPrivilegeList()),
-              authorStatement.getNodeName() == null
-                  ? ""
-                  : authorStatement.getNodeName().getFullPath());
-      // Send request to some API server
-      if (config.isClusterMode()) {
-        try (ConfigNodeClient configNodeClient =
-            clientManager.borrowClient(ConfigNodeInfo.partitionRegionId); ) {
-          if (authorStatement.getQueryType() == QueryType.WRITE) {
-            future = authorizerManager.operatePermission(req, configNodeClient);
-          } else {
-            future = authorizerManager.queryPermission(req, configNodeClient);
-          }
-        }
-      } else {
-        if (authorStatement.getQueryType() == QueryType.WRITE) {
-          future = authorizerManager.operatePermission(req, null);
-        } else {
-          future = authorizerManager.queryPermission(req, null);
-        }
-      }
-
-    } catch (IOException | TException e) {
-      LOGGER.error("can't connect to all config nodes", e);
-      future.setException(e);
-    } catch (AuthException e) {
-      future.setException(e);
-    }
-=======
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher) {
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     if (authorStatement.getQueryType() == QueryType.WRITE) {

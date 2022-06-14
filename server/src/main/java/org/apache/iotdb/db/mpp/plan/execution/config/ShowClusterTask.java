@@ -20,16 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
-<<<<<<< HEAD
-import org.apache.iotdb.db.client.ConfigNodeClient;
-=======
-<<<<<<< HEAD
->>>>>>> cd60f89675 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
-import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-=======
->>>>>>> ac78689436 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskFetcher;
@@ -52,30 +42,11 @@ public class ShowClusterTask implements IConfigTask {
   public ShowClusterTask(ShowClusterStatement showClusterStatement) {}
 
   @Override
-<<<<<<< HEAD
-  public ListenableFuture<ConfigTaskResult> execute(
-<<<<<<< HEAD
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
-=======
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
-=======
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
->>>>>>> 5ff2b3fc1c (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
->>>>>>> e2a8c6743a (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
       throws InterruptedException {
     return configTaskFetcher.showCluster();
   }
 
-<<<<<<< HEAD
-    if (config.isClusterMode()) {
-      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-        clusterNodeInfos = client.getAllClusterNodeInfos();
-      } catch (TException | IOException e) {
-        LOGGER.error("Failed to connect to config node.");
-        future.setException(e);
-      }
-    }
-=======
   private static void buildTsBlock(
       TsBlockBuilder builder,
       int nodeId,
@@ -91,7 +62,6 @@ public class ShowClusterTask implements IConfigTask {
     builder.getColumnBuilder(4).writeInt(port);
     builder.declarePosition();
   }
->>>>>>> ac78689436 (move configTask method to ClusterConfigTaskFetcher and StandsloneConfigTaskFetcher)
 
   public static void buildTSBlock(
       TClusterNodeInfos clusterNodeInfos, SettableFuture<ConfigTaskResult> future) {

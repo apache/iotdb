@@ -20,15 +20,6 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-<<<<<<< HEAD
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-<<<<<<< HEAD
-import org.apache.iotdb.db.client.ConfigNodeClient;
-=======
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
-=======
->>>>>>> 7f10625a11 (fix test)
->>>>>>> 2f6fe04407 (fix test)
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -121,16 +112,7 @@ public class ConfigExecutionTest {
       }
 
       @Override
-<<<<<<< HEAD
-      public ListenableFuture<ConfigTaskResult> execute(
-<<<<<<< HEAD
-          IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
-=======
-          IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
-=======
       public ListenableFuture<ConfigTaskResult> execute(IConfigTaskFetcher configTaskFetcher)
->>>>>>> 7f10625a11 (fix test)
->>>>>>> 2f6fe04407 (fix test)
           throws InterruptedException {
         return result;
       }
