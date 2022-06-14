@@ -54,7 +54,7 @@ public class NodeUrlUtilsTest {
             new TConfigNodeLocation(
                 2, new TEndPoint("0.0.0.0", 22281), new TEndPoint("0.0.0.0", 22282)));
     final String configNodeUrls =
-        "0.0.0.0:22277,0.0.0.0:22278;0.0.0.0:22279,0.0.0.0:22280;0.0.0.0:22281,0.0.0.0:22282";
+        "0,0.0.0.0:22277,0.0.0.0:22278;1,0.0.0.0:22279,0.0.0.0:22280;2,0.0.0.0:22281,0.0.0.0:22282";
 
     Assert.assertEquals(configNodeUrls, NodeUrlUtils.convertTConfigNodeUrls(configNodeLocations));
     Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));
