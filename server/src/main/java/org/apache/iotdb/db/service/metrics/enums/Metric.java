@@ -56,7 +56,8 @@ public enum Metric {
   SYS_DISK_TOTAL_SPACE,
   SYS_DISK_FREE_SPACE,
   CONFIG_NODE,
-  DATA_NODE;
+  DATA_NODE,
+  PARTITION_TABLE;
 
   @Override
   public String toString() {

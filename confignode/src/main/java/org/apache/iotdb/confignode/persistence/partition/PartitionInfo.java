@@ -42,6 +42,10 @@ import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -96,6 +100,16 @@ public class PartitionInfo implements SnapshotProcessor {
     // are unreadable and un-writable
     // For RegionCleaner
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
+
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.PARTITION_TABLE.toString(),
+            MetricLevel.CORE,
+            storageGroupPartitionTables,
+            Map::size,
+            Tag.NAME.toString(),
+            "number");
   }
 
   public int generateNextRegionGroupId() {
