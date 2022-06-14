@@ -270,15 +270,19 @@ public class ConfigManager implements Manager {
   private List<TSeriesPartitionSlot> calculateRelatedSlot(
       PartialPath path, boolean matchTimeseries) {
     // The path contains `**`
-    if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
-        || (!matchTimeseries
-            && path.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))) {
+    if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return new ArrayList<>();
+    }
+    PartialPath innerPath;
+    if (!matchTimeseries
+        && path.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
     // The path contains `*` and the only `*` is not in last level
     if (path.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
+
     return Collections.singletonList(
         getPartitionManager().getSeriesPartitionSlot(path.getDevice()));
   }
