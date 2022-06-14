@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -520,7 +519,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return nodeManager.registerConfigNode(req);
     } else {
-      return new TConfigNodeRegisterResp(status);
+      return new TConfigNodeRegisterResp(status, getNodeManager().getOnlineConfigNodes());
     }
   }
 
