@@ -19,16 +19,17 @@
 package org.apache.iotdb.it.env;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 import static org.junit.Assert.fail;
 
 public class DataNode extends ClusterNodeBase {
 
-  private final String targetConfignode;
+  private final String targetConfigNode;
   private final String configPath;
 
   private final int dataBlockManagerPort;
@@ -36,9 +37,9 @@ public class DataNode extends ClusterNodeBase {
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
 
-  public DataNode(String targetConfignode, String testName) {
+  public DataNode(String targetConfigNode, String testName) {
 
-    this.targetConfignode = targetConfignode;
+    this.targetConfigNode = targetConfigNode;
 
     int[] portList = super.searchAvailablePorts();
     super.setPort(portList[0]);
@@ -96,7 +97,7 @@ public class DataNode extends ClusterNodeBase {
   public void changeConfig(Properties properties) {
     try {
       Properties configProperties = new Properties();
-      configProperties.load(new FileInputStream(this.configPath));
+      configProperties.load(Files.newInputStream(Paths.get(this.configPath)));
       configProperties.setProperty("rpc_address", super.getIp());
       configProperties.setProperty("internal_ip", "127.0.0.1");
       configProperties.setProperty("rpc_port", String.valueOf(super.getPort()));
@@ -107,7 +108,8 @@ public class DataNode extends ClusterNodeBase {
           "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
       configProperties.setProperty(
           "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
-      configProperties.setProperty("config_nodes", this.targetConfignode);
+      configProperties.setProperty("connection_timeout_ms", "30000");
+      configProperties.setProperty("config_nodes", this.targetConfigNode);
       if (properties != null && !properties.isEmpty()) {
         configProperties.putAll(properties);
       }

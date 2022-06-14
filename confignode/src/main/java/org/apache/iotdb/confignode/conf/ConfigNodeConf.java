@@ -19,14 +19,13 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -44,12 +43,14 @@ public class ConfigNodeConf {
   /** Used for connecting to the ConfigNodeGroup */
   private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
 
-  /** Used to identify clusters */
-  private TConsensusGroupId partitionRegionId =
-      new TConsensusGroupId(TConsensusGroupType.PartitionRegion, 0);
+  /** Mark if the ConfigNode needs to apply */
+  private boolean needApply = false;
+
+  // TODO: Read from iotdb-confignode.properties
+  private int partitionRegionId = 0;
 
   /** Used for building the PartitionRegion */
-  private volatile List<TConfigNodeLocation> configNodeList;
+  private List<TConfigNodeLocation> configNodeList = new ArrayList<>();
 
   /** Thrift socket and connection timeout between nodes */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -193,6 +194,14 @@ public class ConfigNodeConf {
     this.consensusPort = consensusPort;
   }
 
+  public boolean isNeedApply() {
+    return needApply;
+  }
+
+  public void setNeedApply(boolean needApply) {
+    this.needApply = needApply;
+  }
+
   public TEndPoint getTargetConfigNode() {
     return targetConfigNode;
   }
@@ -201,11 +210,11 @@ public class ConfigNodeConf {
     this.targetConfigNode = targetConfigNode;
   }
 
-  public TConsensusGroupId getPartitionRegionId() {
+  public int getPartitionRegionId() {
     return partitionRegionId;
   }
 
-  public void setPartitionRegionId(TConsensusGroupId partitionRegionId) {
+  public void setPartitionRegionId(int partitionRegionId) {
     this.partitionRegionId = partitionRegionId;
   }
 
@@ -289,8 +298,9 @@ public class ConfigNodeConf {
     return connectionTimeoutInMS;
   }
 
-  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+  public ConfigNodeConf setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
+    return this;
   }
 
   public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {

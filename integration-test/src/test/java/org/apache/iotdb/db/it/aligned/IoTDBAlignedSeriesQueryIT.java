@@ -24,7 +24,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -57,6 +56,7 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -113,7 +113,7 @@ public class IoTDBAlignedSeriesQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -156,7 +156,7 @@ public class IoTDBAlignedSeriesQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -190,7 +190,7 @@ public class IoTDBAlignedSeriesQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -226,7 +226,7 @@ public class IoTDBAlignedSeriesQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -258,7 +258,7 @@ public class IoTDBAlignedSeriesQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -291,7 +291,7 @@ public class IoTDBAlignedSeriesQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -329,7 +329,7 @@ public class IoTDBAlignedSeriesQueryIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);

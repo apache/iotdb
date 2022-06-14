@@ -148,19 +148,19 @@ public class DataNodeClientPoolFactory {
   }
 
   public static class ConfigNodeClientPoolFactory
-      implements IClientPoolFactory<PartitionRegionId, DataNodeToConfigNodeClient> {
+      implements IClientPoolFactory<PartitionRegionId, ConfigNodeClient> {
     @Override
-    public KeyedObjectPool<PartitionRegionId, DataNodeToConfigNodeClient> createClientPool(
-        ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> manager) {
+    public KeyedObjectPool<PartitionRegionId, ConfigNodeClient> createClientPool(
+        ClientManager<PartitionRegionId, ConfigNodeClient> manager) {
       return new GenericKeyedObjectPool<>(
-          new DataNodeToConfigNodeClient.Factory(
+          new ConfigNodeClient.Factory(
               manager,
               new ClientFactoryProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build()),
-          new ClientPoolProperty.Builder<DataNodeToConfigNodeClient>().build().getConfig());
+          new ClientPoolProperty.Builder<ConfigNodeClient>().build().getConfig());
     }
   }
 }

@@ -19,20 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -40,20 +30,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class ShowStorageGroupTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ShowStorageGroupTask.class);
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ShowStorageGroupStatement showStorageGroupStatement;
 
@@ -62,42 +42,14 @@ public class ShowStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    Map<String, TStorageGroupSchema> storageGroupSchemaMap = new HashMap<>();
-    if (config.isClusterMode()) {
-      List<String> storageGroupPathPattern =
-          Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
-      try (DataNodeToConfigNodeClient client =
-          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-        TStorageGroupSchemaResp resp =
-            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-        storageGroupSchemaMap = resp.getStorageGroupSchemaMap();
-      } catch (TException | IOException e) {
-        LOGGER.error("Failed to connect to config node.");
-        future.setException(e);
-      }
-    } else {
-      try {
-        LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-        List<PartialPath> partialPaths =
-            localConfigNode.getMatchedStorageGroups(
-                showStorageGroupStatement.getPathPattern(),
-                showStorageGroupStatement.isPrefixPath());
-        for (PartialPath storageGroupPath : partialPaths) {
-          IStorageGroupMNode storageGroupMNode =
-              localConfigNode.getStorageGroupNodeByPath(storageGroupPath);
-          String storageGroup = storageGroupMNode.getFullPath();
-          TStorageGroupSchema storageGroupSchema = storageGroupMNode.getStorageGroupSchema();
-          storageGroupSchemaMap.put(storageGroup, storageGroupSchema);
-        }
-      } catch (MetadataException e) {
-        future.setException(e);
-      }
-    }
-    // build TSBlock
+    return configTaskExecutor.showStorageGroup(showStorageGroupStatement);
+  }
+
+  public static void buildTSBlock(
+      Map<String, TStorageGroupSchema> storageGroupSchemaMap,
+      SettableFuture<ConfigTaskResult> future) {
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showStorageGroupHeader.getRespDataTypes());
     for (Map.Entry<String, TStorageGroupSchema> entry : storageGroupSchemaMap.entrySet()) {
@@ -117,6 +69,5 @@ public class ShowStorageGroupTask implements IConfigTask {
     }
     DatasetHeader datasetHeader = HeaderConstant.showStorageGroupHeader;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    return future;
   }
 }
