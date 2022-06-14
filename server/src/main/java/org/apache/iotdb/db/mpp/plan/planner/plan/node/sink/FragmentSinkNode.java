@@ -149,7 +149,7 @@ public class FragmentSinkNode extends SinkNode {
     return String.format(
         "%s:%d/%s/%s",
         getDownStreamEndpoint().getIp(),
-        getDownStreamEndpoint().port,
+        getDownStreamEndpoint().getPort(),
         getDownStreamInstanceId(),
         getDownStreamPlanNodeId());
   }

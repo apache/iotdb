@@ -35,7 +35,7 @@ public class PlanNodeUtil {
     if (regionReplicaSet == null) {
       return "Not Assigned";
     }
-    return regionReplicaSet.getRegionId().toString();
+    return String.valueOf(regionReplicaSet.getRegionId());
   }
 
   public static void printPlanNode(PlanNode root) {
