@@ -508,7 +508,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public Object getFirstValueOfIndex(int index) {
-    throw new NotImplementedException();
+    return values[index];
   }
 
   // region serialize & deserialize methods for WAL
