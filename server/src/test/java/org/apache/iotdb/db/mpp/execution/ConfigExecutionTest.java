@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.execution;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -115,7 +115,7 @@ public class ConfigExecutionTest {
 
       @Override
       public ListenableFuture<ConfigTaskResult> execute(
-          IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+          IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
           throws InterruptedException {
         return result;
       }

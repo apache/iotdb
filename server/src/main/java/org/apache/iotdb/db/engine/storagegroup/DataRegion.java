@@ -1618,10 +1618,11 @@ public class DataRegion {
         systemDir);
     writeLock("deleteFolder");
     try {
-      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
-      }
+      File dataRegionSystemFolder =
+          SystemFileFactory.INSTANCE.getFile(
+              systemDir + File.separator + logicalStorageGroupName, dataRegionId);
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+          dataRegionSystemFolder);
     } finally {
       writeUnlock();
     }
@@ -1674,10 +1675,11 @@ public class DataRegion {
 
   private void deleteAllSGFolders(List<String> folder) {
     for (String tsfilePath : folder) {
-      File storageGroupFolder =
+      File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
+      if (dataRegionDataFolder.exists()) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+            dataRegionDataFolder);
       }
     }
   }

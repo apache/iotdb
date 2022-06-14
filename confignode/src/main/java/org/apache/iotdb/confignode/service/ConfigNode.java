@@ -116,8 +116,14 @@ public class ConfigNode implements ConfigNodeMBean {
       return;
     }
 
-    LOGGER.info(
-        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+    if (conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
+        && conf.getRpcPort() == conf.getTargetConfigNode().getPort()) {
+      LOGGER.info("{} has successfully started as a seed", ConfigNodeConstant.GLOBAL_NAME);
+    } else {
+      LOGGER.info(
+          "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+    }
   }
 
   public void deactivate() throws IOException {

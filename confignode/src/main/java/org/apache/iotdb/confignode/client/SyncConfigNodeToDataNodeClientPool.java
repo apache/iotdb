@@ -42,13 +42,14 @@ import java.util.Map;
 import java.util.Set;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
-public class SyncDataNodeClientPool {
+public class SyncConfigNodeToDataNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyncConfigNodeToDataNodeClientPool.class);
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
-  private SyncDataNodeClientPool() {
+  private SyncConfigNodeToDataNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
@@ -92,17 +93,16 @@ public class SyncDataNodeClientPool {
     Map<TDataNodeLocation, List<TConsensusGroupId>> regionLocationMap = new HashMap<>();
     deletedRegionSet.forEach(
         (tRegionReplicaSet) -> {
-          final List<TDataNodeLocation> dataNodeLocations =
-              tRegionReplicaSet.getDataNodeLocations();
-          regionLocationMap
-              .computeIfAbsent(dataNodeLocations.get(0), k -> new ArrayList<>())
-              .add(tRegionReplicaSet.getRegionId());
+          for (TDataNodeLocation dataNodeLocation : tRegionReplicaSet.getDataNodeLocations()) {
+            regionLocationMap
+                .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
+                .add(tRegionReplicaSet.getRegionId());
+          }
         });
     LOGGER.info("Current regionLocationMap {} ", regionLocationMap);
     regionLocationMap.forEach(
-        (dataNodeLocation, regionIds) -> {
-          deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet);
-        });
+        (dataNodeLocation, regionIds) ->
+            deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet));
   }
 
   private void deleteRegions(
@@ -157,14 +157,15 @@ public class SyncDataNodeClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final SyncDataNodeClientPool INSTANCE = new SyncDataNodeClientPool();
+    private static final SyncConfigNodeToDataNodeClientPool INSTANCE =
+        new SyncConfigNodeToDataNodeClientPool();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static SyncDataNodeClientPool getInstance() {
+  public static SyncConfigNodeToDataNodeClientPool getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }
