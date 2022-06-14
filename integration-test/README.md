@@ -34,14 +34,25 @@ You can run the integration test in cluster mode. At present, we have implemente
 
 The maven command is:
 ```
-mvn clean verify -Dsession.test.skip=true -Diotdb.test.skip=true -Dcluster.test.skip=true -Dtsfile.test.skip=true -Dcommons.test.skip=true -Dconfignode.test.skip=true -Dconsensus.test.skip=true -pl integration-test -am -PClusterIT
+mvn clean verify \
+-Dsession.test.skip=true \
+-Diotdb.test.skip=true \
+-Dcluster.test.skip=true \
+-Dtsfile.test.skip=true \
+-Dcommons.test.skip=true \
+-Dconfignode.test.skip=true \
+-Dconsensus.test.skip=true \
+-Djdbc.test.skip=true \
+-Dmetrics.test.skip=true \
+-pl integration-test \
+-am -PClusterIT
 ```
 Notice that, this above maven command only run IT.
 
 -------
 
 Run in IntelliJ in cluster mode is so easy,
-- Step 0. Optionally, when you run the test for the first time, or when you change the code of the module that the integration test module depends on, you may need to use the following command to generate `integration/target/template-node` for nodes of the pseudo cluster.
+- Step 0. Optionally, when you run the test for the first time, or when you change the code of the module that the integration test module depends on, you may need to use the following command to generate `integration-test/target/template-node` for nodes of the pseudo cluster.
 ```
 mvn clean package -pl integration-test -am -DskipTests -PClusterIT
 ```
@@ -64,7 +75,17 @@ Integration testing with local standalone mode can be run with both maven and ID
 
 The maven command is:
 ```
-mvn clean verify -Dsession.test.skip=true -Diotdb.test.skip=true -Dcluster.test.skip=true -Dtsfile.test.skip=true -Dcommons.test.skip=true -Dconfignode.test.skip=true -Dconsensus.test.skip=true -pl integration-test -am
+mvn clean verify \
+-Dsession.test.skip=true \
+-Diotdb.test.skip=true \
+-Dcluster.test.skip=true \
+-Dtsfile.test.skip=true \
+-Dcommons.test.skip=true \
+-Dconfignode.test.skip=true \
+-Dconsensus.test.skip=true \
+-Djdbc.test.skip=true \
+-Dmetrics.test.skip=true \
+ -pl integration-test -am
 ```
 
 -------
