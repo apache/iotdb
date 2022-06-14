@@ -57,11 +57,19 @@ public class HeartbeatCache implements IHeartbeatStatistic {
 
   @Override
   public float getLoadScore() {
+    // Return a copy of loadScore
     return loadScore;
   }
 
   @Override
   public NodeStatus getNodeStatus() {
-    return status;
+    // Return a copy of status
+    switch (status) {
+      case Running:
+        return NodeStatus.Running;
+      case Unknown:
+      default:
+        return NodeStatus.Unknown;
+    }
   }
 }
