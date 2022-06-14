@@ -626,6 +626,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         resp.setIsAlign(true);
 
         QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+        COORDINATOR.removeQueryExecution(req.queryId);
         return resp;
       }
     } catch (Exception e) {
