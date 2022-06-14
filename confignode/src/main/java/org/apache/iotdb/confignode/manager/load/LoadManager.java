@@ -38,8 +38,8 @@ import org.apache.iotdb.confignode.manager.NodeManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
-
 import org.apache.iotdb.confignode.manager.load.heartbeat.IHeartbeatStatistic;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -193,11 +193,13 @@ public class LoadManager implements Runnable {
     // Send heartbeat requests
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       HeartbeatHandler handler =
-        new HeartbeatHandler(dataNodeInfo.getLocation(),
-          heartbeatCacheMap.computeIfAbsent(dataNodeInfo.getLocation().getDataNodeId(), empty -> new HeartbeatCache()));
+          new HeartbeatHandler(
+              dataNodeInfo.getLocation(),
+              heartbeatCacheMap.computeIfAbsent(
+                  dataNodeInfo.getLocation().getDataNodeId(), empty -> new HeartbeatCache()));
       AsyncDataNodeClientPool.getInstance()
-        .getHeartBeat(
-          dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
+          .getHeartBeat(
+              dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
     }
   }
 

@@ -20,9 +20,6 @@ package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /** HeartbeatCache caches and maintains all the heartbeat data */
 public class HeartbeatCache implements IHeartbeatStatistic {
 

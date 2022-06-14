@@ -30,18 +30,12 @@ public interface IHeartbeatStatistic {
    */
   void cacheHeartBeat(HeartbeatPackage newHeartbeat);
 
-  /**
-   * Invoking periodically to update node load statistics
-   */
+  /** Invoking periodically to update node load statistics */
   void updateLoadStatistic();
 
-  /**
-   * @return The latest load score of a node, the higher the score the higher the load
-   */
+  /** @return The latest load score of a node, the higher the score the higher the load */
   float getLoadScore();
 
-  /**
-   * @return The latest status of a node for showing cluster
-   */
+  /** @return The latest status of a node for showing cluster */
   NodeStatus getNodeStatus();
 }
