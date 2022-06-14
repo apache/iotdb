@@ -29,15 +29,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class RegisterConfigNodeReq extends ConfigRequest {
+public class ApplyConfigNodeReq extends ConfigRequest {
 
   private TConfigNodeLocation configNodeLocation;
 
-  public RegisterConfigNodeReq() {
-    super(ConfigRequestType.RegisterConfigNode);
+  public ApplyConfigNodeReq() {
+    super(ConfigRequestType.ApplyConfigNode);
   }
 
-  public RegisterConfigNodeReq(TConfigNodeLocation configNodeLocation) {
+  public ApplyConfigNodeReq(TConfigNodeLocation configNodeLocation) {
     this();
     this.configNodeLocation = configNodeLocation;
   }
@@ -48,7 +48,7 @@ public class RegisterConfigNodeReq extends ConfigRequest {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(ConfigRequestType.RegisterConfigNode.ordinal(), stream);
+    ReadWriteIOUtils.write(ConfigRequestType.ApplyConfigNode.ordinal(), stream);
 
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
   }
@@ -62,7 +62,7 @@ public class RegisterConfigNodeReq extends ConfigRequest {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    RegisterConfigNodeReq that = (RegisterConfigNodeReq) o;
+    ApplyConfigNodeReq that = (ApplyConfigNodeReq) o;
     return configNodeLocation.equals(that.configNodeLocation);
   }
 

@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.AsyncConfigNodeToDataNodeClientPool;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
@@ -89,7 +89,7 @@ public class UDFManager {
 
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       final TEndPoint endPoint = dataNodeInfo.getLocation().getInternalEndPoint();
-      AsyncConfigNodeToDataNodeClientPool.getInstance()
+      AsyncDataNodeClientPool.getInstance()
           .createFunction(
               endPoint,
               request,
@@ -133,7 +133,7 @@ public class UDFManager {
 
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       final TEndPoint endPoint = dataNodeInfo.getLocation().getInternalEndPoint();
-      AsyncConfigNodeToDataNodeClientPool.getInstance()
+      AsyncDataNodeClientPool.getInstance()
           .dropFunction(
               endPoint,
               request,
