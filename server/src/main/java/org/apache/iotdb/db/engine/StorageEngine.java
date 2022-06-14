@@ -933,12 +933,14 @@ public class StorageEngine implements IService {
   }
 
   /** delete all data of storage groups' timeseries. */
+  @TestOnly
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
+    processorMap.clear();
     return true;
   }
 
