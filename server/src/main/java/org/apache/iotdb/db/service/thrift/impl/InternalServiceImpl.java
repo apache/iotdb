@@ -144,13 +144,22 @@ public class InternalServiceImpl implements InternalService.Iface {
     ConsensusWriteResponse writeResponse;
 
     PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
+    boolean hasFailedMeasurement = false;
     if (planNode instanceof InsertNode) {
+      InsertNode insertNode = (InsertNode) planNode;
       try {
-        SchemaValidator.validate((InsertNode) planNode);
+        SchemaValidator.validate(insertNode);
       } catch (SemanticException e) {
         response.setAccepted(false);
         response.setMessage(e.getMessage());
         return response;
+      }
+      hasFailedMeasurement = insertNode.hasFailedMeasurements();
+      if (hasFailedMeasurement) {
+        LOGGER.warn(
+            "Fail to insert measurements {} caused by {}",
+            insertNode.getFailedMeasurements(),
+            insertNode.getFailedMessages());
       }
     }
     if (groupId instanceof DataRegionId) {
@@ -160,7 +169,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     }
     // TODO need consider more status
     if (writeResponse.getStatus() != null) {
-      response.setAccepted(
+      response.setAccepted(!hasFailedMeasurement &&
           TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
       response.setMessage(writeResponse.getStatus().message);
     } else {

@@ -874,14 +874,6 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
-
-    if (insertRowNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertRowNode.getFailedMeasurements(),
-          insertRowNode.getFailedMessages());
-      checkFailedMeasurements(insertRowNode);
-    }
   }
 
   /**
@@ -1095,14 +1087,6 @@ public class DataRegion {
       //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
-    }
-
-    if (insertTabletNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertTabletNode.getFailedMeasurements(),
-          insertTabletNode.getFailedMessages());
-      checkFailedMeasurements(insertTabletNode);
     }
   }
 
@@ -3498,14 +3482,6 @@ public class DataRegion {
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
     }
-  }
-
-  private void checkFailedMeasurements(InsertNode node) throws WriteProcessException {
-    List<Exception> exceptions = node.getFailedExceptions();
-    throw new WriteProcessException(
-        "failed to insert measurements "
-            + node.getFailedMeasurements()
-            + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : ""));
   }
 
   @TestOnly

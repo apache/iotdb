@@ -201,11 +201,20 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         return !((FragmentInstanceInfo) readResponse.getDataset()).getState().isFailed();
       case WRITE:
         PlanNode planNode = instance.getFragment().getRoot();
+        boolean hasFailedMeasurement = false;
         if (planNode instanceof InsertNode) {
+          InsertNode insertNode = (InsertNode) planNode;
           try {
-            SchemaValidator.validate((InsertNode) planNode);
+            SchemaValidator.validate(insertNode);
           } catch (SemanticException e) {
             throw new FragmentInstanceDispatchException(e);
+          }
+          hasFailedMeasurement = insertNode.hasFailedMeasurements();
+          if (hasFailedMeasurement) {
+            logger.warn(
+                "Fail to insert measurements {} caused by {}",
+                insertNode.getFailedMeasurements(),
+                insertNode.getFailedMessages());
           }
         }
         ConsensusWriteResponse writeResponse;
@@ -214,7 +223,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         } else {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
-        return TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
+        return !hasFailedMeasurement && TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
     }
     throw new UnsupportedOperationException(
         String.format("unknown query type [%s]", instance.getType()));
