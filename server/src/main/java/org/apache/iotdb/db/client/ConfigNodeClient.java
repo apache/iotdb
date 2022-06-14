@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -78,9 +79,8 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DataNodeToConfigNodeClient
-    implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeToConfigNodeClient.class);
+public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
 
@@ -99,13 +99,13 @@ public class DataNodeToConfigNodeClient
 
   private int cursor = 0;
 
-  ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager;
+  ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
 
   PartitionRegionId partitionRegionId = ConfigNodeInfo.partitionRegionId;
 
   TProtocolFactory protocolFactory;
 
-  public DataNodeToConfigNodeClient() throws TException {
+  public ConfigNodeClient() throws TException {
     // Read config nodes from configuration
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
@@ -116,10 +116,10 @@ public class DataNodeToConfigNodeClient
     init();
   }
 
-  public DataNodeToConfigNodeClient(
+  public ConfigNodeClient(
       TProtocolFactory protocolFactory,
       long connectionTimeout,
-      ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+      ClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws TException {
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     this.protocolFactory = protocolFactory;
@@ -244,6 +244,22 @@ public class DataNodeToConfigNodeClient
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
         }
         configNodes = newConfigNodes;
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.activeDataNode(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
       } catch (TException e) {
         configLeader = null;
       }
@@ -579,7 +595,34 @@ public class DataNodeToConfigNodeClient
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    throw new RuntimeException("Cannot call registerConfigNode in DataNode!");
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TConfigNodeRegisterResp resp = client.registerConfigNode(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.applyConfigNode(configNodeLocation);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
@@ -630,31 +673,29 @@ public class DataNodeToConfigNodeClient
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public static class Factory
-      extends BaseClientFactory<PartitionRegionId, DataNodeToConfigNodeClient> {
+  public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {
 
     public Factory(
-        ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager,
+        ClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
         ClientFactoryProperty clientFactoryProperty) {
       super(clientManager, clientFactoryProperty);
     }
 
     @Override
     public void destroyObject(
-        PartitionRegionId partitionRegionId,
-        PooledObject<DataNodeToConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<DataNodeToConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
+    public PooledObject<ConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
         throws Exception {
-      Constructor<DataNodeToConfigNodeClient> constructor =
-          DataNodeToConfigNodeClient.class.getConstructor(
+      Constructor<ConfigNodeClient> constructor =
+          ConfigNodeClient.class.getConstructor(
               TProtocolFactory.class, long.class, clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
-              DataNodeToConfigNodeClient.class,
+              ConfigNodeClient.class,
               constructor,
               clientFactoryProperty.getProtocolFactory(),
               clientFactoryProperty.getConnectionTimeoutMs(),
@@ -663,8 +704,7 @@ public class DataNodeToConfigNodeClient
 
     @Override
     public boolean validateObject(
-        PartitionRegionId partitionRegionId,
-        PooledObject<DataNodeToConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
     }
   }

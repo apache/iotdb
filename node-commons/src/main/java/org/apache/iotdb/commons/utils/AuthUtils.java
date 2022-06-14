@@ -360,4 +360,26 @@ public class AuthUtils {
     permissionInfoResp.setRoleInfo(roleInfo);
     return permissionInfoResp;
   }
+
+  public static Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
+    Set<Integer> result = new HashSet<>();
+    if (authorizationList == null) {
+      return result;
+    }
+    for (String s : authorizationList) {
+      PrivilegeType[] types = PrivilegeType.values();
+      boolean legal = false;
+      for (PrivilegeType privilegeType : types) {
+        if (s.equalsIgnoreCase(privilegeType.name())) {
+          result.add(privilegeType.ordinal());
+          legal = true;
+          break;
+        }
+      }
+      if (!legal) {
+        throw new AuthException("No such privilege " + s);
+      }
+    }
+    return result;
+  }
 }

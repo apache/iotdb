@@ -25,12 +25,11 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -388,30 +387,27 @@ public class AuthorizerManager implements IAuthorizer {
     return ClusterAuthorityFetcher.getInstance().invalidateCache(username, roleName);
   }
 
-  public SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient)
-      throws TException {
+  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
     authReadWriteLock.readLock().lock();
     try {
-      return authorityFetcher.queryPermission(authorizerReq, dataNodeToConfigNodeClient);
+      return authorityFetcher.queryPermission(authorStatement);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
   }
 
-  public SettableFuture<ConfigTaskResult> operatePermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
+  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
     authReadWriteLock.writeLock().lock();
     try {
-      return authorityFetcher.operatePermission(authorizerReq, dataNodeToConfigNodeClient);
+      return authorityFetcher.operatePermission(authorStatement);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
   }
 
   /** build TSBlock */
-  public SettableFuture<ConfigTaskResult> buildTSBlock(Map<String, List<String>> authorizerInfo) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public void buildTSBlock(
+      Map<String, List<String>> authorizerInfo, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> types = new ArrayList<>();
     for (int i = 0; i < authorizerInfo.size(); i++) {
       types.add(TSDataType.TEXT);
@@ -437,6 +433,5 @@ public class AuthorizerManager implements IAuthorizer {
 
     DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    return future;
   }
 }
