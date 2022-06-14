@@ -34,8 +34,8 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -143,6 +143,7 @@ public class DataNode implements DataNodeMBean {
     return true;
   }
 
+  /** prepare iotdb and start InternalService */
   private void prepareJoinCluster() throws StartupException {
     // check iotdb server first
     StartupChecks checks = new StartupChecks().withDefaultTest();
@@ -159,6 +160,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(InternalService.getInstance());
   }
 
+  /** register DataNode with ConfigNode */
   private void joinCluster() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
@@ -166,7 +168,8 @@ public class DataNode implements DataNodeMBean {
         .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
     while (retry > 0) {
       logger.info("start joining the cluster.");
-      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+      try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
+          new DataNodeToConfigNodeClient()) {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
         // Set DataNodeLocation
@@ -190,7 +193,8 @@ public class DataNode implements DataNodeMBean {
 
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         req.setDataNodeInfo(info);
-        TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
+        TDataNodeRegisterResp dataNodeRegisterResp =
+            dataNodeToConfigNodeClient.registerDataNode(req);
 
         // store config node lists from resp
         List<TEndPoint> configNodeList = new ArrayList<>();
@@ -238,6 +242,7 @@ public class DataNode implements DataNodeMBean {
     throw new StartupException("Cannot join the cluster.");
   }
 
+  /** register services and set up DataNode */
   private void active() throws StartupException {
     try {
       setUp();
@@ -286,8 +291,6 @@ public class DataNode implements DataNodeMBean {
 
     registerManager.register(ReceiverService.getInstance());
 
-    initProtocols();
-
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
 
@@ -313,6 +316,7 @@ public class DataNode implements DataNodeMBean {
     MetricsService.getInstance().startAllReporter();
   }
 
+  /** set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
     // init rpc service
     IoTDBDescriptor.getInstance()
@@ -321,6 +325,8 @@ public class DataNode implements DataNodeMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }
+    // init service protocols
+    initProtocols();
   }
 
   private void registerUdfServices() throws StartupException {

@@ -33,6 +33,7 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class FileUtils {
   private static Logger logger = LoggerFactory.getLogger(FileUtils.class);
@@ -53,6 +54,17 @@ public class FileUtils {
       logger.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
     } catch (Exception e) {
       logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
+    }
+  }
+
+  public static void deleteDirectoryAndEmptyParent(File folder) {
+    deleteDirectory(folder);
+    final File parentFolder = folder.getParentFile();
+    if (parentFolder.isDirectory()
+        && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {
+      if (!parentFolder.delete()) {
+        logger.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
+      }
     }
   }
 

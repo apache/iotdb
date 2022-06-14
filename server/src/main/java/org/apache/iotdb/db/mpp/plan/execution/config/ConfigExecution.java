@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
@@ -57,13 +57,13 @@ public class ConfigExecution implements IQueryExecution {
   private boolean resultSetConsumed;
   private final IConfigTask task;
 
-  private IClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+  private IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager;
 
   public ConfigExecution(
       MPPQueryContext context,
       Statement statement,
       ExecutorService executor,
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager) {
     this.context = context;
     this.statement = statement;
     this.executor = executor;

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -58,7 +58,7 @@ public class ShowFunctionsTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
       throws InterruptedException {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 

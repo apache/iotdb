@@ -91,3 +91,9 @@ struct TDataNodeInfo {
   2: required i32 cpuCoreNum
   3: required i64 maxMemory
 }
+
+struct TFlushReq{
+   1: optional string isSeq
+   2: optional list<string> storageGroups
+   3: optional i32 dataNodeId
+}

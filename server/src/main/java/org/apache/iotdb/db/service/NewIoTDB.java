@@ -130,10 +130,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
-    // in cluster mode, RPC service is not enabled.
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
-    }
+
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
@@ -161,6 +158,11 @@ public class NewIoTDB implements NewIoTDBMBean {
                 + "udf"
                 + File.separator));
     registerManager.register(ReceiverService.getInstance());
+
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
 
     initProtocols();
 
