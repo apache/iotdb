@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -62,14 +62,13 @@ public class ShowTTLTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     List<PartialPath> storageGroupPaths = showTTLStatement.getPaths();
     Map<String, Long> storageGroupToTTL = new HashMap<>();
     if (config.isClusterMode()) {
-      try (DataNodeToConfigNodeClient client =
-          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         if (showTTLStatement.isAll()) {
           List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
           TStorageGroupSchemaResp resp =

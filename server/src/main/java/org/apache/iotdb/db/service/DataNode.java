@@ -36,8 +36,8 @@ import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -172,8 +172,7 @@ public class DataNode implements DataNodeMBean {
         .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
     while (retry > 0) {
       logger.info("start registering to the cluster.");
-      try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
-          new DataNodeToConfigNodeClient()) {
+      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
         // Set DataNodeLocation
@@ -197,8 +196,7 @@ public class DataNode implements DataNodeMBean {
 
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         req.setDataNodeInfo(info);
-        TDataNodeRegisterResp dataNodeRegisterResp =
-            dataNodeToConfigNodeClient.registerDataNode(req);
+        TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
         // store config node lists from resp
         List<TEndPoint> configNodeList = new ArrayList<>();
