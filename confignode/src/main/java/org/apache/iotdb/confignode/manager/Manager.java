@@ -20,13 +20,12 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -186,18 +185,16 @@ public interface Manager {
   /**
    * Operate Permission
    *
-   * @param configRequest AuthorPlan
    * @return status
    */
-  TSStatus operatePermission(ConfigRequest configRequest);
+  TSStatus operatePermission(AuthorReq authorReq);
 
   /**
    * Query Permission
    *
-   * @param configRequest AuthorPlan
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(ConfigRequest configRequest);
+  DataSet queryPermission(AuthorReq authorReq);
 
   /** login */
   TPermissionInfoResp login(String username, String password);
@@ -211,13 +208,6 @@ public interface Manager {
    * @return TConfigNodeRegisterResp
    */
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
-
-  /**
-   * Apply ConfigNode when it is first startup
-   *
-   * @return status
-   */
-  TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
 
   TSStatus createFunction(String udfName, String className, List<String> uris);
 

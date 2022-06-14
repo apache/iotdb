@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -119,6 +121,13 @@ public class ConfigNodeDescriptor {
       if (targetConfigNode != null) {
         conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
       }
+
+      int clusterId =
+          Integer.parseInt(
+              properties.getProperty(
+                  "cluster_id", String.valueOf(conf.getPartitionRegionId().getId())));
+      conf.setPartitionRegionId(
+          new TConsensusGroupId(TConsensusGroupType.PartitionRegion, clusterId));
 
       conf.setSeriesPartitionSlotNum(
           Integer.parseInt(

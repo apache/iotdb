@@ -46,13 +46,14 @@ import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
-public class AsyncDataNodeClientPool {
+public class AsyncConfigNodeToDataNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeClientPool.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AsyncConfigNodeToDataNodeClientPool.class);
 
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
 
-  private AsyncDataNodeClientPool() {
+  private AsyncConfigNodeToDataNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
             .createClientManager(
@@ -267,14 +268,15 @@ public class AsyncDataNodeClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncDataNodeClientPool INSTANCE = new AsyncDataNodeClientPool();
+    private static final AsyncConfigNodeToDataNodeClientPool INSTANCE =
+        new AsyncConfigNodeToDataNodeClientPool();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncDataNodeClientPool getInstance() {
+  public static AsyncConfigNodeToDataNodeClientPool getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }
