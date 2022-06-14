@@ -232,7 +232,8 @@ public class ConfigNodeRPCServiceProcessorTest {
     List<TConfigNodeLocation> configNodeInfos = clusterNodes.getConfigNodeList();
     Assert.assertEquals(1, configNodeInfos.size());
     TConfigNodeLocation configNodeLocation =
-        new TConfigNodeLocation(new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
+        new TConfigNodeLocation(
+            0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
     Assert.assertEquals(configNodeLocation, configNodeInfos.get(0));
 
     List<TDataNodeLocation> dataNodeInfos = clusterNodes.getDataNodeList();

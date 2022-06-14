@@ -40,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_STATUS_RUNNING;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_CONFIG_NODE;
@@ -74,14 +73,13 @@ public class ShowClusterTask implements IConfigTask {
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showClusterHeader.getRespDataTypes());
 
-    AtomicInteger configNodeId = new AtomicInteger();
     clusterNodeInfos
         .getConfigNodeList()
         .forEach(
             e ->
                 buildTsBlock(
                     builder,
-                    configNodeId.getAndIncrement(),
+                    e.getConfigNodeId(),
                     NODE_TYPE_CONFIG_NODE,
                     NODE_STATUS_RUNNING,
                     e.getInternalEndPoint().getIp(),

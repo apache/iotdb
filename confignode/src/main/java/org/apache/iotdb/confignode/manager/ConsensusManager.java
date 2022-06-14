@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
@@ -68,7 +69,7 @@ public class ConsensusManager {
       long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
       try {
         while (!consensusImpl.isLeader(consensusGroupId)) {
-          Thread.sleep(100);
+          TimeUnit.MILLISECONDS.sleep(100);
           long elapsed = System.currentTimeMillis() - startTime;
           if (elapsed > maxWaitTime) {
             return;
@@ -116,6 +117,7 @@ public class ConsensusManager {
               .applyConfigNode(
                   conf.getTargetConfigNode(),
                   new TConfigNodeLocation(
+                      -1,
                       new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                       new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

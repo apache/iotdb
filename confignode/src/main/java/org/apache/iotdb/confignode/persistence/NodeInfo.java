@@ -87,7 +87,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   // Online DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-  private AtomicInteger nextDataNodeId = new AtomicInteger(0);
+  private AtomicInteger nextNodeId = new AtomicInteger(1);
   private final ConcurrentNavigableMap<Integer, TDataNodeInfo> onlineDataNodes =
       new ConcurrentSkipListMap<>();
 
@@ -137,18 +137,18 @@ public class NodeInfo implements SnapshotProcessor {
     try {
       onlineDataNodes.put(info.getLocation().getDataNodeId(), info);
 
-      if (nextDataNodeId.get() < info.getLocation().getDataNodeId()) {
-        // In this case, at least one Datanode is registered with the leader node,
-        // so the nextDataNodeID of the followers needs to be added
-        nextDataNodeId.getAndIncrement();
+      if (nextNodeId.get() < info.getLocation().getDataNodeId()) {
+        // In this case, at least one DataNode is registered with the leader node,
+        // so the nextNodeID of the followers needs to be added
+        nextNodeId.getAndIncrement();
       }
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      if (nextDataNodeId.get() < minimumDataNode) {
+      if (nextNodeId.get() < minimumDataNode) {
         result.setMessage(
             String.format(
                 "To enable IoTDB-Cluster's data service, please register %d more IoTDB-DataNode",
-                minimumDataNode - nextDataNodeId.get()));
-      } else if (nextDataNodeId.get() == minimumDataNode) {
+                minimumDataNode - nextNodeId.get()));
+      } else if (nextNodeId.get() == minimumDataNode) {
         result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
       }
     } finally {
@@ -242,6 +242,11 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
+      if (nextNodeId.get() < applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId()) {
+        // In this case, at least one ConfigNode is registered with the leader node,
+        // so the nextNodeID of the followers needs to be added
+        nextNodeId.getAndIncrement();
+      }
       onlineConfigNodes.add(applyConfigNodeReq.getConfigNodeLocation());
       storeConfigNode();
       LOGGER.info(
@@ -283,8 +288,8 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  public int generateNextDataNodeId() {
-    return nextDataNodeId.getAndIncrement();
+  public int generateNextNodeId() {
+    return nextNodeId.getAndIncrement();
   }
 
   @Override
@@ -305,7 +310,7 @@ public class NodeInfo implements SnapshotProcessor {
 
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
-      ReadWriteIOUtils.write(nextDataNodeId.get(), fileOutputStream);
+      ReadWriteIOUtils.write(nextNodeId.get(), fileOutputStream);
 
       serializeOnlineDataNode(fileOutputStream, protocol);
 
@@ -368,7 +373,7 @@ public class NodeInfo implements SnapshotProcessor {
 
       clear();
 
-      nextDataNodeId.set(ReadWriteIOUtils.readInt(fileInputStream));
+      nextNodeId.set(ReadWriteIOUtils.readInt(fileInputStream));
 
       deserializeOnlineDataNode(fileInputStream, protocol);
 
@@ -409,8 +414,9 @@ public class NodeInfo implements SnapshotProcessor {
     drainingDataNodes.addAll(tDataNodeLocations);
   }
 
-  public int getNextDataNodeId() {
-    return nextDataNodeId.get();
+  @TestOnly
+  public int getNextNodeId() {
+    return nextNodeId.get();
   }
 
   @TestOnly
@@ -419,7 +425,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public void clear() {
-    nextDataNodeId = new AtomicInteger(0);
+    nextNodeId = new AtomicInteger(0);
     onlineDataNodes.clear();
     drainingDataNodes.clear();
     onlineConfigNodes.clear();
