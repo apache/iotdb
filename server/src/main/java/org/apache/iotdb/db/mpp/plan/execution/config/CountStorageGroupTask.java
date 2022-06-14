@@ -42,9 +42,9 @@ public class CountStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskFetcher.countStorageGroup(countStorageGroupStatement);
+    return configTaskExecutor.countStorageGroup(countStorageGroupStatement);
   }
 
   public static void buildTSBlock(int storageGroupNum, SettableFuture<ConfigTaskResult> future) {

@@ -24,6 +24,6 @@ import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface IConfigTask {
-  ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException;
 }

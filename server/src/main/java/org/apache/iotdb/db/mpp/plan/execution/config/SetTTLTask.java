@@ -35,8 +35,8 @@ public class SetTTLTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskFetcher.setTTL(statement, taskName);
+    return configTaskExecutor.setTTL(statement, taskName);
   }
 }

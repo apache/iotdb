@@ -42,9 +42,9 @@ public class ShowStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskFetcher.showStorageGroup(showStorageGroupStatement);
+    return configTaskExecutor.showStorageGroup(showStorageGroupStatement);
   }
 
   public static void buildTSBlock(

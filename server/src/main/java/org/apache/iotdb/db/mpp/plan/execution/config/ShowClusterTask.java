@@ -42,9 +42,9 @@ public class ShowClusterTask implements IConfigTask {
   public ShowClusterTask(ShowClusterStatement showClusterStatement) {}
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskFetcher.showCluster();
+    return configTaskExecutor.showCluster();
   }
 
   private static void buildTsBlock(

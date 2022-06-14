@@ -27,15 +27,11 @@ import org.apache.iotdb.db.mpp.plan.execution.config.fetcher.IConfigTaskExecutor
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FlushTask implements IConfigTask {
-
-  private static final Logger logger = LoggerFactory.getLogger(FlushTask.class);
 
   private FlushStatement flushStatement;
 
@@ -44,7 +40,7 @@ public class FlushTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     TFlushReq tFlushReq = new TFlushReq();
     List<String> storageGroups = new ArrayList<>();
@@ -65,6 +61,6 @@ public class FlushTask implements IConfigTask {
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskFetcher.flush(tFlushReq);
+    return configTaskExecutor.flush(tFlushReq);
   }
 }

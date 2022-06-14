@@ -33,9 +33,9 @@ public class DeleteStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher) {
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskFetcher.deleteStorageGroup(deleteStorageGroupStatement);
+    return configTaskExecutor.deleteStorageGroup(deleteStorageGroupStatement);
   }
 }

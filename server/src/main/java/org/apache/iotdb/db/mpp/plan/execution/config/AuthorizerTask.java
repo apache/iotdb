@@ -36,7 +36,7 @@ public class AuthorizerTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher) {
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     if (authorStatement.getQueryType() == QueryType.WRITE) {

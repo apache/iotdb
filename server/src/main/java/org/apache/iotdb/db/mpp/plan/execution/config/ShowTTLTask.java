@@ -41,9 +41,9 @@ public class ShowTTLTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskFetcher.showTTL(showTTLStatement);
+    return configTaskExecutor.showTTL(showTTLStatement);
   }
 
   public static void buildTSBlock(

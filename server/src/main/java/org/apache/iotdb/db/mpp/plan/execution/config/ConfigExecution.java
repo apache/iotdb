@@ -60,7 +60,7 @@ public class ConfigExecution implements IQueryExecution {
   private DatasetHeader datasetHeader;
   private boolean resultSetConsumed;
   private final IConfigTask task;
-  private IConfigTaskExecutor fetcher;
+  private IConfigTaskExecutor configTaskExecutor;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
@@ -71,9 +71,9 @@ public class ConfigExecution implements IQueryExecution {
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
     this.resultSetConsumed = false;
     if (config.isClusterMode()) {
-      fetcher = ClusterConfigTaskExecutor.getInstance();
+      configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
     } else {
-      fetcher = StandsloneConfigTaskExecutor.getInstance();
+      configTaskExecutor = StandsloneConfigTaskExecutor.getInstance();
     }
   }
 
@@ -91,7 +91,7 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public void start() {
     try {
-      ListenableFuture<ConfigTaskResult> future = task.execute(fetcher);
+      ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
       Futures.addCallback(
           future,
           new FutureCallback<ConfigTaskResult>() {

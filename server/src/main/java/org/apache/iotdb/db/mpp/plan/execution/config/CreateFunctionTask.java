@@ -42,8 +42,8 @@ public class CreateFunctionTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskFetcher.createFunction(udfName, className, uris);
+    return configTaskExecutor.createFunction(udfName, className, uris);
   }
 }

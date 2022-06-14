@@ -55,7 +55,7 @@ public class ShowFunctionsTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowFunctionsTask.class);
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 

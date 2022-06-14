@@ -33,8 +33,8 @@ public class DropFunctionTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskFetcher.dropFunction(udfName);
+    return configTaskExecutor.dropFunction(udfName);
   }
 }
