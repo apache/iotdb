@@ -16,17 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.itbase.runtime;
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+import java.sql.SQLException;
+import java.util.List;
 
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.db.client.ConfigNodeClient;
+public class InconsistentDataException extends SQLException {
 
-import com.google.common.util.concurrent.ListenableFuture;
-
-public interface IConfigTask {
-  ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
-      throws InterruptedException;
+  public InconsistentDataException(Object data, List<String> endpoints) {
+    super(String.format("Datasets are inconsistent: %s with data %s", endpoints, data));
+  }
 }

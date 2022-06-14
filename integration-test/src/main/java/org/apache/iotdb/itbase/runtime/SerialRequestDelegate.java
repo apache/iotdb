@@ -16,27 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.itbase.runtime;
 
-package org.apache.iotdb.db.auth;
-
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-
-import com.google.common.util.concurrent.SettableFuture;
-
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
-public interface IAuthorityFetcher {
+/**
+ * ParallelRequestDelegate will handle requests in serial. It's more efficient when the requests are
+ * just local computation.
+ */
+public class SerialRequestDelegate<T> extends RequestDelegate<T> {
 
-  TSStatus checkUser(String username, String password);
+  public SerialRequestDelegate(List<String> endpoints) {
+    super(endpoints);
+  }
 
-  TSStatus checkUserPrivileges(String username, List<String> allPath, int permission);
-
-  SettableFuture<ConfigTaskResult> operatePermission(
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
-
-  SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient);
+  @Override
+  public List<T> requestAll() throws SQLException {
+    List<T> results = new ArrayList<>(getEndpoints().size());
+    for (int i = 0; i < getEndpoints().size(); i++) {
+      try {
+        results.add(getRequests().get(i).call());
+      } catch (Exception e) {
+        throw new SQLException(String.format("Request %s error.", getEndpoints().get(i)), e);
+      }
+    }
+    return results;
+  }
 }

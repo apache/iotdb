@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
@@ -68,9 +68,9 @@ public class Coordinator {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
-  private static final IClientManager<PartitionRegionId, DataNodeToConfigNodeClient>
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, DataNodeToConfigNodeClient>()
+          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;

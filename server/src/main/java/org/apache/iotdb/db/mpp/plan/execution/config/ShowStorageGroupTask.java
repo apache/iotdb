@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -63,15 +63,14 @@ public class ShowStorageGroupTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     Map<String, TStorageGroupSchema> storageGroupSchemaMap = new HashMap<>();
     if (config.isClusterMode()) {
       List<String> storageGroupPathPattern =
           Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
-      try (DataNodeToConfigNodeClient client =
-          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TStorageGroupSchemaResp resp =
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
         storageGroupSchemaMap = resp.getStorageGroupSchemaMap();
