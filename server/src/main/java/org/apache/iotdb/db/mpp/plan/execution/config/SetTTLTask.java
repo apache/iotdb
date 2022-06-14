@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -56,16 +56,16 @@ public class SetTTLTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (config.isClusterMode()) {
       TSetTTLReq setTTLReq =
           new TSetTTLReq(statement.getStorageGroupPath().getFullPath(), statement.getTTL());
-      try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
+      try (ConfigNodeClient configNodeClient =
           clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         // Send request to some API server
-        TSStatus tsStatus = dataNodeToConfigNodeClient.setTTL(setTTLReq);
+        TSStatus tsStatus = configNodeClient.setTTL(setTTLReq);
         // Get response or throw exception
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
           LOGGER.error(

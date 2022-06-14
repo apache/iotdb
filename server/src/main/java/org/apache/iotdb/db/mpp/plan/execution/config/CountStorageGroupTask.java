@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -60,15 +60,14 @@ public class CountStorageGroupTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     int storageGroupNum = 0;
     if (config.isClusterMode()) {
       List<String> storageGroupPathPattern =
           Arrays.asList(countStorageGroupStatement.getPartialPath().getNodes());
-      try (DataNodeToConfigNodeClient client =
-          clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
         storageGroupNum = resp.getCount();
       } catch (TException | IOException e) {

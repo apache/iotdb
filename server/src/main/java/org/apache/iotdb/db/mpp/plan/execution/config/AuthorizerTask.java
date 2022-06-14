@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -55,7 +55,7 @@ public class AuthorizerTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager) {
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
       // Construct request using statement
@@ -72,12 +72,12 @@ public class AuthorizerTask implements IConfigTask {
                   : authorStatement.getNodeName().getFullPath());
       // Send request to some API server
       if (config.isClusterMode()) {
-        try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
+        try (ConfigNodeClient configNodeClient =
             clientManager.borrowClient(ConfigNodeInfo.partitionRegionId); ) {
           if (authorStatement.getQueryType() == QueryType.WRITE) {
-            future = authorizerManager.operatePermission(req, dataNodeToConfigNodeClient);
+            future = authorizerManager.operatePermission(req, configNodeClient);
           } else {
-            future = authorizerManager.queryPermission(req, dataNodeToConfigNodeClient);
+            future = authorizerManager.queryPermission(req, configNodeClient);
           }
         }
       } else {

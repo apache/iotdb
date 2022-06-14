@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -103,7 +103,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     boolean status = true;
     try {
@@ -120,7 +120,7 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient) {
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     Map<String, List<String>> authorizerResp = new HashMap<>();
     try {
