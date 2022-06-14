@@ -137,11 +137,11 @@ public class IoTDBLoadExternalTsfileIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
+    virtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(2);
+    HashVirtualPartitioner.getInstance().setStorageGroupNum(2);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    virtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
   }
