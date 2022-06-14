@@ -278,6 +278,7 @@ public class ConfigManager implements Manager {
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
+    // path doesn't contain * so the size of innerPathList should be 1
     List<PartialPath> innerPathList = path.alterPrefixPath(storageGroup);
     PartialPath pathInnerStorageGroup = innerPathList.get(0);
     // The path contains `*` and the only `*` is not in last level
