@@ -268,6 +268,12 @@ public class LocalConfigNode {
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
 
+    if (config.isMppMode() && !config.isClusterMode()) {
+      deleteDataRegionsInStorageGroup(
+          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup));
+      dataPartitionTable.deleteStorageGroup(storageGroup);
+    }
+
     DeleteTimeSeriesPlan deleteTimeSeriesPlan =
         SchemaSyncManager.getInstance().isEnableSync()
             ? SchemaSyncManager.getInstance()
@@ -310,6 +316,12 @@ public class LocalConfigNode {
         throw new MetadataException(
             String.format("Failed to delete storage group folder %s", sgDir.getAbsolutePath()));
       }
+    }
+  }
+
+  private void deleteDataRegionsInStorageGroup(List<DataRegionId> dataRegionIdSet) {
+    for (DataRegionId dataRegionId : dataRegionIdSet) {
+      storageEngine.deleteDataRegion(dataRegionId);
     }
   }
 
