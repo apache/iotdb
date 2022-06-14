@@ -221,11 +221,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
       } catch (Exception e) {
         logger.warn(
-            "{}.{} data type is not consistent, input {}, registered {}",
+            "data type of {}.{} is not consistent, registered type {}, inserting timestamp {}, value {}",
             devicePath,
             measurements[i],
-            values[i],
-            dataTypes[i]);
+            dataTypes[i],
+            time,
+            values[i]);
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {
@@ -498,6 +499,16 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
       }
     }
+  }
+
+  @Override
+  public long getMinTime() {
+    return getTime();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
   }
 
   // region serialize & deserialize methods for WAL
