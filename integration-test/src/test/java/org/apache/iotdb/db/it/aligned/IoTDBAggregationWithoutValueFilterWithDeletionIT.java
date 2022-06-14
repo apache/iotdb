@@ -97,7 +97,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
@@ -141,7 +141,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
@@ -182,7 +182,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
@@ -226,7 +226,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
@@ -270,7 +270,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
@@ -305,7 +305,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -342,7 +342,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -379,7 +379,7 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
