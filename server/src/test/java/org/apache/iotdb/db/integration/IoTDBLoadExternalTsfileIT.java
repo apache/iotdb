@@ -61,7 +61,7 @@ public class IoTDBLoadExternalTsfileIT {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private static String[] insertSequenceSqls =
+  protected static String[] insertSequenceSqls =
       new String[] {
         "SET STORAGE GROUP TO root.vehicle",
         "SET STORAGE GROUP TO root.test",
@@ -127,7 +127,7 @@ public class IoTDBLoadExternalTsfileIT {
   private static final String TEST_D0_S0_STR = "root.test.d0.s0";
   private static final String TEST_D0_S1_STR = "root.test.d0.s1";
   private static final String TEST_D1_STR = "root.test.d1.g0.s0";
-  private static int virtualPartitionNum = 0;
+  protected static int virtualPartitionNum = 0;
 
   private static String[] deleteSqls =
       new String[] {"DELETE STORAGE GROUP root.vehicle", "DELETE STORAGE GROUP root.test"};
@@ -812,7 +812,7 @@ public class IoTDBLoadExternalTsfileIT {
     }
   }
 
-  private void prepareData(String[] sqls) {
+  protected void prepareData(String[] sqls) {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
