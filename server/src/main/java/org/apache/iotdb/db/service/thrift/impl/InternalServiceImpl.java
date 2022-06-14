@@ -169,8 +169,10 @@ public class InternalServiceImpl implements InternalService.Iface {
     }
     // TODO need consider more status
     if (writeResponse.getStatus() != null) {
-      response.setAccepted(!hasFailedMeasurement &&
-          TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
+      response.setAccepted(
+          !hasFailedMeasurement
+              && TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                  == writeResponse.getStatus().getCode());
       response.setMessage(writeResponse.getStatus().message);
     } else {
       LOGGER.error(

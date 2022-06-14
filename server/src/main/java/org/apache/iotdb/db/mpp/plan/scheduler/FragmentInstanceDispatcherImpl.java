@@ -223,7 +223,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         } else {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
-        return !hasFailedMeasurement && TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
+        return !hasFailedMeasurement
+            && TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
     }
     throw new UnsupportedOperationException(
         String.format("unknown query type [%s]", instance.getType()));
