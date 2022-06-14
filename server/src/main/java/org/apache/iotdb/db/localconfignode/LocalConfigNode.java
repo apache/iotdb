@@ -268,7 +268,7 @@ public class LocalConfigNode {
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
 
-    if (!config.isClusterMode()) {
+    if (config.isMppMode() && !config.isClusterMode()) {
       deleteDataRegionsInStorageGroup(
           dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup));
       dataPartitionTable.deleteStorageGroup(storageGroup);
