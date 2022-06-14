@@ -92,11 +92,9 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   @Override
   public int hashCode() {
-    if (hash == 0) {
-      if (!hasCalculatedHash) {
-        hash = Arrays.hashCode(values);
-        hasCalculatedHash = true;
-      }
+    if (!hasCalculatedHash) {
+      hash = Arrays.hashCode(values);
+      hasCalculatedHash = true;
     }
     return hash;
   }
