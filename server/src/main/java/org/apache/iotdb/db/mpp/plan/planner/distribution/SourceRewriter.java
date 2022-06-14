@@ -173,18 +173,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         .getSchemaPartitionMap()
         .forEach(
             (storageGroup, deviceGroup) -> {
-              //              try {
-              //                if (seed.getPath().overlapWith(new
-              //
-              // PartialPath(storageGroup).concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))) {
               deviceGroup.forEach(
                   (deviceGroupId, schemaRegionReplicaSet) ->
                       schemaRegions.add(schemaRegionReplicaSet));
-              //                }
-              //              } catch (IllegalPathException e) {
-              //                // This won't happen because the storageGroup is always legal.
-              //                throw new RuntimeException(e);
-              //              }
             });
     int count = schemaRegions.size();
     schemaRegions.forEach(
