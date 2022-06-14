@@ -22,8 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -68,10 +66,6 @@ public class Coordinator {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
@@ -96,7 +90,7 @@ public class Coordinator {
       ISchemaFetcher schemaFetcher) {
     if (statement instanceof IConfigStatement) {
       queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor, CONFIG_NODE_CLIENT_MANAGER);
+      return new ConfigExecution(queryContext, statement, executor);
     }
     return new QueryExecution(
         statement,

@@ -604,8 +604,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             }
           }
           if (null == storageGroup) {
-            logger.error(
-                "Failed to get the storage group of {} when update SchemaPartitionCache", device);
+            // device not exist
             continue;
           }
           TSeriesPartitionSlot seriesPartitionSlot =
