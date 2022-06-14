@@ -190,7 +190,23 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public boolean isAutoCreateSchemaEnabled() {
+    return IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+  }
+
+  @Override
   public int getMaxNumberOfPointsInPage() {
     return TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  }
+
+  @Override
+  public BaseConfig setPrimitiveArraySize(int primitiveArraySize) {
+    IoTDBDescriptor.getInstance().getConfig().setPrimitiveArraySize(primitiveArraySize);
+    return this;
+  }
+
+  @Override
+  public int getPrimitiveArraySize() {
+    return IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
   }
 }

@@ -49,6 +49,7 @@ public class MicrometerMetricManagerTest {
     metricConfig.setEnableMetric(true);
     metricConfig.setMonitorType(MonitorType.MICROMETER);
     metricService.startService();
+    metricService.startAllReporter();
     metricManager = metricService.getMetricManager();
   }
 
@@ -61,6 +62,17 @@ public class MicrometerMetricManagerTest {
   @Test
   public void getOrCreateDifferentMetricsWithSameNameTest() {
     assertThrows(IllegalArgumentException.class, this::getOrCreateDifferentMetricsWithSameName);
+  }
+
+  private void getOrCreateMetricsWithSameNameAndDifferentTags() {
+    metricManager.gauge(1L, "gaugeTest", MetricLevel.CORE, "a", "b");
+    metricManager.gauge(2L, "gaugeTest", MetricLevel.CORE, "a", "b", "c", "d");
+  }
+
+  @Test
+  public void testGetOrCreateMetricsWithSameNameAndDifferentTags() {
+    assertThrows(
+        IllegalArgumentException.class, this::getOrCreateMetricsWithSameNameAndDifferentTags);
   }
 
   @Test

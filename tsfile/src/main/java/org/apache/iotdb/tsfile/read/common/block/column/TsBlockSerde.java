@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -59,9 +58,6 @@ public class TsBlockSerde {
     // Position count.
     int positionCount = byteBuffer.getInt();
 
-    TsBlockBuilder builder = new TsBlockBuilder(positionCount, valueColumnDataTypes);
-    builder.declarePositions(positionCount);
-
     // Column encodings.
     List<ColumnEncoding> columnEncodings = new ArrayList<>(valueColumnCount + 1);
     for (int i = 0; i < valueColumnCount + 1; i++) {
@@ -69,18 +65,19 @@ public class TsBlockSerde {
     }
 
     // Time column.
-    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
-    ColumnEncoderFactory.get(columnEncodings.get(0))
-        .readColumn(timeColumnBuilder, byteBuffer, positionCount);
+    TimeColumn timeColumn =
+        ColumnEncoderFactory.get(columnEncodings.get(0)).readTimeColumn(byteBuffer, positionCount);
 
+    // Value columns
+    Column[] valueColumns = new Column[valueColumnCount];
     for (int i = 0; i < valueColumnCount; i++) {
       // Value column.
-      ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      ColumnEncoderFactory.get(columnEncodings.get(1 + i))
-          .readColumn(columnBuilder, byteBuffer, positionCount);
+      valueColumns[i] =
+          ColumnEncoderFactory.get(columnEncodings.get(1 + i))
+              .readColumn(byteBuffer, valueColumnDataTypes.get(i), positionCount);
     }
 
-    return builder.build();
+    return new TsBlock(positionCount, timeColumn, valueColumns);
   }
 
   /**
