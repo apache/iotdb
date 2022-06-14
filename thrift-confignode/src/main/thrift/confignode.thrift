@@ -29,6 +29,11 @@ struct TDataNodeRegisterReq {
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
+struct TDataNodeActiveReq {
+  1: required common.TDataNodeLocation location
+  2: required i32 dataNodeId
+}
+
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -224,6 +229,8 @@ service ConfigIService {
   /* DataNode */
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
+
+  common.TSStatus activeDataNode(TDataNodeActiveReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
