@@ -80,11 +80,11 @@ public class IoTDBNestedQueryIT {
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.schemaProcessor.createTimeseries(
-            new PartialPath("root.vehicle.d1.s3"),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
+        new PartialPath("root.vehicle.d1.s3"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
     IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
