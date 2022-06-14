@@ -44,14 +44,14 @@ public class RegularTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType getDataType() {
-    return TSDataType.TEXT;
+    return TSDataType.BOOLEAN;
   }
 
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
     Binary binary = layerPointReader.currentBinary();
     if (pattern.matcher(binary.getStringValue()).find()) {
-      cachedBinary = binary;
+      cachedBoolean = true;
     } else {
       currentNull = true;
     }
