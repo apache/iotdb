@@ -102,9 +102,13 @@ public class Binary implements Comparable<Binary>, Serializable {
    */
   public int getLength() {
     if (this.values == null) {
-      return 0;
+      return -1;
     }
     return this.values.length;
+  }
+
+  public boolean isNull() {
+    return values == null;
   }
 
   public String getStringValue() {
