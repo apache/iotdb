@@ -354,7 +354,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
-    return StorageEngineV2.getInstance().operatorFlush(req);
+    return StorageEngineV2.getInstance().operateFlush(req);
   }
 
   @Override

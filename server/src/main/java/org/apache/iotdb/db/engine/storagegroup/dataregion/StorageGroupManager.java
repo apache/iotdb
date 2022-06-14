@@ -385,10 +385,10 @@ public class StorageGroupManager {
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
-  public void deleteStorageGroupSystemFolder(String path) {
+  public void deleteStorageGroupSystemFolder(String systemDir) {
     for (DataRegion processor : dataRegion) {
       if (processor != null) {
-        processor.deleteFolder(path);
+        processor.deleteFolder(systemDir);
       }
     }
   }

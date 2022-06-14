@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -1242,5 +1244,9 @@ public class LocalConfigNode {
   public boolean checkUserPrivileges(String username, String path, int permission)
       throws AuthException {
     return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
+
+  public TSStatus executeFlushOperation(TFlushReq tFlushReq) {
+    return storageEngine.operateFlush(tFlushReq);
   }
 }

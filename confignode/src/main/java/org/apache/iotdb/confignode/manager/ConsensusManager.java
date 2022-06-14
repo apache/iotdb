@@ -20,15 +20,12 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -36,7 +33,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
@@ -68,7 +65,7 @@ public class ConsensusManager {
       long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
       try {
         while (!consensusImpl.isLeader(consensusGroupId)) {
-          Thread.sleep(100);
+          TimeUnit.MILLISECONDS.sleep(100);
           long elapsed = System.currentTimeMillis() - startTime;
           if (elapsed > maxWaitTime) {
             return;
@@ -81,8 +78,8 @@ public class ConsensusManager {
 
   /** Build ConfigNodeGroup ConsensusLayer */
   private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
-    // There is only one ConfigNodeGroup
-    consensusGroupId = new PartitionRegionId(conf.getPartitionRegionId());
+    consensusGroupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(conf.getPartitionRegionId());
 
     // Consensus local implement
     consensusImpl =
@@ -108,37 +105,22 @@ public class ConsensusManager {
       peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
     }
     consensusImpl.addConsensusGroup(consensusGroupId, peerList);
-
-    // Apply ConfigNode if necessary
-    if (conf.isNeedApply()) {
-      TSStatus status =
-          SyncConfigNodeClientPool.getInstance()
-              .applyConfigNode(
-                  conf.getTargetConfigNode(),
-                  new TConfigNodeLocation(
-                      new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                      new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(status.getMessage());
-        throw new IOException("Apply ConfigNode failed:");
-      }
-    }
   }
 
   /**
    * Apply new ConfigNode Peer into PartitionRegion
    *
-   * @param applyConfigNodeReq ApplyConfigNodeReq
+   * @param registerConfigNodeReq ApplyConfigNodeReq
    * @return True if successfully addPeer. False if another ConfigNode is being added to the
    *     PartitionRegion
    */
-  public boolean addConfigNodePeer(ApplyConfigNodeReq applyConfigNodeReq) {
+  public boolean addConfigNodePeer(RegisterConfigNodeReq registerConfigNodeReq) {
     return consensusImpl
         .addPeer(
             consensusGroupId,
             new Peer(
                 consensusGroupId,
-                applyConfigNodeReq.getConfigNodeLocation().getConsensusEndPoint()))
+                registerConfigNodeReq.getConfigNodeLocation().getConsensusEndPoint()))
         .isSuccess();
   }
 
@@ -154,9 +136,5 @@ public class ConsensusManager {
 
   public boolean isLeader() {
     return consensusImpl.isLeader(consensusGroupId);
-  }
-
-  public ConsensusGroupId getConsensusGroupId() {
-    return consensusGroupId;
   }
 }

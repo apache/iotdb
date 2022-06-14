@@ -78,8 +78,9 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
+public class DataNodeToConfigNodeClient
+    implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(DataNodeToConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
 
@@ -98,13 +99,13 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   private int cursor = 0;
 
-  ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+  ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager;
 
   PartitionRegionId partitionRegionId = ConfigNodeInfo.partitionRegionId;
 
   TProtocolFactory protocolFactory;
 
-  public ConfigNodeClient() throws TException {
+  public DataNodeToConfigNodeClient() throws TException {
     // Read config nodes from configuration
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
@@ -115,10 +116,10 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
     init();
   }
 
-  public ConfigNodeClient(
+  public DataNodeToConfigNodeClient(
       TProtocolFactory protocolFactory,
       long connectionTimeout,
-      ClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager)
       throws TException {
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     this.protocolFactory = protocolFactory;
@@ -578,34 +579,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TConfigNodeRegisterResp resp = client.registerConfigNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
-  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.applyConfigNode(configNodeLocation);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new RuntimeException("Cannot call registerConfigNode in DataNode!");
   }
 
   @Override
@@ -656,29 +630,31 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {
+  public static class Factory
+      extends BaseClientFactory<PartitionRegionId, DataNodeToConfigNodeClient> {
 
     public Factory(
-        ClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
+        ClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager,
         ClientFactoryProperty clientFactoryProperty) {
       super(clientManager, clientFactoryProperty);
     }
 
     @Override
     public void destroyObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId,
+        PooledObject<DataNodeToConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<ConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
+    public PooledObject<DataNodeToConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
         throws Exception {
-      Constructor<ConfigNodeClient> constructor =
-          ConfigNodeClient.class.getConstructor(
+      Constructor<DataNodeToConfigNodeClient> constructor =
+          DataNodeToConfigNodeClient.class.getConstructor(
               TProtocolFactory.class, long.class, clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
-              ConfigNodeClient.class,
+              DataNodeToConfigNodeClient.class,
               constructor,
               clientFactoryProperty.getProtocolFactory(),
               clientFactoryProperty.getConnectionTimeoutMs(),
@@ -687,7 +663,8 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
     @Override
     public boolean validateObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId,
+        PooledObject<DataNodeToConfigNodeClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
     }
   }
