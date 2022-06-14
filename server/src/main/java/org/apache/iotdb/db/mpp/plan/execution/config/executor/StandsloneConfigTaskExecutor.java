@@ -103,9 +103,9 @@ public class StandsloneConfigTaskExecutor implements IConfigTaskExecutor {
         String storageGroup = storageGroupMNode.getFullPath();
         TStorageGroupSchema storageGroupSchema = storageGroupMNode.getStorageGroupSchema();
         storageGroupSchemaMap.put(storageGroup, storageGroupSchema);
-        // build TSBlock
-        ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
       }
+      // build TSBlock
+      ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
     } catch (MetadataException e) {
       future.setException(e);
     }
