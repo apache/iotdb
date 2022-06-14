@@ -141,7 +141,7 @@ public class SchemaEngine {
     List<Future<ISchemaRegion>> futures = new ArrayList<>();
 
     for (File file : sgDirList) {
-      if (file.isDirectory()) {
+      if (!file.isDirectory()) {
         continue;
       }
 
