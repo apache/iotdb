@@ -282,15 +282,13 @@ public class ConfigManager implements Manager {
       return new ArrayList<>();
     }
     // path doesn't contain * so the size of innerPathList should be 1
-    List<PartialPath> innerPathList = path.alterPrefixPath(storageGroup);
-    PartialPath pathInnerStorageGroup = innerPathList.get(0);
-    // The path contains `*` and the only `*` is not in last level
-    if (pathInnerStorageGroup.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+    PartialPath innerPath = path.alterPrefixPath(storageGroup).get(0);
+    // The innerPath contains `*` and the only `*` is not in last level
+    if (innerPath.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
-
     return Collections.singletonList(
-        getPartitionManager().getSeriesPartitionSlot(pathInnerStorageGroup.getDevice()));
+        getPartitionManager().getSeriesPartitionSlot(innerPath.getDevice()));
   }
 
   @Override
