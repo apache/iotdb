@@ -1304,6 +1304,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.info("stop and clean up");
         queryExecution.stopAndCleanup();
+        COORDINATOR.removeQueryExecution(queryId);
       }
     }
   }
