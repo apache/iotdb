@@ -108,6 +108,7 @@ public class DataNode extends ClusterNodeBase {
       configProperties.setProperty(
           "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
       configProperties.setProperty("config_nodes", this.targetConfignode);
+      configProperties.setProperty("connection_timeout_ms", "30000");
       if (properties != null && !properties.isEmpty()) {
         configProperties.putAll(properties);
       }
