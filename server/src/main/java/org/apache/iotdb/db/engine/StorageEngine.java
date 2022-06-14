@@ -998,10 +998,9 @@ public class StorageEngine implements IService {
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    //    return getProcessorDirectly(new
-    // PartialPath(getSgByEngineFile(tsfileToBeMoved)),getVirtualSgIdByEngineFile(tsfileToBeMoved))
-    //        .moveTsfile(tsfileToBeMoved, targetDir);
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeMoved)))
+    return getProcessorDirectly(
+            new PartialPath(getSgByEngineFile(tsfileToBeMoved)),
+            getVirtualSgIdByEngineFile(tsfileToBeMoved))
         .moveTsfile(tsfileToBeMoved, targetDir);
   }
 
