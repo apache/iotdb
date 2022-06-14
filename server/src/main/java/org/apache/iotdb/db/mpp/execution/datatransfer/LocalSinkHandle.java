@@ -111,7 +111,7 @@ public class LocalSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void setNoMoreTsBlocks() {
-    logger.info("Set no-more-tsblocks to {}.", this);
+    logger.info("Set no-more-tsblocks.");
     if (aborted) {
       return;
     }
@@ -120,16 +120,16 @@ public class LocalSinkHandle implements ISinkHandle {
     if (isFinished()) {
       sinkHandleListener.onFinish(this);
     }
-    logger.info("No-more-tsblocks has been set to {}.", this);
+    logger.info("No-more-tsblocks has been set.");
   }
 
   @Override
   public synchronized void abort() {
-    logger.info("Sink handle {} is being aborted.", this);
+    logger.info("Sink handle is being aborted.");
     aborted = true;
     queue.destroy();
     sinkHandleListener.onAborted(this);
-    logger.info("Sink handle {} is aborted", this);
+    logger.info("Sink handle is aborted");
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {
