@@ -214,12 +214,12 @@ public class ConfigNodeRPCServiceProcessorTest {
     infoMap = infoResp.getDataNodeInfoMap();
     Assert.assertEquals(1, infoMap.size());
     Assert.assertNotNull(infoMap.get(1));
-    dataNodeLocation.setDataNodeId(2);
-    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6668));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
+    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
     Assert.assertEquals(dataNodeLocation, infoMap.get(1).getLocation());
   }
 
