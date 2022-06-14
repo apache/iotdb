@@ -22,6 +22,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +79,12 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
   public void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     Expression.serialize(outputExpression, byteBuffer);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    Expression.serialize(outputExpression, stream);
   }
 
   public static GroupByLevelDescriptor deserialize(ByteBuffer byteBuffer) {

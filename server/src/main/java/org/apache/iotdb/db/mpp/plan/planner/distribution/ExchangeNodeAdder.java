@@ -197,7 +197,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
-  public PlanNode visitRowBasedSeriesAggregate(AggregationNode node, NodeGroupContext context) {
+  public PlanNode visitAggregation(AggregationNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 
