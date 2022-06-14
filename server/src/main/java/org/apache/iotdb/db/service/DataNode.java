@@ -326,8 +326,7 @@ public class DataNode implements DataNodeMBean {
         .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
     while (retry > 0) {
       logger.info("start joining the cluster.");
-      try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
-          new DataNodeToConfigNodeClient()) {
+      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
         // Set DataNodeLocation
@@ -345,7 +344,7 @@ public class DataNode implements DataNodeMBean {
         TDataNodeActiveReq req = new TDataNodeActiveReq();
         req.setLocation(location);
         req.setDataNodeId(config.getDataNodeId());
-        TSStatus status = dataNodeToConfigNodeClient.activeDataNode(req);
+        TSStatus status = configNodeClient.activeDataNode(req);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           logger.info("Joined the cluster successfully");
           return;
