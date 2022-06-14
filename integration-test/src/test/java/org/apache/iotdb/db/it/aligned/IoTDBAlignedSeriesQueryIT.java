@@ -24,6 +24,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -4189,6 +4190,7 @@ public class IoTDBAlignedSeriesQueryIT {
 
       fail("No expected exception thrown");
     } catch (Exception e) {
+      System.out.println(e.getMessage());
       Assert.assertTrue(
           e.getMessage()
               .contains(
