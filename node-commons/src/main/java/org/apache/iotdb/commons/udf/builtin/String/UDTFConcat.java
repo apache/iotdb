@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 
 /*This function Returns the concat string by input series and targets.
 startsEnd: Indicates whether series behind targets. The default value is false.*/
@@ -38,7 +39,8 @@ public class UDTFConcat implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     int size = validator.getParameters().getChildExpressions().size();
     for (int i = 0; i < size; i++) {
-      validator.validateInputSeriesDataType(i, TSDataType.TEXT);
+      validator.validateInputSeriesDataType(
+          i, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
     }
   }
 
@@ -54,7 +56,7 @@ public class UDTFConcat implements UDTF {
     seriesBehind = parameters.getBooleanOrDefault("series_behind", false);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.TEXT);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
   }
 
   @Override

@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 
 /*This function returns  0 if targets are the same, -1 if targtet1 is smaller than targtet2,
 and NULL if either argument is NULL. It returns 1 otherwise.*/
@@ -35,8 +36,10 @@ public class UDTFStrCompare implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(2)
-        .validateInputSeriesDataType(0, TSDataType.TEXT)
-        .validateInputSeriesDataType(1, TSDataType.TEXT);
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT))
+        .validateInputSeriesDataType(
+            1, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
   }
 
   @Override
@@ -44,7 +47,7 @@ public class UDTFStrCompare implements UDTF {
       throws Exception {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.INT32);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
   }
 
   @Override

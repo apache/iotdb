@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 
 /*This function returns if input series starts with the specified prefix.*/
 public class UDTFStartsWith implements UDTF {
@@ -33,7 +34,10 @@ public class UDTFStartsWith implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.TEXT);
+    validator
+        .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
   }
 
   @Override
@@ -42,7 +46,7 @@ public class UDTFStartsWith implements UDTF {
     target = parameters.getString("target");
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.BOOLEAN);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
   }
 
   @Override

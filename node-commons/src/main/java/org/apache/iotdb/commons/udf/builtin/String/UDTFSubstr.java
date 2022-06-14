@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 
 /*This function return a substring from target string, starting at position start and ending at position end - 1.
 If parameter "end" is not existed or more than length of target, return the substring from start to end of target.*/
@@ -39,7 +40,8 @@ public class UDTFSubstr implements UDTF {
     int start = validator.getParameters().getInt("start");
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.TEXT)
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT))
         .validate(
             startPosition -> ((int) startPosition) >= 0,
             "start should be more or equal than 0",
@@ -57,7 +59,7 @@ public class UDTFSubstr implements UDTF {
     end = parameters.getIntOrDefault("end", Integer.MAX_VALUE);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.TEXT);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
   }
 
   @Override

@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 
 /*This function returns position of target in an input series.*/
 public class UDTFStrLocate implements UDTF {
@@ -36,7 +37,8 @@ public class UDTFStrLocate implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.TEXT)
+        .validateInputSeriesDataType(
+            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT))
         .validate(
             target -> ((String) target).length() > 0,
             "target should not be empty",
@@ -50,7 +52,7 @@ public class UDTFStrLocate implements UDTF {
     reverse = parameters.getBooleanOrDefault("reverse", false);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.INT32);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
   }
 
   @Override
