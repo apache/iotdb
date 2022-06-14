@@ -46,25 +46,33 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBLastQueryWithoutLastCacheIT {
+public class IoTDBLastQueryWithDeletionIT {
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
-  protected static boolean enableLastCache;
 
   @BeforeClass
   public static void setUp() throws Exception {
     enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    enableLastCache = ConfigFactory.getConfig().isLastCacheEnabled();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableLastCache(false);
     EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // TODO replace it while delete timeseries is supported in cluster mode
+      //      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
+      statement.execute("delete from root.sg1.d1.s1 where time <= 27");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @AfterClass
@@ -73,7 +81,6 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setEnableLastCache(enableLastCache);
   }
 
   @Test
@@ -81,31 +88,28 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "23,root.sg1.d1.s1,230000.0,FLOAT",
-                "40,root.sg1.d1.s2,40,INT32",
                 "30,root.sg1.d1.s3,30,INT64",
                 "30,root.sg1.d1.s4,false,BOOLEAN",
                 "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select last * from root.sg1.d1")) {
 
-      try (ResultSet resultSet = statement.executeQuery("select last * from root.sg1.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          assertTrue(ans, retSet.contains(ans));
-          cnt++;
-        }
-        assertEquals(retSet.size(), cnt);
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        assertTrue(ans, retSet.contains(ans));
+        cnt++;
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -119,8 +123,6 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "23,root.sg1.d1.s1,230000.0,FLOAT",
-                "40,root.sg1.d1.s2,40,INT32",
                 "30,root.sg1.d1.s3,30,INT64",
                 "30,root.sg1.d1.s4,false,BOOLEAN",
                 "40,root.sg1.d1.s5,aligned_test40,TEXT",
@@ -131,24 +133,23 @@ public class IoTDBLastQueryWithoutLastCacheIT {
                 "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select last * from root.sg1.*")) {
 
-      try (ResultSet resultSet = statement.executeQuery("select last * from root.sg1.*")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          assertTrue(ans, retSet.contains(ans));
-          cnt++;
-        }
-        assertEquals(retSet.size(), cnt);
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        assertTrue(ans, retSet.contains(ans));
+        cnt++;
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -160,29 +161,26 @@ public class IoTDBLastQueryWithoutLastCacheIT {
   public void selectAllAlignedLastWithTimeFilterTest() {
 
     Set<String> retSet =
-        new HashSet<>(
-            Arrays.asList("40,root.sg1.d1.s2,40,INT32", "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+        new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg1.d1 where time > 30")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          assertTrue(ans, retSet.contains(ans));
-          cnt++;
-        }
-        assertEquals(retSet.size(), cnt);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet =
+            statement.executeQuery("select last * from root.sg1.d1 where time > 30")) {
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        assertTrue(ans, retSet.contains(ans));
+        cnt++;
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -195,30 +193,26 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "23,root.sg1.d1.s1,230000.0,FLOAT",
-                "30,root.sg1.d1.s4,false,BOOLEAN",
-                "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+                "30,root.sg1.d1.s4,false,BOOLEAN", "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select last s1, s4, s5 from root.sg1.d1")) {
 
-      try (ResultSet resultSet =
-          statement.executeQuery("select last s1, s4, s5 from root.sg1.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          assertTrue(ans, retSet.contains(ans));
-          cnt++;
-        }
-        assertEquals(retSet.size(), cnt);
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        assertTrue(ans, retSet.contains(ans));
+        cnt++;
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -229,28 +223,26 @@ public class IoTDBLastQueryWithoutLastCacheIT {
   @Test
   public void selectSomeAlignedLastTest2() {
     Set<String> retSet =
-        new HashSet<>(
-            Arrays.asList("23,root.sg1.d1.s1,230000.0,FLOAT", "30,root.sg1.d1.s4,false,BOOLEAN"));
+        new HashSet<>(Collections.singletonList("30,root.sg1.d1.s4,false,BOOLEAN"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select last s1, s4 from root.sg1.d1")) {
 
-      try (ResultSet resultSet = statement.executeQuery("select last s1, s4 from root.sg1.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          assertTrue(ans, retSet.contains(ans));
-          cnt++;
-        }
-        assertEquals(retSet.size(), cnt);
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        assertTrue(ans, retSet.contains(ans));
+        cnt++;
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -265,25 +257,24 @@ public class IoTDBLastQueryWithoutLastCacheIT {
         new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet =
+            statement.executeQuery("select last s1, s4, s5 from root.sg1.d1 where time > 30")) {
 
-      try (ResultSet resultSet =
-          statement.executeQuery("select last s1, s4, s5 from root.sg1.d1 where time > 30")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          assertTrue(ans, retSet.contains(ans));
-          cnt++;
-        }
-        assertEquals(retSet.size(), cnt);
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        assertTrue(ans, retSet.contains(ans));
+        cnt++;
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -301,26 +292,25 @@ public class IoTDBLastQueryWithoutLastCacheIT {
                 "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet =
+            statement.executeQuery(
+                "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30")) {
 
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          assertTrue(ans, retSet.contains(ans));
-          cnt++;
-        }
-        assertEquals(retSet.size(), cnt);
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        assertTrue(ans, retSet.contains(ans));
+        cnt++;
       }
+      assertEquals(retSet.size(), cnt);
 
     } catch (SQLException e) {
       e.printStackTrace();
