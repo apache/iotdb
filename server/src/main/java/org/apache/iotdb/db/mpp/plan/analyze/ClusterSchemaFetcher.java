@@ -126,7 +126,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           result.mergeSchemaTree(fetchedSchemaTree);
         }
       }
-      coordinator.getQueryExecution(queryId).stopAndCleanup();
       coordinator.removeQueryExecution(queryId);
       return result;
     }
