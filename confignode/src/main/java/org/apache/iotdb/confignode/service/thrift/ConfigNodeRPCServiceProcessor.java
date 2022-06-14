@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.SyncConfigNodeToDataNodeClientPool;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -389,6 +390,17 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
+  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+    ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
+    TSStatus status = configManager.applyConfigNode(applyConfigNodeReq);
+
+    // Print log to record the ConfigNode that performs the ApplyConfigNodeRequest
+    LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
+
+    return status;
+  }
+
+  @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
     return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
   }
@@ -417,7 +429,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     TSStatus tsStatus = new TSStatus();
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       tsStatus =
-          SyncConfigNodeToDataNodeClientPool.getInstance()
+          SyncDataNodeClientPool.getInstance()
               .flush(dataNodeInfo.getLocation().getInternalEndPoint(), req);
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return tsStatus;

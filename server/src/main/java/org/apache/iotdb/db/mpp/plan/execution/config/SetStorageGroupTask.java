@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
@@ -54,17 +54,17 @@ public class SetStorageGroupTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, DataNodeToConfigNodeClient> clientManager) {
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // TODO:(this judgement needs to be integrated in a high level framework)
     if (config.isClusterMode()) {
       // Construct request using statement
       TStorageGroupSchema storageGroupSchema = constructStorageGroupSchema();
       TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
-      try (DataNodeToConfigNodeClient dataNodeToConfigNodeClient =
+      try (ConfigNodeClient configNodeClient =
           clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         // Send request to some API server
-        TSStatus tsStatus = dataNodeToConfigNodeClient.setStorageGroup(req);
+        TSStatus tsStatus = configNodeClient.setStorageGroup(req);
         // Get response or throw exception
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
           LOGGER.error(
