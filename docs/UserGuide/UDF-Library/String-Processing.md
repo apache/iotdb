@@ -51,7 +51,7 @@ Input series:
 SQL for query:
 
 ```sql
-select s1, s2, length(s2) from root.sg1.d1 from root.sg1.d1
+select s1, length(s1) from root.sg1.d1
 ```
 
 Output series:
@@ -69,7 +69,7 @@ Output series:
 
 ### Usage
 
-The function is used to get the position of the first occurrence of substring substr in target. Returns -1 if there are no substr in target.
+The function is used to get the position of the first occurrence of substring `target` in input series. Returns -1 if there are no `target` in input.
 
 **Name:** LENGTH
 
@@ -177,6 +177,7 @@ Output series:
 |1970-01-01T08:00:00.002+08:00|      22test22|                                   false|
 +-----------------------------+--------------+----------------------------------------+
 ```
+
 ## EndsWith
 
 ### Usage
@@ -242,7 +243,7 @@ The function is used to concat input series and target strings.
 
 **Note:** 
 + If value of input series is NULL, it will be skipped.
-+ We can only concat input series and targets separately. `concat(s1, "target1"="IoT", s2, "target2"="DB")` and
++ We can only concat input series and `targets` separately. `concat(s1, "target1"="IoT", s2, "target2"="DB")` and
   `concat(s1, s2, "target1"="IoT", "target2"="DB")` gives the same result.
 
 ### Examples
@@ -481,7 +482,7 @@ a `positive integer` if value of series1  is more than series2.
 
 **Name:** StrCmp
 
-**Input Series:** Support two single input series. Data types are all the TEXT.
+**Input Series:** Support two input series. Data types are all the TEXT.
 
 **Output Series:** Output a single series. The type is INT32.
 
