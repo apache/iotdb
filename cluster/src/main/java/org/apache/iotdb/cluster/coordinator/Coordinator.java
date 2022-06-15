@@ -148,29 +148,12 @@ public class Coordinator {
 
   /** execute a non-query plan that is not necessary to be executed on other nodes. */
   private TSStatus executeNonQueryLocally(IConsensusRequest request) {
-    boolean execRet;
     try {
-      if (request instanceof PhysicalPlan) {
-        execRet = metaGroupMember.getLocalExecutor().processNonQuery(((PhysicalPlan) request));
-      } else {
-        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
-            "Unsupported request: " + request);
-      }
-    } catch (QueryProcessException e) {
-      if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
-        logger.debug("meet error while processing non-query. ", e);
-      } else {
-        logger.warn("meet error while processing non-query. ", e);
-      }
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      return metaGroupMember.getStateMachine().write(request);
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-
-    return execRet
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
-        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   /**

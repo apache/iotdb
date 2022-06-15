@@ -29,6 +29,8 @@ import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 
+import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.db.mpp.execution.StateMachine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,19 +40,19 @@ public class MetaLogApplier extends BaseApplier {
   private static final Logger logger = LoggerFactory.getLogger(MetaLogApplier.class);
   private MetaGroupMember member;
 
-  public MetaLogApplier(MetaGroupMember member) {
-    super(member);
+  public MetaLogApplier(MetaGroupMember member, IStateMachine stateMachine) {
+    super(stateMachine);
     this.member = member;
   }
 
   @Override
   public void apply(Log log) {
     try {
-      logger.debug("MetaMember [{}] starts applying Log {}", metaGroupMember.getName(), log);
+      logger.debug("MetaMember [{}] starts applying Log {}", member.getName(), log);
       if (log instanceof AddNodeLog) {
         applyAddNodeLog((AddNodeLog) log);
       } else if (log instanceof RequestLog) {
-        applyRequest(((RequestLog) log).getRequest(), null);
+        stateMachine.write(((RequestLog) log).getRequest());
       } else if (log instanceof RemoveNodeLog) {
         applyRemoveNodeLog((RemoveNodeLog) log);
       } else if (log instanceof EmptyContentLog || log instanceof FragmentedLog) {
@@ -67,24 +69,24 @@ public class MetaLogApplier extends BaseApplier {
   }
 
   private void applyAddNodeLog(AddNodeLog log) throws ChangeMembershipException {
-    if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
+    if (!member.getPartitionTable().deserialize(log.getPartitionTable())) {
       logger.info("Ignore previous change membership log");
       // ignore previous change membership log
       return;
     }
-    if (metaGroupMember.getCharacter() == NodeCharacter.LEADER) {
-      metaGroupMember.getCoordinator().sendLogToAllDataGroups(log);
+    if (member.getCharacter() == NodeCharacter.LEADER) {
+      member.getCoordinator().sendLogToAllDataGroups(log);
     }
     member.applyAddNode(log);
   }
 
   private void applyRemoveNodeLog(RemoveNodeLog log) throws ChangeMembershipException {
-    if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
+    if (!member.getPartitionTable().deserialize(log.getPartitionTable())) {
       // ignore previous change membership log
       return;
     }
-    if (metaGroupMember.getCharacter() == NodeCharacter.LEADER) {
-      metaGroupMember.getCoordinator().sendLogToAllDataGroups(log);
+    if (member.getCharacter() == NodeCharacter.LEADER) {
+      member.getCoordinator().sendLogToAllDataGroups(log);
     }
     member.applyRemoveNode(log);
   }

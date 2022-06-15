@@ -20,9 +20,12 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
+import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -32,8 +35,10 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.execution.StateMachine;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -62,12 +67,23 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(
-      LogApplier logApplier,
+      IStateMachine stateMachine,
       PartitionTable partitionTable,
       Node header,
       Node thisNode,
       DataGroupMember dataGroupMember) {
-    super(logApplier, partitionTable, header, thisNode, Factory.INSTANCE, dataGroupMember);
+    super(createLogApplier(dataGroupMember, stateMachine), partitionTable, header, thisNode, Factory.INSTANCE,
+        dataGroupMember, stateMachine);
+  }
+
+  private static LogApplier createLogApplier(
+      DataGroupMember dataGroupMember, IStateMachine stateMachine) {
+    LogApplier applier = new DataLogApplier(dataGroupMember, stateMachine);
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()
+        && ClusterDescriptor.getInstance().getConfig().getReplicationNum() != 1) {
+      applier = new AsyncDataLogApplier(applier, dataGroupMember.getName());
+    }
+    return applier;
   }
 
   /** send FlushPlan to all nodes in one dataGroup */

@@ -82,6 +82,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -209,24 +210,25 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   boolean ready = false;
 
   @TestOnly
-  public MetaGroupMember() {
+  public MetaGroupMember(IStateMachine stateMachine) {
+    super(stateMachine);
     groupId = new PartitionRegionId(0);
   }
 
-  public MetaGroupMember(Node thisNode, Coordinator coordinator) {
+  public MetaGroupMember(Node thisNode, Coordinator coordinator, IStateMachine stateMachine) {
     super(
         "Meta",
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
-            ClientManager.Type.MetaGroupClient));
+            ClientManager.Type.MetaGroupClient),
+        stateMachine);
     groupId = new PartitionRegionId(0);
     setThisNode(thisNode);
     setAllNodes(new PartitionGroup());
     initPeerMap();
 
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
-    LogApplier metaLogApplier = new MetaLogApplier(this);
-    logManager = new MetaSingleSnapshotLogManager(metaLogApplier, this);
+    logManager = new MetaSingleSnapshotLogManager(stateMachine, this);
     logSequencer = SEQUENCER_FACTORY.create(this, logManager);
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();

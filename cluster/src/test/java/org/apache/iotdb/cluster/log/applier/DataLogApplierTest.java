@@ -463,7 +463,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletePartitionFilter() throws QueryProcessException {
-    applier.setQueryExecutor(
+    applier.setS(
         new PlanExecutor() {
           @Override
           public boolean processNonQuery(PhysicalPlan plan) {

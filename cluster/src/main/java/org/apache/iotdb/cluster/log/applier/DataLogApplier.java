@@ -20,32 +20,23 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.service.IoTDB;
-
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,8 +49,9 @@ public class DataLogApplier extends BaseApplier {
 
   protected DataGroupMember dataGroupMember;
 
-  public DataLogApplier(MetaGroupMember metaGroupMember, DataGroupMember dataGroupMember) {
-    super(metaGroupMember);
+  public DataLogApplier(DataGroupMember dataGroupMember,
+      IStateMachine stateMachine) {
+    super(stateMachine);
     this.dataGroupMember = dataGroupMember;
   }
 
@@ -83,7 +75,10 @@ public class DataLogApplier extends BaseApplier {
       } else if (log instanceof RequestLog) {
         RequestLog requestLog = (RequestLog) log;
         IConsensusRequest request = requestLog.getRequest();
-        applyRequest(request);
+        TSStatus status = applyRequest(request);
+        if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          log.setException(new QueryProcessException(status.message, status.code));
+        }
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         StorageEngine.getInstance()
@@ -106,81 +101,13 @@ public class DataLogApplier extends BaseApplier {
     }
   }
 
-  public void applyRequest(IConsensusRequest request)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+  public TSStatus applyRequest(IConsensusRequest request) {
     if (request instanceof DeletePlan) {
       ((DeletePlan) request).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
     } else if (request instanceof DeleteTimeSeriesPlan) {
       ((DeleteTimeSeriesPlan) request).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
     }
-    if (request instanceof InsertMultiTabletsPlan) {
-      applyInsert((InsertMultiTabletsPlan) request);
-    } else if (request instanceof InsertRowsPlan) {
-      applyInsert((InsertRowsPlan) request);
-    } else if (request instanceof InsertPlan) {
-      applyInsert((InsertPlan) request);
-    } else {
-      applyRequest(request, dataGroupMember);
-    }
-  }
 
-  private void applyInsert(InsertMultiTabletsPlan plan)
-      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
-    boolean hasSync = false;
-    for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
-      try {
-        IoTDB.schemaProcessor.getBelongedStorageGroup(insertTabletPlan.getDevicePath());
-      } catch (StorageGroupNotSetException e) {
-        try {
-          if (!hasSync) {
-            metaGroupMember.syncLeaderWithConsistencyCheck(true);
-            hasSync = true;
-          } else {
-            throw new StorageEngineException(e.getMessage());
-          }
-        } catch (CheckConsistencyException ce) {
-          throw new QueryProcessException(ce.getMessage());
-        }
-      }
-    }
-    applyRequest(plan, dataGroupMember);
-  }
-
-  private void applyInsert(InsertRowsPlan plan)
-      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
-    boolean hasSync = false;
-    for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
-      try {
-        IoTDB.schemaProcessor.getBelongedStorageGroup(insertRowPlan.getDevicePath());
-      } catch (StorageGroupNotSetException e) {
-        try {
-          if (!hasSync) {
-            metaGroupMember.syncLeaderWithConsistencyCheck(true);
-            hasSync = true;
-          } else {
-            throw new StorageEngineException(e.getMessage());
-          }
-        } catch (CheckConsistencyException ce) {
-          throw new QueryProcessException(ce.getMessage());
-        }
-      }
-    }
-    applyRequest(plan, dataGroupMember);
-  }
-
-  private void applyInsert(InsertPlan plan)
-      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
-    try {
-      IoTDB.schemaProcessor.getBelongedStorageGroup(plan.getDevicePath());
-    } catch (StorageGroupNotSetException e) {
-      // the sg may not exist because the node does not catch up with the leader, retry after
-      // synchronization
-      try {
-        metaGroupMember.syncLeaderWithConsistencyCheck(true);
-      } catch (CheckConsistencyException ce) {
-        throw new QueryProcessException(ce.getMessage());
-      }
-    }
-    applyRequest(plan, dataGroupMember);
+    return stateMachine.write(request);
   }
 }

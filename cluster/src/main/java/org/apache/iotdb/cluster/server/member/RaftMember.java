@@ -89,6 +89,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -278,10 +279,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private volatile boolean skipElection = true;
 
-  /**
-   * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
-   */
-  protected PlanExecutor localExecutor;
+  protected IStateMachine stateMachine;
 
   /** (logIndex, logTerm) -> append handler */
   protected Map<Pair<Long, Long>, AppendNodeEntryHandler> sentLogHandlers =
@@ -299,11 +297,14 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   private ThreadLocal<String> threadBaseName = new ThreadLocal<>();
 
-  protected RaftMember() {}
+  protected RaftMember(IStateMachine stateMachine) {
+    this.stateMachine = stateMachine;
+  }
 
-  protected RaftMember(String name, ClientManager clientManager) {
+  protected RaftMember(String name, ClientManager clientManager, IStateMachine stateMachine) {
     this.name = name;
     this.clientManager = clientManager;
+    this.stateMachine = stateMachine;
   }
 
   /**
@@ -705,11 +706,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     return response;
   }
 
-  public PlanExecutor getLocalExecutor() throws QueryProcessException {
-    if (localExecutor == null) {
-      localExecutor = new PlanExecutor();
-    }
-    return localExecutor;
+  public IStateMachine getStateMachine() {
+    return stateMachine;
   }
 
   public void sendLogAsync(

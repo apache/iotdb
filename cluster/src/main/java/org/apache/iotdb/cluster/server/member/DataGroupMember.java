@@ -84,6 +84,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -171,7 +172,6 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
 
   private LocalQueryExecutor localQueryExecutor;
 
-  LogApplier dataLogApplier;
   /**
    * When a new partition table is installed, all data members will be checked if unchanged. If not,
    * such members will be removed.
@@ -181,7 +181,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
   private LastAppliedPatitionTableVersion lastAppliedPartitionTableVersion;
 
   @TestOnly
-  public DataGroupMember(Node thisNode, PartitionGroup nodes) {
+  public DataGroupMember(Node thisNode, PartitionGroup nodes, IStateMachine stateMachine) {
+    super(stateMachine);
     // constructor for test
     this.name =
         "Data-"
@@ -211,7 +212,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     logSequencer = SEQUENCER_FACTORY.create(this, logManager);
   }
 
-  DataGroupMember(Node thisNode, PartitionGroup nodes, MetaGroupMember metaGroupMember) {
+  DataGroupMember(Node thisNode, PartitionGroup nodes, MetaGroupMember metaGroupMember,
+      IStateMachine stateMachine) {
     // The name is used in JMX, so we have to avoid to use "(" "," "=" ")"
     super(
         "Data-"
@@ -223,7 +225,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "",
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
-            ClientManager.Type.DataGroupClient));
+            ClientManager.Type.DataGroupClient),
+        stateMachine);
     groupId = new DataRegionId(nodes.getHeader().node.nodeIdentifier + nodes.getHeader().raftId);
     this.metaGroupMember = metaGroupMember;
     setThisNode(thisNode);
@@ -237,14 +240,10 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             getRaftGroupId());
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir(), getName());
-    dataLogApplier = new DataLogApplier(metaGroupMember, this);
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()
-        && ClusterDescriptor.getInstance().getConfig().getReplicationNum() != 1) {
-      dataLogApplier = new AsyncDataLogApplier(dataLogApplier, name);
-    }
+
     logManager =
         new FilePartitionedSnapshotLogManager(
-            dataLogApplier, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);
+            stateMachine, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);
     logSequencer = SEQUENCER_FACTORY.create(this, logManager);
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
@@ -343,16 +342,14 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
 
   public static class Factory {
 
-    private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
 
-    public Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
-      this.protocolFactory = protocolFactory;
+    public Factory(MetaGroupMember metaGroupMember) {
       this.metaGroupMember = metaGroupMember;
     }
 
-    public DataGroupMember create(Node thisNode, PartitionGroup partitionGroup) {
-      return new DataGroupMember(thisNode, partitionGroup, metaGroupMember);
+    public DataGroupMember create(Node thisNode, PartitionGroup partitionGroup, IStateMachine stateMachine) {
+      return new DataGroupMember(thisNode, partitionGroup, metaGroupMember, stateMachine);
     }
   }
 
@@ -717,7 +714,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
           }
           handleChangeMembershipLogWithoutRaft(log);
         } else {
-          ((DataLogApplier) dataLogApplier).applyRequest(request);
+          return new ConsensusWriteResponse(null, stateMachine.write(request));
         }
         return new ConsensusWriteResponse(null, StatusUtils.OK);
       } catch (Exception e) {

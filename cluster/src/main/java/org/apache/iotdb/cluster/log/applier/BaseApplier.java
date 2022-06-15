@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -54,212 +54,14 @@ import java.util.Collections;
 /** BaseApplier use PlanExecutor to execute PhysicalPlans. */
 abstract class BaseApplier implements LogApplier {
 
-  private static final Logger logger = LoggerFactory.getLogger(BaseApplier.class);
+  IStateMachine stateMachine;
 
-  MetaGroupMember metaGroupMember;
-  private PlanExecutor queryExecutor;
-
-  BaseApplier(MetaGroupMember metaGroupMember) {
-    this.metaGroupMember = metaGroupMember;
-  }
-
-  /**
-   * @param request
-   * @param dataGroupMember the data group member that is applying the log, null if the log is
-   *     applied by a meta group member
-   * @throws QueryProcessException
-   * @throws StorageGroupNotSetException
-   * @throws StorageEngineException
-   */
-  void applyRequest(IConsensusRequest request, DataGroupMember dataGroupMember)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (request instanceof InsertPlan) {
-      processPlanWithTolerance((InsertPlan) request, dataGroupMember);
-    } else if (request instanceof PhysicalPlan && !((PhysicalPlan) request).isQuery()) {
-      PhysicalPlan plan = ((PhysicalPlan) request);
-      try {
-        getQueryExecutor().processNonQuery(((PhysicalPlan) request));
-      } catch (BatchProcessException e) {
-        handleBatchProcessException(e, plan);
-      } catch (QueryProcessException e) {
-        if (e.getCause() instanceof StorageGroupNotSetException
-            || e.getCause() instanceof UndefinedTemplateException) {
-          executeAfterSync(plan);
-        } else {
-          throw e;
-        }
-      } catch (StorageGroupNotSetException e) {
-        executeAfterSync(plan);
-      }
-    } else if (request != null) {
-      throw new QueryProcessException("Unsupported request: " + request);
-    }
-  }
-
-  private void handleBatchProcessException(
-      BatchProcessException e, InsertPlan plan, DataGroupMember dataGroupMember)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartition()) {
-      TSStatus[] failingStatus = e.getFailingStatus();
-      for (int i = 0; i < failingStatus.length; i++) {
-        TSStatus status = failingStatus[i];
-        // skip succeeded plans in later execution
-        if (status != null
-            && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && plan instanceof BatchPlan) {
-          ((BatchPlan) plan).setIsExecuted(i);
-        }
-      }
-
-      boolean needRetry = false, hasError = false;
-      for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
-        TSStatus status = failingStatus[i];
-        if (status != null) {
-          if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-              && plan instanceof BatchPlan) {
-            ((BatchPlan) plan).unsetIsExecuted(i);
-            needRetry = true;
-          } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            hasError = true;
-          }
-        }
-      }
-      if (hasError) {
-        throw e;
-      }
-      if (needRetry) {
-        pullTimeseriesSchema(plan, dataGroupMember.getHeader());
-        plan.recoverFromFailure();
-        getQueryExecutor().processNonQuery(plan);
-      }
-    } else {
-      throw e;
-    }
-  }
-
-  private void handleBatchProcessException(BatchProcessException e, PhysicalPlan plan)
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
-    TSStatus[] failingStatus = e.getFailingStatus();
-    boolean needThrow = false;
-    for (int i = 0; i < failingStatus.length; i++) {
-      TSStatus status = failingStatus[i];
-      // skip succeeded plans in later execution
-      if (status != null
-          && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && plan instanceof BatchPlan) {
-        ((BatchPlan) plan).setIsExecuted(i);
-      }
-
-      if (plan instanceof DeleteTimeSeriesPlan) {
-        if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
-            logger.info("{} doesn't exist, it may has been deleted.", plan.getPaths().get(i));
-          } else {
-            needThrow = true;
-          }
-        }
-      }
-    }
-    boolean needRetry = false;
-    for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
-      TSStatus status = failingStatus[i];
-      if (status != null
-          && (status.getCode() == TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()
-              || status.getCode() == TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
-          && plan instanceof BatchPlan) {
-        ((BatchPlan) plan).unsetIsExecuted(i);
-        needRetry = true;
-      }
-    }
-    if (needRetry) {
-      executeAfterSync(plan);
-      return;
-    }
-
-    if (!(plan instanceof DeleteTimeSeriesPlan) || needThrow) {
-      throw e;
-    }
-  }
-
-  private void executeAfterSync(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(true);
-    } catch (CheckConsistencyException ce) {
-      throw new QueryProcessException(ce.getMessage());
-    }
-    getQueryExecutor().processNonQuery(plan);
-  }
-
-  /**
-   * @param plan
-   * @param dataGroupMember the data group member that is applying the log, null if the log is
-   *     applied by a meta group member
-   * @throws QueryProcessException
-   * @throws StorageGroupNotSetException
-   * @throws StorageEngineException
-   */
-  private void processPlanWithTolerance(InsertPlan plan, DataGroupMember dataGroupMember)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    try {
-      getQueryExecutor().processNonQuery(plan);
-    } catch (BatchProcessException e) {
-      handleBatchProcessException(e, plan, dataGroupMember);
-    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnablePartition()) {
-        // check if this is caused by metadata missing, if so, pull metadata and retry
-        Throwable metaMissingException = SchemaUtils.findMetaMissingException(e);
-        boolean causedByPathNotExist = metaMissingException instanceof PathNotExistException;
-
-        if (causedByPathNotExist) {
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                "Timeseries is not found locally[{}], try pulling it from another group: {}",
-                metaGroupMember.getName(),
-                e.getCause().getMessage());
-          }
-          pullTimeseriesSchema(plan, dataGroupMember.getHeader());
-          plan.recoverFromFailure();
-          getQueryExecutor().processNonQuery(plan);
-        } else {
-          throw e;
-        }
-      } else {
-        throw e;
-      }
-    }
-  }
-
-  /**
-   * @param plan
-   * @param ignoredGroup do not pull schema from the group to avoid backward dependency
-   * @throws QueryProcessException
-   */
-  private void pullTimeseriesSchema(InsertPlan plan, RaftNode ignoredGroup)
-      throws QueryProcessException {
-    try {
-      if (plan instanceof BatchPlan) {
-        MetaPuller.getInstance()
-            .pullTimeSeriesSchemas(((BatchPlan) plan).getPrefixPaths(), ignoredGroup);
-      } else {
-        PartialPath path = plan.getDevicePath();
-        MetaPuller.getInstance()
-            .pullTimeSeriesSchemas(Collections.singletonList(path), ignoredGroup);
-      }
-    } catch (MetadataException e1) {
-      throw new QueryProcessException(e1);
-    }
-  }
-
-  private PlanExecutor getQueryExecutor() throws QueryProcessException {
-    if (queryExecutor == null) {
-      queryExecutor = new ClusterPlanExecutor(metaGroupMember);
-    }
-    return queryExecutor;
+  BaseApplier(IStateMachine stateMachine) {
+    this.stateMachine = stateMachine;
   }
 
   @TestOnly
-  public void setQueryExecutor(PlanExecutor queryExecutor) {
-    this.queryExecutor = queryExecutor;
+  public void setStateMachine(IStateMachine stateMachine) {
+    this.stateMachine = stateMachine;
   }
 }
