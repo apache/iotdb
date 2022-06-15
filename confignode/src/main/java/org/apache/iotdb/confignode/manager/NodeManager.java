@@ -177,6 +177,10 @@ public class NodeManager {
     }
   }
 
+  public void addMetrics() {
+    nodeInfo.addMetrics();
+  }
+
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
     return nodeInfo.getOnlineConfigNodes();
   }

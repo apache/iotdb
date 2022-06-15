@@ -107,11 +107,9 @@ public class NodeInfo implements SnapshotProcessor {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.onlineConfigNodes =
         new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
-
-    addMetrics();
   }
 
-  private void addMetrics() {
+  public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
           .getMetricManager()

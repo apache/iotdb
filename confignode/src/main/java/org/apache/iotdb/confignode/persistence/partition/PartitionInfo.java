@@ -101,10 +101,9 @@ public class PartitionInfo implements SnapshotProcessor {
     // are unreadable and un-writable
     // For RegionCleaner
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
-    addMetrics();
   }
 
-  private void addMetrics() {
+  public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
           .getMetricManager()
