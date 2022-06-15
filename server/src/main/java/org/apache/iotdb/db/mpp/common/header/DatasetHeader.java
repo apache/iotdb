@@ -91,6 +91,10 @@ public class DatasetHeader {
   }
 
   public Map<String, Integer> getColumnNameIndexMap() {
+    if (columnToTsBlockIndexMap == null || columnToTsBlockIndexMap.isEmpty()) {
+      return columnToTsBlockIndexMap;
+    }
+
     Map<String, Integer> columnNameIndexMap = new HashMap<>();
     for (ColumnHeader columnHeader : columnHeaders) {
       columnNameIndexMap.put(
