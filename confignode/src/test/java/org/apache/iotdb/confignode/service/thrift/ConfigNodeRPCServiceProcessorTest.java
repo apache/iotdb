@@ -342,7 +342,7 @@ public class ConfigNodeRPCServiceProcessorTest {
       throws IllegalPathException, IOException {
     PathPatternTree patternTree = new PathPatternTree();
     for (String path : paths) {
-      patternTree.appendPath(new PartialPath(path));
+      patternTree.appendPathPattern(new PartialPath(path));
     }
     patternTree.constructTree();
 

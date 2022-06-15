@@ -143,13 +143,13 @@ public class PathPatternTreeTest {
       throws IOException {
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : paths) {
-      patternTree.appendPath(path);
+      patternTree.appendPathPattern(path);
     }
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
     for (PartialPath path : compressedPaths) {
-      resultPatternTree.appendPath(path);
+      resultPatternTree.appendPathPattern(path);
     }
     resultPatternTree.constructTree();
 
@@ -182,7 +182,7 @@ public class PathPatternTreeTest {
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : partialPathList) {
-      patternTree.appendPath(path);
+      patternTree.appendPathPattern(path);
     }
     patternTree.constructTree();
 

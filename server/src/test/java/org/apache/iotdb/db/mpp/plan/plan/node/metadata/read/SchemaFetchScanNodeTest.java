@@ -35,11 +35,10 @@ public class SchemaFetchScanNodeTest {
 
   @Test
   public void testSerialization() throws IllegalPathException {
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
     SchemaFetchScanNode schemaFetchScanNode =
-        new SchemaFetchScanNode(
-            new PlanNodeId("0"),
-            new PartialPath("root.sg"),
-            new PathPatternTree(new PartialPath("root.sg.**.*")));
+        new SchemaFetchScanNode(new PlanNodeId("0"), new PartialPath("root.sg"), patternTree);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     schemaFetchScanNode.serialize(byteBuffer);
     byteBuffer.flip();

@@ -32,11 +32,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class PathPatternTree {
@@ -44,45 +42,6 @@ public class PathPatternTree {
   private PathPatternNode root;
 
   private List<PartialPath> pathList;
-
-  public PathPatternTree(PathPatternNode root) {
-    this.root = root;
-    this.pathList = new ArrayList<>();
-  }
-
-  public PathPatternTree(PartialPath devicePath, String[] measurements) {
-    this.root = new PathPatternNode(SQLConstant.ROOT);
-    this.pathList = new ArrayList<>();
-    appendPaths(devicePath, Arrays.asList(measurements));
-  }
-
-  public PathPatternTree(PartialPath devicePath, List<String> measurements) {
-    this.root = new PathPatternNode(SQLConstant.ROOT);
-    this.pathList = new ArrayList<>();
-    appendPaths(devicePath, measurements);
-  }
-
-  public PathPatternTree(Map<PartialPath, List<String>> deviceToMeasurementsMap) {
-    this.root = new PathPatternNode(SQLConstant.ROOT);
-    this.pathList = new ArrayList<>();
-    for (Map.Entry<PartialPath, List<String>> entry : deviceToMeasurementsMap.entrySet()) {
-      appendPaths(entry.getKey(), entry.getValue());
-    }
-  }
-
-  public PathPatternTree(List<PartialPath> pathList) {
-    this.root = new PathPatternNode(SQLConstant.ROOT);
-    this.pathList = new ArrayList<>();
-    for (PartialPath path : pathList) {
-      appendPath(path);
-    }
-  }
-
-  public PathPatternTree(PartialPath fullPath) {
-    this.root = new PathPatternNode(SQLConstant.ROOT);
-    this.pathList = new ArrayList<>();
-    appendPath(fullPath);
-  }
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);
@@ -95,6 +54,19 @@ public class PathPatternTree {
 
   public void setRoot(PathPatternNode root) {
     this.root = root;
+  }
+
+  public void appendFullPath(PartialPath fullPath) {
+    searchAndConstruct(root, fullPath.getNodes(), 0);
+  }
+
+  public void appendFullPath(PartialPath devicePath, String measurement) {
+    int deviceNodeLength = devicePath.getNodeLength();
+    String[] pathNodes = new String[deviceNodeLength + 1];
+    System.arraycopy(devicePath.getNodes(), 0, pathNodes, 0, deviceNodeLength);
+    pathNodes[deviceNodeLength] = measurement;
+
+    searchAndConstruct(root, pathNodes, 0);
   }
 
   /** @return all device path patterns in the path pattern tree. */
@@ -137,10 +109,10 @@ public class PathPatternTree {
   }
 
   // append path to pathList
-  public void appendPath(PartialPath newPath) {
+  public void appendPathPattern(PartialPath pathPattern) {
     boolean isExist = false;
     for (PartialPath path : pathList) {
-      if (path.matchFullPath(newPath)) {
+      if (path.matchFullPath(pathPattern)) {
         // path already exists in pathList
         isExist = true;
         break;
@@ -149,15 +121,15 @@ public class PathPatternTree {
     if (!isExist) {
       // remove duplicate path in pathList
       pathList.removeAll(
-          pathList.stream().filter(newPath::matchFullPath).collect(Collectors.toList()));
-      pathList.add(newPath);
+          pathList.stream().filter(pathPattern::matchFullPath).collect(Collectors.toList()));
+      pathList.add(pathPattern);
     }
   }
 
   public void appendPaths(PartialPath device, List<String> measurementNameList) {
     try {
       for (String measurementName : measurementNameList) {
-        appendPath(new PartialPath(device.getFullPath(), measurementName));
+        appendPathPattern(new PartialPath(device.getFullPath(), measurementName));
       }
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -211,7 +183,9 @@ public class PathPatternTree {
 
   public static PathPatternTree deserialize(ByteBuffer buffer) {
     PathPatternNode root = deserializeNode(buffer);
-    return new PathPatternTree(root);
+    PathPatternTree deserializedPatternTree = new PathPatternTree();
+    deserializedPatternTree.setRoot(root);
+    return deserializedPatternTree;
   }
 
   private static PathPatternNode deserializeNode(ByteBuffer buffer) {
@@ -257,7 +231,11 @@ public class PathPatternTree {
   }
 
   public PathPatternTree findOverlappedPattern(PartialPath pattern) {
-    return new PathPatternTree(findOverlappedPaths(pattern));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath pathPattern : findOverlappedPaths(pattern)) {
+      patternTree.appendPathPattern(pathPattern);
+    }
+    return patternTree;
   }
 
   public List<PartialPath> findOverlappedPaths(PartialPath pattern) {

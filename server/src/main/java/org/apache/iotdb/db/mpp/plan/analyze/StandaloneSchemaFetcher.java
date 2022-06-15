@@ -115,7 +115,10 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
     SchemaTree schemaTree = new SchemaTree();
 
-    PathPatternTree patternTree = new PathPatternTree(devicePath, measurements);
+    PathPatternTree patternTree = new PathPatternTree();
+    for (String measurement : measurements) {
+      patternTree.appendFullPath(devicePath, measurement);
+    }
 
     if (patternTree.isEmpty()) {
       return schemaTree;
@@ -229,8 +232,11 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     internalCreateTimeseries(
         devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
 
-    SchemaTree reFetchSchemaTree =
-        fetchSchema(new PathPatternTree(devicePath, missingMeasurements));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (String measurement : missingMeasurements) {
+      patternTree.appendFullPath(devicePath, measurement);
+    }
+    SchemaTree reFetchSchemaTree = fetchSchema(patternTree);
 
     Pair<List<String>, List<TSDataType>> recheckResult =
         checkMissingMeasurements(
