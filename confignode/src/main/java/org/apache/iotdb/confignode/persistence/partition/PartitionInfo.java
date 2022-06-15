@@ -120,20 +120,13 @@ public class PartitionInfo implements SnapshotProcessor {
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
-              MetricLevel.CORE,
-              nextRegionGroupId,
-              AtomicInteger::get,
-              Tag.NAME.toString(),
-              "total");
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
               this,
               o -> o.getTotalRegionCountAndUpdateMetric(TConsensusGroupType.SchemaRegion),
               Tag.NAME.toString(),
-              "schemaRegion");
+              "total",
+              Tag.TYPE.toString(),
+              TConsensusGroupType.SchemaRegion.toString());
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
@@ -142,7 +135,9 @@ public class PartitionInfo implements SnapshotProcessor {
               this,
               o -> o.getTotalRegionCountAndUpdateMetric(TConsensusGroupType.DataRegion),
               Tag.NAME.toString(),
-              "dataRegion");
+              "total",
+              Tag.TYPE.toString(),
+              TConsensusGroupType.DataRegion.toString());
     }
   }
 
@@ -562,13 +557,19 @@ public class PartitionInfo implements SnapshotProcessor {
     }
     for (Map.Entry<TDataNodeLocation, Integer> entry : dataNodeLocationIntegerMap.entrySet()) {
       TDataNodeLocation dataNodeLocation = entry.getKey();
+      String name =
+          dataNodeLocation.getExternalEndPoint().ip
+              + ":"
+              + dataNodeLocation.getExternalEndPoint().port;
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
-              dataNodeLocation.getExternalEndPoint().toString())
+              name,
+              Tag.TYPE.toString(),
+              type.toString())
           .set(dataNodeLocationIntegerMap.get(dataNodeLocation));
     }
     return result;

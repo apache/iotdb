@@ -102,10 +102,10 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.4. 缓存
 
-| Metric    | Tag                                     | level     | 说明                                             | 示例                        |
-| --------- | --------------------------------------- | --------- | ------------------------------------------------ | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache" | important | chunk/timeSeriesMeta/SchemaCache缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
-| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | StorageGroup/SchemaPartition/DataPartition 的命中/总次数 | cache_total{name="DataPartition",type="all",} 801.0 |
+| Metric      | Tag                                                               | level     | 说明                                                         | 示例                                                |
+| ----------- | ----------------------------------------------------------------- | --------- | ------------------------------------------------------------ | --------------------------------------------------- |
+| cache_hit   | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache"               | important | chunk/timeSeriesMeta/SchemaCache缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80                         |
+| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | StorageGroup/SchemaPartition/DataPartition 的命中/总次数     | cache_total{name="DataPartition",type="all",} 801.0 |
 
 #### 4.3.5. 业务数据
 
@@ -115,19 +115,18 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.6. 集群
 
-| Metric                    | Tag                             | level     | 说明                                                          | 示例                                                                         |
-| ------------------------- | ------------------------------- | --------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}"                   | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                   | important | 节点状态，1=online  2=offline                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
-| cluster_elect_total       | name="{{ip}}",status="fail/win" | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
-| config_node | name="online" | core | 上线confignode的节点数量 | config_node{name="online",} 3.0|
-| data_node | name="online" | core | 上线datanode的节点数量 | data_node{name="online",} 3.0 |
-| partition_table | name="number" | core | partition table表的个数 | partition_table{name="number",} 2.0 |
-| region | name="total" | core | region 的总个数 | region{name="total",} 34.0 |
-| region | name="schemaRegion/dataRegion" | important | schemaRegion/dataRegion个数 | region{name="schemaRegion",} 6.0 |
-| region | name="{{storageGroupName}}" | normal | 存储组的Region个数 | region{name="root.schema.sg1",} 17.0 |
-| slot | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal | 存储组的schemaSlot/dataSlot个数 | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0 |
+| Metric                    | Tag                                                                | level     | 说明                                                          | 示例                                                                         |
+| ------------------------- | ------------------------------------------------------------------ | --------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| cluster_node_leader_count | name="{{ip}}"                                                      | important | 节点上```dataGroupLeader```的数量，用来观察leader是否分布均匀 | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}"                                                      | important | 节点状态，1=online  2=offline                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
+| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| config_node               | name="online"                                                      | core      | 上线confignode的节点数量                                      | config_node{name="online",} 3.0                                              |
+| data_node                 | name="online"                                                      | core      | 上线datanode的节点数量                                        | data_node{name="online",} 3.0                                                |
+| partition_table           | name="number"                                                      | core      | partition table表的个数                                       | partition_table{name="number",} 2.0                                          |
+| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | 全部或某个节点的schemaRegion/dataRegion个数                   | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | 存储组的DataRegion/Schema个数                                 | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | 存储组的schemaSlot/dataSlot个数                               | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ### 4.4. IoTDB 预定义指标集
 

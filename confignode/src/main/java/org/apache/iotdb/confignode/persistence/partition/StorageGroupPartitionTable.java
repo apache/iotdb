@@ -92,10 +92,23 @@ public class StorageGroupPartitionTable {
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
               MetricLevel.NORMAL,
-              regionInfoMap,
-              Map::size,
+              this,
+              o -> o.getRegionCount(TConsensusGroupType.SchemaRegion),
               Tag.NAME.toString(),
-              storageGroupName);
+              storageGroupName,
+              Tag.TYPE.toString(),
+              TConsensusGroupType.SchemaRegion.toString());
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.REGION.toString(),
+              MetricLevel.NORMAL,
+              this,
+              o -> o.getRegionCount(TConsensusGroupType.DataRegion),
+              Tag.NAME.toString(),
+              storageGroupName,
+              Tag.TYPE.toString(),
+              TConsensusGroupType.DataRegion.toString());
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
