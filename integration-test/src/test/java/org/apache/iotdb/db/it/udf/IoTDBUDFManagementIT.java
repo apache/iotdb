@@ -26,7 +26,6 @@ import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -35,7 +34,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -81,9 +79,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testCreateReflectShowDrop() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("select udf(*, *) from root.vehicle");
@@ -112,9 +108,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testCreateAndDropSeveralTimes() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("select udf(*, *) from root.vehicle");
@@ -148,9 +142,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testReflectBeforeCreate() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("select udf(*, *) from root.vehicle");
     } catch (SQLException throwable) {
@@ -160,9 +152,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testReflectAfterDrop() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("drop function udf");
@@ -174,9 +164,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testCreateFunctionWithBuiltinFunctionName1() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function aVg as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
@@ -190,9 +178,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testCreateFunctionWithBuiltinFunctionName2() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create function MAX_VALUE as 'org.apache.iotdb.db.query.udf.example.Adder'");
@@ -207,9 +193,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testCreateFunction1() throws SQLException { // create function twice
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
@@ -224,9 +208,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testCreateFunction3() throws SQLException { // create function twice
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
@@ -245,9 +227,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testDropFunction1() throws SQLException { // create + drop twice
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("drop function udf");
@@ -263,9 +243,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testDropFunction2() { // drop
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("drop function udf");
       fail();
@@ -276,9 +254,7 @@ public class IoTDBUDFManagementIT {
 
   @Test
   public void testDropBuiltInFunction() throws SQLException { // drop
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("drop function abs");
@@ -299,9 +275,7 @@ public class IoTDBUDFManagementIT {
   public void testCreateBuiltinFunction() throws ClassNotFoundException {
     UDFRegistrationService.getInstance()
         .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
@@ -319,9 +293,7 @@ public class IoTDBUDFManagementIT {
   public void testDropBuiltinFunction() throws ClassNotFoundException {
     UDFRegistrationService.getInstance()
         .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("drop function adder");
       fail();
@@ -337,9 +309,7 @@ public class IoTDBUDFManagementIT {
   public void testReflectBuiltinFunction() throws ClassNotFoundException {
     UDFRegistrationService.getInstance()
         .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("select adder(*, *) from root.vehicle");
     } catch (SQLException throwable) {
@@ -353,9 +323,7 @@ public class IoTDBUDFManagementIT {
   public void testShowBuiltinFunction() throws ClassNotFoundException {
     UDFRegistrationService.getInstance()
         .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
