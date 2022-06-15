@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -64,6 +65,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -129,7 +131,7 @@ public class PartitionInfo implements SnapshotProcessor {
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
               this,
-              o -> o.getTotalRegionCount(TConsensusGroupType.SchemaRegion),
+              o -> o.getTotalRegionCountAndUpdateMetric(TConsensusGroupType.SchemaRegion),
               Tag.NAME.toString(),
               "schemaRegion");
       MetricsService.getInstance()
@@ -138,7 +140,7 @@ public class PartitionInfo implements SnapshotProcessor {
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
               this,
-              o -> o.getTotalRegionCount(TConsensusGroupType.DataRegion),
+              o -> o.getTotalRegionCountAndUpdateMetric(TConsensusGroupType.DataRegion),
               Tag.NAME.toString(),
               "dataRegion");
     }
@@ -533,18 +535,43 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get total region number
+   * Get total region number and update metric
    *
    * @param type SchemaRegion or DataRegion
    * @return the number of SchemaRegion or DataRegion
    */
-  private int getTotalRegionCount(TConsensusGroupType type) {
+  private int getTotalRegionCountAndUpdateMetric(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
     for (Map.Entry<String, StorageGroupPartitionTable> entry :
         storageGroupPartitionTables.entrySet()) {
       regionGroups.addAll(entry.getValue().getRegion(type));
     }
-    return regionGroups.size();
+    int result = regionGroups.size();
+    // statistic
+    Map<TDataNodeLocation, Integer> dataNodeLocationIntegerMap = new HashMap<>();
+    for (RegionGroup regionGroup : regionGroups) {
+      TRegionReplicaSet regionReplicaSet = regionGroup.getReplicaSet();
+      List<TDataNodeLocation> dataNodeLocations = regionReplicaSet.getDataNodeLocations();
+      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+        if (!dataNodeLocationIntegerMap.containsKey(dataNodeLocation)) {
+          dataNodeLocationIntegerMap.put(dataNodeLocation, 0);
+        }
+        dataNodeLocationIntegerMap.put(
+            dataNodeLocation, dataNodeLocationIntegerMap.get(dataNodeLocation) + 1);
+      }
+    }
+    for (Map.Entry<TDataNodeLocation, Integer> entry : dataNodeLocationIntegerMap.entrySet()) {
+      TDataNodeLocation dataNodeLocation = entry.getKey();
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.REGION.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              dataNodeLocation.getExternalEndPoint().toString())
+          .set(dataNodeLocationIntegerMap.get(dataNodeLocation));
+    }
+    return result;
   }
 
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
