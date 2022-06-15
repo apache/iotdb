@@ -151,7 +151,7 @@ public class AggregationDistributionTest {
                 .get(0);
     aggregationNode
         .getAggregationDescriptorList()
-        .forEach(d -> Assert.assertEquals(AggregationStep.PARTIAL, d.getStep()));
+        .forEach(d -> Assert.assertEquals(AggregationStep.INTERMEDIATE, d.getStep()));
   }
 
   @Test

@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,7 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.createFullIdFrom;
 
 public class SinkHandle implements ISinkHandle {
 
@@ -63,6 +65,7 @@ public class SinkHandle implements ISinkHandle {
   private final ExecutorService executorService;
   private final TsBlockSerde serde;
   private final SinkHandleListener sinkHandleListener;
+  private final String threadName;
   private long retryIntervalInMs;
 
   // Use LinkedHashMap to meet 2 needs,
@@ -101,6 +104,7 @@ public class SinkHandle implements ISinkHandle {
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.dataBlockServiceClientManager = dataBlockServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
+    this.threadName = createFullIdFrom(localFragmentInstanceId, "SinkHandle");
   }
 
   @Override
@@ -157,7 +161,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void sendEndOfDataBlockEvent() throws Exception {
-    logger.info("{} send end of data block event", this);
+    logger.info("send end of data block event");
     int attempt = 0;
     TEndOfDataBlockEvent endOfDataBlockEvent =
         new TEndOfDataBlockEvent(
@@ -172,12 +176,7 @@ public class SinkHandle implements ISinkHandle {
         client.onEndOfDataBlockEvent(endOfDataBlockEvent);
         break;
       } catch (Throwable e) {
-        logger.error(
-            "{} Failed to send end of data block event due to {}, attempt times: {}",
-            this,
-            e.getMessage(),
-            attempt,
-            e);
+        logger.error("Failed to send end of data block event, attempt times: {}", attempt, e);
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
         }
@@ -188,7 +187,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void setNoMoreTsBlocks() {
-    logger.info("{} start to set no-more-tsblocks", this);
+    logger.info("start to set no-more-tsblocks");
     if (aborted) {
       return;
     }
@@ -197,19 +196,19 @@ public class SinkHandle implements ISinkHandle {
     } catch (Exception e) {
       throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
-    logger.info("{} set noMoreTsBlocks to true", this);
+    logger.info("set noMoreTsBlocks to true");
     noMoreTsBlocks = true;
     if (isFinished()) {
-      logger.info("{} revoke onFinish() of sinkHandleListener", this);
+      logger.info("revoke onFinish() of sinkHandleListener");
       sinkHandleListener.onFinish(this);
     }
-    logger.info("{} revoke onEndOfBlocks() of sinkHandleListener", this);
+    logger.info("revoke onEndOfBlocks() of sinkHandleListener");
     sinkHandleListener.onEndOfBlocks(this);
   }
 
   @Override
   public synchronized void abort() {
-    logger.info("{} is being aborted.", this);
+    logger.info("SinkHandle is being aborted.");
     sequenceIdToTsBlock.clear();
     aborted = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
@@ -220,7 +219,7 @@ public class SinkHandle implements ISinkHandle {
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onAborted(this);
-    logger.info("{} is aborted", this);
+    logger.info("SinkHandle is aborted");
   }
 
   @Override
@@ -332,40 +331,36 @@ public class SinkHandle implements ISinkHandle {
 
     @Override
     public void run() {
-      logger.info(
-          "{} send new data block event [{}, {})",
-          SinkHandle.this,
-          startSequenceId,
-          startSequenceId + blockSizes.size());
-      int attempt = 0;
-      TNewDataBlockEvent newDataBlockEvent =
-          new TNewDataBlockEvent(
-              remoteFragmentInstanceId,
-              remotePlanNodeId,
-              localFragmentInstanceId,
-              startSequenceId,
-              blockSizes);
-      while (attempt < MAX_ATTEMPT_TIMES) {
-        attempt += 1;
-        try (SyncDataNodeDataBlockServiceClient client =
-            dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
-          client.onNewDataBlockEvent(newDataBlockEvent);
-          break;
-        } catch (Throwable e) {
-          logger.error(
-              "{} failed to send new data block event due to {}, attempt times: {}",
-              SinkHandle.this,
-              e.getMessage(),
-              attempt,
-              e);
-          if (attempt == MAX_ATTEMPT_TIMES) {
-            sinkHandleListener.onFailure(SinkHandle.this, e);
-          }
-          try {
-            Thread.sleep(retryIntervalInMs);
-          } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            sinkHandleListener.onFailure(SinkHandle.this, e);
+      try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
+        logger.info(
+            "Send new data block event [{}, {})",
+            startSequenceId,
+            startSequenceId + blockSizes.size());
+        int attempt = 0;
+        TNewDataBlockEvent newDataBlockEvent =
+            new TNewDataBlockEvent(
+                remoteFragmentInstanceId,
+                remotePlanNodeId,
+                localFragmentInstanceId,
+                startSequenceId,
+                blockSizes);
+        while (attempt < MAX_ATTEMPT_TIMES) {
+          attempt += 1;
+          try (SyncDataNodeDataBlockServiceClient client =
+              dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+            client.onNewDataBlockEvent(newDataBlockEvent);
+            break;
+          } catch (Throwable e) {
+            logger.error("Failed to send new data block event, attempt times: {}", attempt, e);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              sinkHandleListener.onFailure(SinkHandle.this, e);
+            }
+            try {
+              Thread.sleep(retryIntervalInMs);
+            } catch (InterruptedException ex) {
+              Thread.currentThread().interrupt();
+              sinkHandleListener.onFailure(SinkHandle.this, e);
+            }
           }
         }
       }

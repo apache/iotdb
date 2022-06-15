@@ -19,6 +19,8 @@
 package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.itbase.runtime.NodeConnection;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -35,6 +37,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
@@ -43,12 +46,17 @@ public abstract class ClusterEnvBase implements BaseEnv {
   private static final Logger logger = LoggerFactory.getLogger(ClusterEnvBase.class);
   private List<ConfigNode> configNodes;
   private List<DataNode> dataNodes;
+  private final Random rand = new Random();
+  private String nextTestCase = null;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) throws InterruptedException {
     this.configNodes = new ArrayList<>();
     this.dataNodes = new ArrayList<>();
 
     String testName = getTestClassName();
+    if (nextTestCase != null) {
+      testName = testName + "_" + nextTestCase;
+    }
 
     ConfigNode seedConfigNode = new ConfigNode(true, "", testName);
     seedConfigNode.createDir();
@@ -90,6 +98,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
       configNode.waitingToShutDown();
       configNode.destroyDir();
     }
+    nextTestCase = null;
   }
 
   public String getTestClassName() {
@@ -106,9 +115,9 @@ public abstract class ClusterEnvBase implements BaseEnv {
   public String getTestClassNameAndDate() {
     Date date = new Date();
     SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd-HHmmss");
-    StackTraceElement stack[] = Thread.currentThread().getStackTrace();
-    for (int i = 0; i < stack.length; i++) {
-      String className = stack[i].getClassName();
+    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+    for (StackTraceElement stackTraceElement : stack) {
+      String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
         return className.substring(className.lastIndexOf(".") + 1) + "-" + formatter.format(date);
       }
@@ -133,14 +142,13 @@ public abstract class ClusterEnvBase implements BaseEnv {
         statement.execute("SET STORAGE GROUP TO root.test" + counter);
         statement.execute(
             "CREATE TIMESERIES root.test" + counter + ".d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
-        if (statement.execute("SHOW TIMESERIES")) {
-          ResultSet resultSet = statement.getResultSet();
+        try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
           if (resultSet.next()) {
             statement.execute("DELETE STORAGE GROUP root.*");
+            logger.info("The whole cluster is ready.");
             break;
           }
         }
-
       } catch (SQLException e) {
         logger.debug(counter + " time(s) connect to cluster failed!", e);
       }
@@ -159,67 +167,72 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
   @Override
   public Connection getConnection() throws SQLException {
-    Connection connection = null;
-
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
-          DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX
-                  + this.dataNodes.get(0).getIp()
-                  + ":"
-                  + this.dataNodes.get(0).getPort(),
-              System.getProperty("User", "root"),
-              System.getProperty("Password", "root"));
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
-    }
-    return connection;
+    return new ClusterTestConnection(getWriteConnection(null), getReadConnections(null));
   }
 
-  public IoTDBConnection getConnection(int queryTimeout) throws SQLException {
-    IoTDBConnection connection = null;
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
-          (IoTDBConnection)
-              DriverManager.getConnection(
-                  Config.IOTDB_URL_PREFIX
-                      + this.dataNodes.get(0).getIp()
-                      + ":"
-                      + this.dataNodes.get(0).getPort(),
-                  System.getProperty("User", "root"),
-                  System.getProperty("Password", "root"));
-      connection.setQueryTimeout(queryTimeout);
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
-    }
+  @Override
+  public void setNextTestCaseName(String testCaseName) {
+    nextTestCase = testCaseName;
+  }
+
+  private IoTDBConnection getConnection(int queryTimeout) throws SQLException {
+    IoTDBConnection connection =
+        (IoTDBConnection)
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX
+                    + this.dataNodes.get(0).getIp()
+                    + ":"
+                    + this.dataNodes.get(0).getPort(),
+                System.getProperty("User", "root"),
+                System.getProperty("Password", "root"));
+    connection.setQueryTimeout(queryTimeout);
     return connection;
   }
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
-    Connection connection = null;
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
+    return new ClusterTestConnection(getWriteConnection(version), getReadConnections(version));
+  }
+
+  protected NodeConnection getWriteConnection(Constant.Version version) throws SQLException {
+    // Randomly choose a node for handling write requests
+    DataNode dataNode = this.dataNodes.get(rand.nextInt(this.dataNodes.size()));
+    String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
+    Connection writeConnection =
+        DriverManager.getConnection(
+            Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
+            System.getProperty("User", "root"),
+            System.getProperty("Password", "root"));
+    return new NodeConnection(
+        endpoint,
+        NodeConnection.NodeRole.DATA_NODE,
+        NodeConnection.ConnectionRole.WRITE,
+        writeConnection);
+  }
+
+  protected List<NodeConnection> getReadConnections(Constant.Version version) throws SQLException {
+    List<NodeConnection> readConnections = new ArrayList<>();
+    for (DataNode dataNode : this.dataNodes) {
+      String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
+      Connection readConnection =
           DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX
-                  + this.dataNodes.get(0).getIp()
-                  + ":"
-                  + this.dataNodes.get(0).getPort()
-                  + "?"
-                  + VERSION
-                  + "="
-                  + version.toString(),
+              Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
               System.getProperty("User", "root"),
               System.getProperty("Password", "root"));
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
+      readConnections.add(
+          new NodeConnection(
+              endpoint,
+              NodeConnection.NodeRole.DATA_NODE,
+              NodeConnection.ConnectionRole.READ,
+              readConnection));
     }
-    return connection;
+    return readConnections;
+  }
+
+  private String getVersionParam(Constant.Version version) {
+    if (version == null) {
+      return "";
+    }
+    return "?" + VERSION + "=" + version;
   }
 }

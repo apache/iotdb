@@ -25,41 +25,49 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 /** This class is used by ConfigFactory with using reflection. */
 public class StandaloneEnvConfig implements BaseConfig {
 
+  @Override
   public BaseConfig setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     return this;
   }
 
+  @Override
   public BaseConfig setPageSizeInByte(int pageSizeInByte) {
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(pageSizeInByte);
     return this;
   }
 
+  @Override
   public BaseConfig setGroupSizeInByte(int groupSizeInByte) {
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(groupSizeInByte);
     return this;
   }
 
+  @Override
   public BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
     return this;
   }
 
+  @Override
   public BaseConfig setDataRegionNum(int dataRegionNum) {
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
     return this;
   }
 
+  @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(partitionInterval);
     return this;
   }
 
+  @Override
   public BaseConfig setCompressor(String compressor) {
     TSFileDescriptor.getInstance().getConfig().setCompressor(compressor);
     return this;
   }
 
+  @Override
   public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -67,6 +75,7 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -74,6 +83,7 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -81,11 +91,13 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setEnablePartition(boolean enablePartition) {
     IoTDBDescriptor.getInstance().getConfig().setEnablePartition(enablePartition);
     return this;
   }
 
+  @Override
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -93,6 +105,7 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -100,6 +113,7 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -107,11 +121,13 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     return this;
   }
 
+  @Override
   public BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -119,6 +135,7 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -126,11 +143,13 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
     return this;
   }
 
+  @Override
   public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
     IoTDBDescriptor.getInstance()
         .getConfig()
@@ -138,8 +157,56 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(enableAutoCreateSchema);
     return this;
+  }
+
+  @Override
+  public BaseConfig setEnableLastCache(boolean lastCacheEnable) {
+    IoTDBDescriptor.getInstance().getConfig().setEnableLastCache(lastCacheEnable);
+    return this;
+  }
+
+  @Override
+  public boolean isLastCacheEnabled() {
+    return IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+  }
+
+  @Override
+  public boolean isEnableSeqSpaceCompaction() {
+    return IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+  }
+
+  @Override
+  public boolean isEnableUnseqSpaceCompaction() {
+    return IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+  }
+
+  @Override
+  public boolean isEnableCrossSpaceCompaction() {
+    return IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+  }
+
+  @Override
+  public boolean isAutoCreateSchemaEnabled() {
+    return IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+  }
+
+  @Override
+  public int getMaxNumberOfPointsInPage() {
+    return TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  }
+
+  @Override
+  public BaseConfig setPrimitiveArraySize(int primitiveArraySize) {
+    IoTDBDescriptor.getInstance().getConfig().setPrimitiveArraySize(primitiveArraySize);
+    return this;
+  }
+
+  @Override
+  public int getPrimitiveArraySize() {
+    return IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
   }
 }

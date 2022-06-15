@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.aligned;
+package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -39,78 +39,61 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
-public class IoTDBLastQueryWithDeletionIT {
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class IoTDBLastQueryWithoutLastCacheIT {
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
+  protected static boolean enableLastCache;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-    // TODO When the aligned time series support compaction, we need to set compaction to true
-    enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    enableLastCache = ConfigFactory.getConfig().isLastCacheEnabled();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableLastCache(false);
+    EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s1 where time <= 27");
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setEnableLastCache(enableLastCache);
   }
 
   @Test
-  public void selectAllAlignedLastTest() throws ClassNotFoundException {
+  public void selectAllAlignedLastTest() {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
+                "23,root.sg1.d1.s1,230000.0,FLOAT",
+                "40,root.sg1.d1.s2,40,INT32",
                 "30,root.sg1.d1.s3,30,INT64",
                 "30,root.sg1.d1.s4,false,BOOLEAN",
                 "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select last * from root.sg1.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select last * from root.sg1.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -121,7 +104,7 @@ public class IoTDBLastQueryWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -134,11 +117,13 @@ public class IoTDBLastQueryWithDeletionIT {
   }
 
   @Test
-  public void selectAllAlignedAndNonAlignedLastTest() throws ClassNotFoundException {
+  public void selectAllAlignedAndNonAlignedLastTest() {
 
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
+                "23,root.sg1.d1.s1,230000.0,FLOAT",
+                "40,root.sg1.d1.s2,40,INT32",
                 "30,root.sg1.d1.s3,30,INT64",
                 "30,root.sg1.d1.s4,false,BOOLEAN",
                 "40,root.sg1.d1.s5,aligned_test40,TEXT",
@@ -148,16 +133,10 @@ public class IoTDBLastQueryWithDeletionIT {
                 "30,root.sg1.d2.s4,false,BOOLEAN",
                 "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select last * from root.sg1.*");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select last * from root.sg1.*")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -168,7 +147,7 @@ public class IoTDBLastQueryWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -181,21 +160,17 @@ public class IoTDBLastQueryWithDeletionIT {
   }
 
   @Test
-  public void selectAllAlignedLastWithTimeFilterTest() throws ClassNotFoundException {
+  public void selectAllAlignedLastWithTimeFilterTest() {
 
     Set<String> retSet =
-        new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
+        new HashSet<>(
+            Arrays.asList("40,root.sg1.d1.s2,40,INT32", "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select last * from root.sg1.d1 where time > 30");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last * from root.sg1.d1 where time > 30")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -206,7 +181,7 @@ public class IoTDBLastQueryWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -219,22 +194,19 @@ public class IoTDBLastQueryWithDeletionIT {
   }
 
   @Test
-  public void selectSomeAlignedLastTest1() throws ClassNotFoundException {
+  public void selectSomeAlignedLastTest1() {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "30,root.sg1.d1.s4,false,BOOLEAN", "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+                "23,root.sg1.d1.s1,230000.0,FLOAT",
+                "30,root.sg1.d1.s4,false,BOOLEAN",
+                "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select last s1, s4, s5 from root.sg1.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last s1, s4, s5 from root.sg1.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -245,7 +217,7 @@ public class IoTDBLastQueryWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -258,20 +230,15 @@ public class IoTDBLastQueryWithDeletionIT {
   }
 
   @Test
-  public void selectSomeAlignedLastTest2() throws ClassNotFoundException {
+  public void selectSomeAlignedLastTest2() {
     Set<String> retSet =
-        new HashSet<>(Collections.singletonList("30,root.sg1.d1.s4,false,BOOLEAN"));
+        new HashSet<>(
+            Arrays.asList("23,root.sg1.d1.s1,230000.0,FLOAT", "30,root.sg1.d1.s4,false,BOOLEAN"));
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select last s1, s4 from root.sg1.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select last s1, s4 from root.sg1.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -282,7 +249,7 @@ public class IoTDBLastQueryWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -295,22 +262,16 @@ public class IoTDBLastQueryWithDeletionIT {
   }
 
   @Test
-  public void selectSomeAlignedLastWithTimeFilterTest() throws ClassNotFoundException {
+  public void selectSomeAlignedLastWithTimeFilterTest() {
 
     Set<String> retSet =
         new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select last s1, s4, s5 from root.sg1.d1 where time > 30");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last s1, s4, s5 from root.sg1.d1 where time > 30")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -321,7 +282,7 @@ public class IoTDBLastQueryWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);
@@ -334,7 +295,7 @@ public class IoTDBLastQueryWithDeletionIT {
   }
 
   @Test
-  public void selectSomeAlignedAndNonAlignedLastWithTimeFilterTest() throws ClassNotFoundException {
+  public void selectSomeAlignedAndNonAlignedLastWithTimeFilterTest() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -342,19 +303,12 @@ public class IoTDBLastQueryWithDeletionIT {
                 "40,root.sg1.d1.s5,aligned_test40,TEXT",
                 "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      // 1 4 5
-      boolean hasResultSet =
-          statement.execute(
-              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -365,7 +319,7 @@ public class IoTDBLastQueryWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertTrue(retSet.contains(ans));
+          assertTrue(ans, retSet.contains(ans));
           cnt++;
         }
         assertEquals(retSet.size(), cnt);

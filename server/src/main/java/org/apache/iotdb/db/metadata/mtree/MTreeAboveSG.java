@@ -440,6 +440,30 @@ public class MTreeAboveSG {
   }
 
   /**
+   * Check whether the storage group of given path exists. The given path may be a prefix path of
+   * existing storage group. if exists will throw MetaException.
+   *
+   * @param path a full path or a prefix path
+   */
+  public void checkStorageGroupAlreadySet(PartialPath path) throws StorageGroupAlreadySetException {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    if (!nodeNames[0].equals(root.getName())) {
+      return;
+    }
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        return;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      if (cur.isStorageGroup()) {
+        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      }
+    }
+    throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+  }
+
+  /**
    * Get all paths of nodes in the given level matching the given path. If using prefix match, the
    * path pattern is used to match prefix path.
    */

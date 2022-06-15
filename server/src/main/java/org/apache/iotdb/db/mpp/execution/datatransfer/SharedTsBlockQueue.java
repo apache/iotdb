@@ -63,7 +63,7 @@ public class SharedTsBlockQueue {
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
   }
 
-  public boolean hasNoMoreTsBlocks() {
+  public synchronized boolean hasNoMoreTsBlocks() {
     return noMoreTsBlocks;
   }
 
@@ -75,7 +75,7 @@ public class SharedTsBlockQueue {
     return blocked;
   }
 
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return queue.isEmpty();
   }
 
@@ -100,7 +100,7 @@ public class SharedTsBlockQueue {
         .getQueryPool()
         .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
-    if (blocked.isDone() && queue.isEmpty()) {
+    if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
     }
     return tsBlock;

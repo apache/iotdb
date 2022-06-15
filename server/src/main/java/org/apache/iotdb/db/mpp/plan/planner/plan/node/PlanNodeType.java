@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
@@ -67,8 +68,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -99,7 +102,7 @@ public enum PlanNodeType {
   TIME_SERIES_SCHEMA_SCAN((short) 23),
   SCHEMA_FETCH_SCAN((short) 24),
   SCHEMA_QUERY_MERGE((short) 25),
-  STORAGE_GROUP_SCHEMA_SCAN((short) 26),
+  SCHEMA_QUERY_ORDER_BY_HEAT((short) 26),
   DEVICES_COUNT((short) 27),
   TIME_SERIES_COUNT((short) 28),
   LEVEL_TIME_SERIES_COUNT((short) 29),
@@ -111,7 +114,6 @@ public enum PlanNodeType {
   DEVICE_MERGE((short) 35),
   SCHEMA_FETCH_MERGE((short) 36),
   TRANSFORM((short) 37),
-  DELETE_REGION((short) 38),
   CREATE_MULTI_TIME_SERIES((short) 39),
   NODE_PATHS_SCAN((short) 40),
   NODE_PATHS_CONVERT((short) 41),
@@ -122,8 +124,7 @@ public enum PlanNodeType {
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY_MERGE((short) 48),
-  NODE_PATHS_COUNT((short) 49),
-  SCHEMA_QUERY_ORDER_BY_HEAT((short) 50);
+  NODE_PATHS_COUNT((short) 49);
 
   private final short nodeType;
 
@@ -132,7 +133,11 @@ public enum PlanNodeType {
   }
 
   public void serialize(ByteBuffer buffer) {
-    buffer.putShort(nodeType);
+    ReadWriteIOUtils.write(nodeType, buffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(nodeType, stream);
   }
 
   public static PlanNode deserialize(DataInputStream stream)
@@ -203,6 +208,8 @@ public enum PlanNodeType {
         return SchemaFetchScanNode.deserialize(buffer);
       case 25:
         return SchemaQueryMergeNode.deserialize(buffer);
+      case 26:
+        return SchemaQueryOrderByHeatNode.deserialize(buffer);
       case 27:
         return DevicesCountNode.deserialize(buffer);
       case 28:
@@ -219,12 +226,12 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserialize(buffer);
       case 34:
         return AlignedSeriesAggregationScanNode.deserialize(buffer);
+      case 35:
+        return DeviceMergeNode.deserialize(buffer);
       case 36:
         return SchemaFetchMergeNode.deserialize(buffer);
       case 37:
         return TransformNode.deserialize(buffer);
-      case 38:
-        return DeleteRegionNode.deserialize(buffer);
       case 39:
         return CreateMultiTimeSeriesNode.deserialize(buffer);
       case 40:
@@ -247,8 +254,6 @@ public enum PlanNodeType {
         return LastQueryMergeNode.deserialize(buffer);
       case 49:
         return NodePathsCountNode.deserialize(buffer);
-      case 50:
-        return SchemaQueryOrderByHeatNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

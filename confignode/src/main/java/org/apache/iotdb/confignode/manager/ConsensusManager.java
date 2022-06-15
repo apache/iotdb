@@ -35,12 +35,12 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,8 +88,10 @@ public class ConsensusManager {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 conf.getConfigNodeConsensusProtocolClass(),
-                new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()),
-                new File(conf.getConsensusDir()),
+                ConsensusConfig.newBuilder()
+                    .setThisNode(new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))
+                    .setStorageDir(conf.getConsensusDir())
+                    .build(),
                 gid -> stateMachine)
             .orElseThrow(
                 () ->
@@ -157,6 +159,4 @@ public class ConsensusManager {
   public ConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
   }
-
-  // TODO: Interfaces for LoadBalancer control
 }

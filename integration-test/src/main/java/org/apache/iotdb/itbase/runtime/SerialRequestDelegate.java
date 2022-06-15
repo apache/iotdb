@@ -16,35 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.partition;
+package org.apache.iotdb.itbase.runtime;
 
-import org.apache.iotdb.tsfile.utils.Pair;
-
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * DataPartitionRule is used to hold real-time write-load allocation rules i.e. rules = [(0, 0.3),
- * (1, 0.2), (2. 0.5)] means allocate 30% of the write-load to DataRegion-0 and 20% to DataRegion-1
- * and 50% to DataRegion-2
+ * ParallelRequestDelegate will handle requests in serial. It's more efficient when the requests are
+ * just local computation.
  */
-public class DataPartitionRule {
-  // List<Pair<DataRegionID, Write allocation ratio>>
-  private final List<Pair<Integer, Double>> rules;
+public class SerialRequestDelegate<T> extends RequestDelegate<T> {
 
-  public DataPartitionRule() {
-    this.rules = new ArrayList<>();
+  public SerialRequestDelegate(List<String> endpoints) {
+    super(endpoints);
   }
 
-  public DataPartitionRule(List<Pair<Integer, Double>> rules) {
-    this.rules = rules;
-  }
-
-  public void addDataPartitionRule(int dataRegionID, double ratio) {
-    this.rules.add(new Pair<>(dataRegionID, ratio));
-  }
-
-  public List<Pair<Integer, Double>> getDataPartitionRule() {
-    return this.rules;
+  @Override
+  public List<T> requestAll() throws SQLException {
+    List<T> results = new ArrayList<>(getEndpoints().size());
+    for (int i = 0; i < getEndpoints().size(); i++) {
+      try {
+        results.add(getRequests().get(i).call());
+      } catch (Exception e) {
+        throw new SQLException(String.format("Request %s error.", getEndpoints().get(i)), e);
+      }
+    }
+    return results;
   }
 }

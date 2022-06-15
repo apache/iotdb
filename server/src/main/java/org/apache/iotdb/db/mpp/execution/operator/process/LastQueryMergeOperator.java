@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
@@ -50,7 +51,11 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    return children.get(currentIndex).isBlocked();
+    if (currentIndex < inputOperatorsCount) {
+      return children.get(currentIndex).isBlocked();
+    } else {
+      return Futures.immediateVoidFuture();
+    }
   }
 
   @Override

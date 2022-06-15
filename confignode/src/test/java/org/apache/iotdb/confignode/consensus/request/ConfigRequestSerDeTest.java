@@ -29,6 +29,9 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -55,12 +58,10 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -71,13 +72,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class ConfigRequestSerDeTest {
-
-  private final ByteBuffer buffer = ByteBuffer.allocate(10240);
-
-  @After
-  public void cleanBuffer() {
-    buffer.clear();
-  }
 
   @Test
   public void RegisterDataNodeReqTest() throws IOException {
@@ -95,18 +89,16 @@ public class ConfigRequestSerDeTest {
     dataNodeInfo.setMaxMemory(34359738368L);
 
     RegisterDataNodeReq req0 = new RegisterDataNodeReq(dataNodeInfo);
-    req0.serialize(buffer);
-    buffer.flip();
-    RegisterDataNodeReq req1 = (RegisterDataNodeReq) ConfigRequest.Factory.create(buffer);
+    RegisterDataNodeReq req1 =
+        (RegisterDataNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void QueryDataNodeInfoReqTest() throws IOException {
     GetDataNodeInfoReq req0 = new GetDataNodeInfoReq(-1);
-    req0.serialize(buffer);
-    buffer.flip();
-    GetDataNodeInfoReq req1 = (GetDataNodeInfoReq) ConfigRequest.Factory.create(buffer);
+    GetDataNodeInfoReq req1 =
+        (GetDataNodeInfoReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -119,84 +111,64 @@ public class ConfigRequestSerDeTest {
                 .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
-                .setTimePartitionInterval(604800)
-                .setSchemaRegionGroupIds(new ArrayList<>())
-                .setDataRegionGroupIds(new ArrayList<>()));
-    req0.serialize(buffer);
-    buffer.flip();
-    SetStorageGroupReq req1 = (SetStorageGroupReq) ConfigRequest.Factory.create(buffer);
+                .setTimePartitionInterval(604800));
+    SetStorageGroupReq req1 =
+        (SetStorageGroupReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void DeleteStorageGroupReqTest() throws IOException {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    storageGroupSchema.setName("root.sg");
-    storageGroupSchema.addToSchemaRegionGroupIds(
-        new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
-    storageGroupSchema.addToSchemaRegionGroupIds(
-        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
-    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq(storageGroupSchema);
-    req0.serialize(buffer);
-    buffer.flip();
-    DeleteStorageGroupReq req1 = (DeleteStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq("root.sg");
+    DeleteStorageGroupReq req1 =
+        (DeleteStorageGroupReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void SetTTLReqTest() throws IOException {
     SetTTLReq req0 = new SetTTLReq("root.sg0", Long.MAX_VALUE);
-    req0.serialize(buffer);
-    buffer.flip();
-    SetTTLReq req1 = (SetTTLReq) ConfigRequest.Factory.create(buffer);
+    SetTTLReq req1 = (SetTTLReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void SetSchemaReplicationFactorReqTest() throws IOException {
     SetSchemaReplicationFactorReq req0 = new SetSchemaReplicationFactorReq("root.sg0", 3);
-    req0.serialize(buffer);
-    buffer.flip();
     SetSchemaReplicationFactorReq req1 =
-        (SetSchemaReplicationFactorReq) ConfigRequest.Factory.create(buffer);
+        (SetSchemaReplicationFactorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void SetDataReplicationFactorReqTest() throws IOException {
     SetDataReplicationFactorReq req0 = new SetDataReplicationFactorReq("root.sg0", 3);
-    req0.serialize(buffer);
-    buffer.flip();
     SetDataReplicationFactorReq req1 =
-        (SetDataReplicationFactorReq) ConfigRequest.Factory.create(buffer);
+        (SetDataReplicationFactorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void SetTimePartitionIntervalReqTest() throws IOException {
     SetTimePartitionIntervalReq req0 = new SetTimePartitionIntervalReq("root.sg0", 6048000L);
-    req0.serialize(buffer);
-    buffer.flip();
     SetTimePartitionIntervalReq req1 =
-        (SetTimePartitionIntervalReq) ConfigRequest.Factory.create(buffer);
+        (SetTimePartitionIntervalReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void CountStorageGroupReqTest() throws IOException {
     CountStorageGroupReq req0 = new CountStorageGroupReq(Arrays.asList("root", "sg"));
-    req0.serialize(buffer);
-    buffer.flip();
-    CountStorageGroupReq req1 = (CountStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    CountStorageGroupReq req1 =
+        (CountStorageGroupReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void GetStorageGroupReqTest() throws IOException {
     GetStorageGroupReq req0 = new GetStorageGroupReq(Arrays.asList("root", "sg"));
-    req0.serialize(buffer);
-    buffer.flip();
-    CountStorageGroupReq req1 = (CountStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    CountStorageGroupReq req1 =
+        (CountStorageGroupReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -226,21 +198,19 @@ public class ConfigRequestSerDeTest {
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     req0.addRegion("root.sg1", schemaRegionSet);
 
-    req0.serialize(buffer);
-    buffer.flip();
-    CreateRegionsReq req1 = (CreateRegionsReq) ConfigRequest.Factory.create(buffer);
+    CreateRegionsReq req1 =
+        (CreateRegionsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void DeleteRegionsPlanTest() throws IOException {
     DeleteRegionsReq req0 = new DeleteRegionsReq();
-    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
-    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
+    req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
 
-    req0.serialize(buffer);
-    buffer.flip();
-    DeleteRegionsReq req1 = (DeleteRegionsReq) ConfigRequest.Factory.create(buffer);
+    DeleteRegionsReq req1 =
+        (DeleteRegionsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -256,20 +226,17 @@ public class ConfigRequestSerDeTest {
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
-    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
-    regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
+    TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0);
 
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
-        new HashMap<>();
-    assignedSchemaPartition.put(storageGroup, new HashMap<>());
-    assignedSchemaPartition.get(storageGroup).put(seriesPartitionSlot, regionReplicaSet);
+    Map<String, SchemaPartitionTable> assignedSchemaPartition = new HashMap<>();
+    Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new HashMap<>();
+    schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
+    assignedSchemaPartition.put(storageGroup, new SchemaPartitionTable(schemaPartitionMap));
 
     CreateSchemaPartitionReq req0 = new CreateSchemaPartitionReq();
     req0.setAssignedSchemaPartition(assignedSchemaPartition);
-    req0.serialize(buffer);
-    buffer.flip();
-    CreateSchemaPartitionReq req1 = (CreateSchemaPartitionReq) ConfigRequest.Factory.create(buffer);
+    CreateSchemaPartitionReq req1 =
+        (CreateSchemaPartitionReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -283,9 +250,8 @@ public class ConfigRequestSerDeTest {
 
     GetSchemaPartitionReq req0 = new GetSchemaPartitionReq();
     req0.setPartitionSlotsMap(partitionSlotsMap);
-    req0.serialize(buffer);
-    buffer.flip();
-    GetSchemaPartitionReq req1 = (GetSchemaPartitionReq) ConfigRequest.Factory.create(buffer);
+    GetSchemaPartitionReq req1 =
+        (GetSchemaPartitionReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -299,10 +265,8 @@ public class ConfigRequestSerDeTest {
 
     GetOrCreateSchemaPartitionReq req0 = new GetOrCreateSchemaPartitionReq();
     req0.setPartitionSlotsMap(partitionSlotsMap);
-    req0.serialize(buffer);
-    buffer.flip();
     GetOrCreateSchemaPartitionReq req1 =
-        (GetOrCreateSchemaPartitionReq) ConfigRequest.Factory.create(buffer);
+        (GetOrCreateSchemaPartitionReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -323,25 +287,20 @@ public class ConfigRequestSerDeTest {
     regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
 
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        assignedDataPartition = new HashMap<>();
-    assignedDataPartition.put(storageGroup, new HashMap<>());
-    assignedDataPartition.get(storageGroup).put(seriesPartitionSlot, new HashMap<>());
-    assignedDataPartition
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .put(timePartitionSlot, new ArrayList<>());
-    assignedDataPartition
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .get(timePartitionSlot)
-        .add(regionReplicaSet);
+    Map<String, DataPartitionTable> assignedDataPartition = new HashMap<>();
+    Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap = new HashMap<>();
+    Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap = new HashMap<>();
+
+    seriesPartitionMap.put(
+        timePartitionSlot,
+        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0)));
+    dataPartitionMap.put(seriesPartitionSlot, new SeriesPartitionTable(seriesPartitionMap));
+    assignedDataPartition.put(storageGroup, new DataPartitionTable(dataPartitionMap));
 
     CreateDataPartitionReq req0 = new CreateDataPartitionReq();
     req0.setAssignedDataPartition(assignedDataPartition);
-    req0.serialize(buffer);
-    buffer.flip();
-    CreateDataPartitionReq req1 = (CreateDataPartitionReq) ConfigRequest.Factory.create(buffer);
+    CreateDataPartitionReq req1 =
+        (CreateDataPartitionReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -359,9 +318,8 @@ public class ConfigRequestSerDeTest {
 
     GetDataPartitionReq req0 = new GetDataPartitionReq();
     req0.setPartitionSlotsMap(partitionSlotsMap);
-    req0.serialize(buffer);
-    buffer.flip();
-    GetDataPartitionReq req1 = (GetDataPartitionReq) ConfigRequest.Factory.create(buffer);
+    GetDataPartitionReq req1 =
+        (GetDataPartitionReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -379,10 +337,8 @@ public class ConfigRequestSerDeTest {
 
     GetOrCreateDataPartitionReq req0 = new GetOrCreateDataPartitionReq();
     req0.setPartitionSlotsMap(partitionSlotsMap);
-    req0.serialize(buffer);
-    buffer.flip();
     GetOrCreateDataPartitionReq req1 =
-        (GetOrCreateDataPartitionReq) ConfigRequest.Factory.create(buffer);
+        (GetOrCreateDataPartitionReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -399,38 +355,26 @@ public class ConfigRequestSerDeTest {
     req0 =
         new AuthorReq(
             ConfigRequestType.CreateUser, "thulab", "", "passwd", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // create role
     req0 = new AuthorReq(ConfigRequestType.CreateRole, "", "admin", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // alter user
     req0 =
         new AuthorReq(
             ConfigRequestType.UpdateUser, "tempuser", "", "", "newpwd", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // grant user
     req0 =
         new AuthorReq(ConfigRequestType.GrantUser, "tempuser", "", "", "", permissions, "root.ln");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // grant role
     req0 =
@@ -442,37 +386,25 @@ public class ConfigRequestSerDeTest {
             "",
             permissions,
             "root.ln");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // grant role to user
     req0 = new AuthorReq(ConfigRequestType.GrantRole, "", "temprole", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // revoke user
     req0 =
         new AuthorReq(ConfigRequestType.RevokeUser, "tempuser", "", "", "", permissions, "root.ln");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // revoke role
     req0 =
         new AuthorReq(ConfigRequestType.RevokeRole, "", "temprole", "", "", permissions, "root.ln");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // revoke role from user
     req0 =
@@ -484,91 +416,58 @@ public class ConfigRequestSerDeTest {
             "",
             new HashSet<>(),
             "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // drop user
     req0 = new AuthorReq(ConfigRequestType.DropUser, "xiaoming", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // drop role
     req0 = new AuthorReq(ConfigRequestType.DropRole, "", "admin", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list user
     req0 = new AuthorReq(ConfigRequestType.ListUser, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list role
     req0 = new AuthorReq(ConfigRequestType.ListRole, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list privileges user
     req0 = new AuthorReq(ConfigRequestType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list privileges role
     req0 = new AuthorReq(ConfigRequestType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list user privileges
     req0 = new AuthorReq(ConfigRequestType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list role privileges
     req0 = new AuthorReq(ConfigRequestType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list all role of user
     req0 = new AuthorReq(ConfigRequestType.ListUserRoles, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
 
     // list all user of role
     req0 = new AuthorReq(ConfigRequestType.ListRoleUsers, "", "", "", "", new HashSet<>(), "");
-    req0.serialize(buffer);
-    buffer.flip();
-    req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
+    req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-    cleanBuffer();
   }
 
   @Test
@@ -577,9 +476,8 @@ public class ConfigRequestSerDeTest {
         new ApplyConfigNodeReq(
             new TConfigNodeLocation(
                 new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
-    req0.serialize(buffer);
-    buffer.flip();
-    ApplyConfigNodeReq req1 = (ApplyConfigNodeReq) ConfigRequest.Factory.create(buffer);
+    ApplyConfigNodeReq req1 =
+        (ApplyConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -588,16 +486,12 @@ public class ConfigRequestSerDeTest {
     DeleteStorageGroupProcedure procedure = new DeleteStorageGroupProcedure();
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
     storageGroupSchema.setName("root.sg");
-    storageGroupSchema.setSchemaRegionGroupIds(
-        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0)));
-    storageGroupSchema.setDataRegionGroupIds(
-        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1)));
     procedure.setDeleteSgSchema(storageGroupSchema);
     UpdateProcedureReq updateProcedureReq = new UpdateProcedureReq();
     updateProcedureReq.setProcedure(procedure);
-    updateProcedureReq.serialize(buffer);
-    buffer.flip();
-    UpdateProcedureReq reqNew = (UpdateProcedureReq) ConfigRequest.Factory.create(buffer);
+    UpdateProcedureReq reqNew =
+        (UpdateProcedureReq)
+            ConfigRequest.Factory.create(updateProcedureReq.serializeToByteBuffer());
     Procedure proc = reqNew.getProcedure();
     Assert.assertEquals(proc, procedure);
   }
@@ -608,19 +502,10 @@ public class ConfigRequestSerDeTest {
     DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
     TStorageGroupSchema tStorageGroupSchema = new TStorageGroupSchema();
     tStorageGroupSchema.setName("root.sg");
-    List<TConsensusGroupId> dataRegionIds = new ArrayList<>();
-    List<TConsensusGroupId> schemaRegionIds = new ArrayList<>();
-    TConsensusGroupId dataRegionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
-    dataRegionIds.add(dataRegionId);
-    TConsensusGroupId schemaRegionId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2);
-    schemaRegionIds.add(schemaRegionId);
-    tStorageGroupSchema.setDataRegionGroupIds(dataRegionIds);
-    tStorageGroupSchema.setSchemaRegionGroupIds(schemaRegionIds);
     deleteStorageGroupProcedure.setDeleteSgSchema(tStorageGroupSchema);
     req0.setProcedure(deleteStorageGroupProcedure);
-    req0.serialize(buffer);
-    buffer.flip();
-    UpdateProcedureReq req1 = (UpdateProcedureReq) ConfigRequest.Factory.create(buffer);
+    UpdateProcedureReq req1 =
+        (UpdateProcedureReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -628,9 +513,8 @@ public class ConfigRequestSerDeTest {
   public void DeleteProcedureReqTest() throws IOException {
     DeleteProcedureReq req0 = new DeleteProcedureReq();
     req0.setProcId(1L);
-    req0.serialize(buffer);
-    buffer.flip();
-    DeleteProcedureReq req1 = (DeleteProcedureReq) ConfigRequest.Factory.create(buffer);
+    DeleteProcedureReq req1 =
+        (DeleteProcedureReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 }

@@ -31,78 +31,93 @@ public class ClusterEnvConfig implements BaseConfig {
     clusterProperties = new Properties();
   }
 
+  @Override
   public void clearAllProperties() {
     engineProperties.clear();
     clusterProperties.clear();
   }
 
+  @Override
   public Properties getEngineProperties() {
     return this.engineProperties;
   }
 
+  @Override
   public Properties getClusterProperties() {
     return this.clusterProperties;
   }
 
+  @Override
   public BaseConfig setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
     engineProperties.setProperty(
         "max_number_of_points_in_page", String.valueOf(maxNumberOfPointsInPage));
     return this;
   }
 
+  @Override
   public BaseConfig setPageSizeInByte(int pageSizeInByte) {
     engineProperties.setProperty("page_size_in_byte", String.valueOf(pageSizeInByte));
     return this;
   }
 
+  @Override
   public BaseConfig setGroupSizeInByte(int groupSizeInByte) {
     engineProperties.setProperty("group_size_in_byte", String.valueOf(groupSizeInByte));
     return this;
   }
 
+  @Override
   public BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
     engineProperties.setProperty("memtable_size_threshold", String.valueOf(memtableSizeThreshold));
     return this;
   }
 
+  @Override
   public BaseConfig setDataRegionNum(int dataRegionNum) {
     engineProperties.setProperty("data_region_num", String.valueOf(dataRegionNum));
     return this;
   }
 
+  @Override
   public BaseConfig setPartitionInterval(long partitionInterval) {
     engineProperties.setProperty("partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 
+  @Override
   public BaseConfig setCompressor(String compressor) {
     engineProperties.setProperty("compressor", compressor);
     return this;
   }
 
+  @Override
   public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     engineProperties.setProperty(
         "max_deduplicated_path_num", String.valueOf(maxQueryDeduplicatedPathNum));
     return this;
   }
 
+  @Override
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     engineProperties.setProperty(
         "rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
     return this;
   }
 
+  @Override
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
         "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
     return this;
   }
 
+  @Override
   public BaseConfig setEnablePartition(boolean enablePartition) {
     engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
     return this;
   }
 
+  @Override
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
@@ -111,49 +126,74 @@ public class ClusterEnvConfig implements BaseConfig {
     return this;
   }
 
+  @Override
   public BaseConfig setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
     engineProperties.setProperty(
         "udf_memory_budget_in_mb", String.valueOf(udfTransformerMemoryBudgetInMB * 3));
     return this;
   }
 
+  @Override
   public BaseConfig setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
     engineProperties.setProperty(
         "udf_memory_budget_in_mb", String.valueOf(udfReaderMemoryBudgetInMB * 3));
     return this;
   }
 
+  @Override
   public BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
     engineProperties.setProperty(
         "enable_seq_space_compaction", String.valueOf(enableSeqSpaceCompaction));
     return this;
   }
 
+  @Override
   public BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
     engineProperties.setProperty(
         "enable_unseq_space_compaction", String.valueOf(enableUnseqSpaceCompaction));
     return this;
   }
 
+  @Override
   public BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     engineProperties.setProperty(
         "enable_cross_space_compaction", String.valueOf(enableCrossSpaceCompaction));
     return this;
   }
 
+  @Override
   public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
     engineProperties.setProperty("enable_id_table", String.valueOf(isEnableIDTable));
     return this;
   }
 
+  @Override
   public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
     engineProperties.setProperty("device_id_transformation_method", deviceIDTransformationMethod);
     return this;
   }
 
+  @Override
   public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     clusterProperties.setProperty(
         "enable_auto_create_schema", String.valueOf(enableAutoCreateSchema));
     return this;
+  }
+
+  @Override
+  public BaseConfig setEnableLastCache(boolean lastCacheEnable) {
+    engineProperties.setProperty("enable_last_cache", String.valueOf(lastCacheEnable));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setPrimitiveArraySize(int primitiveArraySize) {
+    engineProperties.setProperty("primitive_array_size", String.valueOf(primitiveArraySize));
+    return this;
+  }
+
+  @Override
+  public String getFlushCommand() {
+    return "flush on cluster";
   }
 }

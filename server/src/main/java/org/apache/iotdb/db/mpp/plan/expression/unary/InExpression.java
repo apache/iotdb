@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.InTransforme
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -63,11 +65,7 @@ public class InExpression extends UnaryExpression {
 
   @Override
   public TSDataType inferTypes(TypeProvider typeProvider) {
-    final String expressionString = toString();
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      typeProvider.setType(expressionString, expression.inferTypes(typeProvider));
-    }
-    return typeProvider.getType(expressionString);
+    return TSDataType.BOOLEAN;
   }
 
   @Override
@@ -105,6 +103,16 @@ public class InExpression extends UnaryExpression {
     ReadWriteIOUtils.write(values.size(), byteBuffer);
     for (String value : values) {
       ReadWriteIOUtils.write(value, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(isNotIn, stream);
+    ReadWriteIOUtils.write(values.size(), stream);
+    for (String value : values) {
+      ReadWriteIOUtils.write(value, stream);
     }
   }
 }

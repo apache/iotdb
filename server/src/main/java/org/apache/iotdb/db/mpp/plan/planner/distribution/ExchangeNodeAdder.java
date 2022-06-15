@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
@@ -196,7 +197,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
-  public PlanNode visitRowBasedSeriesAggregate(AggregationNode node, NodeGroupContext context) {
+  public PlanNode visitAggregation(AggregationNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 
@@ -238,7 +239,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     // parent.
     visitedChildren.forEach(
         child -> {
-          if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
+          // If the child's region is NOT_ASSIGNED, it means the child do not belong to any
+          // existing DataRegion. We make it belong to its parent and no ExchangeNode will be added.
+          if (context.getNodeDistribution(child.getPlanNodeId()).region
+                  != DataPartition.NOT_ASSIGNED
+              && !dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
             ExchangeNode exchangeNode =
                 new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
             exchangeNode.setChild(child);
@@ -286,8 +291,16 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                       return region;
                     },
                     Collectors.counting()));
+    if (groupByRegion.entrySet().size() == 1) {
+      return groupByRegion.entrySet().iterator().next().getKey();
+    }
     // Step 2: return the RegionReplicaSet with max count
-    return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();
+    return Collections.max(
+            groupByRegion.entrySet().stream()
+                .filter(e -> e.getKey() != DataPartition.NOT_ASSIGNED)
+                .collect(Collectors.toList()),
+            Map.Entry.comparingByValue())
+        .getKey();
   }
 
   private TRegionReplicaSet calculateSchemaRegionByChildren(

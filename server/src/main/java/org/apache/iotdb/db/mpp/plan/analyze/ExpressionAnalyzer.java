@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -42,7 +43,9 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -506,9 +509,9 @@ public class ExpressionAnalyzer {
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
       if (noStarPaths.size() == 0) {
-        throw new SemanticException(
+        throw new MeasurementNotExistException(
             String.format(
-                "ALIGN BY DEVICE: measurement '%s' does not exist in device '%s'",
+                "ALIGN BY DEVICE: Measurement '%s' does not exist in device '%s'",
                 measurement, devicePath));
       }
 
@@ -595,6 +598,8 @@ public class ExpressionAnalyzer {
                 ((InExpression) predicate).isNotIn()),
             false);
       }
+      return new Pair<>(null, true);
+    } else if (predicate instanceof LikeExpression || predicate instanceof RegularExpression) {
       return new Pair<>(null, true);
     } else {
       throw new IllegalArgumentException(

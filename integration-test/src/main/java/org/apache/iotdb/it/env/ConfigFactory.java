@@ -20,6 +20,8 @@ package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.itbase.env.BaseConfig;
 
+import java.lang.reflect.InvocationTargetException;
+
 public class ConfigFactory {
   private static BaseConfig config;
 
@@ -30,7 +32,8 @@ public class ConfigFactory {
           case "Standalone":
             config =
                 (BaseConfig)
-                    Class.forName("org.apache.iotdb.db.integration.env.StandaloneEnvConfig")
+                    Class.forName("org.apache.iotdb.db.it.env.StandaloneEnvConfig")
+                        .getDeclaredConstructor()
                         .newInstance();
             break;
           case "Remote":
@@ -42,7 +45,11 @@ public class ConfigFactory {
           default:
             throw new ClassNotFoundException("The Property class of TestEnv not found");
         }
-      } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+      } catch (ClassNotFoundException
+          | IllegalAccessException
+          | InstantiationException
+          | NoSuchMethodException
+          | InvocationTargetException e) {
         e.printStackTrace();
         System.exit(-1);
       }

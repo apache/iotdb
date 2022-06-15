@@ -17,17 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons;
+package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
-import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
-import org.apache.iotdb.commons.client.ClientPoolProperty.DefaultProperty;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -37,27 +34,44 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
+import java.util.concurrent.TimeUnit;
+
+import static org.mockito.Mockito.mock;
 
 public class ClientManagerTest {
 
   private final TEndPoint endPoint = new TEndPoint("localhost", 9003);
 
-  private ServerSocket metaServer;
-  private Thread metaServerListeningThread;
+  private MockInternalRPCService service;
 
   @Before
-  public void setUp() throws IOException {
-    startServer();
+  public void setUp() throws StartupException {
+    service = new MockInternalRPCService(endPoint);
+    service.initSyncedServiceImpl(mock(InternalService.Iface.class));
+    service.start();
   }
 
   @After
   public void tearDown() throws IOException, InterruptedException {
-    stopServer();
+    service.waitAndStop(10_000L);
   }
 
+  /**
+   * We put all tests together to avoid frequent restarts of thrift Servers, which can cause "bind
+   * address already used" problems in macOS CI environments. The reason for this may be about this
+   * [blog](https://stackoverflow.com/questions/51998042/macos-so-reuseaddr-so-reuseport-not-consistent-with-linux)
+   */
   @Test
+  public void allTest() throws Exception {
+    normalSyncClientManagersTest();
+    normalAsyncClientManagersTest();
+    MaxIdleClientManagersTest();
+    MaxTotalClientManagersTest();
+    MaxWaitClientTimeoutClientManagersTest();
+    InvalidSyncClientReturnClientManagersTest();
+    InvalidAsyncClientReturnClientManagersTest();
+  }
+
   public void normalSyncClientManagersTest() throws Exception {
     // init syncClientManager
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
@@ -101,7 +115,6 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
-  @Test
   public void normalAsyncClientManagersTest() throws Exception {
     // init asyncClientManager
     ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
@@ -143,7 +156,6 @@ public class ClientManagerTest {
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
   }
 
-  @Test
   public void MaxIdleClientManagersTest() throws Exception {
     int maxIdleClientForEachNode = 1;
 
@@ -203,9 +215,9 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
   }
 
-  @Test
   public void MaxTotalClientManagersTest() throws Exception {
     int maxTotalClientForEachNode = 1;
+    long waitClientTimeoutMs = TimeUnit.SECONDS.toMillis(1);
 
     // init syncClientManager and set maxTotalClientForEachNode to 1
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
@@ -222,6 +234,7 @@ public class ClientManagerTest {
                                 manager, new ClientFactoryProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
                                 .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
+                                .setWaitClientTimeoutMS(waitClientTimeoutMs)
                                 .build()
                                 .getConfig());
                       }
@@ -244,7 +257,7 @@ public class ClientManagerTest {
       syncClient2 = syncClusterManager.borrowClient(endPoint);
     } catch (IOException e) {
       end = System.nanoTime();
-      Assert.assertTrue(end - start >= DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 1_000_000);
+      Assert.assertTrue(end - start >= waitClientTimeoutMs * 1_000_000);
       Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
     }
     Assert.assertNull(syncClient2);
@@ -273,9 +286,8 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
-  @Test
   public void MaxWaitClientTimeoutClientManagersTest() throws Exception {
-    long waitClientTimeoutMS = DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 2;
+    long waitClientTimeoutMS = TimeUnit.SECONDS.toMillis(2);
     int maxTotalClientForEachNode = 1;
 
     // init syncClientManager and set maxTotalClientForEachNode to 1, set waitClientTimeoutMS to
@@ -332,7 +344,6 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
   }
 
-  @Test
   public void InvalidSyncClientReturnClientManagersTest() throws Exception {
     // init syncClientManager
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
@@ -376,7 +387,6 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
-  @Test
   public void InvalidAsyncClientReturnClientManagersTest() throws Exception {
     // init asyncClientManager
     ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
@@ -416,39 +426,6 @@ public class ClientManagerTest {
     asyncClusterManager.close();
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
-  }
-
-  public void startServer() throws IOException {
-    metaServer = new ServerSocket();
-    // reuse the port to avoid `Bind Address already in use` which is caused by TIME_WAIT state
-    // because port won't be usable immediately after we close it.
-    metaServer.setReuseAddress(true);
-    metaServer.bind(new InetSocketAddress(endPoint.getIp(), endPoint.getPort()), 0);
-
-    metaServerListeningThread =
-        new Thread(
-            () -> {
-              while (!Thread.interrupted()) {
-                try {
-                  metaServer.accept();
-                } catch (IOException e) {
-                  return;
-                }
-              }
-            });
-    metaServerListeningThread.start();
-  }
-
-  public void stopServer() throws InterruptedException, IOException {
-    if (metaServer != null) {
-      metaServer.close();
-      metaServer = null;
-    }
-    if (metaServerListeningThread != null) {
-      metaServerListeningThread.interrupt();
-      metaServerListeningThread.join();
-      metaServerListeningThread = null;
-    }
   }
 
   public static class TestSyncDataNodeInternalServiceClientPoolFactory

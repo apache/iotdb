@@ -380,7 +380,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private void updateTypeProviderByPartialAggregation(
+  public static void updateTypeProviderByPartialAggregation(
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<AggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());

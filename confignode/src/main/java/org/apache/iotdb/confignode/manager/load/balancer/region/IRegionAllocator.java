@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.balancer.allocator;
+package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
@@ -24,6 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.List;
 
+/**
+ * The IRegionAllocator is a functional interface, which means a new functional class who implements
+ * the IRegionAllocator must be created for each Region allocation.
+ */
 public interface IRegionAllocator {
 
   /**

@@ -47,6 +47,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.concurrent.SetThreadName;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -106,24 +108,27 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               "cannot fetch schema, status is: %s, msg is: %s",
               executionResult.status.getCode(), executionResult.status.getMessage()));
     }
-    SchemaTree result = new SchemaTree();
-    while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-      // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-      // So we don't need to clean up it manually
-      Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-      if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-        break;
+    try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
+      SchemaTree result = new SchemaTree();
+      while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+        // The query will be transited to FINISHED when invoking getBatchResult() at the last time
+        // So we don't need to clean up it manually
+        Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+        if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+          break;
+        }
+        Binary binary;
+        SchemaTree fetchedSchemaTree;
+        Column column = tsBlock.get().getColumn(0);
+        for (int i = 0; i < column.getPositionCount(); i++) {
+          binary = column.getBinary(i);
+          fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+          result.mergeSchemaTree(fetchedSchemaTree);
+        }
       }
-      Binary binary;
-      SchemaTree fetchedSchemaTree;
-      Column column = tsBlock.get().getColumn(0);
-      for (int i = 0; i < column.getPositionCount(); i++) {
-        binary = column.getBinary(i);
-        fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
-        result.mergeSchemaTree(fetchedSchemaTree);
-      }
+      coordinator.removeQueryExecution(queryId);
+      return result;
     }
-    return result;
   }
 
   @Override
@@ -329,15 +334,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
-    try {
-      int statusCode = executionResult.status.getCode();
-      if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        throw new RuntimeException(
-            "cannot auto create schema, status is: " + executionResult.status);
-      }
-    } finally {
-      coordinator.getQueryExecution(queryId).stopAndCleanup();
+    int statusCode = executionResult.status.getCode();
+    if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+      throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
     }
   }
 
@@ -347,20 +347,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
-    try {
-      int statusCode = executionResult.status.getCode();
-      if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
-      }
+    int statusCode = executionResult.status.getCode();
+    if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return;
+    }
 
-      for (TSStatus subStatus : executionResult.status.subStatus) {
-        if (subStatus.code != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-          throw new RuntimeException(
-              "cannot auto create schema, status is: " + executionResult.status);
-        }
+    for (TSStatus subStatus : executionResult.status.subStatus) {
+      if (subStatus.code != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+        throw new RuntimeException(
+            "cannot auto create schema, status is: " + executionResult.status);
       }
-    } finally {
-      coordinator.getQueryExecution(queryId).stopAndCleanup();
     }
   }
 

@@ -94,12 +94,24 @@ public interface BaseConfig {
     return this;
   }
 
+  default boolean isEnableSeqSpaceCompaction() {
+    return true;
+  }
+
   default BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
     return this;
   }
 
+  default boolean isEnableUnseqSpaceCompaction() {
+    return true;
+  }
+
   default BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     return this;
+  }
+
+  default boolean isEnableCrossSpaceCompaction() {
+    return true;
   }
 
   default BaseConfig setEnableIDTable(boolean isEnableIDTable) {
@@ -112,5 +124,33 @@ public interface BaseConfig {
 
   default BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     return this;
+  }
+
+  default BaseConfig setEnableLastCache(boolean lastCacheEnable) {
+    return this;
+  }
+
+  default boolean isLastCacheEnabled() {
+    return true;
+  }
+
+  default int getMaxNumberOfPointsInPage() {
+    return 1024 * 1024;
+  }
+
+  default boolean isAutoCreateSchemaEnabled() {
+    return true;
+  }
+
+  default BaseConfig setPrimitiveArraySize(int primitiveArraySize) {
+    return this;
+  }
+
+  default int getPrimitiveArraySize() {
+    return 32;
+  }
+
+  default String getFlushCommand() {
+    return "flush";
   }
 }

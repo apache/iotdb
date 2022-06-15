@@ -24,6 +24,8 @@ from iotdb.utils.SessionDataSet import SessionDataSet
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
+from .template.Template import Template
+from .template.TemplateQueryType import TemplateQueryType
 from .thrift.rpc.TSIService import (
     Client,
     TSCreateTimeseriesReq,
@@ -38,6 +40,13 @@ from .thrift.rpc.TSIService import (
     TSInsertTabletsReq,
     TSInsertRecordsReq,
     TSInsertRecordsOfOneDeviceReq,
+    TSCreateSchemaTemplateReq,
+    TSDropSchemaTemplateReq,
+    TSAppendSchemaTemplateReq,
+    TSPruneSchemaTemplateReq,
+    TSSetSchemaTemplateReq,
+    TSUnsetSchemaTemplateReq,
+    TSQueryTemplateReq,
 )
 from .thrift.rpc.ttypes import (
     TSDeleteDataReq,
@@ -1033,6 +1042,13 @@ class Session(object):
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
     ) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param start_time: Query start time
+        :param end_time: Query end time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
         request = TSRawDataQueryReq(
             self.__session_id,
             paths,
@@ -1057,6 +1073,12 @@ class Session(object):
         )
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param last_time: Query last time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
         request = TSLastDataQueryReq(
             self.__session_id,
             paths,
@@ -1088,6 +1110,16 @@ class Session(object):
         values_list: list,
         have_sorted: bool = False,
     ):
+        """
+        insert multiple row of string record into database:
+                 timestamp,     m1,    m2,     m3
+                         0,  text1,  text2, text3
+        :param device_id: String, device id
+        :param times: Timestamp list
+        :param measurements_list: Measurements list
+        :param values_list: Value list
+        :param have_sorted: have these list been sorted by timestamp
+        """
         if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
             raise RuntimeError(
                 "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
@@ -1151,3 +1183,274 @@ class Session(object):
             is_aligned,
         )
         return request
+
+    def create_schema_template(self, template: Template):
+        """
+        create schema template, users using this method should use the template class as an argument
+        :param template: The template contains multiple child node(see Template.py)
+        """
+        bytes_array = template.serialize
+        request = TSCreateSchemaTemplateReq(
+            self.__session_id, template.get_name(), bytes_array
+        )
+        status = self.__client.createSchemaTemplate(request)
+        logger.debug(
+            "create one template {} template name: {}".format(
+                self.__session_id, template.get_name()
+            )
+        )
+        return Session.verify_success(status)
+
+    def drop_schema_template(self, template_name: str):
+        """
+        drop schema template, this method should be used to the template unset anything
+        :param template_name: template name
+        """
+        request = TSDropSchemaTemplateReq(self.__session_id, template_name)
+        status = self.__client.dropSchemaTemplate(request)
+        logger.debug(
+            "drop one template {} template name: {}".format(
+                self.__session_id, template_name
+            )
+        )
+        return Session.verify_success(status)
+
+    def execute_statement(self, sql: str, timeout=0):
+        request = TSExecuteStatementReq(
+            self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
+        )
+        try:
+            resp = self.__client.executeStatement(request)
+            status = resp.status
+            logger.debug("execute statement {} message: {}".format(sql, status.message))
+            if Session.verify_success(status) == 0:
+                if resp.columns:
+                    return SessionDataSet(
+                        sql,
+                        resp.columns,
+                        resp.dataTypeList,
+                        resp.columnNameIndexMap,
+                        resp.queryId,
+                        self.__client,
+                        self.__statement_id,
+                        self.__session_id,
+                        resp.queryDataSet,
+                        resp.ignoreTimeStamp,
+                    )
+                else:
+                    return None
+            else:
+                raise RuntimeError(
+                    "execution of statement fails because: {}", status.message
+                )
+        except TTransport.TException as e:
+            raise RuntimeError("execution of statement fails because: ", e)
+
+    def add_measurements_in_template(
+        self,
+        template_name: str,
+        measurements_path: list,
+        data_types: list,
+        encodings: list,
+        compressors: list,
+        is_aligned: bool = False,
+    ):
+        """
+        add measurements in the template, the template must already create. This function adds some measurements node.
+        :param template_name: template name, string list, like ["name_x", "name_y", "name_z"]
+        :param measurements_path: when ths is_aligned is True, recommend the name like a.b, like [python.x, python.y, iotdb.z]
+        :param data_types: using TSDataType(see IoTDBConstants.py)
+        :param encodings: using TSEncoding(see IoTDBConstants.py)
+        :param compressors: using Compressor(see IoTDBConstants.py)
+        :param is_aligned: True is aligned, False is unaligned
+        """
+        request = TSAppendSchemaTemplateReq(
+            self.__session_id,
+            template_name,
+            is_aligned,
+            measurements_path,
+            list(map(lambda x: x.value, data_types)),
+            list(map(lambda x: x.value, encodings)),
+            list(map(lambda x: x.value, compressors)),
+        )
+        status = self.__client.appendSchemaTemplate(request)
+        logger.debug(
+            "append unaligned template {} template name: {}".format(
+                self.__session_id, template_name
+            )
+        )
+        return Session.verify_success(status)
+
+    def delete_node_in_template(self, template_name: str, path: str):
+        """
+        delete a node in the template, this node must be already in the template
+        :param template_name: template name
+        :param path: measurements path
+        """
+        request = TSPruneSchemaTemplateReq(self.__session_id, template_name, path)
+        status = self.__client.pruneSchemaTemplate(request)
+        logger.debug(
+            "append unaligned template {} template name: {}".format(
+                self.__session_id, template_name
+            )
+        )
+        return Session.verify_success(status)
+
+    def set_schema_template(self, template_name, prefix_path):
+        """
+        set template in prefix path, template already exit, prefix path is not measurements
+        :param template_name: template name
+        :param prefix_path: prefix path
+        """
+        request = TSSetSchemaTemplateReq(self.__session_id, template_name, prefix_path)
+        status = self.__client.setSchemaTemplate(request)
+        logger.debug(
+            "set schema template to path{} template name: {}, path:{}".format(
+                self.__session_id, template_name, prefix_path
+            )
+        )
+        return Session.verify_success(status)
+
+    def unset_schema_template(self, template_name, prefix_path):
+        """
+        unset schema template from prefix path, this method unsetting the template from entities,
+        which have already inserted records using the template, is not supported.
+        :param template_name: template name
+        :param prefix_path:
+        """
+        request = TSUnsetSchemaTemplateReq(
+            self.__session_id, prefix_path, template_name
+        )
+        status = self.__client.unsetSchemaTemplate(request)
+        logger.debug(
+            "set schema template to path{} template name: {}, path:{}".format(
+                self.__session_id, template_name, prefix_path
+            )
+        )
+        return Session.verify_success(status)
+
+    def count_measurements_in_template(self, template_name: str):
+        """
+        drop schema template, this method should be used to the template unset anything
+        :param template_name: template name
+        """
+        request = TSQueryTemplateReq(
+            self.__session_id,
+            template_name,
+            TemplateQueryType.COUNT_MEASUREMENTS.value,
+        )
+        response = self.__client.querySchemaTemplate(request)
+        logger.debug(
+            "count measurements template {}, template name is {}, count is {}".format(
+                self.__session_id, template_name, response.measurements
+            )
+        )
+        return response.count
+
+    def is_measurement_in_template(self, template_name: str, path: str):
+        """
+        judge the node in the template is measurement or not, this node must in the template
+        :param template_name: template name
+        :param path:
+        """
+        request = TSQueryTemplateReq(
+            self.__session_id,
+            template_name,
+            TemplateQueryType.IS_MEASUREMENT.value,
+            path,
+        )
+        response = self.__client.querySchemaTemplate(request)
+        logger.debug(
+            "judge the path is measurement or not in template {}, template name is {}, result is {}".format(
+                self.__session_id, template_name, response.result
+            )
+        )
+        return response.result
+
+    def is_path_exist_in_template(self, template_name: str, path: str):
+        """
+        judge whether the node is a measurement or not in the template, this node must be in the template
+        :param template_name: template name
+        :param path:
+        """
+        request = TSQueryTemplateReq(
+            self.__session_id, template_name, TemplateQueryType.PATH_EXIST.value, path
+        )
+        response = self.__client.querySchemaTemplate(request)
+        logger.debug(
+            "judge the path is in template or not {}, template name is {}, result is {}".format(
+                self.__session_id, template_name, response.result
+            )
+        )
+        return response.result
+
+    def show_measurements_in_template(self, template_name: str, pattern: str = ""):
+        """
+        show all measurements under the pattern in template
+        :param template_name: template name
+        :param pattern: parent path, if default, show all measurements
+        """
+        request = TSQueryTemplateReq(
+            self.__session_id,
+            template_name,
+            TemplateQueryType.SHOW_MEASUREMENTS.value,
+            pattern,
+        )
+        response = self.__client.querySchemaTemplate(request)
+        logger.debug(
+            "show measurements in template {}, template name is {}, result is {}".format(
+                self.__session_id, template_name, response.measurements
+            )
+        )
+        return response.measurements
+
+    def show_all_templates(self):
+        """
+        show all schema templates
+        """
+        request = TSQueryTemplateReq(
+            self.__session_id,
+            "",
+            TemplateQueryType.SHOW_TEMPLATES.value,
+        )
+        response = self.__client.querySchemaTemplate(request)
+        logger.debug(
+            "show all template {}, measurements is {}".format(
+                self.__session_id, response.measurements
+            )
+        )
+        return response.measurements
+
+    def show_paths_template_set_on(self, template_name):
+        """
+        show the path prefix where a schema template is set
+        :param template_name:
+        """
+        request = TSQueryTemplateReq(
+            self.__session_id, template_name, TemplateQueryType.SHOW_SET_TEMPLATES.value
+        )
+        response = self.__client.querySchemaTemplate(request)
+        logger.debug(
+            "show paths template set {}, on {}".format(
+                self.__session_id, response.measurements
+            )
+        )
+        return response.measurements
+
+    def show_paths_template_using_on(self, template_name):
+        """
+        show the path prefix where a schema template is used
+        :param template_name:
+        """
+        request = TSQueryTemplateReq(
+            self.__session_id,
+            template_name,
+            TemplateQueryType.SHOW_USING_TEMPLATES.value,
+        )
+        response = self.__client.querySchemaTemplate(request)
+        logger.debug(
+            "show paths template using {}, on {}".format(
+                self.__session_id, response.measurements
+            )
+        )
+        return response.measurements
