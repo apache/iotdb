@@ -254,13 +254,12 @@ session.execute_non_query_statement(sql)
 3. 调用创建元数据模版接口
 
 ```python
-template = Template(name="treeTemplate_python", share_time=True)
+template = Template(name=template_name, share_time=True)
 
 i_node_gps = InternalNode(name="GPS", share_time=False)
 i_node_v = InternalNode(name="vehicle", share_time=True)
 m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
 
-i_node_gps.add_child(m_node_x)
 i_node_gps.add_child(m_node_x)
 i_node_v.add_child(m_node_x)
 
@@ -270,6 +269,63 @@ template.add_template(m_node_x)
 
 session.create_schema_template(template)
 ```
+#### 修改模版节点信息
+修改模版节点，其中修改的模版必须已经被创建。以下函数能够在已经存在的模版中增加或者删除物理量
+* 在模版中增加实体
+```python
+session.add_measurements_in_template(template_name, measurements_path, data_types, encodings, compressors, is_aligned)
+```
+
+* 在模版中删除物理量
+```python
+session.delete_node_in_template(template_name, path)
+```
+
+#### 挂载元数据模板
+```python
+session.set_schema_template(template_name, prefix_path)
+```
+
+#### 卸载元数据模版
+```python
+session.unset_schema_template(template_name, prefix_path)
+```
+
+#### 查看元数据模版
+* 查看所有的元数据模版
+```python
+session.show_all_templates()
+```
+* 查看元数据模版中的物理量个数
+```python
+session.count_measurements_in_template(template_name)
+```
+
+* 判断某个节点是否为物理量，该节点必须已经在元数据模版中
+```python
+session.count_measurements_in_template(template_name, path)
+```
+
+* 判断某个路径是否在元数据模版中，这个路径有可能不在元数据模版中
+```python
+session.is_path_exist_in_template(template_name, path)
+```
+
+* 查看某个元数据模板下的物理量
+```python
+session.show_measurements_in_template(template_name)
+```
+
+* 查看挂载了某个元数据模板的路径前缀
+```python
+session.show_paths_template_set_on(template_name)
+```
+
+* 查看使用了某个元数据模板（即序列已创建）的路径前缀
+```python
+session.show_paths_template_using_on(template_name)
+```
+
 #### 删除元数据模版
 删除已经存在的元数据模版，不支持删除已经挂载的模版
 ```python
@@ -325,6 +381,58 @@ class MyTestCase(unittest.TestCase):
 
 默认情况下，它会拉取最新的 IoTDB 镜像 `apache/iotdb:latest`进行测试，如果您想指定待测 IoTDB 的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的 IoTDB 实例。
 
+### IoTDB DBAPI
+
+IoTDB DBAPI 遵循 Python DB API 2.0 规范 (https://peps.python.org/pep-0249/)，实现了通过Python语言访问数据库的通用接口。
+
+#### 例子
++ 初始化
+
+初始化的参数与Session部分保持一致（sqlalchemy_mode参数除外，该参数仅在SQLAlchemy方言中使用）
+```python
+from iotdb.dbapi import connect
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = "root"
+password_ = "root"
+conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="UTC+8",sqlalchemy_mode=False)
+cursor = conn.cursor()
+```
++ 执行简单的SQL语句
+```python
+cursor.execute("SELECT * FROM root.*")
+for row in cursor.fetchall():
+    print(row)
+```
+
++ 执行带有参数的SQL语句
+
+IoTDB DBAPI 支持pyformat风格的参数
+```python
+cursor.execute("SELECT * FROM root.* WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
+for row in cursor.fetchall():
+    print(row)
+```
+
++ 批量执行带有参数的SQL语句
+```python
+seq_of_parameters = [
+    {"timestamp": 1, "temperature": 1},
+    {"timestamp": 2, "temperature": 2},
+    {"timestamp": 3, "temperature": 3},
+    {"timestamp": 4, "temperature": 4},
+    {"timestamp": 5, "temperature": 5},
+]
+sql = "insert into root.cursor(timestamp,temperature) values(%(timestamp)s,%(temperature)s)"
+cursor.executemany(sql,seq_of_parameters)
+```
+
++ 关闭连接
+```python
+cursor.close()
+conn.close()
+```
 
 ## 给开发人员
 

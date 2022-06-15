@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -178,6 +179,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
+import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -1050,17 +1052,24 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SeriesScanOperator.class.getSimpleName());
+              ExchangeOperator.class.getSimpleName());
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
 
+      TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
       ISourceHandle sourceHandle =
-          DATA_BLOCK_MANAGER.createSourceHandle(
-              localInstanceId.toThrift(),
-              node.getPlanNodeId().getId(),
-              node.getUpstreamEndpoint(),
-              remoteInstanceId.toThrift(),
-              context.instanceContext::failed);
+          isSameNode(upstreamEndPoint)
+              ? DATA_BLOCK_MANAGER.createLocalSourceHandle(
+                  localInstanceId.toThrift(),
+                  node.getPlanNodeId().getId(),
+                  remoteInstanceId.toThrift(),
+                  context.instanceContext::failed)
+              : DATA_BLOCK_MANAGER.createSourceHandle(
+                  localInstanceId.toThrift(),
+                  node.getPlanNodeId().getId(),
+                  upstreamEndPoint,
+                  remoteInstanceId.toThrift(),
+                  context.instanceContext::failed);
       return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     }
 
@@ -1070,16 +1079,23 @@ public class LocalExecutionPlanner {
 
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
+      TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
 
       checkArgument(DATA_BLOCK_MANAGER != null, "DATA_BLOCK_MANAGER should not be null");
 
       ISinkHandle sinkHandle =
-          DATA_BLOCK_MANAGER.createSinkHandle(
-              localInstanceId.toThrift(),
-              node.getDownStreamEndpoint(),
-              targetInstanceId.toThrift(),
-              node.getDownStreamPlanNodeId().getId(),
-              context.instanceContext);
+          isSameNode(downStreamEndPoint)
+              ? DATA_BLOCK_MANAGER.createLocalSinkHandle(
+                  localInstanceId.toThrift(),
+                  targetInstanceId.toThrift(),
+                  node.getDownStreamPlanNodeId().getId(),
+                  context.instanceContext)
+              : DATA_BLOCK_MANAGER.createSinkHandle(
+                  localInstanceId.toThrift(),
+                  downStreamEndPoint,
+                  targetInstanceId.toThrift(),
+                  node.getDownStreamPlanNodeId().getId(),
+                  context.instanceContext);
       context.setSinkHandle(sinkHandle);
       return child;
     }

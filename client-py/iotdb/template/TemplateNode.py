@@ -21,6 +21,7 @@ class TemplateNode(object):
     """
     Template class, this class should be used to schema template node
     """
+
     def __init__(self, name):
         self.name = name
 
@@ -42,5 +43,5 @@ class TemplateNode(object):
     def is_share_time(self):
         return False
 
-    def serialize(self, buffer):
+    def serialize(self, *args, **kwargs):
         ...

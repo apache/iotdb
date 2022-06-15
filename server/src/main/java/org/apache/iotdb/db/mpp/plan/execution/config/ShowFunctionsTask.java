@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,8 +55,7 @@ public class ShowFunctionsTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowFunctionsTask.class);
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(
-      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
