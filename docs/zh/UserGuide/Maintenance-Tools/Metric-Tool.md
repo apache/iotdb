@@ -121,6 +121,13 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | 节点```uncommitted_log```的数量                               | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
 | cluster_node_status       | name="{{ip}}"                   | important | 节点状态，1=online  2=offline                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | important | 节点参与选举的次数及结果                                      | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| config_node | name="online" | core | 上线confignode的节点数量 | |
+| data_node | name="online" | core | 上线datanode的节点数量 | |
+| partition_table | name="number" | core | partition table表的个数 | |
+| region | name="total" | core | region 的 总个数 | |
+| region | name="schemaRegion/dataRegion" | important | schemaRegion/dataRegion个数 | |
+| region | name="{{storageGroupName}}" | normal | 存储组的Region个数 | |
+| slot | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal | 存储组的schemaSlot/dataSlot个数 | |
 
 ### 4.4. IoTDB 预定义指标集
 

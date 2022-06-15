@@ -123,6 +123,12 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
 | cluster_node_status       | name="{{ip}}"                   | important | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | important | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| config_node | name="online" | core | The number of online confignodes | |
+| data_node | name="online" | core | The number of online datanodes | |
+| partition_table | name="number" | core | The number of partition table | |
+| region | name="total" | core | The total number of region | |
+| region | name="schemaRegion/dataRegion" | important | The number of schemaRegion/dataRegion | |
+| region | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal | The number of dataSlot/schemaSlot in storage group | |
 
 ### 4.4. IoTDB PreDefined Metrics Set
 Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics，now support `JVM`, `LOGBACK`, `FILE`, `PROCESS`, `SYSYTEM`.

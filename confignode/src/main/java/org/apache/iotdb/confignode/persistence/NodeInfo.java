@@ -108,30 +108,30 @@ public class NodeInfo implements SnapshotProcessor {
     this.onlineConfigNodes =
         new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      addMetrics();
-    }
+    addMetrics();
   }
 
   private void addMetrics() {
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.CONFIG_NODE.toString(),
-            MetricLevel.CORE,
-            onlineConfigNodes,
-            o -> getOnlineDataNodeCount(),
-            Tag.NAME.toString(),
-            "online");
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.DATA_NODE.toString(),
-            MetricLevel.CORE,
-            onlineDataNodes,
-            Map::size,
-            Tag.NAME.toString(),
-            "online");
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.CONFIG_NODE.toString(),
+              MetricLevel.CORE,
+              onlineConfigNodes,
+              o -> getOnlineDataNodeCount(),
+              Tag.NAME.toString(),
+              "online");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.DATA_NODE.toString(),
+              MetricLevel.CORE,
+              onlineDataNodes,
+              Map::size,
+              Tag.NAME.toString(),
+              "online");
+    }
   }
 
   /** @return true if the specific DataNode is now online */
