@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -118,7 +120,7 @@ public class MeasurementGroup {
 
   public void serialize(ByteBuffer byteBuffer) {
     // measurements
-    byteBuffer.putInt(measurements.size());
+    ReadWriteIOUtils.write(measurements.size(), byteBuffer);
     for (String measurement : measurements) {
       ReadWriteIOUtils.write(measurement, byteBuffer);
     }
@@ -171,6 +173,65 @@ public class MeasurementGroup {
       byteBuffer.put((byte) 1);
       for (Map<String, String> attributes : attributesList) {
         ReadWriteIOUtils.write(attributes, byteBuffer);
+      }
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    // measurements
+    ReadWriteIOUtils.write(measurements.size(), stream);
+    for (String measurement : measurements) {
+      ReadWriteIOUtils.write(measurement, stream);
+    }
+
+    // dataTypes
+    for (TSDataType dataType : dataTypes) {
+      stream.write((byte) dataType.ordinal());
+    }
+
+    // encodings
+    for (TSEncoding encoding : encodings) {
+      stream.write((byte) encoding.ordinal());
+    }
+
+    // compressors
+    for (CompressionType compressor : compressors) {
+      stream.write((byte) compressor.ordinal());
+    }
+
+    // alias
+    if (aliasList == null) {
+      stream.write((byte) -1);
+    } else if (aliasList.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      for (String alias : aliasList) {
+        ReadWriteIOUtils.write(alias, stream);
+      }
+    }
+
+    // tags
+    if (tagsList == null) {
+      stream.write((byte) -1);
+    } else if (tagsList.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      for (Map<String, String> tags : tagsList) {
+        ReadWriteIOUtils.write(tags, stream);
+      }
+    }
+
+    // attributes
+    if (attributesList == null) {
+      stream.write((byte) -1);
+    } else if (attributesList.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      for (Map<String, String> attributes : attributesList) {
+        ReadWriteIOUtils.write(attributes, stream);
       }
     }
   }

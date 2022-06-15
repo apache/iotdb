@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -63,7 +65,6 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -520,7 +521,8 @@ public class DataRegion {
                 + logicalStorageGroupName
                 + "-"
                 + dataRegionId);
-    timedCompactionScheduleTask.scheduleWithFixedDelay(
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        timedCompactionScheduleTask,
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
         IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
@@ -871,14 +873,6 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
-
-    if (insertRowNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertRowNode.getFailedMeasurements(),
-          insertRowNode.getFailedMessages());
-      checkFailedMeasurements(insertRowNode);
-    }
   }
 
   /**
@@ -1046,7 +1040,7 @@ public class DataRegion {
       int before = loc;
       // before time partition
       long beforeTimePartition =
-          StorageEngine.getTimePartition(insertTabletNode.getTimes()[before]);
+          StorageEngineV2.getTimePartition(insertTabletNode.getTimes()[before]);
       // init map
       long lastFlushTime =
           lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
@@ -1093,17 +1087,13 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
-
-    if (insertTabletNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertTabletNode.getFailedMeasurements(),
-          insertTabletNode.getFailedMessages());
-      checkFailedMeasurements(insertTabletNode);
-    }
   }
 
-  /** @return whether the given time falls in ttl */
+  /**
+   * Check whether the time falls in TTL.
+   *
+   * @return whether the given time falls in ttl
+   */
   private boolean isAlive(long time) {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
@@ -1611,10 +1601,11 @@ public class DataRegion {
         systemDir);
     writeLock("deleteFolder");
     try {
-      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
-      }
+      File dataRegionSystemFolder =
+          SystemFileFactory.INSTANCE.getFile(
+              systemDir + File.separator + logicalStorageGroupName, dataRegionId);
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+          dataRegionSystemFolder);
     } finally {
       writeUnlock();
     }
@@ -1667,10 +1658,11 @@ public class DataRegion {
 
   private void deleteAllSGFolders(List<String> folder) {
     for (String tsfilePath : folder) {
-      File storageGroupFolder =
+      File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
+      if (dataRegionDataFolder.exists()) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+            dataRegionDataFolder);
       }
     }
   }
@@ -3172,7 +3164,11 @@ public class DataRegion {
     return dataRegionId;
   }
 
-  /** @return data region path, like root.sg1/0 */
+  /**
+   * Get the storageGroupPath with dataRegionId.
+   *
+   * @return data region path, like root.sg1/0
+   */
   public String getStorageGroupPath() {
     return logicalStorageGroupName + File.separator + dataRegionId;
   }
@@ -3485,14 +3481,6 @@ public class DataRegion {
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
     }
-  }
-
-  private void checkFailedMeasurements(InsertNode node) throws WriteProcessException {
-    List<Exception> exceptions = node.getFailedExceptions();
-    throw new WriteProcessException(
-        "failed to insert measurements "
-            + node.getFailedMeasurements()
-            + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : ""));
   }
 
   @TestOnly

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -91,12 +93,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 /** Analyze the statement and generate Analysis. */
@@ -287,9 +291,21 @@ public class Analyzer {
 
           if (queryStatement.getWhereCondition() != null) {
             Map<String, Expression> deviceToQueryFilter = new HashMap<>();
-            for (PartialPath devicePath : deviceList) {
-              Expression queryFilter =
-                  analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
+            Iterator<PartialPath> deviceIterator = deviceList.iterator();
+            while (deviceIterator.hasNext()) {
+              PartialPath devicePath = deviceIterator.next();
+              Expression queryFilter = null;
+              try {
+                queryFilter = analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
+              } catch (SemanticException e) {
+                if (e instanceof MeasurementNotExistException) {
+                  logger.warn(e.getMessage());
+                  deviceIterator.remove();
+                  deviceToSourceExpressions.remove(devicePath.getFullPath());
+                  continue;
+                }
+                throw e;
+              }
               deviceToQueryFilter.put(devicePath.getFullPath(), queryFilter);
               updateSource(
                   queryFilter,
@@ -581,12 +597,7 @@ public class Analyzer {
       }
       if (queryStatement.isGroupByTime()) {
         GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
-        Filter groupByFilter =
-            new GroupByFilter(
-                groupByTimeComponent.getInterval(),
-                groupByTimeComponent.getSlidingStep(),
-                groupByTimeComponent.getStartTime(),
-                groupByTimeComponent.getEndTime());
+        Filter groupByFilter = initGroupByFilter(groupByTimeComponent);
         if (globalTimeFilter == null) {
           globalTimeFilter = groupByFilter;
         } else {
@@ -663,9 +674,6 @@ public class Analyzer {
       Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
           groupByLevelController.getGroupedPathMap();
       rawPathToGroupedPathMap.putAll(groupByLevelController.getRawPathToGroupedPathMap());
-      // check whether the datatype of paths which has the same output column name are consistent
-      // if not, throw a SemanticException
-      rawGroupByLevelExpressions.values().forEach(this::checkDataTypeConsistencyInGroupByLevel);
 
       Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
       ColumnPaginationController paginationController =
@@ -842,19 +850,6 @@ public class Analyzer {
         if (typeProvider.getType(expression.getExpressionString()) != checkedDataType) {
           throw new SemanticException(
               "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
-        }
-      }
-    }
-
-    /** Check datatype consistency in GROUP BY LEVEL. */
-    private void checkDataTypeConsistencyInGroupByLevel(Set<Expression> expressions) {
-      List<Expression> expressionList = new ArrayList<>(expressions);
-      TSDataType checkedDataType =
-          typeProvider.getType(expressionList.get(0).getExpressionString());
-      for (Expression expression : expressionList) {
-        if (typeProvider.getType(expression.getExpressionString()) != checkedDataType) {
-          throw new SemanticException(
-              "GROUP BY LEVEL: the data types of the same output column should be the same.");
         }
       }
     }
@@ -1388,6 +1383,25 @@ public class Analyzer {
       analysis.setDataPartitionInfo(dataPartition);
 
       return analysis;
+    }
+  }
+
+  private GroupByFilter initGroupByFilter(GroupByTimeComponent groupByTimeComponent) {
+    if (groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth()) {
+      return new GroupByMonthFilter(
+          groupByTimeComponent.getInterval(),
+          groupByTimeComponent.getSlidingStep(),
+          groupByTimeComponent.getStartTime(),
+          groupByTimeComponent.getEndTime(),
+          groupByTimeComponent.isSlidingStepByMonth(),
+          groupByTimeComponent.isIntervalByMonth(),
+          TimeZone.getTimeZone("+00:00"));
+    } else {
+      return new GroupByFilter(
+          groupByTimeComponent.getInterval(),
+          groupByTimeComponent.getSlidingStep(),
+          groupByTimeComponent.getStartTime(),
+          groupByTimeComponent.getEndTime());
     }
   }
 }

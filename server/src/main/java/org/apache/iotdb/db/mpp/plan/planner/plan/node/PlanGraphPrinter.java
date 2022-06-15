@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -74,7 +76,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
 
@@ -86,7 +88,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "Series: %s%s",
             node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
-    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
 
@@ -102,7 +104,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format(
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
     }
-    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
 
@@ -121,7 +123,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format(
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
     }
-    boxValue.add(String.format("PartitionId: %s", node.getRegionReplicaSet().getRegionId().id));
+    boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
 
@@ -202,7 +204,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitRowBasedSeriesAggregate(AggregationNode node, GraphContext context) {
+  public List<String> visitAggregation(AggregationNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
@@ -251,6 +253,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("FragmentSink-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Destination: %s", node.getDownStreamPlanNodeId()));
     return render(node, boxValue, context);
+  }
+
+  private String printRegion(TRegionReplicaSet regionReplicaSet) {
+    return String.format(
+        "Partition: %s",
+        regionReplicaSet == null || regionReplicaSet == DataPartition.NOT_ASSIGNED
+            ? "Not Assigned"
+            : String.valueOf(regionReplicaSet.getRegionId().id));
   }
 
   private List<String> render(PlanNode node, List<String> nodeBoxString, GraphContext context) {

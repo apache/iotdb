@@ -22,6 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -29,12 +31,20 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
+
+  private final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
 
   private final FragmentInstanceId id;
   private final QueryType type;
@@ -67,7 +77,14 @@ public class FragmentInstance implements IConsensusRequest {
     this.regionReplicaSet = regionReplicaSet;
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
-    this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
+    } else {
+      // Although the logic to set hostDataNode for standalone is the same as
+      // cluster mode currently, it may be made different in later change.
+      // So we keep the conditions here.
+      this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
+    }
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -134,31 +151,30 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
-    boolean hasRegionReplicaSet = ReadWriteIOUtils.readBool(buffer);
-    fragmentInstance.regionReplicaSet =
-        hasRegionReplicaSet ? ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer) : null;
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
     return fragmentInstance;
   }
 
-  @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    id.serialize(buffer);
-    fragment.serialize(buffer);
-    ReadWriteIOUtils.write(timeFilter != null, buffer);
-    if (timeFilter != null) {
-      timeFilter.serialize(buffer);
-    }
-    ReadWriteIOUtils.write(type.ordinal(), buffer);
-    ReadWriteIOUtils.write(regionReplicaSet != null, buffer);
-    if (regionReplicaSet != null) {
-      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
-    }
-    ReadWriteIOUtils.write(hostDataNode != null, buffer);
-    if (hostDataNode != null) {
-      ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, buffer);
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      id.serialize(outputStream);
+      fragment.serialize(outputStream);
+      ReadWriteIOUtils.write(timeFilter != null, outputStream);
+      if (timeFilter != null) {
+        timeFilter.serialize(outputStream);
+      }
+      ReadWriteIOUtils.write(type.ordinal(), outputStream);
+      ReadWriteIOUtils.write(hostDataNode != null, outputStream);
+      if (hostDataNode != null) {
+        ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
+      }
+      return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when serializing this FragmentInstance.", e);
+      throw new SerializationRunTimeException(e);
     }
   }
 

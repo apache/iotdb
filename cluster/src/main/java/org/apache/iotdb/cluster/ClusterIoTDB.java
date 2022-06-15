@@ -60,6 +60,7 @@ import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -197,14 +198,16 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private void initTasks() {
     reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
-    reportThread.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        reportThread,
         this::generateNodeReport,
         ClusterConstant.REPORT_INTERVAL_SEC,
         ClusterConstant.REPORT_INTERVAL_SEC,
         TimeUnit.SECONDS);
     hardLinkCleanerThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("HardLinkCleaner");
-    hardLinkCleanerThread.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        hardLinkCleanerThread,
         new HardLinkCleaner(),
         ClusterConstant.CLEAN_HARDLINK_INTERVAL_SEC,
         ClusterConstant.CLEAN_HARDLINK_INTERVAL_SEC,

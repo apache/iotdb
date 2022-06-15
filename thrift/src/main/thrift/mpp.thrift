@@ -35,16 +35,12 @@ struct TInvalidateCacheReq {
     2: required string fullPath
 }
 
-struct TMigrateSchemaRegionReq{
-    1: required i32 sourceDataNodeID
-    2: required i32 targetDataNodeID
-    3: required i32 schemaRegionID
+struct TMigrateRegionReq{
+    1: required common.TRegionReplicaSet migrateRegion
 }
 
-struct TMigrateDataRegionReq{
-    1: required i32 sourceDataNodeID
-    2: required i32 targetDataNodeID
-    3: required i32 dataRegionID
+struct TMigrateRegionResp{
+    1: required common.TSStatus migrateResult
 }
 
 struct TFragmentInstanceId {
@@ -88,13 +84,26 @@ struct TFragmentInstance {
   1: required binary body
 }
 
+struct TPlanNode {
+  1: required binary body
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
   2: required common.TConsensusGroupId consensusGroupId
-  3: required string queryType
 }
 
 struct TSendFragmentInstanceResp {
+  1: required bool accepted
+  2: optional string message
+}
+
+struct TSendPlanNodeReq {
+  1: required TPlanNode planNode
+  2: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TSendPlanNodeResp {
   1: required bool accepted
   2: optional string message
 }
@@ -154,7 +163,15 @@ service InternalService {
 
   // -----------------------------------For Data Node-----------------------------------------------
 
+  /**
+  * disptcher FragmentInstance to remote node for query request
+  */
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
+
+  /**
+  * disptcher PlanNode to remote node for write request in order to save resource
+  */
+  TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 
   TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req);
 
@@ -204,20 +221,13 @@ service InternalService {
      */
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
-
   /**
-   * Config node will migrate a schema region from one data node to another
-   *
-   * @param previous data node in the schema region, new data node, and schema region id
-   */
-  common.TSStatus migrateSchemaRegion(TMigrateSchemaRegionReq req)
-
-  /**
-   * Config node will migrate a data region from one data node to another
-   *
-   * @param previous data node in the data region, new data node, and dataregion id
-   */
-  common.TSStatus migrateDataRegion(TMigrateDataRegionReq req)
+     * Config node will migrate a region(maybe data region or schema region)
+     * from one data node to another
+     *
+     * @param new replica set of the region
+     */
+  TMigrateRegionResp migrateRegion(TMigrateRegionReq req)
 
   /**
   * ConfigNode will ask DataNode for heartbeat in every few seconds.
@@ -246,6 +256,8 @@ service InternalService {
    * @param string:username, list<string>:roleList
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
+
+  common.TSStatus flush(common.TFlushReq req)
 }
 
 service DataBlockService {
