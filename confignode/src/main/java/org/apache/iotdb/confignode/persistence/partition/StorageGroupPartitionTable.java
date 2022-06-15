@@ -81,6 +81,8 @@ public class StorageGroupPartitionTable {
 
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
+
+    addMetrics();
   }
 
   private void addMetrics() {
