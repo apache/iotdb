@@ -137,6 +137,10 @@ public class Coordinator {
     return queryExecutionMap.get(queryId);
   }
 
+  public void removeQueryExecution(Long queryId) {
+    queryExecutionMap.remove(queryId);
+  }
+
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     return IoTDBThreadPoolFactory.newFixedThreadPool(

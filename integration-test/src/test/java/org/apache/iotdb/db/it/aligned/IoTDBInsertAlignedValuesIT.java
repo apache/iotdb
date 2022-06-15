@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -29,6 +30,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -41,6 +43,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertAlignedValuesIT {
   private boolean autoCreateSchemaEnabled;
@@ -240,19 +243,14 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  // TODO remove Ignore annotation while fixing this bug
-  @Ignore
-  @Test
-  public void testInsertWithWrongType() {
+  @Test(expected = Exception.class)
+  public void testInsertWithWrongType() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude INT32 encoding=PLAIN compressor=SNAPPY, longitude INT32 encoding=PLAIN compressor=SNAPPY) ");
       statement.execute(
           "insert into root.lz.dev.GPS(time,latitude,longitude) aligned values(1,1.3,6.7)");
-      fail();
-    } catch (SQLException e) {
-      assertEquals(313, e.getErrorCode());
     }
   }
 

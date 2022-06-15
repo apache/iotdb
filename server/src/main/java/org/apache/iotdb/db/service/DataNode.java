@@ -51,6 +51,7 @@ import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
@@ -276,7 +277,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(MetricsService.getInstance());
 
     logger.info("recover the schema...");
-    initConfigManager();
+    initSchemaEngine();
     registerManager.register(new JMXService());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
@@ -399,9 +400,9 @@ public class DataNode implements DataNodeMBean {
                 + File.separator));
   }
 
-  private void initConfigManager() {
+  private void initSchemaEngine() {
     long time = System.currentTimeMillis();
-    IoTDB.configManager.init();
+    SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(

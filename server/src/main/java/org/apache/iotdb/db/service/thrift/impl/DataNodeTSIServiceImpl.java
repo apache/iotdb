@@ -626,6 +626,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         resp.setIsAlign(true);
 
         QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+        if (!hasResultSet) {
+          COORDINATOR.removeQueryExecution(req.queryId);
+        }
         return resp;
       }
     } catch (Exception e) {
@@ -1304,6 +1307,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.info("stop and clean up");
         queryExecution.stopAndCleanup();
+        COORDINATOR.removeQueryExecution(queryId);
       }
     }
   }
