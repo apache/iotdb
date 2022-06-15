@@ -160,7 +160,7 @@ public class PathPatternTreeTest {
             .map(PartialPath::getFullPath)
             .sorted()
             .collect(Collectors.toList()),
-        patternTree.findAllDevicePaths().stream().sorted().collect(Collectors.toList()));
+        patternTree.getAllDevicePatterns().stream().sorted().collect(Collectors.toList()));
 
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
@@ -188,6 +188,6 @@ public class PathPatternTreeTest {
 
     Assert.assertEquals(
         Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2")),
-        patternTree.splitToPathList());
+        patternTree.getAllPathPatterns());
   }
 }

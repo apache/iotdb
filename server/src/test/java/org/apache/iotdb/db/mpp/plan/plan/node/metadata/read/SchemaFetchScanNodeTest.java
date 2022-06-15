@@ -45,6 +45,6 @@ public class SchemaFetchScanNodeTest {
     SchemaFetchScanNode recoveredNode = (SchemaFetchScanNode) PlanNodeType.deserialize(byteBuffer);
     Assert.assertEquals("root.sg", recoveredNode.getStorageGroup().getFullPath());
     Assert.assertEquals(
-        "root.sg.**.*", recoveredNode.getPatternTree().splitToPathList().get(0).getFullPath());
+        "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
   }
 }

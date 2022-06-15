@@ -720,12 +720,15 @@ public class LogicalPlanBuilder {
     for (String storageGroup : storageGroupList) {
       try {
         storageGroupPath = new PartialPath(storageGroup);
+        PathPatternTree overlappedPatternTree = new PathPatternTree();
+        for (PartialPath pathPattern :
+            patternTree.getOverlappedPathPatterns(
+                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+          overlappedPatternTree.appendPathPattern(pathPattern);
+        }
         this.root.addChild(
             new SchemaFetchScanNode(
-                context.getQueryId().genPlanNodeId(),
-                storageGroupPath,
-                patternTree.findOverlappedPattern(
-                    storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))));
+                context.getQueryId().genPlanNodeId(), storageGroupPath, overlappedPatternTree));
       } catch (IllegalPathException e) {
         // definitely won't happen
         throw new RuntimeException(e);

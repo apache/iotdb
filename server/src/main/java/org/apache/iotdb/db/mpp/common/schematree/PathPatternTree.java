@@ -40,11 +40,11 @@ public class PathPatternTree {
 
   private PathPatternNode root;
 
-  @Deprecated private List<PartialPath> pathList;
+  private List<PartialPath> pathPatternList;
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);
-    this.pathList = new ArrayList<>();
+    this.pathPatternList = new ArrayList<>();
   }
 
   public PathPatternNode getRoot() {
@@ -56,18 +56,15 @@ public class PathPatternTree {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Operations for time series paths
+  // Operations for constructing tree
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /** @param fullPath */
+  /** Append a fullPath (without wildcards) as a branch on the tree. */
   public void appendFullPath(PartialPath fullPath) {
     appendBranchWithoutPrune(root, fullPath.getNodes(), 0);
   }
 
-  /**
-   * @param devicePath
-   * @param measurement
-   */
+  /** Append a fullPath consisting of device and measurement as a branch on the tree. */
   public void appendFullPath(PartialPath devicePath, String measurement) {
     int deviceNodeLength = devicePath.getNodeLength();
     String[] pathNodes = new String[deviceNodeLength + 1];
@@ -77,31 +74,30 @@ public class PathPatternTree {
     appendBranchWithoutPrune(root, pathNodes, 0);
   }
 
-  /** @param pathPattern */
+  /** Add a pathPattern (may contain wildcards) to pathPatternList. */
   public void appendPathPattern(PartialPath pathPattern) {
     boolean isExist = false;
-    for (PartialPath path : pathList) {
+    for (PartialPath path : pathPatternList) {
       if (path.matchFullPath(pathPattern)) {
-        // path already exists in pathList
+        // path already exists in pathPatternList
         isExist = true;
         break;
       }
     }
     if (!isExist) {
-      // remove duplicate path in pathList
-      pathList.removeAll(
-          pathList.stream().filter(pathPattern::matchFullPath).collect(Collectors.toList()));
-      pathList.add(pathPattern);
+      // remove duplicate path in pathPatternList
+      pathPatternList.removeAll(
+          pathPatternList.stream().filter(pathPattern::matchFullPath).collect(Collectors.toList()));
+      pathPatternList.add(pathPattern);
     }
   }
 
-  /** */
-  @Deprecated
+  /** Construct tree according to the pathPatternList. */
   public void constructTree() {
-    for (PartialPath path : pathList) {
+    for (PartialPath path : pathPatternList) {
       appendBranchWithoutPrune(root, path.getNodes(), 0);
     }
-    pathList.clear();
+    pathPatternList.clear();
   }
 
   private void appendBranchWithoutPrune(PathPatternNode curNode, String[] pathNodes, int pos) {
@@ -127,63 +123,80 @@ public class PathPatternTree {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Operations for time series paths
+  // Operations for querying tree
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public boolean isEmpty() {
     return (root.getChildren() == null || root.getChildren().isEmpty())
-        && (pathList == null || pathList.isEmpty());
+        && (pathPatternList == null || pathPatternList.isEmpty());
   }
 
-  /** @return */
-  public List<String> findAllDevicePaths() {
+  public List<String> getAllDevicePatterns() {
     List<String> nodes = new ArrayList<>();
     List<String> pathPatternList = new ArrayList<>();
-    findAllDevicePaths(root, nodes, pathPatternList);
+    searchDevicePattern(root, nodes, pathPatternList);
     return pathPatternList;
   }
 
-  /** @return */
-  public List<PartialPath> splitToPathList() {
-    List<PartialPath> result = new ArrayList<>();
-    Deque<String> ancestors = new ArrayDeque<>();
-    searchFullPath(root, ancestors, result);
-    return result;
-  }
-
-  /** @return */
-  public PathPatternTree findOverlappedPattern(PartialPath pattern) {
-    PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath pathPattern : findOverlappedPaths(pattern)) {
-      patternTree.appendPathPattern(pathPattern);
-    }
-    return patternTree;
-  }
-
-  private void findAllDevicePaths(
+  private void searchDevicePattern(
       PathPatternNode curNode, List<String> nodes, List<String> pathPatternList) {
     nodes.add(curNode.getName());
     if (curNode.isLeaf()) {
       if (!curNode.getName().equals("**")) {
-        pathPatternList.add(parseNodesToString(nodes.subList(0, nodes.size() - 1)));
+        pathPatternList.add(convertNodesToString(nodes.subList(0, nodes.size() - 1)));
       } else {
-        pathPatternList.add(parseNodesToString(nodes));
+        pathPatternList.add(convertNodesToString(nodes));
       }
       nodes.remove(nodes.size() - 1);
       return;
     }
     if (curNode.isWildcard()) {
-      pathPatternList.add(parseNodesToString(nodes));
+      pathPatternList.add(convertNodesToString(nodes));
       nodes.remove(nodes.size() - 1);
       return;
     }
     for (PathPatternNode childNode : curNode.getChildren().values()) {
-      findAllDevicePaths(childNode, nodes, pathPatternList);
+      searchDevicePattern(childNode, nodes, pathPatternList);
     }
     nodes.remove(nodes.size() - 1);
   }
 
-  private String parseNodesToString(List<String> nodes) {
+  public List<PartialPath> getAllPathPatterns() {
+    List<PartialPath> result = new ArrayList<>();
+    Deque<String> ancestors = new ArrayDeque<>();
+    searchPathPattern(root, ancestors, result);
+    return result;
+  }
+
+  private void searchPathPattern(
+      PathPatternNode node, Deque<String> ancestors, List<PartialPath> fullPaths) {
+    if (node.isLeaf()) {
+      fullPaths.add(convertNodesToPartialPath(node, ancestors));
+      return;
+    }
+
+    ancestors.push(node.getName());
+    for (PathPatternNode child : node.getChildren().values()) {
+      searchPathPattern(child, ancestors, fullPaths);
+    }
+    ancestors.pop();
+  }
+
+  public List<PartialPath> getOverlappedPathPatterns(PartialPath pattern) {
+    if (pathPatternList.isEmpty()) {
+      pathPatternList = getAllPathPatterns();
+    }
+
+    List<PartialPath> results = new ArrayList<>();
+    for (PartialPath path : pathPatternList) {
+      if (pattern.overlapWith(path)) {
+        results.add(path);
+      }
+    }
+    return results;
+  }
+
+  private String convertNodesToString(List<String> nodes) {
     StringBuilder fullPathBuilder = new StringBuilder(nodes.get(0));
     for (int i = 1; i < nodes.size(); i++) {
       fullPathBuilder.append(TsFileConstant.PATH_SEPARATOR).append(nodes.get(i));
@@ -191,21 +204,7 @@ public class PathPatternTree {
     return fullPathBuilder.toString();
   }
 
-  private void searchFullPath(
-      PathPatternNode node, Deque<String> ancestors, List<PartialPath> fullPaths) {
-    if (node.isLeaf()) {
-      fullPaths.add(constructFullPath(node, ancestors));
-      return;
-    }
-
-    ancestors.push(node.getName());
-    for (PathPatternNode child : node.getChildren().values()) {
-      searchFullPath(child, ancestors, fullPaths);
-    }
-    ancestors.pop();
-  }
-
-  private PartialPath constructFullPath(PathPatternNode node, Deque<String> ancestors) {
+  private PartialPath convertNodesToPartialPath(PathPatternNode node, Deque<String> ancestors) {
     Iterator<String> iterator = ancestors.descendingIterator();
     List<String> nodeList = new ArrayList<>(ancestors.size() + 1);
     while (iterator.hasNext()) {
@@ -213,20 +212,6 @@ public class PathPatternTree {
     }
     nodeList.add(node.getName());
     return new PartialPath(nodeList.toArray(new String[0]));
-  }
-
-  private List<PartialPath> findOverlappedPaths(PartialPath pattern) {
-    if (pathList.isEmpty()) {
-      pathList = splitToPathList();
-    }
-
-    List<PartialPath> results = new ArrayList<>();
-    for (PartialPath path : pathList) {
-      if (pattern.overlapWith(path)) {
-        results.add(path);
-      }
-    }
-    return results;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

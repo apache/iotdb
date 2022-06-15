@@ -64,7 +64,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
     SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     try {
       for (PartialPath path : partialPathList) {
         List<PartialPath> storageGroups = localConfigNode.getBelongedStorageGroups(path);
@@ -94,7 +94,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
     SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     try {
       for (PartialPath path : partialPathList) {
         String storageGroup = localConfigNode.getBelongedStorageGroup(path).getFullPath();
