@@ -128,6 +128,21 @@ public abstract class SchemaPage implements ISchemaPage {
     this.pageBuffer.clear();
   }
 
+  @Override
+  public ISegment<Integer, Integer> getAsInternalPage() {
+    return null;
+  }
+
+  @Override
+  public ISegment<String, String> getAsAliasIndexPage() {
+    return null;
+  }
+
+  @Override
+  public ISegmentedPage getAsSegmentedPage() {
+    return null;
+  }
+
   // for better performance when split
   @Override
   public ByteBuffer getEntireSegmentSlice() throws MetadataException {

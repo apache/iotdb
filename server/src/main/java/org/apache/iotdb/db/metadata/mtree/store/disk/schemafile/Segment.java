@@ -36,7 +36,6 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPag
  *
  * @param <R> type to construct from bytebuffer
  */
-@SuppressWarnings("Duplicates")
 public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
 
   // members load from buffer

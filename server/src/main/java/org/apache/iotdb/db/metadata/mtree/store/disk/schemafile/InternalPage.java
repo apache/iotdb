@@ -412,11 +412,6 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   }
 
   @Override
-  public ISegmentedPage getAsSegmentedPage() {
-    return null;
-  }
-
-  @Override
   public ByteBuffer resetBuffer(int ptr) {
     memberNum = 1;
     spareSize =

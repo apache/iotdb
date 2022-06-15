@@ -254,11 +254,6 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
-  public ISegment<Integer, Integer> getAsInternalPage() {
-    return null;
-  }
-
-  @Override
   public ISegmentedPage getAsSegmentedPage() {
     return this;
   }

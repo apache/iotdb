@@ -103,6 +103,8 @@ public interface ISchemaPage {
 
   ISegment<Integer, Integer> getAsInternalPage();
 
+  ISegment<String, String> getAsAliasIndexPage();
+
   ISegmentedPage getAsSegmentedPage();
 
   ByteBuffer getEntireSegmentSlice() throws MetadataException;
