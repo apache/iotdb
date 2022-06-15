@@ -19,9 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 
@@ -53,15 +51,9 @@ public interface IPageManager {
 
   void flushDirtyPages() throws IOException;
 
+  int getLastPageIndex();
+
   @Deprecated
   StringBuilder inspect(StringBuilder builder)
       throws IOException, MetadataException; // TODO: shift to use stream
-
-  int getLastPageIndex();
-
-  ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException;
-
-  @TestOnly
-  long getTargetSegmentAddressOnTest(long curSegAddr, String recKey)
-      throws IOException, MetadataException;
 }

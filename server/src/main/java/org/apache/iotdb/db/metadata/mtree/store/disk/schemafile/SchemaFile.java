@@ -33,6 +33,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -383,13 +384,13 @@ public class SchemaFile implements ISchemaFile {
 
   @TestOnly
   public ISchemaPage getPageOnTest(int index) throws IOException, MetadataException {
-    return pageManager.getPageInstance(index);
+    return ((PageManager) pageManager).getPageInstanceOnTest(index);
   }
 
   @TestOnly
   public long getTargetSegmentOnTest(long srcSegAddr, String key)
       throws IOException, MetadataException {
-    return pageManager.getTargetSegmentAddressOnTest(srcSegAddr, key);
+    return ((PageManager) pageManager).getTargetSegmentAddressOnTest(srcSegAddr, key);
   }
 
   // endregion

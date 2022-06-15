@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
@@ -54,7 +55,6 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
  *
  * <p>Hierarchy of index may be decoupled from this framework in further improvement.
  */
-@SuppressWarnings("Duplicates")
 public abstract class PageManager implements IPageManager {
 
   public static final short[] segSizeMetric = {300, 150, 75, 40, 20};
@@ -230,6 +230,32 @@ public abstract class PageManager implements IPageManager {
   }
 
   @Override
+  public void flushDirtyPages() throws IOException {
+    for (ISchemaPage page : dirtyPages.values()) {
+      page.flushPageToChannel(channel);
+    }
+    dirtyPages.clear();
+  }
+
+  @Override
+  public void clear() throws IOException, MetadataException {
+    dirtyPages.clear();
+    pageInstCache.clear();
+    lastPageIndex.set(0);
+  }
+
+  @Override
+  public StringBuilder inspect(StringBuilder builder) throws IOException, MetadataException {
+    for (int i = 0; i <= lastPageIndex.get(); i++) {
+      builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
+    }
+    return builder;
+  }
+
+  // endregion
+
+  // region Page Access Management
+
   public ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException {
     if (pageIdx > lastPageIndex.get()) {
       throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
@@ -259,33 +285,6 @@ public abstract class PageManager implements IPageManager {
       pageLocks.writeUnlock(pageIdx);
     }
   }
-
-  @Override
-  public void flushDirtyPages() throws IOException {
-    for (ISchemaPage page : dirtyPages.values()) {
-      page.flushPageToChannel(channel);
-    }
-    dirtyPages.clear();
-  }
-
-  @Override
-  public void clear() throws IOException, MetadataException {
-    dirtyPages.clear();
-    pageInstCache.clear();
-    lastPageIndex.set(0);
-  }
-
-  @Override
-  public StringBuilder inspect(StringBuilder builder) throws IOException, MetadataException {
-    for (int i = 0; i <= lastPageIndex.get(); i++) {
-      builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
-    }
-    return builder;
-  }
-
-  // endregion
-
-  // region Page Access Management
 
   @Deprecated
   // TODO: improve to remove
@@ -440,10 +439,15 @@ public abstract class PageManager implements IPageManager {
 
   // region TestOnly Methods
 
-  @Override
+  @TestOnly
   public long getTargetSegmentAddressOnTest(long curSegAddr, String recKey)
       throws IOException, MetadataException {
     return getTargetSegmentAddress(curSegAddr, recKey);
+  }
+
+  @TestOnly
+  public ISchemaPage getPageInstanceOnTest(int pageIdx) throws IOException, MetadataException {
+    return getPageInstance(pageIdx);
   }
 
   // endregion
@@ -456,7 +460,7 @@ public abstract class PageManager implements IPageManager {
     private static final int NUM_OF_LOCKS = 1039;
 
     /** locks array */
-    private ReentrantReadWriteLock[] locks;
+    private final ReentrantReadWriteLock[] locks;
 
     protected PageLocks() {
       locks = new ReentrantReadWriteLock[NUM_OF_LOCKS];

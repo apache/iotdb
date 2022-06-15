@@ -59,29 +59,7 @@ public class BTreePageManager extends PageManager {
     curPage
         .getAsSegmentedPage()
         .setNextSegAddress((short) 0, getGlobalIndex(newPage.getPageIndex(), (short) 0));
-    if (treeTrace[0] < 1) {
-      // first leaf to split and transplant, so that curSegAddr stay unchanged
-      ISchemaPage trsPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
-      trsPage
-          .getAsSegmentedPage()
-          .transplantSegment(curPage.getAsSegmentedPage(), (short) 0, SchemaPage.SEG_MAX_SIZ);
-      ISchemaPage repPage =
-          ISchemaPage.initInternalPage(
-              ByteBuffer.allocate(SchemaPage.PAGE_LENGTH),
-              curPage.getPageIndex(),
-              trsPage.getPageIndex());
-
-      repPage.getAsInternalPage().insertRecord(sk, newPage.getPageIndex());
-      repPage
-          .getAsInternalPage()
-          .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
-      replacePageInCache(repPage);
-
-      dirtyPages.put(trsPage.getPageIndex(), trsPage);
-    } else {
-      insertIndexEntry(treeTrace[0], sk, newPage.getPageIndex());
-      dirtyPages.put(curPage.getPageIndex(), curPage);
-    }
+    insertEntryUpward(curPage, newPage, sk);
   }
 
   /**
@@ -147,6 +125,11 @@ public class BTreePageManager extends PageManager {
     }
 
     // insert index entry upward
+    insertEntryUpward(curPage, splPage, sk);
+  }
+
+  private void insertEntryUpward(ISchemaPage curPage, ISchemaPage splPage, String sk)
+      throws MetadataException, IOException {
     if (treeTrace[0] < 1) {
       ISchemaPage trsPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
       trsPage
