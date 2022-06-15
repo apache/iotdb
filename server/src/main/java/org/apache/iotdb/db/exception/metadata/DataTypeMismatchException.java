@@ -23,10 +23,22 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class DataTypeMismatchException extends MetadataException {
   public DataTypeMismatchException(
-      String deviceName, String measurementName, TSDataType insertType, TSDataType realType) {
+      String deviceName,
+      String measurementName,
+      TSDataType insertType,
+      TSDataType realType,
+      long time,
+      Object value) {
     super(
         String.format(
-            "DataType mismatch, Insert timeseries %s.%s type %s, metadata tree type %s",
-            deviceName, measurementName, insertType, realType));
+            "data type of %s.%s is not consistent, registered type %s, inserting type %s, timestamp %s, value %s",
+            deviceName,
+            measurementName,
+            realType,
+            insertType,
+            time,
+            value.toString().length() < 100
+                ? value.toString()
+                : value.toString().substring(0, 100)));
   }
 }
