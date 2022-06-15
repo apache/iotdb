@@ -31,6 +31,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
@@ -48,12 +49,7 @@ public class UDTFKSigma implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE))
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
             "Window size should be larger than 0.",

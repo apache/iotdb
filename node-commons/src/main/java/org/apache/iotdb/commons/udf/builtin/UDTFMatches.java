@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -29,6 +27,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.regex.Pattern;
 
@@ -41,16 +40,13 @@ public class UDTFMatches implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateRequiredAttribute("regex")
-        .validateInputSeriesDataType(
-            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
+        .validateInputSeriesDataType(0, Type.TEXT);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     pattern = Pattern.compile(parameters.getString("regex"));
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
   }
 
   @Override

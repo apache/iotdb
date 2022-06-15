@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.type.Type;
 
 public abstract class UDTFEqualSizeBucketSample implements UDTF {
 
@@ -37,12 +38,7 @@ public abstract class UDTFEqualSizeBucketSample implements UDTF {
     proportion = validator.getParameters().getDoubleOrDefault("proportion", 0.1);
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE))
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             proportion -> (double) proportion > 0 && (double) proportion <= 1,
             "Illegal sample proportion. proportion > 0 and proportion <= 1",

@@ -20,10 +20,10 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -59,10 +59,10 @@ public class UDTFNonNegativeValueDifference extends UDTFValueDifference {
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
             UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
   }
 }

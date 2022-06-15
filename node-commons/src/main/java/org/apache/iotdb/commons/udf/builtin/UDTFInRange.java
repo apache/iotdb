@@ -31,6 +31,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -43,12 +44,7 @@ public class UDTFInRange implements UDTF {
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE))
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validateRequiredAttribute("upper")
         .validateRequiredAttribute("lower")
         .validate(
@@ -64,9 +60,7 @@ public class UDTFInRange implements UDTF {
     upper = parameters.getDouble("upper");
     lower = parameters.getDouble("lower");
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
   }
 
   @Override
@@ -91,10 +85,10 @@ public class UDTFInRange implements UDTF {
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
             UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
   }
 }

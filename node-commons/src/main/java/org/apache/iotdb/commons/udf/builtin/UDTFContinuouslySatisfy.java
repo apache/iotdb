@@ -32,6 +32,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -49,12 +50,7 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN))
+            0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.BOOLEAN)
         .validate(
             args -> (Long) args[1] >= (Long) args[0],
             "max can not be smaller than min.",
@@ -80,9 +76,7 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     min = parameters.getLongOrDefault("min", getDefaultMin());
     max = parameters.getLongOrDefault("max", getDefaultMax());
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64));
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT64);
   }
 
   @Override
@@ -110,10 +104,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
             UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
     if (needAddNewRecord) {
       collector.putLong(interval.left, interval.right);
@@ -231,10 +225,10 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
             UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
   }
 

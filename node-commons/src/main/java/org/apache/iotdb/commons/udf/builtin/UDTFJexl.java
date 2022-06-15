@@ -32,6 +32,7 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFOutputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlEngine;
@@ -53,13 +54,7 @@ public class UDTFJexl implements UDTF {
     inputSeriesNumber = validator.getParameters().getChildExpressionsSize();
     for (int i = 0; i < inputSeriesNumber; i++) {
       validator.validateInputSeriesDataType(
-          i,
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT),
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
+          i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.TEXT, Type.BOOLEAN);
     }
     validator.validateRequiredAttribute("expr");
   }
@@ -102,12 +97,12 @@ public class UDTFJexl implements UDTF {
           throw new UDFInputSeriesDataTypeNotValidException(
               0,
               UDFDataTypeTransformer.transformToUDFDataType(inputDataType[0]),
-              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT),
-              UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
+              Type.INT32,
+              Type.INT64,
+              Type.FLOAT,
+              Type.DOUBLE,
+              Type.TEXT,
+              Type.BOOLEAN);
       }
     } else {
       evaluator = new EvaluatorMulInput();
@@ -340,12 +335,12 @@ public class UDTFJexl implements UDTF {
             throw new UDFInputSeriesDataTypeNotValidException(
                 i,
                 UDFDataTypeTransformer.transformToUDFDataType(inputDataType[i]),
-                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT),
-                UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
+                Type.INT32,
+                Type.INT64,
+                Type.FLOAT,
+                Type.DOUBLE,
+                Type.TEXT,
+                Type.BOOLEAN);
         }
       }
     }

@@ -28,6 +28,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.eclipse.collections.api.iterator.MutableBooleanIterator;
 import org.eclipse.collections.api.iterator.MutableDoubleIterator;
@@ -58,13 +59,7 @@ public class UDTFDistinct implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.BOOLEAN));
+            0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.TEXT, Type.BOOLEAN);
   }
 
   @Override

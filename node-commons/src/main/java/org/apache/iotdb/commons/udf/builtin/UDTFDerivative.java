@@ -21,13 +21,13 @@ package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -39,9 +39,7 @@ public abstract class UDTFDerivative extends UDTFValueTrend {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
   }
 
   @Override

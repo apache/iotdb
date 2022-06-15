@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.library.string;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -28,6 +26,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 /** This function does limited times of replacement of substring from an input series. */
 public class UDTFStrReplace implements UDTF {
@@ -42,8 +41,7 @@ public class UDTFStrReplace implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT))
+        .validateInputSeriesDataType(0, Type.TEXT)
         .validate(
             target -> ((String) target).length() > 0,
             "target should not be empty",
@@ -67,9 +65,7 @@ public class UDTFStrReplace implements UDTF {
     limit = udfParameters.getIntOrDefault("limit", -1);
     offset = udfParameters.getIntOrDefault("offset", 0);
     reverse = udfParameters.getBooleanOrDefault("reverse", false);
-    udtfConfigurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
+    udtfConfigurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
   }
 
   @Override

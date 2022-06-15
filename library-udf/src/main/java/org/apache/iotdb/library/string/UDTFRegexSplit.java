@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.library.string;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -28,6 +26,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 /** This function splits string from an input series according to given regex. */
 public class UDTFRegexSplit implements UDTF {
@@ -42,11 +41,9 @@ public class UDTFRegexSplit implements UDTF {
     index = udfParameters.getIntOrDefault("index", -1);
     udtfConfigurations.setAccessStrategy(new RowByRowAccessStrategy());
     if (index == -1) {
-      udtfConfigurations.setOutputDataType(
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
+      udtfConfigurations.setOutputDataType(Type.INT32);
     } else {
-      udtfConfigurations.setOutputDataType(
-          UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
+      udtfConfigurations.setOutputDataType(Type.TEXT);
     }
   }
 
@@ -66,8 +63,7 @@ public class UDTFRegexSplit implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT))
+        .validateInputSeriesDataType(0, Type.TEXT)
         .validate(
             regex -> ((String) regex).length() > 0,
             "regexp has to be a valid regular expression.",

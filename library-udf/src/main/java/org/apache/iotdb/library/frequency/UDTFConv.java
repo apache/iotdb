@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.library.frequency;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -29,6 +27,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.ArrayList;
 
@@ -42,26 +41,14 @@ public class UDTFConv implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(2)
-        .validateInputSeriesDataType(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64))
-        .validateInputSeriesDataType(
-            1,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64));
+        .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
+        .validateInputSeriesDataType(1, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     list1.clear();
     list2.clear();
   }

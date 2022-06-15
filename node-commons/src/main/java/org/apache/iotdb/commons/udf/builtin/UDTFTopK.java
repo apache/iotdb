@@ -20,9 +20,9 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;
@@ -52,11 +52,11 @@ public class UDTFTopK extends UDTFSelectK {
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
             UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.TEXT));
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE,
+            Type.TEXT);
     }
   }
 

@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -29,6 +27,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 /**
  * calculate the integral or the area under the curve of input series $unit$ is the time scale for
@@ -66,9 +65,7 @@ public class UDAFIntegral implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE));
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     switch (parameters.getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S)) {
       case TIME_UNIT_MS:
         unitTime = 1L;

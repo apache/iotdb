@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -31,6 +29,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.math3.util.Pair;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
@@ -42,12 +41,7 @@ public class UDAFPeriod implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.FLOAT),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.DOUBLE),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32),
-            UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT64));
+        .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64);
   }
 
   @Override
@@ -55,7 +49,7 @@ public class UDAFPeriod implements UDTF {
       throws Exception {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(TSDataType.INT32));
+        .setOutputDataType(Type.INT32);
   }
 
   @Override
