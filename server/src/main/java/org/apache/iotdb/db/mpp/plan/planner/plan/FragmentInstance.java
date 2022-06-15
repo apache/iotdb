@@ -133,7 +133,10 @@ public class FragmentInstance implements IConsensusRequest {
     ret.append(String.format("FragmentInstance-%s:", getId()));
     ret.append(
         String.format(
-            "Host: %s ", getHostDataNode() == null ? "Not set" : getHostDataNode().dataNodeId));
+            "Host: %s ",
+            getHostDataNode() == null
+                ? "Not set"
+                : getHostDataNode().dataNodeId + " - " + getHostDataNode().internalEndPoint));
     ret.append(
         String.format(
             "Region: %s ",
