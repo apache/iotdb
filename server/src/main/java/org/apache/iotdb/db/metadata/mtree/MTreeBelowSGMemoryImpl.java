@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
@@ -174,7 +175,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       }
 
       if (device.hasChild(leafName)) {
-        throw new PathAlreadyExistException(path.getFullPath());
+        IMNode node = device.getChild(leafName);
+        if (node.isMeasurement()) {
+          throw new MeasurementAlreadyExistException(
+              node.getAsMeasurementMNode().getMeasurementPath());
+        } else {
+          throw new PathAlreadyExistException(path.getFullPath());
+        }
       }
 
       if (upperTemplate != null
@@ -244,7 +251,14 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     synchronized (this) {
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {
-          throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurements.get(i));
+          IMNode node = device.getChild(measurements.get(i));
+          if (node.isMeasurement()) {
+            throw new MeasurementAlreadyExistException(
+                node.getAsMeasurementMNode().getMeasurementPath());
+          } else {
+            throw new PathAlreadyExistException(
+                devicePath.getFullPath() + "." + measurements.get(i));
+          }
         }
         if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
           throw new AliasAlreadyExistException(

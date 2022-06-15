@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -50,9 +52,12 @@ import io.airlift.concurrent.SetThreadName;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
@@ -243,34 +248,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       return new SchemaTree();
     }
 
-    internalCreateTimeseries(
+    return internalCreateTimeseries(
         devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
-
-    SchemaTree reFetchSchemaTree =
-        fetchSchema(new PathPatternTree(devicePath, missingMeasurements));
-
-    Pair<List<String>, List<TSDataType>> recheckResult =
-        checkMissingMeasurements(
-            reFetchSchemaTree,
-            devicePath,
-            missingMeasurements.toArray(new String[0]),
-            dataTypesOfMissingMeasurement.toArray(new TSDataType[0]));
-
-    missingMeasurements = recheckResult.left;
-    if (!missingMeasurements.isEmpty()) {
-      StringBuilder stringBuilder = new StringBuilder();
-      stringBuilder.append("(");
-      for (String missingMeasurement : missingMeasurements) {
-        stringBuilder.append(missingMeasurement).append(" ");
-      }
-      stringBuilder.append(")");
-      throw new RuntimeException(
-          String.format(
-              "Failed to auto create schema, devicePath: %s, measurements: %s",
-              devicePath.getFullPath(), stringBuilder));
-    }
-
-    return reFetchSchemaTree;
   }
 
   private Pair<List<String>, List<TSDataType>> checkMissingMeasurements(
@@ -297,7 +276,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     return new Pair<>(missingMeasurements, dataTypesOfMissingMeasurement);
   }
 
-  private void internalCreateTimeseries(
+  private SchemaTree internalCreateTimeseries(
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> tsDataTypes,
@@ -310,12 +289,36 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
 
-    executeInternalCreateTimeseriesStatement(
-        new InternalCreateTimeSeriesStatement(
-            devicePath, measurements, tsDataTypes, encodings, compressors, isAligned));
+    List<MeasurementPath> measurementPathList =
+        executeInternalCreateTimeseriesStatement(
+            new InternalCreateTimeSeriesStatement(
+                devicePath, measurements, tsDataTypes, encodings, compressors, isAligned));
+
+    Set<Integer> alreadyExistingMeasurementIndexSet =
+        measurementPathList.stream()
+            .map(o -> measurements.indexOf(o.getMeasurement()))
+            .collect(Collectors.toSet());
+
+    SchemaTree schemaTree = new SchemaTree();
+    schemaTree.appendMeasurementPaths(measurementPathList);
+
+    for (int i = 0, size = measurements.size(); i < size; i++) {
+      if (alreadyExistingMeasurementIndexSet.contains(i)) {
+        continue;
+      }
+
+      schemaTree.appendSingleMeasurement(
+          devicePath.concatNode(measurements.get(i)),
+          new MeasurementSchema(
+              measurements.get(i), tsDataTypes.get(i), encodings.get(i), compressors.get(i)),
+          null,
+          isAligned);
+    }
+
+    return schemaTree;
   }
 
-  private void executeInternalCreateTimeseriesStatement(
+  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       InternalCreateTimeSeriesStatement statement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
@@ -323,15 +326,31 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // TODO: throw exception
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return;
+      return Collections.emptyList();
     }
 
+    List<String> failedCreationList = new ArrayList<>();
+    List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
     for (TSStatus subStatus : executionResult.status.subStatus) {
-      if (subStatus.code != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        throw new RuntimeException(
-            "cannot auto create schema, status is: " + executionResult.status);
+      if (subStatus.code == TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode()) {
+        alreadyExistingMeasurements.add(
+            (MeasurementPath)
+                PathDeserializeUtil.deserialize(
+                    ByteBuffer.wrap(subStatus.getMessage().getBytes())));
+      } else {
+        failedCreationList.add(subStatus.message);
       }
     }
+
+    if (!failedCreationList.isEmpty()) {
+      StringBuilder stringBuilder = new StringBuilder();
+      for (String message : failedCreationList) {
+        stringBuilder.append(message).append("\n");
+      }
+      throw new RuntimeException(String.format("Failed to auto create schema\n %s", stringBuilder));
+    }
+
+    return alreadyExistingMeasurements;
   }
 
   @Override
