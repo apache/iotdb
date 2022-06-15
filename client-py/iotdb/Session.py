@@ -18,12 +18,10 @@
 import logging
 import struct
 import time
-
-from iotdb.utils.SessionDataSet import SessionDataSet
-
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
+from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
 from .thrift.rpc.TSIService import (
@@ -56,7 +54,6 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
-
 # for debug
 # from IoTDBConstants import *
 # from SessionDataSet import SessionDataSet
@@ -1036,7 +1033,7 @@ class Session(object):
         if status.code == Session.SUCCESS_CODE:
             return 0
 
-        logger.error("error status is", status)
+        logger.error("error status is %s", status)
         return -1
 
     def execute_raw_data_query(
