@@ -222,21 +222,31 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  @Test(expected = Exception.class)
+  @Test
   public void testInsertWithWrongMeasurementNum1() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100)");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "the measurementList's size 2 is not consistent with the valueList's size 1",
+          e.getMessage());
     }
   }
 
-  @Test(expected = Exception.class)
-  public void testInsertWithWrongMeasurementNum2() throws SQLException {
+  @Test
+  public void testInsertWithWrongMeasurementNum2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100, 300, 400)");
+      fail();
+    } catch (SQLException e) {
+      assertEquals(
+          "the measurementList's size 2 is not consistent with the valueList's size 3",
+          e.getMessage());
     }
   }
 
@@ -273,7 +283,7 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, s3, status, status) aligned values(100, true, 20.1, 20.2)");
       fail();
     } catch (SQLException e) {
-      assertEquals("411: Insertion contains duplicated measurement: status", e.getMessage());
+      assertEquals("Insertion contains duplicated measurement: status", e.getMessage());
     }
   }
 }
