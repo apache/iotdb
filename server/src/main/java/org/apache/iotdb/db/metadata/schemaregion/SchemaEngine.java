@@ -20,14 +20,19 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
-import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
+import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
@@ -45,19 +50,22 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
-  private final IStorageGroupSchemaManager localStorageGroupSchemaManager =
-      StorageGroupSchemaManager.getInstance();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private MTreeAboveSG sharedPrefixTree;
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
+  private ScheduledExecutorService timedForceMLogThread;
 
   public void write(SchemaRegionId schemaRegionId, PlanNode planNode) {
     planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
@@ -76,12 +84,40 @@ public class SchemaEngine {
     return SchemaEngineManagerHolder.INSTANCE;
   }
 
-  public Map<PartialPath, List<SchemaRegionId>> init() throws MetadataException {
-    schemaRegionMap = new ConcurrentHashMap<>();
+  public void init() {
+    try {
+      initForLocalConfigNode();
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      logger.error("Error occurred during SchemaEngine initialization.", e);
+    }
+  }
+
+  public Map<PartialPath, List<SchemaRegionId>> initForLocalConfigNode() throws MetadataException {
+
     schemaRegionStoredMode = SchemaEngineMode.valueOf(config.getSchemaEngineMode());
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
 
-    return initSchemaRegion();
+    SchemaResourceManager.initSchemaResource();
+
+    schemaRegionMap = new ConcurrentHashMap<>();
+    sharedPrefixTree = new MTreeAboveSG();
+
+    Map<PartialPath, List<SchemaRegionId>> schemaRegionInfo = initSchemaRegion();
+
+    if (config.getSyncMlogPeriodInMs() != 0) {
+      timedForceMLogThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              "SchemaEngine-TimedForceMLog-Thread");
+      ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
+          timedForceMLogThread,
+          this::forceMlog,
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          TimeUnit.MILLISECONDS);
+    }
+
+    return schemaRegionInfo;
   }
 
   /**
@@ -91,13 +127,32 @@ public class SchemaEngine {
   private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() throws MetadataException {
     Map<PartialPath, List<SchemaRegionId>> partitionTable = new HashMap<>();
 
+    File schemaDir = new File(config.getSchemaDir());
+    File[] sgDirList = schemaDir.listFiles();
+
+    if (sgDirList == null) {
+      return partitionTable;
+    }
+
     // recover SchemaRegion concurrently
     ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(), "SchemaRegion-recover-task");
     List<Future<ISchemaRegion>> futures = new ArrayList<>();
 
-    for (PartialPath storageGroup : localStorageGroupSchemaManager.getAllStorageGroupPaths()) {
+    for (File file : sgDirList) {
+      if (!file.isDirectory()) {
+        continue;
+      }
+
+      PartialPath storageGroup;
+      try {
+        storageGroup = new PartialPath(file.getName());
+      } catch (IllegalPathException illegalPathException) {
+        // not a legal sg dir
+        continue;
+      }
+
       List<SchemaRegionId> schemaRegionIdList = new ArrayList<>();
       partitionTable.put(storageGroup, schemaRegionIdList);
 
@@ -149,12 +204,24 @@ public class SchemaEngine {
   }
 
   public void clear() {
+    SchemaResourceManager.clearSchemaResource();
+
+    if (timedForceMLogThread != null) {
+      timedForceMLogThread.shutdown();
+      timedForceMLogThread = null;
+    }
+
     if (schemaRegionMap != null) {
       for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.clear();
       }
       schemaRegionMap.clear();
       schemaRegionMap = null;
+    }
+
+    if (sharedPrefixTree != null) {
+      sharedPrefixTree.clear();
+      sharedPrefixTree = null;
     }
   }
 
@@ -213,9 +280,8 @@ public class SchemaEngine {
 
   private ISchemaRegion createSchemaRegionWithoutExistenceCheck(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    ISchemaRegion schemaRegion = null;
-    IStorageGroupMNode storageGroupMNode =
-        this.localStorageGroupSchemaManager.ensureStorageGroupByStorageGroupPath(storageGroup);
+    ISchemaRegion schemaRegion;
+    IStorageGroupMNode storageGroupMNode = ensureStorageGroupByStorageGroupPath(storageGroup);
     switch (this.schemaRegionStoredMode) {
       case Memory:
         schemaRegion = new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, storageGroupMNode);
@@ -238,8 +304,51 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
-    schemaRegionMap.get(schemaRegionId).deleteSchemaRegion();
+  private IStorageGroupMNode ensureStorageGroupByStorageGroupPath(PartialPath storageGroup)
+      throws MetadataException {
+    try {
+      return sharedPrefixTree.getStorageGroupNodeByStorageGroupPath(storageGroup);
+    } catch (StorageGroupNotSetException e) {
+      try {
+        sharedPrefixTree.setStorageGroup(storageGroup);
+      } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
+        // do nothing
+        // concurrent timeseries creation may result concurrent ensureStorageGroup
+        // it's ok that the storageGroup has already been set
+
+        if (storageGroupAlreadySetException.isHasChild()) {
+          // if setStorageGroup failure is because of child, the deviceNode should not be created.
+          // Timeseries can't be created under a deviceNode without storageGroup.
+          throw storageGroupAlreadySetException;
+        }
+      }
+
+      return sharedPrefixTree.getStorageGroupNodeByStorageGroupPath(storageGroup);
+    }
+  }
+
+  public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
+      throws MetadataException {
+    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    schemaRegion.deleteSchemaRegion();
     schemaRegionMap.remove(schemaRegionId);
+
+    // check whether the sg dir is empty
+    File sgDir = new File(config.getSchemaDir(), schemaRegion.getStorageGroupFullPath());
+    File[] regionDirList =
+        sgDir.listFiles(
+            (dir, name) -> {
+              try {
+                Integer.parseInt(name);
+                return true;
+              } catch (NumberFormatException e) {
+                return false;
+              }
+            });
+    // remove the empty sg dir
+    if (regionDirList == null || regionDirList.length == 0) {
+      FileUtils.deleteDirectory(sgDir);
+      sharedPrefixTree.deleteStorageGroup(new PartialPath(schemaRegion.getStorageGroupFullPath()));
+    }
   }
 }

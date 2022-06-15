@@ -47,12 +47,16 @@ public abstract class ClusterEnvBase implements BaseEnv {
   private List<ConfigNode> configNodes;
   private List<DataNode> dataNodes;
   private final Random rand = new Random();
+  private String nextTestCase = null;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) throws InterruptedException {
     this.configNodes = new ArrayList<>();
     this.dataNodes = new ArrayList<>();
 
     String testName = getTestClassName();
+    if (nextTestCase != null) {
+      testName = testName + "_" + nextTestCase;
+    }
 
     ConfigNode seedConfigNode = new ConfigNode(true, "", testName);
     seedConfigNode.createDir();
@@ -94,6 +98,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
       configNode.waitingToShutDown();
       configNode.destroyDir();
     }
+    nextTestCase = null;
   }
 
   public String getTestClassName() {
@@ -110,9 +115,9 @@ public abstract class ClusterEnvBase implements BaseEnv {
   public String getTestClassNameAndDate() {
     Date date = new Date();
     SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd-HHmmss");
-    StackTraceElement stack[] = Thread.currentThread().getStackTrace();
-    for (int i = 0; i < stack.length; i++) {
-      String className = stack[i].getClassName();
+    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+    for (StackTraceElement stackTraceElement : stack) {
+      String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
         return className.substring(className.lastIndexOf(".") + 1) + "-" + formatter.format(date);
       }
@@ -163,6 +168,11 @@ public abstract class ClusterEnvBase implements BaseEnv {
   @Override
   public Connection getConnection() throws SQLException {
     return new ClusterTestConnection(getWriteConnection(null), getReadConnections(null));
+  }
+
+  @Override
+  public void setNextTestCaseName(String testCaseName) {
+    nextTestCase = testCaseName;
   }
 
   private IoTDBConnection getConnection(int queryTimeout) throws SQLException {

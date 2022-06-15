@@ -23,9 +23,6 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -35,7 +32,6 @@ import static org.junit.Assert.fail;
 
 /** This class is used by EnvFactory with using reflection. */
 public class StandaloneEnv implements BaseEnv {
-  Logger logger = LoggerFactory.getLogger(StandaloneEnv.class);
 
   @Override
   public void initBeforeClass() {
@@ -89,5 +85,9 @@ public class StandaloneEnv implements BaseEnv {
       fail();
     }
     return null;
+  }
+
+  public void setNextTestCaseName(String testCaseName) {
+    // Do nothing
   }
 }

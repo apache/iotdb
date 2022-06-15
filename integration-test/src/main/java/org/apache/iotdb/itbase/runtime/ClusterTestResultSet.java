@@ -84,7 +84,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public boolean wasNull() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
+    RequestDelegate<Boolean> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(rs::wasNull);
     }
@@ -93,7 +93,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public String getString(int columnIndex) throws SQLException {
-    RequestDelegate<String> delegate = createRequestDelegate();
+    RequestDelegate<String> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getString(columnIndex));
     }
@@ -102,7 +102,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public boolean getBoolean(int columnIndex) throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
+    RequestDelegate<Boolean> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBoolean(columnIndex));
     }
@@ -111,7 +111,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public byte getByte(int columnIndex) throws SQLException {
-    RequestDelegate<Byte> delegate = createRequestDelegate();
+    RequestDelegate<Byte> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getByte(columnIndex));
     }
@@ -120,7 +120,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public short getShort(int columnIndex) throws SQLException {
-    RequestDelegate<Short> delegate = createRequestDelegate();
+    RequestDelegate<Short> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getShort(columnIndex));
     }
@@ -129,7 +129,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public int getInt(int columnIndex) throws SQLException {
-    RequestDelegate<Integer> delegate = createRequestDelegate();
+    RequestDelegate<Integer> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getInt(columnIndex));
     }
@@ -138,7 +138,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public long getLong(int columnIndex) throws SQLException {
-    RequestDelegate<Long> delegate = createRequestDelegate();
+    RequestDelegate<Long> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getLong(columnIndex));
     }
@@ -147,7 +147,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public float getFloat(int columnIndex) throws SQLException {
-    RequestDelegate<Float> delegate = createRequestDelegate();
+    RequestDelegate<Float> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getFloat(columnIndex));
     }
@@ -156,7 +156,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public double getDouble(int columnIndex) throws SQLException {
-    RequestDelegate<Double> delegate = createRequestDelegate();
+    RequestDelegate<Double> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getDouble(columnIndex));
     }
@@ -165,7 +165,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
-    RequestDelegate<BigDecimal> delegate = createRequestDelegate();
+    RequestDelegate<BigDecimal> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBigDecimal(columnIndex));
     }
@@ -174,7 +174,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public byte[] getBytes(int columnIndex) throws SQLException {
-    RequestDelegate<byte[]> delegate = createRequestDelegate();
+    RequestDelegate<byte[]> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBytes(columnIndex));
     }
@@ -183,7 +183,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Date getDate(int columnIndex) throws SQLException {
-    RequestDelegate<Date> delegate = createRequestDelegate();
+    RequestDelegate<Date> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getDate(columnIndex));
     }
@@ -192,7 +192,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Time getTime(int columnIndex) throws SQLException {
-    RequestDelegate<Time> delegate = createRequestDelegate();
+    RequestDelegate<Time> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getTime(columnIndex));
     }
@@ -201,7 +201,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
-    RequestDelegate<Timestamp> delegate = createRequestDelegate();
+    RequestDelegate<Timestamp> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getTimestamp(columnIndex));
     }
@@ -225,7 +225,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public String getString(String columnLabel) throws SQLException {
-    RequestDelegate<String> delegate = createRequestDelegate();
+    RequestDelegate<String> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getString(columnLabel));
     }
@@ -234,7 +234,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public boolean getBoolean(String columnLabel) throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
+    RequestDelegate<Boolean> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBoolean(columnLabel));
     }
@@ -243,7 +243,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public byte getByte(String columnLabel) throws SQLException {
-    RequestDelegate<Byte> delegate = createRequestDelegate();
+    RequestDelegate<Byte> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getByte(columnLabel));
     }
@@ -252,7 +252,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public short getShort(String columnLabel) throws SQLException {
-    RequestDelegate<Short> delegate = createRequestDelegate();
+    RequestDelegate<Short> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getShort(columnLabel));
     }
@@ -261,7 +261,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public int getInt(String columnLabel) throws SQLException {
-    RequestDelegate<Integer> delegate = createRequestDelegate();
+    RequestDelegate<Integer> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getInt(columnLabel));
     }
@@ -270,7 +270,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public long getLong(String columnLabel) throws SQLException {
-    RequestDelegate<Long> delegate = createRequestDelegate();
+    RequestDelegate<Long> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getLong(columnLabel));
     }
@@ -279,7 +279,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public float getFloat(String columnLabel) throws SQLException {
-    RequestDelegate<Float> delegate = createRequestDelegate();
+    RequestDelegate<Float> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getFloat(columnLabel));
     }
@@ -288,7 +288,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public double getDouble(String columnLabel) throws SQLException {
-    RequestDelegate<Double> delegate = createRequestDelegate();
+    RequestDelegate<Double> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getDouble(columnLabel));
     }
@@ -297,7 +297,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
-    RequestDelegate<BigDecimal> delegate = createRequestDelegate();
+    RequestDelegate<BigDecimal> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBigDecimal(columnLabel));
     }
@@ -306,7 +306,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public byte[] getBytes(String columnLabel) throws SQLException {
-    RequestDelegate<byte[]> delegate = createRequestDelegate();
+    RequestDelegate<byte[]> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBytes(columnLabel));
     }
@@ -315,7 +315,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Date getDate(String columnLabel) throws SQLException {
-    RequestDelegate<Date> delegate = createRequestDelegate();
+    RequestDelegate<Date> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getDate(columnLabel));
     }
@@ -324,7 +324,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Time getTime(String columnLabel) throws SQLException {
-    RequestDelegate<Time> delegate = createRequestDelegate();
+    RequestDelegate<Time> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getTime(columnLabel));
     }
@@ -333,7 +333,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(String columnLabel) throws SQLException {
-    RequestDelegate<Timestamp> delegate = createRequestDelegate();
+    RequestDelegate<Timestamp> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getTimestamp(columnLabel));
     }
@@ -372,7 +372,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
-    RequestDelegate<ResultSetMetaData> delegate = createRequestDelegate();
+    RequestDelegate<ResultSetMetaData> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(rs::getMetaData);
     }
@@ -382,7 +382,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Object getObject(int columnIndex) throws SQLException {
-    RequestDelegate<Object> delegate = createRequestDelegate();
+    RequestDelegate<Object> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getObject(columnIndex));
     }
@@ -391,7 +391,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public Object getObject(String columnLabel) throws SQLException {
-    RequestDelegate<Object> delegate = createRequestDelegate();
+    RequestDelegate<Object> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getObject(columnLabel));
     }
@@ -400,7 +400,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public int findColumn(String columnLabel) throws SQLException {
-    RequestDelegate<Integer> delegate = createRequestDelegate();
+    RequestDelegate<Integer> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.findColumn(columnLabel));
     }
@@ -419,7 +419,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
-    RequestDelegate<BigDecimal> delegate = createRequestDelegate();
+    RequestDelegate<BigDecimal> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBigDecimal(columnIndex));
     }
@@ -428,7 +428,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
-    RequestDelegate<BigDecimal> delegate = createRequestDelegate();
+    RequestDelegate<BigDecimal> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(() -> rs.getBigDecimal(columnLabel));
     }
@@ -436,119 +436,63 @@ public class ClusterTestResultSet implements ResultSet {
   }
 
   @Override
-  public boolean isBeforeFirst() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::isBeforeFirst);
-    }
-    return delegate.requestAllAndCompare();
+  public boolean isBeforeFirst() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean isAfterLast() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::isAfterLast);
-    }
-    return delegate.requestAllAndCompare();
+  public boolean isAfterLast() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean isFirst() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::isFirst);
-    }
-    return delegate.requestAllAndCompare();
+  public boolean isFirst() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean isLast() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::isLast);
-    }
-    return delegate.requestAllAndCompare();
+  public boolean isLast() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void beforeFirst() throws SQLException {
-    RequestDelegate<Void> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(
-          () -> {
-            rs.beforeFirst();
-            return null;
-          });
-    }
-    delegate.requestAll();
+  public void beforeFirst() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void afterLast() throws SQLException {
-    RequestDelegate<Void> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(
-          () -> {
-            rs.afterLast();
-            return null;
-          });
-    }
-    delegate.requestAll();
+  public void afterLast() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean first() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::first);
-    }
-    return delegate.requestAllAndCompare();
+  public boolean first() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean last() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::last);
-    }
-    return delegate.requestAllAndCompare();
+  public boolean last() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public int getRow() throws SQLException {
-    RequestDelegate<Integer> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::getRow);
-    }
-    return delegate.requestAllAndCompare();
+  public int getRow() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean absolute(int row) throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(() -> rs.absolute(row));
-    }
-    return delegate.requestAllAndCompare();
+  public boolean absolute(int row) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean relative(int rows) throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(() -> rs.relative(rows));
-    }
-    return delegate.requestAllAndCompare();
+  public boolean relative(int rows) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean previous() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
-    for (ResultSet rs : resultSets) {
-      delegate.addRequest(rs::previous);
-    }
-    return delegate.requestAllAndCompare();
+  public boolean previous() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -983,7 +927,7 @@ public class ClusterTestResultSet implements ResultSet {
 
   @Override
   public boolean isClosed() throws SQLException {
-    RequestDelegate<Boolean> delegate = createRequestDelegate();
+    RequestDelegate<Boolean> delegate = createLocalRequestDelegate();
     for (ResultSet rs : resultSets) {
       delegate.addRequest(rs::isClosed);
     }
@@ -1226,5 +1170,9 @@ public class ClusterTestResultSet implements ResultSet {
    */
   private <T> RequestDelegate<T> createRequestDelegate() {
     return new ParallelRequestDelegate<>(endpoints, queryTimeoutSeconds);
+  }
+
+  private <T> RequestDelegate<T> createLocalRequestDelegate() {
+    return new SerialRequestDelegate<>(endpoints);
   }
 }
