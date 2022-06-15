@@ -19,8 +19,14 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,11 +40,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.FILE_HEADER_SIZE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getNodeAddress;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getPageIndex;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getSegIndex;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.setNodeAddress;
 
+/**
+ * Abstraction for various implementation of structure of pages. But multi-level index is hard-coded
+ * within the framework since only alias works like secondary index now.
+ *
+ * <p>Hierarchy of index may be decoupled from this framework in further improvement.
+ */
 @SuppressWarnings("Duplicates")
-public abstract class PageManager implements IPageManager{
+public abstract class PageManager implements IPageManager {
+
+  public static final short[] segSizeMetric = {300, 150, 75, 40, 20};
+
   protected final Map<Integer, ISchemaPage> pageInstCache;
   protected final Map<Integer, ISchemaPage> dirtyPages;
 
@@ -47,16 +67,166 @@ public abstract class PageManager implements IPageManager{
 
   protected final AtomicInteger lastPageIndex;
 
+  // shift to ThreadLocal if concurrent write expected
+  protected int[] treeTrace;
+
   private final FileChannel channel;
 
-  PageManager(FileChannel channel) {
+  PageManager(FileChannel channel, int lpi) throws IOException, MetadataException {
     pageInstCache =
         Collections.synchronizedMap(new LinkedHashMap<>(SchemaPage.PAGE_CACHE_SIZE, 1, true));
     dirtyPages = new ConcurrentHashMap<>();
     evictLock = new ReentrantLock();
     pageLocks = new PageLocks();
-    lastPageIndex = new AtomicInteger(0);
+    lastPageIndex = lpi >= 0 ? new AtomicInteger(lpi) : new AtomicInteger(0);
+    treeTrace = new int[16];
     this.channel = channel;
+
+    // construct first page if file to init
+    if (lpi < 0) {
+      ISchemaPage rootPage =
+          ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaPage.PAGE_LENGTH), 0);
+      rootPage.getAsSegmentedPage().allocNewSegment(SchemaPage.SEG_MAX_SIZ);
+      pageInstCache.put(rootPage.getPageIndex(), rootPage);
+      dirtyPages.put(rootPage.getPageIndex(), rootPage);
+    }
+  }
+
+  // region Framework Methods
+  @Override
+  public void writeNewChildren(IMNode node) throws MetadataException, IOException {
+    long curSegAddr = getNodeAddress(node);
+    long actualAddress; // actual segment to write record
+    IMNode child;
+    ISchemaPage curPage;
+    ByteBuffer childBuffer;
+    int secIdxEntrance = -1; // first page of secondary index
+    // TODO: reserve order of insert in container may be better
+    for (Map.Entry<String, IMNode> entry :
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .collect(Collectors.toList())) {
+      // check and pre-allocate
+      child = entry.getValue();
+      if (!child.isMeasurement()) {
+        if (getNodeAddress(child) < 0) {
+          short estSegSize = estimateSegmentSize(child);
+          long glbIndex = preAllocateSegment(estSegSize);
+          setNodeAddress(child, glbIndex);
+        } else {
+          // new child with a valid segment address, weird
+          throw new MetadataException("A child in newChildBuffer shall not have segmentAddress.");
+        }
+      }
+
+      // prepare buffer to write
+      childBuffer = RecordUtils.node2Buffer(child);
+      actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey());
+      curPage = getPageInstance(getPageIndex(actualAddress));
+
+      try {
+        curPage.getAsSegmentedPage().write(getSegIndex(actualAddress), entry.getKey(), childBuffer);
+        dirtyPages.put(curPage.getPageIndex(), curPage);
+      } catch (SchemaPageOverflowException e) {
+        if (curPage.getAsSegmentedPage().getSegmentSize(getSegIndex(actualAddress))
+            == SchemaPage.SEG_MAX_SIZ) {
+          multiPageInsertOverflowOperation(curPage, entry.getKey(), childBuffer);
+        } else {
+          // transplant and delete former segment
+          short actSegId = getSegIndex(actualAddress);
+          short newSegSize =
+              reEstimateSegSize(
+                  curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity());
+          ISchemaPage newPage = getMinApplSegmentedPageInMem(newSegSize);
+
+          // with single segment, curSegAddr equals actualAddress
+          curSegAddr =
+              newPage
+                  .getAsSegmentedPage()
+                  .transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
+          newPage.getAsSegmentedPage().write(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
+          curPage.getAsSegmentedPage().deleteSegment(actSegId);
+          setNodeAddress(node, curSegAddr);
+          updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
+          dirtyPages.put(curPage.getPageIndex(), curPage);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void writeUpdatedChildren(IMNode node) throws MetadataException, IOException {
+    long curSegAddr = getNodeAddress(node);
+    long actualAddress; // actual segment to write record
+    IMNode child;
+    ISchemaPage curPage;
+    ByteBuffer childBuffer;
+    for (Map.Entry<String, IMNode> entry :
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
+      child = entry.getValue();
+      actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey());
+      childBuffer = RecordUtils.node2Buffer(child);
+
+      curPage = getPageInstance(getPageIndex(actualAddress));
+      if (curPage.getAsSegmentedPage().read(getSegIndex(actualAddress), entry.getKey()) == null) {
+        throw new MetadataException(
+            String.format(
+                "Node[%s] has no child[%s] in schema file.", node.getName(), entry.getKey()));
+      }
+
+      try {
+        curPage
+            .getAsSegmentedPage()
+            .update(getSegIndex(actualAddress), entry.getKey(), childBuffer);
+        dirtyPages.put(curPage.getPageIndex(), curPage);
+      } catch (SchemaPageOverflowException e) {
+        if (curPage.getAsSegmentedPage().getSegmentSize(getSegIndex(actualAddress))
+            == SchemaPage.SEG_MAX_SIZ) {
+          multiPageUpdateOverflowOperation(curPage, entry.getKey(), childBuffer);
+        } else {
+          // transplant into another bigger segment
+          short actSegId = getSegIndex(actualAddress);
+          short newSegSiz =
+              reEstimateSegSize(
+                  curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity());
+          ISchemaPage newPage = getMinApplSegmentedPageInMem(newSegSiz);
+
+          // assign new segment address
+          curSegAddr =
+              newPage
+                  .getAsSegmentedPage()
+                  .transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSiz);
+          curPage.getAsSegmentedPage().deleteSegment(actSegId);
+
+          newPage.getAsSegmentedPage().update(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
+          setNodeAddress(node, curSegAddr);
+          updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
+          dirtyPages.put(curPage.getPageIndex(), curPage);
+        }
+      }
+    }
+  }
+
+  // endregion
+
+  // region Abstract and Overridable Methods
+  protected abstract long getTargetSegmentAddress(long curAddr, String recKey)
+      throws IOException, MetadataException;
+
+  protected abstract void multiPageInsertOverflowOperation(
+      ISchemaPage curPage, String key, ByteBuffer childBuffer)
+      throws MetadataException, IOException;
+
+  protected abstract void multiPageUpdateOverflowOperation(
+      ISchemaPage curPage, String key, ByteBuffer childBuffer)
+      throws MetadataException, IOException;
+
+  // endregion
+
+  // region General Interfaces
+  @Override
+  public int getLastPageIndex() {
+    return lastPageIndex.get();
   }
 
   @Override
@@ -90,11 +260,6 @@ public abstract class PageManager implements IPageManager{
     }
   }
 
-  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
-    dst.clear();
-    return channel.read(dst, getPageAddress(pageIndex));
-  }
-
   @Override
   public void flushDirtyPages() throws IOException {
     for (ISchemaPage page : dirtyPages.values()) {
@@ -104,7 +269,38 @@ public abstract class PageManager implements IPageManager{
   }
 
   @Override
-  public ISchemaPage getMinApplSegmentedPageInMem(short size) {
+  public void clear() throws IOException, MetadataException {
+    dirtyPages.clear();
+    pageInstCache.clear();
+    lastPageIndex.set(0);
+  }
+
+  @Override
+  public StringBuilder inspect(StringBuilder builder) throws IOException, MetadataException {
+    for (int i = 0; i <= lastPageIndex.get(); i++) {
+      builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
+    }
+    return builder;
+  }
+
+  // endregion
+
+  // region Page Access Management
+
+  @Deprecated
+  // TODO: improve to remove
+  private long preAllocateSegment(short size) throws IOException, MetadataException {
+    ISchemaPage page = getMinApplSegmentedPageInMem(size);
+    return SchemaFile.getGlobalIndex(
+        page.getPageIndex(), page.getAsSegmentedPage().allocNewSegment(size));
+  }
+
+  protected ISchemaPage replacePageInCache(ISchemaPage page) {
+    dirtyPages.put(page.getPageIndex(), page);
+    return addPageToCache(page.getPageIndex(), page);
+  }
+
+  protected ISchemaPage getMinApplSegmentedPageInMem(short size) {
     for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
           && entry.getValue().isCapableForSize(size)) {
@@ -122,15 +318,22 @@ public abstract class PageManager implements IPageManager{
     return allocateNewSegmentedPage();
   }
 
-  private synchronized ISchemaPage allocateNewSegmentedPage() {
+  protected synchronized ISchemaPage allocateNewSegmentedPage() {
     lastPageIndex.incrementAndGet();
     ISchemaPage newPage =
-        ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaPage.PAGE_LENGTH), lastPageIndex.get());
+        ISchemaPage.initSegmentedPage(
+            ByteBuffer.allocate(SchemaPage.PAGE_LENGTH), lastPageIndex.get());
     dirtyPages.put(newPage.getPageIndex(), newPage);
     return addPageToCache(newPage.getPageIndex(), newPage);
   }
 
-  private ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) {
+  protected synchronized ISchemaPage registerAsNewPage(ISchemaPage page) {
+    page.setPageIndex(lastPageIndex.incrementAndGet());
+    dirtyPages.put(page.getPageIndex(), page);
+    return addPageToCache(page.getPageIndex(), page);
+  }
+
+  protected ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) {
     pageInstCache.put(pageIndex, page);
     // only one thread evicts and flushes pages
     if (evictLock.tryLock()) {
@@ -158,9 +361,92 @@ public abstract class PageManager implements IPageManager{
     return page;
   }
 
-  public static long getPageAddress(int pageIndex) {
+  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
+    dst.clear();
+    return channel.read(dst, getPageAddress(pageIndex));
+  }
+
+  private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
+      throws IOException, MetadataException {
+    if (parent == null || parent.getChild(key).isStorageGroup()) {
+      throw new MetadataException("Root page shall not be migrated.");
+    }
+    long parSegAddr = parent.getParent() == null ? 0L : getNodeAddress(parent);
+    parSegAddr = getTargetSegmentAddress(parSegAddr, key);
+    ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
+    ((SegmentedPage) page).updateRecordSegAddr(getSegIndex(parSegAddr), key, newSegAddr);
+    dirtyPages.putIfAbsent(page.getPageIndex(), page);
+  }
+
+  // endregion
+
+  // region Inner Utilities
+
+  private static long getPageAddress(int pageIndex) {
     return (SchemaPage.PAGE_INDEX_MASK & pageIndex) * SchemaPage.PAGE_LENGTH + FILE_HEADER_SIZE;
   }
+
+  /**
+   * Estimate segment size for pre-allocate
+   *
+   * @param node
+   * @return
+   */
+  private static short estimateSegmentSize(IMNode node) {
+    int childNum = node.getChildren().size();
+    int tier = SchemaPage.SEG_SIZE_LST.length;
+
+    for (int i = 1; i < segSizeMetric.length + 1; i++) {
+      if (childNum > segSizeMetric[i - 1]) {
+        return SchemaPage.SEG_SIZE_LST[tier - i] > SchemaPage.SEG_MIN_SIZ
+            ? SchemaPage.SEG_SIZE_LST[tier - i]
+            : SchemaPage.SEG_MIN_SIZ;
+      }
+    }
+
+    // for childNum < 20, count for actually
+    int totalSize = SchemaPage.SEG_HEADER_SIZE;
+    for (IMNode child : node.getChildren().values()) {
+      totalSize += child.getName().getBytes().length;
+      totalSize += 2 + 4; // for record offset, length of string key
+      if (child.isMeasurement()) {
+        totalSize +=
+            child.getAsMeasurementMNode().getAlias() == null
+                ? 4
+                : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
+        totalSize += 24; // slightly larger than actually HEADER size
+      } else {
+        totalSize += 16; // slightly larger
+      }
+    }
+    return (short) totalSize > SchemaPage.SEG_MIN_SIZ ? (short) totalSize : SchemaPage.SEG_MIN_SIZ;
+  }
+
+  private static short reEstimateSegSize(int expSize) throws MetadataException {
+    if (expSize > SchemaPage.SEG_MAX_SIZ) {
+      // TODO: to support extreme large MNode
+      throw new MetadataException(
+          "Single record larger than half page is not supported in SchemaFile now.");
+    }
+    for (short size : SchemaPage.SEG_SIZE_LST) {
+      if (expSize < size) {
+        return size;
+      }
+    }
+    return SchemaPage.SEG_MAX_SIZ;
+  }
+
+  // endregion
+
+  // region TestOnly Methods
+
+  @Override
+  public long getTargetSegmentAddressOnTest(long curSegAddr, String recKey)
+      throws IOException, MetadataException {
+    return getTargetSegmentAddress(curSegAddr, recKey);
+  }
+
+  // endregion
 
   private static class PageLocks {
     /**
@@ -200,5 +486,3 @@ public abstract class PageManager implements IPageManager{
     }
   }
 }
-
-

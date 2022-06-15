@@ -31,8 +31,9 @@ import java.util.List;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage.SEG_HEADER_SIZE;
 
 /**
- * Segments store keys with bytebuffer records, which can be serialized IMNode, bytes of alias string or any other
- * attributes of IMNode as secondary index.
+ * Segments store keys with bytebuffer records, which can be serialized IMNode, bytes of alias
+ * string or any other attributes of IMNode as secondary index.
+ *
  * @param <R> type to construct from bytebuffer
  */
 @SuppressWarnings("Duplicates")
@@ -235,7 +236,9 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
   }
 
   @Override
-  public String splitByKey(String key, ByteBuffer recBuf, ByteBuffer dstBuffer, boolean inclineSplit) throws MetadataException {
+  public String splitByKey(
+      String key, ByteBuffer recBuf, ByteBuffer dstBuffer, boolean inclineSplit)
+      throws MetadataException {
 
     if (this.buffer.capacity() != dstBuffer.capacity()) {
       throw new MetadataException("Segments only splits with same capacity.");
@@ -381,7 +384,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
   /** Assuming that buffer has been set position well, record length depends on implementation. */
   protected abstract short getRecordLength();
 
-  protected  <T> int binarySearchPairList(List<Pair<String, T>> list, String key) {
+  protected <T> int binarySearchPairList(List<Pair<String, T>> list, String key) {
     int head = 0;
     int tail = list.size() - 1;
     if (tail < 0
@@ -414,7 +417,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
    * @return target index the record with passing in key should be inserted
    * @throws RecordDuplicatedException
    */
-  protected  <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
+  protected <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
       throws RecordDuplicatedException {
     if (list.size() == 0) {
       return 0;

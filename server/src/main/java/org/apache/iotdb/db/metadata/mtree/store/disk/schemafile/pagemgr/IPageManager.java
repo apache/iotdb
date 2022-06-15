@@ -19,35 +19,49 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
 
 import java.io.IOException;
+import java.util.Iterator;
 
 /**
- * Framework to decouple {@link SchemaFile} from structure of {@link SchemaPage}. Various data structure
- * between {@link SchemaPage} could be implemented with this interface to compare performance.
+ * Framework to decouple {@link SchemaFile} from structure of {@link SchemaPage}. Various data
+ * structure between {@link SchemaPage} could be implemented within this interface considering the
+ * requirement.
  *
- * <p>Notice that {@link SegmentedPage} is not involved here since it only contains serialized IMNodes.
- *
- * <p>This interface completes three targets:
- * <ol>
- *   <li>find a target record(could be another key or pointer) with initial page and target key;
- *   <li>split a wrappedSegment and make up 3 new pages, one internal and two split, original abolished;
- *   <li>insert an entry into upper internal recursively.
- * </ol>
- * Notice every target maintains <b>an array tracing paths</b> seeking the target record.
+ * <p>{@linkplain SchemaFile} only needs to handle initialization and header content, and interact
+ * with this Manager ignoring pages since this interface implements all read and write methods about
+ * pages.
  */
 public interface IPageManager {
 
-  ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException;
+  void writeNewChildren(IMNode parNode) throws MetadataException, IOException;
+
+  void writeUpdatedChildren(IMNode parNode) throws MetadataException, IOException;
+
+  void delete(IMNode node) throws IOException, MetadataException;
+
+  IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException;
+
+  Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException;
+
+  void clear() throws IOException, MetadataException;
 
   void flushDirtyPages() throws IOException;
 
-  long getTargetSegmentAddress(long curAddr, String recKey) throws IOException, MetadataException;
+  @Deprecated
+  StringBuilder inspect(StringBuilder builder)
+      throws IOException, MetadataException; // TODO: shift to use stream
 
-  ISchemaPage getMinApplSegmentedPageInMem(short size);
+  int getLastPageIndex();
 
+  ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException;
+
+  @TestOnly
+  long getTargetSegmentAddressOnTest(long curSegAddr, String recKey)
+      throws IOException, MetadataException;
 }
