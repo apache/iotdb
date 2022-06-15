@@ -4184,6 +4184,8 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // TODO Semantic error
+  @Ignore
   @Test
   public void groupByWithoutAggregationFuncTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -4201,6 +4203,8 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  // TODO Semantic error
+  @Ignore
   @Test
   public void negativeOrZeroTimeIntervalTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
