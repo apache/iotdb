@@ -260,7 +260,8 @@ public class IoTDBUDFManagementIT {
         statement.execute("drop function abs");
         fail();
       } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("Built-in function ABS can not be deregistered"));
+        assertTrue(
+            throwable.getMessage().contains("Built-in function ABS can not be deregistered"));
       }
     }
   }
@@ -289,8 +290,6 @@ public class IoTDBUDFManagementIT {
               .contains("the given function name is the same as a built-in UDF function name"));
     }
   }
-
-
 
   @Test
   public void testReflectBuiltinFunction() {
