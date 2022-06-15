@@ -102,7 +102,7 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return super.accept(visitor, context);
+    return visitor.visitInternalCreateTimeSeries(this, context);
   }
 
   @Override
