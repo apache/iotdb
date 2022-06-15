@@ -160,7 +160,9 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return SUCCESS_STATUS if the new StorageGroupPartitionInfo is created successfully.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
-    storageGroupPartitionTables.put(req.getSchema().getName(), new StorageGroupPartitionTable());
+    String storageGroupName = req.getSchema().getName();
+    storageGroupPartitionTables.put(
+        storageGroupName, new StorageGroupPartitionTable(storageGroupName));
 
     LOGGER.info("Successfully set StorageGroup: {}", req.getSchema());
 
@@ -533,12 +535,14 @@ public class PartitionInfo implements SnapshotProcessor {
 
   /**
    * Get total region number
+   *
    * @param type SchemaRegion or DataRegion
    * @return the number of SchemaRegion or DataRegion
    */
-  private int getTotalRegionCount(TConsensusGroupType type){
+  private int getTotalRegionCount(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
-    for(Map.Entry<String, StorageGroupPartitionTable> entry : storageGroupPartitionTables.entrySet()) {
+    for (Map.Entry<String, StorageGroupPartitionTable> entry :
+        storageGroupPartitionTables.entrySet()) {
       regionGroups.addAll(entry.getValue().getRegion(type));
     }
     return regionGroups.size();
@@ -619,7 +623,8 @@ public class PartitionInfo implements SnapshotProcessor {
       int length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
         String storageGroup = ReadWriteIOUtils.readString(fileInputStream);
-        StorageGroupPartitionTable storageGroupPartitionTable = new StorageGroupPartitionTable();
+        StorageGroupPartitionTable storageGroupPartitionTable =
+            new StorageGroupPartitionTable(storageGroup);
         storageGroupPartitionTable.deserialize(fileInputStream, protocol);
         storageGroupPartitionTables.put(storageGroup, storageGroupPartitionTable);
       }

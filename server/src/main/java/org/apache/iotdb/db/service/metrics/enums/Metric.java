@@ -58,7 +58,8 @@ public enum Metric {
   CONFIG_NODE,
   DATA_NODE,
   PARTITION_TABLE,
-  REGION;
+  REGION,
+  SLOT;
 
   @Override
   public String toString() {

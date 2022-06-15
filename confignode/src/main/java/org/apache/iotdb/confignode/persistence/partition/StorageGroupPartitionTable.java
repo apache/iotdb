@@ -25,8 +25,14 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 
@@ -47,6 +53,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupPartitionTable {
   private volatile boolean isPredeleted = false;
+  // The name of storage group
+  private String storageGroupName;
+
   // Total number of SeriesPartitionSlots occupied by schema,
   // determines whether a new Region needs to be created
   private final AtomicInteger seriesPartitionSlotsCount;
@@ -62,7 +71,8 @@ public class StorageGroupPartitionTable {
   // DataPartition
   private final DataPartitionTable dataPartitionTable;
 
-  public StorageGroupPartitionTable() {
+  public StorageGroupPartitionTable(String storageGroupName) {
+    this.storageGroupName = storageGroupName;
     this.seriesPartitionSlotsCount = new AtomicInteger(0);
 
     this.schemaRegionParticle = new AtomicBoolean(true);
@@ -71,6 +81,42 @@ public class StorageGroupPartitionTable {
 
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
+  }
+
+  private void addMetrics() {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.REGION.toString(),
+              MetricLevel.NORMAL,
+              regionInfoMap,
+              Map::size,
+              Tag.NAME.toString(),
+              storageGroupName);
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.SLOT.toString(),
+              MetricLevel.NORMAL,
+              schemaPartitionTable,
+              o -> o.getSchemaPartitionMap().size(),
+              Tag.NAME.toString(),
+              storageGroupName,
+              Tag.TYPE.toString(),
+              "schemaSlotNumber");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.SLOT.toString(),
+              MetricLevel.NORMAL,
+              dataPartitionTable,
+              o -> o.getDataPartitionMap().size(),
+              Tag.NAME.toString(),
+              storageGroupName,
+              Tag.TYPE.toString(),
+              "dataSlotNumber");
+    }
   }
 
   public boolean isPredeleted() {
@@ -302,6 +348,7 @@ public class StorageGroupPartitionTable {
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(isPredeleted, outputStream);
+    ReadWriteIOUtils.write(storageGroupName, outputStream);
     ReadWriteIOUtils.write(seriesPartitionSlotsCount.get(), outputStream);
 
     ReadWriteIOUtils.write(regionInfoMap.size(), outputStream);
@@ -317,6 +364,7 @@ public class StorageGroupPartitionTable {
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     isPredeleted = ReadWriteIOUtils.readBool(inputStream);
+    storageGroupName = ReadWriteIOUtils.readString(inputStream);
     seriesPartitionSlotsCount.set(ReadWriteIOUtils.readInt(inputStream));
 
     int length = ReadWriteIOUtils.readInt(inputStream);
