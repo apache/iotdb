@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.db.it.udf;
 
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.db.it.aligned.AlignedWriteUtil;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -32,26 +29,29 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDFManagementIT {
 
   private static final int NATIVE_FUNCTIONS_COUNT =
-      BuiltinAggregationFunction.getNativeFunctionNames().size();
+      BuiltinAggregationFunctionEnum.getNativeFunctionNames().size();
   private static final int BUILTIN_FUNCTIONS_COUNT =
-      BuiltinTimeSeriesGeneratingFunction.values().length;
+      BuiltinTimeSeriesGeneratingFunctionEnum.values().length;
+
+  private static final String FUNCTION_TYPE_NATIVE = "native";
+  private static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
+  private static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
@@ -66,7 +66,7 @@ public class IoTDBUDFManagementIT {
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initBeforeClass();
-    AlignedWriteUtil.insertData();
+    UDFTestUtil.generateData();
   }
 
   @After
@@ -272,57 +272,44 @@ public class IoTDBUDFManagementIT {
   }
 
   @Test
-  public void testCreateBuiltinFunction() throws ClassNotFoundException {
-    UDFRegistrationService.getInstance()
-        .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
+  public void testCreateBuiltinFunction() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
+      statement.execute("create function sin as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
       assertTrue(
           throwable
               .getMessage()
               .contains("the given function name is the same as a built-in UDF function name"));
-    } finally {
-      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
   }
 
   @Test
   public void testDropBuiltinFunction() throws ClassNotFoundException {
-    UDFRegistrationService.getInstance()
-        .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("drop function adder");
+      statement.execute("drop function sin");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable.getMessage().contains("Built-in function ADDER can not be deregistered"));
-    } finally {
-      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
+      assertTrue(throwable.getMessage().contains("Built-in function sin can not be deregistered"));
     }
   }
 
   @Test
-  public void testReflectBuiltinFunction() throws ClassNotFoundException {
-    UDFRegistrationService.getInstance()
-        .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
+  public void testReflectBuiltinFunction() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("select adder(*, *) from root.vehicle");
+      statement.execute("drop function adder");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
-    } finally {
-      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
   }
 
   @Test
-  public void testShowBuiltinFunction() throws ClassNotFoundException {
-    UDFRegistrationService.getInstance()
-        .registerBuiltinFunction("adder", "org.apache.iotdb.db.query.udf.example.Adder");
+  public void testShowBuiltinFunction() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
@@ -356,8 +343,6 @@ public class IoTDBUDFManagementIT {
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
-    } finally {
-      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
   }
 }

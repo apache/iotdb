@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it;
+package org.apache.iotdb.db.it.udf;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
@@ -45,8 +45,6 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class})
 public class IoTDBUDTFBuiltinFunctionIT {
 
-  private static final double E = 0.0001;
-
   private static final String[] INSERTION_SQLS = {
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (0, 0, 0, 0, 0, true, '0', 0, 0)",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (2, 1, 1, 1, 1, false, '1', 1)",
@@ -55,37 +53,12 @@ public class IoTDBUDTFBuiltinFunctionIT {
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (8, 4, 4, 4, 4, true, '4', 4)",
   };
 
+  private static final double E = 0.0001;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
-    createTimeSeries();
-    generateData();
-  }
-
-  private static void createTimeSeries() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s6 with datatype=TEXT,encoding=PLAIN");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  private static void generateData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : INSERTION_SQLS) {
-        statement.execute(dataGenerationSql);
-      }
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+    UDFTestUtil.generateData();
   }
 
   @AfterClass
