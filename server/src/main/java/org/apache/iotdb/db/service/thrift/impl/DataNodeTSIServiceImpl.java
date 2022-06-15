@@ -626,6 +626,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         resp.setIsAlign(true);
 
         QUERY_TIME_MANAGER.unRegisterQuery(req.queryId, false);
+        if (!hasResultSet) {
+          COORDINATOR.removeQueryExecution(req.queryId);
+        }
         return resp;
       }
     } catch (Exception e) {
@@ -1077,17 +1080,18 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
-      TSExecuteStatementResp resp;
-      if (queryExecution.isQuery()) {
-        resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-        resp.setStatus(result.status);
-        resp.setQueryDataSet(
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
-      } else {
-        resp = RpcUtils.getTSExecuteStatementResp(result.status);
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          resp.setStatus(result.status);
+          resp.setQueryDataSet(
+              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
+        } else {
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
       }
-
-      return resp;
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSExecuteStatementResp(
@@ -1136,17 +1140,19 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
-      TSExecuteStatementResp resp;
-      if (queryExecution.isQuery()) {
-        resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-        resp.setStatus(result.status);
-        resp.setQueryDataSet(
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
-      } else {
-        resp = RpcUtils.getTSExecuteStatementResp(result.status);
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          resp.setStatus(result.status);
+          resp.setQueryDataSet(
+              QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize));
+        } else {
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
       }
 
-      return resp;
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSExecuteStatementResp(
@@ -1301,6 +1307,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.info("stop and clean up");
         queryExecution.stopAndCleanup();
+        COORDINATOR.removeQueryExecution(queryId);
       }
     }
   }

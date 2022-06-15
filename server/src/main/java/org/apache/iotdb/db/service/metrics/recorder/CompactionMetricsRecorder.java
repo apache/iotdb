@@ -144,9 +144,7 @@ public class CompactionMetricsRecorder {
                 Metric.COST_TASK.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
-                "compaction",
-                Tag.TYPE.toString(),
-                isInnerTask ? "inner" : "cross");
+                isInnerTask ? "inner_compaction" : "cross_compaction");
         if (isInnerTask) {
           MetricsService.getInstance()
               .getMetricManager()

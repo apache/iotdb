@@ -47,6 +47,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.concurrent.SetThreadName;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -106,24 +108,27 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               "cannot fetch schema, status is: %s, msg is: %s",
               executionResult.status.getCode(), executionResult.status.getMessage()));
     }
-    SchemaTree result = new SchemaTree();
-    while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-      // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-      // So we don't need to clean up it manually
-      Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-      if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-        break;
+    try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
+      SchemaTree result = new SchemaTree();
+      while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+        // The query will be transited to FINISHED when invoking getBatchResult() at the last time
+        // So we don't need to clean up it manually
+        Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+        if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+          break;
+        }
+        Binary binary;
+        SchemaTree fetchedSchemaTree;
+        Column column = tsBlock.get().getColumn(0);
+        for (int i = 0; i < column.getPositionCount(); i++) {
+          binary = column.getBinary(i);
+          fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+          result.mergeSchemaTree(fetchedSchemaTree);
+        }
       }
-      Binary binary;
-      SchemaTree fetchedSchemaTree;
-      Column column = tsBlock.get().getColumn(0);
-      for (int i = 0; i < column.getPositionCount(); i++) {
-        binary = column.getBinary(i);
-        fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
-        result.mergeSchemaTree(fetchedSchemaTree);
-      }
+      coordinator.removeQueryExecution(queryId);
+      return result;
     }
-    return result;
   }
 
   @Override
