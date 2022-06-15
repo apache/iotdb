@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 
@@ -36,9 +35,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -101,6 +102,24 @@ public class StorageGroupPartitionTable {
     return result;
   }
 
+  /**
+   * Get regions currently owned by this StorageGroup
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return The regions currently owned by this StorageGroup
+   */
+  public Set<RegionGroup> getRegion(TConsensusGroupType type) {
+    Set<RegionGroup> regionGroups = new HashSet<>();
+    regionInfoMap
+        .values()
+        .forEach(
+            regionGroup -> {
+              if (regionGroup.getId().getType().equals(type)) {
+                regionGroups.add(regionGroup);
+              }
+            });
+    return regionGroups;
+  }
   /**
    * Get the number of Regions currently owned by this StorageGroup
    *

@@ -57,7 +57,8 @@ public enum Metric {
   SYS_DISK_FREE_SPACE,
   CONFIG_NODE,
   DATA_NODE,
-  PARTITION_TABLE;
+  PARTITION_TABLE,
+  REGION;
 
   @Override
   public String toString() {

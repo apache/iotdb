@@ -45,6 +45,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -100,16 +101,48 @@ public class PartitionInfo implements SnapshotProcessor {
     // are unreadable and un-writable
     // For RegionCleaner
     this.deletedRegionSet = Collections.synchronizedSet(new HashSet<>());
+    addMetrics();
+  }
 
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.PARTITION_TABLE.toString(),
-            MetricLevel.CORE,
-            storageGroupPartitionTables,
-            Map::size,
-            Tag.NAME.toString(),
-            "number");
+  private void addMetrics() {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.PARTITION_TABLE.toString(),
+              MetricLevel.CORE,
+              storageGroupPartitionTables,
+              Map::size,
+              Tag.NAME.toString(),
+              "number");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.REGION.toString(),
+              MetricLevel.CORE,
+              nextRegionGroupId,
+              AtomicInteger::get,
+              Tag.NAME.toString(),
+              "total");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.REGION.toString(),
+              MetricLevel.IMPORTANT,
+              this,
+              o -> o.getTotalRegionCount(TConsensusGroupType.SchemaRegion),
+              Tag.NAME.toString(),
+              "schemaRegion");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.REGION.toString(),
+              MetricLevel.IMPORTANT,
+              this,
+              o -> o.getTotalRegionCount(TConsensusGroupType.DataRegion),
+              Tag.NAME.toString(),
+              "dataRegion");
+    }
   }
 
   public int generateNextRegionGroupId() {
@@ -496,6 +529,19 @@ public class PartitionInfo implements SnapshotProcessor {
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
       String storageGroup, TConsensusGroupType type) {
     return storageGroupPartitionTables.get(storageGroup).getSortedRegionSlotsCounter(type);
+  }
+
+  /**
+   * Get total region number
+   * @param type SchemaRegion or DataRegion
+   * @return the number of SchemaRegion or DataRegion
+   */
+  private int getTotalRegionCount(TConsensusGroupType type){
+    Set<RegionGroup> regionGroups = new HashSet<>();
+    for(Map.Entry<String, StorageGroupPartitionTable> entry : storageGroupPartitionTables.entrySet()) {
+      regionGroups.addAll(entry.getValue().getRegion(type));
+    }
+    return regionGroups.size();
   }
 
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
