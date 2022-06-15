@@ -855,8 +855,7 @@ public class StorageEngine implements IService {
     abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
-    storageGroupManager.deleteStorageGroupSystemFolder(
-        systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.deleteStorageGroupSystemFolder(systemDir);
     storageGroupManager.stopSchedulerPool();
   }
 

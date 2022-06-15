@@ -57,6 +57,7 @@ public class MicrometerPrometheusReporter implements Reporter {
     PrometheusMeterRegistry prometheusMeterRegistry;
     if (meterRegistrySet.size() == 0) {
       prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+      prometheusMeterRegistry.throwExceptionOnRegistrationFailure();
       Metrics.addRegistry(prometheusMeterRegistry);
     } else {
       prometheusMeterRegistry = (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];

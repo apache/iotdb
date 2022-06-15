@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoderFactory;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -53,6 +52,7 @@ public class Int32ArrayColumnEncoderTest {
       }
     }
     IntColumn input = new IntColumn(positionCount, Optional.of(nullIndicators), values);
+    long expectedRetainedSize = input.getRetainedSizeInBytes();
     ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.INT32_ARRAY);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -65,11 +65,10 @@ public class Int32ArrayColumnEncoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-    IntColumnBuilder intColumnBuilder = new IntColumnBuilder(null, positionCount);
-    encoder.readColumn(intColumnBuilder, buffer, positionCount);
-    IntColumn output = (IntColumn) intColumnBuilder.build();
+    IntColumn output = (IntColumn) encoder.readColumn(buffer, TSDataType.INT32, positionCount);
     Assert.assertEquals(positionCount, output.getPositionCount());
     Assert.assertTrue(output.mayHaveNull());
+    Assert.assertEquals(expectedRetainedSize, output.getRetainedSizeInBytes());
     for (int i = 0; i < positionCount; i++) {
       Assert.assertEquals(i % 2 == 0, output.isNull(i));
       if (i % 2 != 0) {
@@ -93,6 +92,7 @@ public class Int32ArrayColumnEncoderTest {
       }
     }
     FloatColumn input = new FloatColumn(positionCount, Optional.of(nullIndicators), values);
+    long expectedRetainedSize = input.getRetainedSizeInBytes();
     ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.INT32_ARRAY);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -105,11 +105,10 @@ public class Int32ArrayColumnEncoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-    FloatColumnBuilder floatColumnBuilder = new FloatColumnBuilder(null, positionCount);
-    encoder.readColumn(floatColumnBuilder, buffer, positionCount);
-    FloatColumn output = (FloatColumn) floatColumnBuilder.build();
+    FloatColumn output = (FloatColumn) encoder.readColumn(buffer, TSDataType.FLOAT, positionCount);
     Assert.assertEquals(positionCount, output.getPositionCount());
     Assert.assertTrue(output.mayHaveNull());
+    Assert.assertEquals(expectedRetainedSize, output.getRetainedSizeInBytes());
     for (int i = 0; i < positionCount; i++) {
       Assert.assertEquals(i % 2 == 0, output.isNull(i));
       if (i % 2 != 0) {

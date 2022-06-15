@@ -185,4 +185,15 @@ public class ClusterEnvConfig implements BaseConfig {
     engineProperties.setProperty("enable_last_cache", String.valueOf(lastCacheEnable));
     return this;
   }
+
+  @Override
+  public BaseConfig setPrimitiveArraySize(int primitiveArraySize) {
+    engineProperties.setProperty("primitive_array_size", String.valueOf(primitiveArraySize));
+    return this;
+  }
+
+  @Override
+  public String getFlushCommand() {
+    return "flush on cluster";
+  }
 }

@@ -24,11 +24,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.createFullIdFrom;
 
 public class LocalSourceHandle implements ISourceHandle {
 
@@ -41,6 +43,8 @@ public class LocalSourceHandle implements ISourceHandle {
   private final SharedTsBlockQueue queue;
   private boolean aborted = false;
 
+  private final String threadName;
+
   public LocalSourceHandle(
       TFragmentInstanceId remoteFragmentInstanceId,
       TFragmentInstanceId localFragmentInstanceId,
@@ -52,6 +56,8 @@ public class LocalSourceHandle implements ISourceHandle {
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.queue = Validate.notNull(queue);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.threadName =
+        createFullIdFrom(localFragmentInstanceId, localPlanNodeId + "." + "SourceHandle");
   }
 
   @Override
@@ -71,20 +77,22 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public TsBlock receive() {
-    if (aborted) {
-      throw new IllegalStateException("Source handle is aborted.");
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      if (aborted) {
+        throw new IllegalStateException("Source handle is aborted.");
+      }
+      if (!queue.isBlocked().isDone()) {
+        throw new IllegalStateException("Source handle is blocked.");
+      }
+      TsBlock tsBlock;
+      synchronized (this) {
+        tsBlock = queue.remove();
+      }
+      if (isFinished()) {
+        sourceHandleListener.onFinished(this);
+      }
+      return tsBlock;
     }
-    if (!queue.isBlocked().isDone()) {
-      throw new IllegalStateException("Source handle is blocked.");
-    }
-    TsBlock tsBlock;
-    synchronized (this) {
-      tsBlock = queue.remove();
-    }
-    if (isFinished()) {
-      sourceHandleListener.onFinished(this);
-    }
-    return tsBlock;
   }
 
   @Override
@@ -107,12 +115,14 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public synchronized void abort() {
-    if (aborted) {
-      return;
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      if (aborted) {
+        return;
+      }
+      queue.destroy();
+      aborted = true;
+      sourceHandleListener.onAborted(this);
     }
-    queue.destroy();
-    aborted = true;
-    sourceHandleListener.onAborted(this);
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {
