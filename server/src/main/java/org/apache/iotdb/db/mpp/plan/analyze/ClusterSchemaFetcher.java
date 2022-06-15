@@ -187,14 +187,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < devicePathList.size(); i++) {
       schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
-      patternTree.appendPaths(
-          devicePathList.get(i),
+      List<String> missingMeasurements =
           checkMissingMeasurements(
                   schemaTree,
                   devicePathList.get(i),
                   measurementsList.get(i),
                   tsDataTypesList.get(i))
-              .left);
+              .left;
+      for (String measurement : missingMeasurements) {
+        patternTree.appendFullPath(devicePathList.get(i), measurement);
+      }
     }
 
     if (patternTree.isEmpty()) {

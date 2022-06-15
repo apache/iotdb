@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -41,7 +40,7 @@ public class PathPatternTree {
 
   private PathPatternNode root;
 
-  private List<PartialPath> pathList;
+  @Deprecated private List<PartialPath> pathList;
 
   public PathPatternTree() {
     this.root = new PathPatternNode(SQLConstant.ROOT);
@@ -56,25 +55,109 @@ public class PathPatternTree {
     this.root = root;
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Operations for time series paths
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /** @param fullPath */
   public void appendFullPath(PartialPath fullPath) {
-    searchAndConstruct(root, fullPath.getNodes(), 0);
+    appendBranchWithoutPrune(root, fullPath.getNodes(), 0);
   }
 
+  /**
+   * @param devicePath
+   * @param measurement
+   */
   public void appendFullPath(PartialPath devicePath, String measurement) {
     int deviceNodeLength = devicePath.getNodeLength();
     String[] pathNodes = new String[deviceNodeLength + 1];
     System.arraycopy(devicePath.getNodes(), 0, pathNodes, 0, deviceNodeLength);
     pathNodes[deviceNodeLength] = measurement;
 
-    searchAndConstruct(root, pathNodes, 0);
+    appendBranchWithoutPrune(root, pathNodes, 0);
   }
 
-  /** @return all device path patterns in the path pattern tree. */
+  /** @param pathPattern */
+  public void appendPathPattern(PartialPath pathPattern) {
+    boolean isExist = false;
+    for (PartialPath path : pathList) {
+      if (path.matchFullPath(pathPattern)) {
+        // path already exists in pathList
+        isExist = true;
+        break;
+      }
+    }
+    if (!isExist) {
+      // remove duplicate path in pathList
+      pathList.removeAll(
+          pathList.stream().filter(pathPattern::matchFullPath).collect(Collectors.toList()));
+      pathList.add(pathPattern);
+    }
+  }
+
+  /** */
+  @Deprecated
+  public void constructTree() {
+    for (PartialPath path : pathList) {
+      appendBranchWithoutPrune(root, path.getNodes(), 0);
+    }
+    pathList.clear();
+  }
+
+  private void appendBranchWithoutPrune(PathPatternNode curNode, String[] pathNodes, int pos) {
+    if (pos == pathNodes.length - 1) {
+      return;
+    }
+
+    PathPatternNode nextNode = curNode.getChildren(pathNodes[pos + 1]);
+
+    if (nextNode != null) {
+      appendBranchWithoutPrune(nextNode, pathNodes, pos + 1);
+    } else {
+      constructBranch(curNode, pathNodes, pos + 1);
+    }
+  }
+
+  private void constructBranch(PathPatternNode curNode, String[] pathNodes, int pos) {
+    for (int i = pos; i < pathNodes.length; i++) {
+      PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
+      curNode.addChild(newNode);
+      curNode = newNode;
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Operations for time series paths
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public boolean isEmpty() {
+    return (root.getChildren() == null || root.getChildren().isEmpty())
+        && (pathList == null || pathList.isEmpty());
+  }
+
+  /** @return */
   public List<String> findAllDevicePaths() {
     List<String> nodes = new ArrayList<>();
     List<String> pathPatternList = new ArrayList<>();
     findAllDevicePaths(root, nodes, pathPatternList);
     return pathPatternList;
+  }
+
+  /** @return */
+  public List<PartialPath> splitToPathList() {
+    List<PartialPath> result = new ArrayList<>();
+    Deque<String> ancestors = new ArrayDeque<>();
+    searchFullPath(root, ancestors, result);
+    return result;
+  }
+
+  /** @return */
+  public PathPatternTree findOverlappedPattern(PartialPath pattern) {
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath pathPattern : findOverlappedPaths(pattern)) {
+      patternTree.appendPathPattern(pathPattern);
+    }
+    return patternTree;
   }
 
   private void findAllDevicePaths(
@@ -108,63 +191,47 @@ public class PathPatternTree {
     return fullPathBuilder.toString();
   }
 
-  // append path to pathList
-  public void appendPathPattern(PartialPath pathPattern) {
-    boolean isExist = false;
-    for (PartialPath path : pathList) {
-      if (path.matchFullPath(pathPattern)) {
-        // path already exists in pathList
-        isExist = true;
-        break;
-      }
-    }
-    if (!isExist) {
-      // remove duplicate path in pathList
-      pathList.removeAll(
-          pathList.stream().filter(pathPattern::matchFullPath).collect(Collectors.toList()));
-      pathList.add(pathPattern);
-    }
-  }
-
-  public void appendPaths(PartialPath device, List<String> measurementNameList) {
-    try {
-      for (String measurementName : measurementNameList) {
-        appendPathPattern(new PartialPath(device.getFullPath(), measurementName));
-      }
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
-  }
-
-  // construct tree according to pathList
-  public void constructTree() {
-    for (PartialPath path : pathList) {
-      searchAndConstruct(root, path.getNodes(), 0);
-    }
-    pathList.clear();
-  }
-
-  private void searchAndConstruct(PathPatternNode curNode, String[] pathNodes, int pos) {
-    if (pos == pathNodes.length - 1) {
+  private void searchFullPath(
+      PathPatternNode node, Deque<String> ancestors, List<PartialPath> fullPaths) {
+    if (node.isLeaf()) {
+      fullPaths.add(constructFullPath(node, ancestors));
       return;
     }
 
-    PathPatternNode nextNode = curNode.getChildren(pathNodes[pos + 1]);
-
-    if (nextNode != null) {
-      searchAndConstruct(nextNode, pathNodes, pos + 1);
-    } else {
-      appendTree(curNode, pathNodes, pos + 1);
+    ancestors.push(node.getName());
+    for (PathPatternNode child : node.getChildren().values()) {
+      searchFullPath(child, ancestors, fullPaths);
     }
+    ancestors.pop();
   }
 
-  private void appendTree(PathPatternNode curNode, String[] pathNodes, int pos) {
-    for (int i = pos; i < pathNodes.length; i++) {
-      PathPatternNode newNode = new PathPatternNode(pathNodes[i]);
-      curNode.addChild(newNode);
-      curNode = newNode;
+  private PartialPath constructFullPath(PathPatternNode node, Deque<String> ancestors) {
+    Iterator<String> iterator = ancestors.descendingIterator();
+    List<String> nodeList = new ArrayList<>(ancestors.size() + 1);
+    while (iterator.hasNext()) {
+      nodeList.add(iterator.next());
     }
+    nodeList.add(node.getName());
+    return new PartialPath(nodeList.toArray(new String[0]));
   }
+
+  private List<PartialPath> findOverlappedPaths(PartialPath pattern) {
+    if (pathList.isEmpty()) {
+      pathList = splitToPathList();
+    }
+
+    List<PartialPath> results = new ArrayList<>();
+    for (PartialPath path : pathList) {
+      if (pattern.overlapWith(path)) {
+        results.add(path);
+      }
+    }
+    return results;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // serialize & deserialize
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public void serialize(PublicBAOS outputStream) throws IOException {
     constructTree();
@@ -199,59 +266,6 @@ public class PathPatternTree {
     return node;
   }
 
-  public List<PartialPath> splitToPathList() {
-    List<PartialPath> result = new ArrayList<>();
-    Deque<String> ancestors = new ArrayDeque<>();
-    searchFullPath(root, ancestors, result);
-    return result;
-  }
-
-  private void searchFullPath(
-      PathPatternNode node, Deque<String> ancestors, List<PartialPath> fullPaths) {
-    if (node.isLeaf()) {
-      fullPaths.add(constructFullPath(node, ancestors));
-      return;
-    }
-
-    ancestors.push(node.getName());
-    for (PathPatternNode child : node.getChildren().values()) {
-      searchFullPath(child, ancestors, fullPaths);
-    }
-    ancestors.pop();
-  }
-
-  private PartialPath constructFullPath(PathPatternNode node, Deque<String> ancestors) {
-    Iterator<String> iterator = ancestors.descendingIterator();
-    List<String> nodeList = new ArrayList<>(ancestors.size() + 1);
-    while (iterator.hasNext()) {
-      nodeList.add(iterator.next());
-    }
-    nodeList.add(node.getName());
-    return new PartialPath(nodeList.toArray(new String[0]));
-  }
-
-  public PathPatternTree findOverlappedPattern(PartialPath pattern) {
-    PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath pathPattern : findOverlappedPaths(pattern)) {
-      patternTree.appendPathPattern(pathPattern);
-    }
-    return patternTree;
-  }
-
-  public List<PartialPath> findOverlappedPaths(PartialPath pattern) {
-    if (pathList.isEmpty()) {
-      pathList = splitToPathList();
-    }
-
-    List<PartialPath> results = new ArrayList<>();
-    for (PartialPath path : pathList) {
-      if (pattern.overlapWith(path)) {
-        results.add(path);
-      }
-    }
-    return results;
-  }
-
   @TestOnly
   public boolean equalWith(PathPatternTree that) {
     if (this == that) {
@@ -261,10 +275,5 @@ public class PathPatternTree {
       return false;
     }
     return this.getRoot().equalWith(that.getRoot());
-  }
-
-  public boolean isEmpty() {
-    return (root.getChildren() == null || root.getChildren().isEmpty())
-        && (pathList == null || pathList.isEmpty());
   }
 }

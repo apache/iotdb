@@ -153,7 +153,9 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree schemaTree = new SchemaTree();
     PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < devicePathList.size(); i++) {
-      patternTree.appendPaths(devicePathList.get(i), Arrays.asList(measurementsList.get(i)));
+      for (String measurement : measurementsList.get(i)) {
+        patternTree.appendFullPath(devicePathList.get(i), measurement);
+      }
     }
 
     if (patternTree.isEmpty()) {
