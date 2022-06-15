@@ -72,15 +72,20 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
@@ -186,6 +191,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-raftId-"
             + nodes.getRaftId()
             + "";
+    groupId = new DataRegionId(0);
     setThisNode(thisNode);
     setAllNodes(nodes);
     mbeanName =
@@ -218,6 +224,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
             ClientManager.Type.DataGroupClient));
+    groupId = new DataRegionId(nodes.getHeader().node.nodeIdentifier + nodes.getHeader().raftId);
     this.metaGroupMember = metaGroupMember;
     setThisNode(thisNode);
     setAllNodes(nodes);
@@ -694,65 +701,66 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
    * Execute a non-query plan. If the member is a leader, a log for the plan will be created and
    * process through the raft procedure, otherwise the plan will be forwarded to the leader.
    *
-   * @param plan a non-query plan.
+   * @param request a non-query plan.
    */
   @Override
-  public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+  public ConsensusWriteResponse executeRequest(IConsensusRequest request) {
     if (ClusterDescriptor.getInstance().getConfig().getReplicationNum() == 1) {
       try {
-        if (plan instanceof LogPlan) {
+        if (request instanceof LogPlan) {
           Log log;
           try {
-            log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+            log = LogParser.getINSTANCE().parse(((LogPlan) request).getLog());
           } catch (UnknownLogTypeException e) {
-            logger.error("Can not parse LogPlan {}", plan, e);
-            return StatusUtils.PARSE_LOG_ERROR;
+            logger.error("Can not parse LogPlan {}", request, e);
+            return new ConsensusWriteResponse(null, StatusUtils.PARSE_LOG_ERROR);
           }
           handleChangeMembershipLogWithoutRaft(log);
         } else {
-          ((DataLogApplier) dataLogApplier).applyPhysicalPlan(plan);
+          ((DataLogApplier) dataLogApplier).applyRequest(request);
         }
-        return StatusUtils.OK;
+        return new ConsensusWriteResponse(null, StatusUtils.OK);
       } catch (Exception e) {
         Throwable cause = IOUtils.getRootCause(e);
         boolean hasCreated = false;
         try {
-          if (plan instanceof InsertPlan
+          if (request instanceof InsertPlan
               && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-            if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletsPlan) {
+            if (request instanceof InsertRowsPlan || request instanceof InsertMultiTabletsPlan) {
               if (e instanceof BatchProcessException) {
                 for (TSStatus status : ((BatchProcessException) e).getFailingStatus()) {
                   if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
-                    hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-                    ((BatchPlan) plan).getResults().clear();
+                    hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) request));
+                    ((BatchPlan) request).getResults().clear();
                     break;
                   }
                 }
               }
             } else if (cause instanceof PathNotExistException) {
-              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) request));
             }
           }
         } catch (MetadataException | CheckConsistencyException ex) {
-          logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
-          return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, ex.getMessage());
+          logger.error("{}: Cannot auto-create timeseries for {}", name, request, e);
+          return new ConsensusWriteResponse(null,
+              StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, ex.getMessage()));
         }
         if (hasCreated) {
-          return executeNonQueryPlan(plan);
+          return executeRequest(request);
         }
-        return handleLogExecutionException(plan, cause);
+        return new ConsensusWriteResponse(null, handleLogExecutionException(request, cause));
       }
     } else {
-      TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
+      TSStatus status = executeNonQueryPlanWithKnownLeader(request);
       if (!StatusUtils.NO_LEADER.equals(status)) {
-        return status;
+        return new ConsensusWriteResponse(null, status);
       }
 
       long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
       waitLeader();
       Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
 
-      return executeNonQueryPlanWithKnownLeader(plan);
+      return new ConsensusWriteResponse(null, executeNonQueryPlanWithKnownLeader(request));
     }
   }
 
@@ -788,42 +796,44 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     }
   }
 
-  private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {
+  private TSStatus executeNonQueryPlanWithKnownLeader(IConsensusRequest request) {
     if (character == NodeCharacter.LEADER) {
-      if (plan.getTargetedTerm() > 0 && plan.getTargetedTerm() != term.get()) {
+      if ((request instanceof PhysicalPlan)
+          && ((PhysicalPlan) request).getTargetedTerm() > 0
+          && ((PhysicalPlan) request).getTargetedTerm() != term.get()) {
         return StatusUtils.getStatus(TSStatusCode.LEADER_CHANGED)
             .setMessage(getRaftGroupFullId() + "-" + term.get());
       }
 
       long startTime = Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.getOperationStartTime();
-      TSStatus status = processPlanLocally(plan);
+      TSStatus status = processPlanLocally(request);
       boolean hasCreated = false;
       try {
-        if (plan instanceof InsertPlan
+        if (request instanceof InsertPlan
             && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-          if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletsPlan) {
+          if (request instanceof InsertRowsPlan || request instanceof InsertMultiTabletsPlan) {
             if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               for (TSStatus tmpStatus : status.getSubStatus()) {
                 if (tmpStatus.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
-                  hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-                  ((BatchPlan) plan).getResults().clear();
+                  hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) request));
+                  ((BatchPlan) request).getResults().clear();
                   break;
                 }
               }
             }
           } else {
             if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
-              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) request));
             }
           }
         }
       } catch (MetadataException | CheckConsistencyException e) {
-        logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
+        logger.error("{}: Cannot auto-create timeseries for {}", name, request, e);
         return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
 
       if (hasCreated) {
-        status = processPlanLocally(plan);
+        status = processPlanLocally(request);
       }
       Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.calOperationCostTimeFromStart(startTime);
       if (status != null) {
@@ -831,7 +841,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       }
     } else if (leader.get() != null && !ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       long startTime = Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.getOperationStartTime();
-      TSStatus result = forwardPlan(plan, leader.get(), getHeader());
+      TSStatus result = forwardPlan(request, leader.get(), getHeader());
       Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calOperationCostTimeFromStart(startTime);
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result.setRedirectNode(
@@ -1160,5 +1170,10 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     public void setVersion(long version) {
       this.version = version;
     }
+  }
+
+  @Override
+  public int getPort(Node node) {
+    return node.getDataPort();
   }
 }

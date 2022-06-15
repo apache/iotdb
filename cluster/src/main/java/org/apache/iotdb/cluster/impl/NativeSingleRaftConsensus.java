@@ -46,7 +46,7 @@ public class NativeSingleRaftConsensus implements ISingleConsensus {
 
   @Override
   public ConsensusWriteResponse write(IConsensusRequest request) {
-    return null;
+    return raftMember.executeRequest(request);
   }
 
   @Override
@@ -81,11 +81,11 @@ public class NativeSingleRaftConsensus implements ISingleConsensus {
 
   @Override
   public boolean isLeader() {
-    return false;
+    return raftMember.isLeader();
   }
 
   @Override
   public Peer getLeader() {
-    return null;
+    return raftMember.getLeaderPeer();
   }
 }

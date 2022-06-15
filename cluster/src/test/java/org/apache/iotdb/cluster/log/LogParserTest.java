@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -60,10 +60,10 @@ public class LogParserTest {
 
   @Test
   public void testPhysicalPlanLog() throws UnknownLogTypeException, IllegalPathException {
-    PhysicalPlanLog log = new PhysicalPlanLog();
+    RequestLog log = new RequestLog();
     SetStorageGroupPlan setStorageGroupPlan =
         new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(5)));
-    log.setPlan(setStorageGroupPlan);
+    log.setRequest(setStorageGroupPlan);
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
 

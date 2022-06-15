@@ -56,6 +56,7 @@ import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -423,11 +424,11 @@ public class SyncClientAdaptor {
   }
 
   public static TSStatus executeNonQuery(
-      AsyncClient client, PhysicalPlan plan, RaftNode header, Node receiver)
+      AsyncClient client, IConsensusRequest plan, RaftNode header, Node receiver)
       throws IOException, TException, InterruptedException {
     AtomicReference<TSStatus> status = new AtomicReference<>();
     ExecutNonQueryReq req = new ExecutNonQueryReq();
-    req.planBytes = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(plan));
+    req.planBytes = plan.serializeToByteBuffer();
     if (header != null) {
       req.setHeader(header);
     }

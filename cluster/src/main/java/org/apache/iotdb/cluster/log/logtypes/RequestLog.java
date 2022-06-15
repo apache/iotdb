@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.logtypes;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -35,23 +36,23 @@ import java.util.Objects;
 
 import static org.apache.iotdb.cluster.log.Log.Types.PHYSICAL_PLAN;
 
-/** PhysicalPlanLog contains a non-partitioned physical plan like set storage group. */
-public class PhysicalPlanLog extends Log {
+/** RequestLog contains a non-partitioned request like set storage group. */
+public class RequestLog extends Log {
 
-  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanLog.class);
-  private PhysicalPlan plan;
+  private static final Logger logger = LoggerFactory.getLogger(RequestLog.class);
+  private IConsensusRequest request;
 
-  public PhysicalPlanLog() {}
+  public RequestLog() {}
 
-  public PhysicalPlanLog(PhysicalPlan plan) {
-    this.plan = plan;
+  public RequestLog(IConsensusRequest request) {
+    this.request = request;
   }
 
   @Override
   public int getDefaultBufferSize() {
-    if (plan instanceof DummyPlan) {
+    if (request instanceof DummyPlan) {
       int workloadSize =
-          ((DummyPlan) plan).getWorkload() == null ? 0 : ((DummyPlan) plan).getWorkload().length;
+          ((DummyPlan) request).getWorkload() == null ? 0 : ((DummyPlan) request).getWorkload().length;
       return workloadSize + 512;
     }
     return DEFAULT_BUFFER_SIZE;
@@ -66,7 +67,9 @@ public class PhysicalPlanLog extends Log {
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
 
-      plan.serialize(dataOutputStream);
+      ByteBuffer byteBuffer = request.serializeToByteBuffer();
+      dataOutputStream.write(byteBuffer.array(), byteBuffer.arrayOffset(),
+          byteBuffer.limit() - byteBuffer.position());
     } catch (IOException e) {
       // unreachable
     }
@@ -79,7 +82,7 @@ public class PhysicalPlanLog extends Log {
     buffer.put((byte) PHYSICAL_PLAN.ordinal());
     buffer.putLong(getCurrLogIndex());
     buffer.putLong(getCurrLogTerm());
-    plan.serialize(buffer);
+    buffer.put(request.serializeToByteBuffer());
   }
 
   @Override
@@ -88,7 +91,7 @@ public class PhysicalPlanLog extends Log {
     setCurrLogTerm(buffer.getLong());
 
     try {
-      plan = PhysicalPlan.Factory.create(buffer);
+      request = PhysicalPlan.Factory.create(buffer);
     } catch (IOException | IllegalPathException e) {
       logger.error(
           "Cannot parse a physical {}:{} plan {}",
@@ -99,17 +102,17 @@ public class PhysicalPlanLog extends Log {
     }
   }
 
-  public PhysicalPlan getPlan() {
-    return plan;
+  public IConsensusRequest getRequest() {
+    return request;
   }
 
-  public void setPlan(PhysicalPlan plan) {
-    this.plan = plan;
+  public void setRequest(IConsensusRequest request) {
+    this.request = request;
   }
 
   @Override
   public String toString() {
-    return plan + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
+    return request + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
   }
 
   @Override
@@ -123,12 +126,12 @@ public class PhysicalPlanLog extends Log {
     if (!super.equals(o)) {
       return false;
     }
-    PhysicalPlanLog that = (PhysicalPlanLog) o;
-    return Objects.equals(plan, that.plan);
+    RequestLog that = (RequestLog) o;
+    return Objects.equals(request, that.request);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), plan);
+    return Objects.hash(super.hashCode(), request);
   }
 }

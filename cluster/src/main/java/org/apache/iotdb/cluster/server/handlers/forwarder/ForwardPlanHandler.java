@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.server.handlers.forwarder;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -34,13 +34,13 @@ import java.util.concurrent.atomic.AtomicReference;
 public class ForwardPlanHandler implements AsyncMethodCallback<TSStatus> {
 
   private static final Logger logger = LoggerFactory.getLogger(ForwardPlanHandler.class);
-  private PhysicalPlan plan;
+  private IConsensusRequest request;
   private AtomicReference<TSStatus> result;
   private Node node;
 
-  public ForwardPlanHandler(AtomicReference<TSStatus> result, PhysicalPlan plan, Node node) {
+  public ForwardPlanHandler(AtomicReference<TSStatus> result, IConsensusRequest request, Node node) {
     this.result = result;
-    this.plan = plan;
+    this.request = request;
     this.node = node;
   }
 
@@ -55,9 +55,9 @@ public class ForwardPlanHandler implements AsyncMethodCallback<TSStatus> {
   @Override
   public void onError(Exception exception) {
     if (exception instanceof IOException) {
-      logger.warn("Cannot send plan {} to node {}: {}", plan, node, exception.getMessage());
+      logger.warn("Cannot send plan {} to node {}: {}", request, node, exception.getMessage());
     } else {
-      logger.error("Cannot send plan {} to node {}", plan, node, exception);
+      logger.error("Cannot send plan {} to node {}", request, node, exception);
     }
     synchronized (result) {
       TSStatus status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, exception.getMessage());

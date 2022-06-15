@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.log.applier;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -116,9 +116,9 @@ public class AsyncDataLogApplier implements LogApplier {
   private PartialPath getLogKey(Log log) throws StorageGroupNotSetException {
     // we can only apply some kinds of plans in parallel, for other logs, we must wait until all
     // previous logs are applied, or the order of deletions and insertions may get wrong
-    if (log instanceof PhysicalPlanLog) {
-      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-      PhysicalPlan plan = physicalPlanLog.getPlan();
+    if (log instanceof RequestLog) {
+      RequestLog requestLog = (RequestLog) log;
+      PhysicalPlan plan = requestLog.getRequest();
       // this plan only affects one sg, so we can run it with other plans in parallel
       return getPlanKey(plan);
     } else if (log instanceof CloseFileLog) {

@@ -49,7 +49,7 @@ import org.apache.iotdb.cluster.log.appender.LogAppender;
 import org.apache.iotdb.cluster.log.appender.LogAppenderFactory;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.sequencing.AsynchronousSequencer.Factory;
 import org.apache.iotdb.cluster.log.sequencing.LogSequencer;
@@ -81,13 +81,17 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -183,6 +187,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   /** the name of the member, to distinguish several members in the logs. */
+  ConsensusGroupId groupId;
   String name;
   /** to choose nodes to send request of joining cluster randomly. */
   Random random = new Random();
@@ -853,27 +858,12 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   /**
-   * If the node is not a leader, the request will be sent to the leader or reports an error if
-   * there is no leader. Otherwise execute the plan locally (whether to send it to followers depends
-   * on the type of the plan).
-   */
-  public TSStatus executeNonQueryPlan(ExecutNonQueryReq request)
-      throws IOException, IllegalPathException {
-    // process the plan locally
-    PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-
-    TSStatus answer = executeNonQueryPlan(plan);
-    logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, answer);
-    return answer;
-  }
-
-  /**
    * Execute a non-query plan. Subclass may have their individual implements.
    *
    * @param plan a non-query plan.
    * @return A TSStatus indicating the execution result.
    */
-  protected abstract TSStatus executeNonQueryPlan(PhysicalPlan plan);
+  public abstract ConsensusWriteResponse executeRequest(IConsensusRequest plan);
 
   abstract ClientCategory getClientCategory();
 
@@ -1109,29 +1099,29 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return OK if over half of the followers accept the log or null if the leadership is lost
    *     during the appending
    */
-  public TSStatus processPlanLocally(PhysicalPlan plan) {
+  public TSStatus processPlanLocally(IConsensusRequest request) {
     if (USE_LOG_DISPATCHER) {
-      return processPlanLocallyV2(plan);
+      return processPlanLocallyV2(request);
     }
 
-    logger.debug("{}: Processing plan {}", name, plan);
-    if (readOnly && !(plan instanceof LogPlan)) {
+    logger.debug("{}: Processing plan {}", name, request);
+    if (readOnly && !(request instanceof LogPlan)) {
       return StatusUtils.NODE_READ_ONLY;
     }
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
 
     Log log;
 
-    if (plan instanceof LogPlan) {
+    if (request instanceof LogPlan) {
       try {
-        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+        log = LogParser.getINSTANCE().parse(((LogPlan) request).getLog());
       } catch (UnknownLogTypeException e) {
-        logger.error("Can not parse LogPlan {}", plan, e);
+        logger.error("Can not parse LogPlan {}", request, e);
         return StatusUtils.PARSE_LOG_ERROR;
       }
     } else {
-      log = new PhysicalPlanLog();
-      ((PhysicalPlanLog) log).setPlan(plan);
+      log = new RequestLog();
+      ((RequestLog) log).setRequest(request);
     }
 
     // if a single log exceeds the threshold
@@ -1152,8 +1142,8 @@ public abstract class RaftMember implements RaftMemberMBean {
       synchronized (logManager) {
         if (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
             <= config.getUnCommittedRaftLogNumForRejectThreshold()) {
-          if (!(plan instanceof LogPlan)) {
-            plan.setIndex(logManager.getLastLogIndex() + 1);
+          if (!(request instanceof LogPlan) && (request instanceof PhysicalPlan)) {
+            ((PhysicalPlan) request).setIndex(logManager.getLastLogIndex() + 1);
           }
           log.setCurrLogTerm(getTerm().get());
           log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
@@ -1187,7 +1177,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
   }
 
-  protected TSStatus processPlanLocallyV2(PhysicalPlan plan) {
+  protected TSStatus processPlanLocallyV2(IConsensusRequest plan) {
     long totalStartTime = System.nanoTime();
     logger.debug("{}: Processing plan {}", name, plan);
     if (readOnly) {
@@ -1203,8 +1193,8 @@ public abstract class RaftMember implements RaftMemberMBean {
         return StatusUtils.PARSE_LOG_ERROR;
       }
     } else {
-      log = new PhysicalPlanLog();
-      ((PhysicalPlanLog) log).setPlan(plan);
+      log = new RequestLog();
+      ((RequestLog) log).setRequest(plan);
     }
 
     if (USE_CRAFT && allNodes.size() > 2) {
@@ -1473,7 +1463,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    *     communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  public TSStatus forwardPlan(PhysicalPlan plan, Node node, RaftNode header) {
+  public TSStatus forwardPlan(IConsensusRequest plan, Node node, RaftNode header) {
     if (node == null || node.equals(thisNode)) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
@@ -1505,7 +1495,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header) {
+  private TSStatus forwardPlanAsync(IConsensusRequest plan, Node receiver, RaftNode header) {
     AsyncClient client = getAsyncClient(receiver);
     if (client == null) {
       logger.debug("{}: can not get client for node={}", name, receiver);
@@ -1517,38 +1507,38 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   public TSStatus forwardPlanAsync(
-      PhysicalPlan plan, Node receiver, RaftNode header, AsyncClient client) {
+      IConsensusRequest request, Node receiver, RaftNode header, AsyncClient client) {
     try {
-      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
+      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, request, header, receiver);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, request, receiver);
       }
       return tsStatus;
     } catch (IOException | TException e) {
-      logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
+      logger.error(MSG_FORWARD_ERROR, name, request, receiver, e);
       return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
+      logger.warn("{}: forward {} to {} interrupted", name, request, receiver);
       return StatusUtils.TIME_OUT;
     }
   }
 
-  private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, RaftNode header) {
+  private TSStatus forwardPlanSync(IConsensusRequest request, Node receiver, RaftNode header) {
     Client client = getSyncClient(receiver);
     if (client == null) {
-      logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
+      logger.warn(MSG_FORWARD_TIMEOUT, name, request, receiver);
       return StatusUtils.TIME_OUT;
     }
-    return forwardPlanSync(plan, receiver, header, client);
+    return forwardPlanSync(request, receiver, header, client);
   }
 
   public TSStatus forwardPlanSync(
-      PhysicalPlan plan, Node receiver, RaftNode header, Client client) {
+      IConsensusRequest request, Node receiver, RaftNode header, Client client) {
     try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
+      req.setPlanBytes(request.serializeToByteBuffer());
       if (header != null) {
         req.setHeader(header);
       }
@@ -1556,19 +1546,16 @@ public abstract class RaftMember implements RaftMemberMBean {
       TSStatus tsStatus = client.executeNonQueryPlan(req);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, request, receiver);
       }
       return tsStatus;
-    } catch (IOException e) {
-      logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, request, receiver);
       } else {
-        logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
+        logger.error(MSG_FORWARD_ERROR, name, request, receiver, e);
         status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
       }
       // the connection may be broken, close it to avoid it being reused
@@ -1694,12 +1681,12 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   private boolean canBeWeaklyAccepted(Log log) {
-    if (!(log instanceof PhysicalPlanLog)) {
+    if (!(log instanceof RequestLog)) {
       return false;
     }
-    PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-    return physicalPlanLog.getPlan() instanceof InsertPlan
-        || physicalPlanLog.getPlan() instanceof DummyPlan;
+    RequestLog requestLog = (RequestLog) log;
+    return requestLog.getRequest() instanceof InsertPlan
+        || requestLog.getRequest() instanceof DummyPlan;
   }
 
   /**
@@ -2379,5 +2366,26 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public LogRelay getLogRelay() {
     return logRelay;
+  }
+
+  public ConsensusGroupId getGroupId() {
+    return groupId;
+  }
+
+  public abstract int getPort(Node node);
+
+  public Peer getThisPeer() {
+    return new Peer(groupId, new TEndPoint(thisNode.internalIp, getPort(thisNode)));
+  }
+
+  public Peer getLeaderPeer() {
+    if (leader.get() == null) {
+      return null;
+    }
+    return new Peer(groupId, new TEndPoint(leader.get().internalIp, getPort(leader.get())));
+  }
+
+  public boolean isLeader() {
+    return ClusterUtils.nodeEqual(leader.get(), thisNode);
   }
 }

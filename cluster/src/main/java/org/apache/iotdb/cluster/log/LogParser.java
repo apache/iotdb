@@ -26,7 +26,7 @@ import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
 import org.apache.iotdb.cluster.log.logtypes.LargeTestLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 
 import org.slf4j.Logger;
@@ -72,9 +72,9 @@ public class LogParser {
         log = addNodeLog;
         break;
       case PHYSICAL_PLAN:
-        PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
-        physicalPlanLog.deserialize(buffer);
-        log = physicalPlanLog;
+        RequestLog requestLog = new RequestLog();
+        requestLog.deserialize(buffer);
+        log = requestLog;
         break;
       case CLOSE_FILE:
         CloseFileLog closeFileLog = new CloseFileLog();

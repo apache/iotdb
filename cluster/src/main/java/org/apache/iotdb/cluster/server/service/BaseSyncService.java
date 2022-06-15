@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,7 +154,12 @@ public abstract class BaseSyncService implements RaftService.Iface {
   @Override
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
     try {
-      return member.executeNonQueryPlan(request);
+      // process the plan locally
+      PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+
+      TSStatus answer = member.executeRequest(plan);
+      logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, answer);
+      return answer;
     } catch (Exception e) {
       throw new TException(e);
     }

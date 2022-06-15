@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -68,9 +68,9 @@ public class AsyncDataLogApplierTest {
   public void test() throws IllegalPathException, InterruptedException {
     LogApplier dummyApplier =
         log -> {
-          if (log instanceof PhysicalPlanLog) {
-            PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-            PhysicalPlan plan = physicalPlanLog.getPlan();
+          if (log instanceof RequestLog) {
+            RequestLog requestLog = (RequestLog) log;
+            PhysicalPlan plan = requestLog.getRequest();
             if (plan instanceof InsertRowPlan) {
               appliedLogs.add(log);
               log.setApplied(true);
@@ -89,7 +89,7 @@ public class AsyncDataLogApplierTest {
         PhysicalPlan plan =
             new InsertRowPlan(
                 new PartialPath(TestUtils.getTestSg(i)), i, new String[0], new String[0]);
-        PhysicalPlanLog log = new PhysicalPlanLog(plan);
+        RequestLog log = new RequestLog(plan);
         log.setCurrLogIndex(i);
         logsToApply.add(log);
       }
@@ -116,9 +116,9 @@ public class AsyncDataLogApplierTest {
   public void testParallel() {
     LogApplier dummyApplier =
         log -> {
-          if (log instanceof PhysicalPlanLog) {
-            PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-            PhysicalPlan plan = physicalPlanLog.getPlan();
+          if (log instanceof RequestLog) {
+            RequestLog requestLog = (RequestLog) log;
+            PhysicalPlan plan = requestLog.getRequest();
             if (plan instanceof InsertRowPlan) {
               appliedLogs.add(log);
               log.setApplied(true);
@@ -149,7 +149,7 @@ public class AsyncDataLogApplierTest {
                     } catch (IllegalPathException e) {
                       // ignore
                     }
-                    PhysicalPlanLog log = new PhysicalPlanLog(plan);
+                    RequestLog log = new RequestLog(plan);
                     log.setCurrLogIndex(finalI * 11 + j);
                     threadLogsToApply.add(log);
                   }

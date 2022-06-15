@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -116,7 +116,7 @@ public class SerializeUtilTest {
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
 
-    Log log = new PhysicalPlanLog(tabletPlan);
+    Log log = new RequestLog(tabletPlan);
     log.setCurrLogTerm(1);
     log.setCurrLogIndex(2);
 
@@ -177,7 +177,7 @@ public class SerializeUtilTest {
     plan.setAttributes(attributesList);
     plan.setAlias(alias);
 
-    Log log = new PhysicalPlanLog(plan);
+    Log log = new RequestLog(plan);
     log.setCurrLogTerm(1);
     log.setCurrLogIndex(2);
 

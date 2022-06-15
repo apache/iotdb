@@ -48,7 +48,7 @@ public class SerializeLogTest {
 
   @Test
   public void testPhysicalPlanLog() throws UnknownLogTypeException, IllegalPathException {
-    PhysicalPlanLog log = new PhysicalPlanLog();
+    RequestLog log = new RequestLog();
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     InsertRowPlan plan = new InsertRowPlan();
@@ -68,19 +68,19 @@ public class SerializeLogTest {
     schemas[2].getSchema().setType(TSDataType.TEXT);
     plan.setMeasurementMNodes(schemas);
     plan.setTime(1);
-    log.setPlan(plan);
+    log.setRequest(plan);
 
     ByteBuffer byteBuffer = log.serialize();
     Log logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);
 
-    log = new PhysicalPlanLog(new SetStorageGroupPlan(new PartialPath("root.sg1")));
+    log = new RequestLog(new SetStorageGroupPlan(new PartialPath("root.sg1")));
     byteBuffer = log.serialize();
     logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);
 
     log =
-        new PhysicalPlanLog(
+        new RequestLog(
             new CreateTimeSeriesPlan(
                 new PartialPath("root.applyMeta" + ".s1"),
                 TSDataType.DOUBLE,

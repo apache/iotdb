@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
@@ -46,8 +47,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class BaseAsyncService implements RaftService.AsyncIface {
+
+  private static final Logger logger = LoggerFactory.getLogger(BaseAsyncService.class);
 
   RaftMember member;
   String name;
@@ -166,7 +171,11 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
     }
 
     try {
-      TSStatus status = member.executeNonQueryPlan(request);
+      // process the plan locally
+      PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+
+      TSStatus status = member.executeRequest(plan);
+      logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, status);
       resultHandler.onComplete(
           StatusUtils.getStatus(
               status,

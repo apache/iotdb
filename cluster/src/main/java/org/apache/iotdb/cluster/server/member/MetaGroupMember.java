@@ -76,11 +76,14 @@ import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -206,7 +209,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   boolean ready = false;
 
   @TestOnly
-  public MetaGroupMember() {}
+  public MetaGroupMember() {
+    groupId = new PartitionRegionId(0);
+  }
 
   public MetaGroupMember(Node thisNode, Coordinator coordinator) {
     super(
@@ -214,6 +219,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
             ClientManager.Type.MetaGroupClient));
+    groupId = new PartitionRegionId(0);
     setThisNode(thisNode);
     setAllNodes(new PartitionGroup());
     initPeerMap();
@@ -1308,7 +1314,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    * @param plan a non-query plan.
    */
   @Override
-  public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+  public ConsensusWriteResponse executeRequest(IConsensusRequest plan) {
     TSStatus result;
     long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
     if (PartitionUtils.isGlobalMetaPlan(plan)) {
@@ -1322,7 +1328,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       result = coordinator.executeNonQueryPlan(plan);
     }
     Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
-    return result;
+    return new ConsensusWriteResponse(null, result);
   }
 
   @Override
@@ -1341,7 +1347,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    * Thus the plan will be processed locally only by the MetaLeader and forwarded by non-leader
    * nodes.
    */
-  public TSStatus processNonPartitionedMetaPlan(PhysicalPlan plan) {
+  public TSStatus processNonPartitionedMetaPlan(IConsensusRequest plan) {
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);
       if (status != null) {
@@ -1925,5 +1931,10 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   @Override
   public String getIdNodeMapAsString() {
     return idNodeMap.toString();
+  }
+
+  @Override
+  public int getPort(Node node) {
+    return node.getMetaPort();
   }
 }

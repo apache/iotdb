@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -116,37 +117,45 @@ public class Coordinator {
    * nodes (like timeseries deletion) or the nodes that belong to certain groups (like data
    * ingestion).
    *
-   * @param plan a non-query plan.
+   * @param request a non-query plan.
    */
-  public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+  public TSStatus executeNonQueryPlan(IConsensusRequest request) {
     TSStatus result;
     long startTime = Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.getOperationStartTime();
-    if (PartitionUtils.isLocalNonQueryPlan(plan)) {
+    if (PartitionUtils.isLocalNonQueryPlan(request)) {
       // run locally
-      result = executeNonQueryLocally(plan);
-    } else if (PartitionUtils.isGlobalMetaPlan(plan)) {
+      result = executeNonQueryLocally(request);
+    } else if (PartitionUtils.isGlobalMetaPlan(request)) {
       // forward the plan to all meta group nodes
-      result = metaGroupMember.processNonPartitionedMetaPlan(plan);
-    } else if (PartitionUtils.isGlobalDataPlan(plan)) {
+      result = metaGroupMember.processNonPartitionedMetaPlan(request);
+    } else if (PartitionUtils.isGlobalDataPlan(request)) {
       // forward the plan to all data group nodes
-      result = processNonPartitionedDataPlan(plan);
-    } else {
+      result = processNonPartitionedDataPlan(((PhysicalPlan) request));
+    } else if (request instanceof PhysicalPlan) {
       // split the plan and forward them to some PartitionGroups
       try {
-        result = processPartitionedPlan(plan);
+        result = processPartitionedPlan(((PhysicalPlan) request));
       } catch (UnsupportedPlanException e) {
         return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
       }
+    } else {
+      result = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Unsupported request: " + request);
     }
     Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
   }
 
   /** execute a non-query plan that is not necessary to be executed on other nodes. */
-  private TSStatus executeNonQueryLocally(PhysicalPlan plan) {
+  private TSStatus executeNonQueryLocally(IConsensusRequest request) {
     boolean execRet;
     try {
-      execRet = metaGroupMember.getLocalExecutor().processNonQuery(plan);
+      if (request instanceof PhysicalPlan) {
+        execRet = metaGroupMember.getLocalExecutor().processNonQuery(((PhysicalPlan) request));
+      } else {
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
+            "Unsupported request: " + request);
+      }
     } catch (QueryProcessException e) {
       if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
         logger.debug("meet error while processing non-query. ", e);
@@ -299,7 +308,7 @@ public class Coordinator {
         status =
             metaGroupMember
                 .getLocalDataMember(partitionGroup.getHeader())
-                .executeNonQueryPlan(plan);
+                .executeRequest(plan).getStatus();
         logger.debug(
             "Execute {} in a local group of {} with status {}",
             plan,
@@ -479,7 +488,7 @@ public class Coordinator {
       result =
           metaGroupMember
               .getLocalDataMember(entry.getValue().getHeader())
-              .executeNonQueryPlan(entry.getKey());
+              .executeRequest(entry.getKey()).getStatus();
       logger.debug(
           "Execute {} in a local group of {}, {}",
           entry.getKey(),

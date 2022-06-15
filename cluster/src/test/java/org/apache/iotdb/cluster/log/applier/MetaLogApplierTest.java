@@ -25,7 +25,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.Constants;
@@ -106,12 +106,12 @@ public class MetaLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyMetadataCreation() throws MetadataException {
-    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
+    RequestLog requestLog = new RequestLog();
     SetStorageGroupPlan setStorageGroupPlan =
         new SetStorageGroupPlan(new PartialPath("root.applyMeta"));
-    physicalPlanLog.setPlan(setStorageGroupPlan);
+    requestLog.setRequest(setStorageGroupPlan);
 
-    applier.apply(physicalPlanLog);
+    applier.apply(requestLog);
     assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath("root.applyMeta")));
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
@@ -124,8 +124,8 @@ public class MetaLogApplierTest extends IoTDBTest {
             Collections.emptyMap(),
             Collections.emptyMap(),
             null);
-    physicalPlanLog.setPlan(createTimeSeriesPlan);
-    applier.apply(physicalPlanLog);
+    requestLog.setRequest(createTimeSeriesPlan);
+    applier.apply(requestLog);
     assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath("root.applyMeta.s1")));
     assertEquals(
         TSDataType.DOUBLE,

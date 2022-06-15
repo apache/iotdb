@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.utils;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -69,7 +70,7 @@ public class PartitionUtils {
    * @param plan
    * @return
    */
-  public static boolean isLocalNonQueryPlan(PhysicalPlan plan) {
+  public static boolean isLocalNonQueryPlan(IConsensusRequest plan) {
     return plan instanceof LoadDataPlan
         || plan instanceof OperateFilePlan
         || plan instanceof KillQueryPlan
@@ -85,7 +86,7 @@ public class PartitionUtils {
    * @param plan
    * @return
    */
-  public static boolean isGlobalMetaPlan(PhysicalPlan plan) {
+  public static boolean isGlobalMetaPlan(IConsensusRequest plan) {
     return plan instanceof SetStorageGroupPlan
         || plan instanceof SetTTLPlan
         || plan instanceof ShowTTLPlan
@@ -113,7 +114,7 @@ public class PartitionUtils {
    * @param plan the plan to check
    * @return is globalDataPlan or not
    */
-  public static boolean isGlobalDataPlan(PhysicalPlan plan) {
+  public static boolean isGlobalDataPlan(IConsensusRequest plan) {
     return
     // because deletePlan has an infinite time range.
     plan instanceof DeletePlan

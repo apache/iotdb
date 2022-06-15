@@ -24,12 +24,13 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -79,10 +80,10 @@ public class DataLogApplier extends BaseApplier {
             .preRemoveNodeForDataGroup((RemoveNodeLog) log, dataGroupMember);
         dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(
             ((RemoveNodeLog) log).getMetaLogIndex());
-      } else if (log instanceof PhysicalPlanLog) {
-        PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-        PhysicalPlan plan = physicalPlanLog.getPlan();
-        applyPhysicalPlan(plan);
+      } else if (log instanceof RequestLog) {
+        RequestLog requestLog = (RequestLog) log;
+        IConsensusRequest request = requestLog.getRequest();
+        applyRequest(request);
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         StorageEngine.getInstance()
@@ -105,21 +106,21 @@ public class DataLogApplier extends BaseApplier {
     }
   }
 
-  public void applyPhysicalPlan(PhysicalPlan plan)
+  public void applyRequest(IConsensusRequest request)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (plan instanceof DeletePlan) {
-      ((DeletePlan) plan).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
-    } else if (plan instanceof DeleteTimeSeriesPlan) {
-      ((DeleteTimeSeriesPlan) plan).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
+    if (request instanceof DeletePlan) {
+      ((DeletePlan) request).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
+    } else if (request instanceof DeleteTimeSeriesPlan) {
+      ((DeleteTimeSeriesPlan) request).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
     }
-    if (plan instanceof InsertMultiTabletsPlan) {
-      applyInsert((InsertMultiTabletsPlan) plan);
-    } else if (plan instanceof InsertRowsPlan) {
-      applyInsert((InsertRowsPlan) plan);
-    } else if (plan instanceof InsertPlan) {
-      applyInsert((InsertPlan) plan);
+    if (request instanceof InsertMultiTabletsPlan) {
+      applyInsert((InsertMultiTabletsPlan) request);
+    } else if (request instanceof InsertRowsPlan) {
+      applyInsert((InsertRowsPlan) request);
+    } else if (request instanceof InsertPlan) {
+      applyInsert((InsertPlan) request);
     } else {
-      applyPhysicalPlan(plan, dataGroupMember);
+      applyRequest(request, dataGroupMember);
     }
   }
 
@@ -142,7 +143,7 @@ public class DataLogApplier extends BaseApplier {
         }
       }
     }
-    applyPhysicalPlan(plan, dataGroupMember);
+    applyRequest(plan, dataGroupMember);
   }
 
   private void applyInsert(InsertRowsPlan plan)
@@ -164,7 +165,7 @@ public class DataLogApplier extends BaseApplier {
         }
       }
     }
-    applyPhysicalPlan(plan, dataGroupMember);
+    applyRequest(plan, dataGroupMember);
   }
 
   private void applyInsert(InsertPlan plan)
@@ -180,6 +181,6 @@ public class DataLogApplier extends BaseApplier {
         throw new QueryProcessException(ce.getMessage());
       }
     }
-    applyPhysicalPlan(plan, dataGroupMember);
+    applyRequest(plan, dataGroupMember);
   }
 }

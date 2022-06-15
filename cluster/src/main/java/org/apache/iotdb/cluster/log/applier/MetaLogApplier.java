@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -49,8 +49,8 @@ public class MetaLogApplier extends BaseApplier {
       logger.debug("MetaMember [{}] starts applying Log {}", metaGroupMember.getName(), log);
       if (log instanceof AddNodeLog) {
         applyAddNodeLog((AddNodeLog) log);
-      } else if (log instanceof PhysicalPlanLog) {
-        applyPhysicalPlan(((PhysicalPlanLog) log).getPlan(), null);
+      } else if (log instanceof RequestLog) {
+        applyRequest(((RequestLog) log).getRequest(), null);
       } else if (log instanceof RemoveNodeLog) {
         applyRemoveNodeLog((RemoveNodeLog) log);
       } else if (log instanceof EmptyContentLog || log instanceof FragmentedLog) {

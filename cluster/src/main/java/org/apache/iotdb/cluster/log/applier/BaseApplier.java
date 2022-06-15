@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -63,20 +64,21 @@ abstract class BaseApplier implements LogApplier {
   }
 
   /**
-   * @param plan
+   * @param request
    * @param dataGroupMember the data group member that is applying the log, null if the log is
    *     applied by a meta group member
    * @throws QueryProcessException
    * @throws StorageGroupNotSetException
    * @throws StorageEngineException
    */
-  void applyPhysicalPlan(PhysicalPlan plan, DataGroupMember dataGroupMember)
+  void applyRequest(IConsensusRequest request, DataGroupMember dataGroupMember)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (plan instanceof InsertPlan) {
-      processPlanWithTolerance((InsertPlan) plan, dataGroupMember);
-    } else if (plan != null && !plan.isQuery()) {
+    if (request instanceof InsertPlan) {
+      processPlanWithTolerance((InsertPlan) request, dataGroupMember);
+    } else if (request instanceof PhysicalPlan && !((PhysicalPlan) request).isQuery()) {
+      PhysicalPlan plan = ((PhysicalPlan) request);
       try {
-        getQueryExecutor().processNonQuery(plan);
+        getQueryExecutor().processNonQuery(((PhysicalPlan) request));
       } catch (BatchProcessException e) {
         handleBatchProcessException(e, plan);
       } catch (QueryProcessException e) {
@@ -89,8 +91,8 @@ abstract class BaseApplier implements LogApplier {
       } catch (StorageGroupNotSetException e) {
         executeAfterSync(plan);
       }
-    } else if (plan != null) {
-      logger.error("Unsupported physical plan: {}", plan);
+    } else if (request != null) {
+      throw new QueryProcessException("Unsupported request: " + request);
     }
   }
 

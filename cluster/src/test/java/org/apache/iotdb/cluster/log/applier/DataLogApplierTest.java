@@ -30,7 +30,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -301,8 +301,8 @@ public class DataLogApplierTest extends IoTDBTest {
       throws QueryProcessException, IOException, QueryFilterOptimizationException,
           StorageEngineException, MetadataException, InterruptedException {
     InsertRowPlan insertPlan = new InsertRowPlan();
-    PhysicalPlanLog log = new PhysicalPlanLog();
-    log.setPlan(insertPlan);
+    RequestLog log = new RequestLog();
+    log.setRequest(insertPlan);
 
     // this series is already created
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(1)));
@@ -357,8 +357,8 @@ public class DataLogApplierTest extends IoTDBTest {
       throws MetadataException, QueryProcessException, StorageEngineException, IOException,
           InterruptedException, QueryFilterOptimizationException {
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-    PhysicalPlanLog log = new PhysicalPlanLog();
-    log.setPlan(insertRowsPlan);
+    RequestLog log = new RequestLog();
+    log.setRequest(insertRowsPlan);
 
     for (int i = 1; i <= 4; i++) {
       InsertRowPlan insertPlan = new InsertRowPlan();
@@ -394,7 +394,7 @@ public class DataLogApplierTest extends IoTDBTest {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteEndTime(50);
-    applier.apply(new PhysicalPlanLog(deletePlan));
+    applier.apply(new RequestLog(deletePlan));
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(0, 0)), null);
     int cnt = 0;
     while (dataSet.hasNext()) {
@@ -422,7 +422,7 @@ public class DataLogApplierTest extends IoTDBTest {
     // existing sg
     FlushPlan flushPlan =
         new FlushPlan(null, Collections.singletonList(new PartialPath(TestUtils.getTestSg(0))));
-    PhysicalPlanLog log = new PhysicalPlanLog(flushPlan);
+    RequestLog log = new RequestLog(flushPlan);
 
     applier.apply(log);
     assertNull(log.getException());
@@ -430,7 +430,7 @@ public class DataLogApplierTest extends IoTDBTest {
     // non-existing sg
     flushPlan =
         new FlushPlan(null, Collections.singletonList(new PartialPath(TestUtils.getTestSg(20))));
-    log = new PhysicalPlanLog(flushPlan);
+    log = new RequestLog(flushPlan);
 
     applier.apply(log);
     assertEquals(
@@ -453,7 +453,7 @@ public class DataLogApplierTest extends IoTDBTest {
     multiTimeSeriesPlan.setDataTypes(Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE));
     multiTimeSeriesPlan.setEncodings(Arrays.asList(TSEncoding.GORILLA, TSEncoding.GORILLA));
 
-    PhysicalPlanLog log = new PhysicalPlanLog(multiTimeSeriesPlan);
+    RequestLog log = new RequestLog(multiTimeSeriesPlan);
     // the applier should sync meta leader to get root.sg2 and report no error
     applier.apply(log);
     assertTrue(
@@ -477,7 +477,7 @@ public class DataLogApplierTest extends IoTDBTest {
         });
 
     DeletePlan deletePlan = new DeletePlan();
-    PhysicalPlanLog log = new PhysicalPlanLog(deletePlan);
+    RequestLog log = new RequestLog(deletePlan);
     applier.apply(log);
     assertNull(log.getException());
   }
@@ -485,16 +485,16 @@ public class DataLogApplierTest extends IoTDBTest {
   @Test
   public void testApplyClearCache() {
     ClearCachePlan clearCachePlan = new ClearCachePlan();
-    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(clearCachePlan);
-    applier.apply(physicalPlanLog);
-    assertNull(physicalPlanLog.getException());
+    RequestLog requestLog = new RequestLog(clearCachePlan);
+    applier.apply(requestLog);
+    assertNull(requestLog.getException());
   }
 
   @Test
   public void testApplyMerge() {
     MergePlan mergePlan = new MergePlan();
-    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(mergePlan);
-    applier.apply(physicalPlanLog);
-    assertNull(physicalPlanLog.getException());
+    RequestLog requestLog = new RequestLog(mergePlan);
+    applier.apply(requestLog);
+    assertNull(requestLog.getException());
   }
 }

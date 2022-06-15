@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.common;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RequestLog;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -37,9 +37,9 @@ public class TestLogApplier implements LogApplier {
   @Override
   public void apply(Log log) {
     try {
-      if (log instanceof PhysicalPlanLog) {
-        PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-        getPlanExecutor().processNonQuery(physicalPlanLog.getPlan());
+      if (log instanceof RequestLog) {
+        RequestLog requestLog = (RequestLog) log;
+        getPlanExecutor().processNonQuery(requestLog.getRequest());
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         try {
