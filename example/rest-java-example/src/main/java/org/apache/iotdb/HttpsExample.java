@@ -51,7 +51,7 @@ public class HttpsExample {
   }
 
   public void pingHttps() throws Exception {
-    CloseableHttpClient httpClient = SSLClient.getHttpClient();
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
     HttpGet httpGet = new HttpGet("https://127.0.0.1:18080/ping");
     CloseableHttpResponse response = null;
     try {
@@ -89,7 +89,7 @@ public class HttpsExample {
   }
 
   public void insertTablet() {
-    CloseableHttpClient httpClient = SSLClient.getHttpClient();
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("https://127.0.0.1:18080/rest/v1/insertTablet");
@@ -116,7 +116,7 @@ public class HttpsExample {
   }
 
   public void query() {
-    CloseableHttpClient httpClient = SSLClient.getHttpClient();
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("https://127.0.0.1:18080/rest/v1/query");

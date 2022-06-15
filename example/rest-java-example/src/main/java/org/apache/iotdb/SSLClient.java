@@ -38,13 +38,19 @@ import org.apache.http.ssl.SSLContextBuilder;
 
 public class SSLClient {
 
-  private static final String HTTP = "http";
-  private static final String HTTPS = "https";
   private static SSLConnectionSocketFactory sslConnectionSocketFactory = null;
   private static PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = null;
   private static SSLContextBuilder sslContextBuilder = null;
+  private static ConnectionSocketFactory plainsf=null;
 
-  static {
+  private static class SSLClientInstance {
+    private static final SSLClient instance = new SSLClient();
+  }
+
+  public static SSLClient getInstance() {
+    return SSLClientInstance.instance;
+  }
+  private SSLClient() {
     try {
       sslContextBuilder = new SSLContextBuilder().loadTrustMaterial(null, new TrustStrategy() {
         @Override
@@ -52,29 +58,22 @@ public class SSLClient {
           return true;
         }
       });
+      plainsf = PlainConnectionSocketFactory
+          .getSocketFactory();
       sslConnectionSocketFactory = new SSLConnectionSocketFactory(sslContextBuilder.build(), new String[]{"TLSv1.3"}, null, NoopHostnameVerifier.INSTANCE);
       Registry<ConnectionSocketFactory> registryBuilder = RegistryBuilder.<ConnectionSocketFactory>create()
-          .register(HTTP, new PlainConnectionSocketFactory())
-          .register(HTTPS, sslConnectionSocketFactory)
+          .register("http", plainsf)
+          .register("https", sslConnectionSocketFactory)
           .build();
       poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager(registryBuilder);
-      poolingHttpClientConnectionManager.setMaxTotal(200);
-    } catch (NoSuchAlgorithmException e) {
-      e.printStackTrace();
-    } catch (KeyStoreException e) {
-      e.printStackTrace();
-    } catch (KeyManagementException e) {
+      poolingHttpClientConnectionManager.setMaxTotal(10);
+    } catch (NoSuchAlgorithmException|KeyStoreException|KeyManagementException e) {
       e.printStackTrace();
     }
-
   }
 
-  /**
-   *
-   * @return
-   * @throws Exception
-   */
-  public static CloseableHttpClient getHttpClient() {
+
+  public  CloseableHttpClient getHttpClient() {
     CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(sslConnectionSocketFactory)
         .setConnectionManager(poolingHttpClientConnectionManager)
         .setConnectionManagerShared(true)

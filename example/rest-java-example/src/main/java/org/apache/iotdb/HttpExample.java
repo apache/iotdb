@@ -44,13 +44,13 @@ public class HttpExample {
 
   public static void main(String[] args) {
     HttpExample httpExample = new HttpExample();
-    httpExample.ping();
-    httpExample.insertTablet();
-    httpExample.query();
+      httpExample.ping();
+      httpExample.insertTablet();
+      httpExample.query();
   }
 
   public void ping() {
-    CloseableHttpClient httpClient = SSLClient.getHttpClient();
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
     HttpGet httpGet = new HttpGet("http://127.0.0.1:18080/ping");
     CloseableHttpResponse response = null;
     try {
@@ -87,7 +87,7 @@ public class HttpExample {
   }
 
   public void insertTablet() {
-    CloseableHttpClient httpClient = SSLClient.getHttpClient();
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
@@ -114,7 +114,7 @@ public class HttpExample {
   }
 
   public void query() {
-    CloseableHttpClient httpClient = SSLClient.getHttpClient();
+    CloseableHttpClient httpClient = SSLClient.getInstance().getHttpClient();
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
