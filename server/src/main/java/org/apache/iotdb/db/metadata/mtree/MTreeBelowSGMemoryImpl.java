@@ -178,7 +178,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         IMNode node = device.getChild(leafName);
         if (node.isMeasurement()) {
           throw new MeasurementAlreadyExistException(
-              node.getAsMeasurementMNode().getMeasurementPath());
+              path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
         } else {
           throw new PathAlreadyExistException(path.getFullPath());
         }
@@ -254,6 +254,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           IMNode node = device.getChild(measurements.get(i));
           if (node.isMeasurement()) {
             throw new MeasurementAlreadyExistException(
+                devicePath.getFullPath() + "." + measurements.get(i),
                 node.getAsMeasurementMNode().getMeasurementPath());
           } else {
             throw new PathAlreadyExistException(

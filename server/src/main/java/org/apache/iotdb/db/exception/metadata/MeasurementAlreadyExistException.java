@@ -28,11 +28,12 @@ public class MeasurementAlreadyExistException extends MetadataException {
 
   private MeasurementPath measurementPath;
 
-  public MeasurementAlreadyExistException(MeasurementPath measurementPath) {
+  public MeasurementAlreadyExistException(String path, MeasurementPath measurementPath) {
     super(
-        String.format("Measurement [%s] already exist", measurementPath.getFullPath()),
+        String.format("Path [%s] already exist", path),
         TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode());
     this.isUserException = true;
+    this.measurementPath = measurementPath;
   }
 
   public MeasurementPath getMeasurementPath() {
