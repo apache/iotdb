@@ -32,6 +32,13 @@ public class DataTypeMismatchException extends MetadataException {
     super(
         String.format(
             "data type of %s.%s is not consistent, registered type %s, inserting type %s, timestamp %s, value %s",
-            deviceName, measurementName, realType, insertType, time, value));
+            deviceName,
+            measurementName,
+            realType,
+            insertType,
+            time,
+            value.toString().length() < 100
+                ? value.toString()
+                : value.toString().substring(0, 100)));
   }
 }
