@@ -66,7 +66,6 @@ public class IoTDBUDFManagementIT {
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initBeforeClass();
-    UDFTestUtil.generateData();
   }
 
   @After
