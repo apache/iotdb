@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -45,6 +47,11 @@ public class LastValueAccumulator implements Accumulator {
   // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
+    SeriesAggregationScanOperator.LOGGER.info(
+        "Cal lastValue from timeRange: "
+            + ((TimeColumn) column[0]).getStartTime()
+            + " : "
+            + ((TimeColumn) column[0]).getEndTime());
     switch (seriesDataType) {
       case INT32:
         addIntInput(column, timeRange);
@@ -68,6 +75,7 @@ public class LastValueAccumulator implements Accumulator {
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));
     }
+    System.out.println("Current last_value: " + lastValue.getValue());
   }
 
   // partialResult should be like: | LastValue | MaxTime |
@@ -104,6 +112,11 @@ public class LastValueAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    SeriesAggregationScanOperator.LOGGER.info(
+        "Cal lastValue from statistics: " + statistics.toString());
+    if (statistics == null) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
