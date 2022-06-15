@@ -260,14 +260,19 @@ public class IoTDBUDFManagementIT {
         statement.execute("drop function abs");
         fail();
       } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("Built-in function"));
+        assertTrue(throwable.getMessage().contains("Built-in function ABS can not be deregistered"));
       }
-      statement.execute("INSERT INTO root.vehicle.d1(time, s1) VALUES(1, -10.0)");
-      ResultSet rs = statement.executeQuery("SELECT ABS(s1) FROM root.vehicle.d1");
-      Assert.assertTrue(rs.next());
-      Assert.assertEquals(1, rs.getLong(1));
-      Assert.assertEquals(10.0F, rs.getFloat(2), 0.00001);
-      Assert.assertFalse(rs.next());
+    }
+  }
+
+  @Test
+  public void testDropBuiltinFunction1() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop function sin");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("Built-in function SIN can not be deregistered"));
     }
   }
 
@@ -285,16 +290,7 @@ public class IoTDBUDFManagementIT {
     }
   }
 
-  @Test
-  public void testDropBuiltinFunction() throws ClassNotFoundException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("drop function sin");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Built-in function sin can not be deregistered"));
-    }
-  }
+
 
   @Test
   public void testReflectBuiltinFunction() {
@@ -338,7 +334,7 @@ public class IoTDBUDFManagementIT {
           ++count;
         }
       }
-      Assert.assertEquals(2 + BUILTIN_FUNCTIONS_COUNT, count);
+      Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
       resultSet.close();
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
