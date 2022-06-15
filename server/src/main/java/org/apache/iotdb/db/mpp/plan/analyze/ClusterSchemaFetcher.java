@@ -31,10 +31,8 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -305,44 +303,20 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<TSDataType> tsDataTypes,
       boolean isAligned) {
 
-    if (isAligned) {
-      CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
-          new CreateAlignedTimeSeriesStatement();
-      createAlignedTimeSeriesStatement.setDevicePath(devicePath);
-      createAlignedTimeSeriesStatement.setMeasurements(measurements);
-      createAlignedTimeSeriesStatement.setDataTypes(tsDataTypes);
-      List<TSEncoding> encodings = new ArrayList<>();
-      List<CompressionType> compressors = new ArrayList<>();
-      for (TSDataType dataType : tsDataTypes) {
-        encodings.add(getDefaultEncoding(dataType));
-        compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-      }
-      createAlignedTimeSeriesStatement.setEncodings(encodings);
-      createAlignedTimeSeriesStatement.setCompressors(compressors);
-      createAlignedTimeSeriesStatement.setAliasList(null);
-
-      executeCreateStatement(createAlignedTimeSeriesStatement);
-    } else {
-
-      executeCreateTimeseriesByDeviceStatement(
-          new CreateTimeSeriesByDeviceStatement(devicePath, measurements, tsDataTypes));
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+    for (TSDataType dataType : tsDataTypes) {
+      encodings.add(getDefaultEncoding(dataType));
+      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
+
+    executeInternalCreateTimeseriesStatement(
+        new InternalCreateTimeSeriesStatement(
+            devicePath, measurements, tsDataTypes, encodings, compressors, isAligned));
   }
 
-  private void executeCreateStatement(Statement statement) {
-    long queryId = SessionManager.getInstance().requestQueryId(false);
-    ExecutionResult executionResult =
-        coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
-    // TODO: throw exception
-    int statusCode = executionResult.status.getCode();
-    if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-      throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
-    }
-  }
-
-  private void executeCreateTimeseriesByDeviceStatement(
-      CreateTimeSeriesByDeviceStatement statement) {
+  private void executeInternalCreateTimeseriesStatement(
+      InternalCreateTimeSeriesStatement statement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
