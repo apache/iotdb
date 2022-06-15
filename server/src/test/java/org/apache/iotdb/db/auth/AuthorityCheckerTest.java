@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -44,7 +44,7 @@ public class AuthorityCheckerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    authorizer = BasicAuthorizer.getInstance();
+    authorizer = AuthorizerManager.getInstance();
     user = new User("user", "password");
   }
 

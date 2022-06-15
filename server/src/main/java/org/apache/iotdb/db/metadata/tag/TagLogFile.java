@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
@@ -39,6 +41,7 @@ import java.util.Map;
 public class TagLogFile implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TagLogFile.class);
+  private File tagFile;
   private FileChannel fileChannel;
   private static final String LENGTH_EXCEED_MSG =
       "Tag/Attribute exceeds the max length limit. "
@@ -62,16 +65,26 @@ public class TagLogFile implements AutoCloseable {
       }
     }
 
-    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
+    tagFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
 
     this.fileChannel =
         FileChannel.open(
-            logFile.toPath(),
+            tagFile.toPath(),
             StandardOpenOption.READ,
             StandardOpenOption.WRITE,
             StandardOpenOption.CREATE);
     // move the current position to the tail of the file
-    this.fileChannel.position(fileChannel.size());
+    try {
+      this.fileChannel.position(fileChannel.size());
+    } catch (ClosedByInterruptException e) {
+      // ignore
+    }
+  }
+
+  public synchronized void copyTo(File targetFile) throws IOException {
+    // flush os buffer
+    fileChannel.force(true);
+    FileUtils.copyFile(tagFile, targetFile);
   }
 
   /** @return tags map, attributes map */

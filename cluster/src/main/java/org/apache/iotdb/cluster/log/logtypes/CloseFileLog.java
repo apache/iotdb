@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.log.logtypes;
 
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

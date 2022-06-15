@@ -61,7 +61,8 @@ public class CatchUpTask implements Runnable {
 
   private long startTime;
 
-  public CatchUpTask(Node node, int raftId, PeerInfo peerInfo, RaftMember raftMember, long lastLogIdx) {
+  public CatchUpTask(
+      Node node, int raftId, PeerInfo peerInfo, RaftMember raftMember, long lastLogIdx) {
     this.node = node;
     this.raftId = raftId;
     this.peerInfo = peerInfo;

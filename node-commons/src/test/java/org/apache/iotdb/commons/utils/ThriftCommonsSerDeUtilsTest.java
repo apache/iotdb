@@ -45,9 +45,9 @@ public class ThriftCommonsSerDeUtilsTest {
   @Test
   public void readWriteTEndPointTest() {
     TEndPoint endPoint0 = new TEndPoint("0.0.0.0", 6667);
-    ThriftCommonsSerDeUtils.writeTEndPoint(endPoint0, buffer);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(endPoint0, buffer);
     buffer.flip();
-    TEndPoint endPoint1 = ThriftCommonsSerDeUtils.readTEndPoint(buffer);
+    TEndPoint endPoint1 = ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer);
     Assert.assertEquals(endPoint0, endPoint1);
   }
 
@@ -58,29 +58,32 @@ public class ThriftCommonsSerDeUtilsTest {
     dataNodeLocation0.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation0.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation0.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    ThriftCommonsSerDeUtils.writeTDataNodeLocation(dataNodeLocation0, buffer);
+    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation0, buffer);
     buffer.flip();
-    TDataNodeLocation dataNodeLocation1 = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
+    TDataNodeLocation dataNodeLocation1 =
+        ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
     Assert.assertEquals(dataNodeLocation0, dataNodeLocation1);
   }
 
   @Test
   public void readWriteTSeriesPartitionSlotTest() {
     TSeriesPartitionSlot seriesPartitionSlot0 = new TSeriesPartitionSlot(10);
-    ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot0, buffer);
+    ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot0, buffer);
     buffer.flip();
     TSeriesPartitionSlot seriesPartitionSlot1 =
-        ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
+        ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
     Assert.assertEquals(seriesPartitionSlot0, seriesPartitionSlot1);
   }
 
   @Test
   public void writeTTimePartitionSlot() {
     TTimePartitionSlot timePartitionSlot0 = new TTimePartitionSlot(100);
-    ThriftCommonsSerDeUtils.writeTTimePartitionSlot(timePartitionSlot0, buffer);
+    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timePartitionSlot0, buffer);
     buffer.flip();
-    TTimePartitionSlot timePartitionSlot1 = ThriftCommonsSerDeUtils.readTTimePartitionSlot(buffer);
+    TTimePartitionSlot timePartitionSlot1 =
+        ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
     Assert.assertEquals(timePartitionSlot0, timePartitionSlot1);
   }
 
@@ -88,9 +91,10 @@ public class ThriftCommonsSerDeUtilsTest {
   public void readWriteTConsensusGroupIdTest() {
     TConsensusGroupId consensusGroupId0 =
         new TConsensusGroupId(TConsensusGroupType.PartitionRegion, 0);
-    ThriftCommonsSerDeUtils.writeTConsensusGroupId(consensusGroupId0, buffer);
+    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId0, buffer);
     buffer.flip();
-    TConsensusGroupId consensusGroupId1 = ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer);
+    TConsensusGroupId consensusGroupId1 =
+        ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
     Assert.assertEquals(consensusGroupId0, consensusGroupId1);
   }
 
@@ -105,12 +109,14 @@ public class ThriftCommonsSerDeUtilsTest {
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
       dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
-      dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
       regionReplicaSet0.getDataNodeLocations().add(dataNodeLocation);
     }
-    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet0, buffer);
+    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet0, buffer);
     buffer.flip();
-    TRegionReplicaSet regionReplicaSet1 = ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
+    TRegionReplicaSet regionReplicaSet1 =
+        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
     Assert.assertEquals(regionReplicaSet0, regionReplicaSet1);
   }
 }

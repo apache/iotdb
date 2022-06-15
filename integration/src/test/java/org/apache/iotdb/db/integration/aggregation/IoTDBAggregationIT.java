@@ -198,6 +198,11 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(3, cnt);
       }
 
+      try {
+        statement.execute("SELECT max(root.temperature) from root.ln.wf01.wt01");
+        fail();
+      } catch (Exception ignored) {
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

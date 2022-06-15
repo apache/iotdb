@@ -25,13 +25,15 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
   /** enable publishing data. */
   private Boolean enableMetric = false;
+
+  /** Is stat performance of sub-module enable */
+  private Boolean enablePerformanceStat = false;
 
   /** The of monitor frame */
   private MonitorType monitorType = MonitorType.MICROMETER;
@@ -43,7 +45,7 @@ public class MetricConfig {
   private MetricLevel metricLevel = MetricLevel.IMPORTANT;
 
   private List<PredefinedMetric> predefinedMetrics =
-      Collections.singletonList(PredefinedMetric.JVM);
+      Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
 
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";
@@ -145,10 +147,10 @@ public class MetricConfig {
     }
   }
 
-  /** the host of iotdb instance that is monitored */
-  private String instanceHost = "127.0.0.1";
+  /** the address of iotdb instance that is monitored */
+  private String rpcAddress = "0.0.0.0";
   /** the port of iotdb instance that is monitored */
-  private Integer instancePort = 6667;
+  private Integer rpcPort = 6667;
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
@@ -160,12 +162,25 @@ public class MetricConfig {
     ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
   }
 
+  public void updateRpcInstance(String rpcAddress, int rpcPort) {
+    this.rpcAddress = rpcAddress;
+    this.rpcPort = rpcPort;
+  }
+
   public Boolean getEnableMetric() {
     return enableMetric;
   }
 
   public void setEnableMetric(Boolean enableMetric) {
     this.enableMetric = enableMetric;
+  }
+
+  public Boolean getEnablePerformanceStat() {
+    return enablePerformanceStat;
+  }
+
+  public void setEnablePerformanceStat(Boolean enablePerformanceStat) {
+    this.enablePerformanceStat = enablePerformanceStat;
   }
 
   public MonitorType getMonitorType() {
@@ -216,20 +231,12 @@ public class MetricConfig {
     this.ioTDBReporterConfig = ioTDBReporterConfig;
   }
 
-  public String getInstanceHost() {
-    return instanceHost;
+  public String getRpcAddress() {
+    return rpcAddress;
   }
 
-  public void setInstanceHost(String instanceHost) {
-    this.instanceHost = instanceHost;
-  }
-
-  public Integer getInstancePort() {
-    return instancePort;
-  }
-
-  public void setInstancePort(Integer instancePort) {
-    this.instancePort = instancePort;
+  public Integer getRpcPort() {
+    return rpcPort;
   }
 
   @Override

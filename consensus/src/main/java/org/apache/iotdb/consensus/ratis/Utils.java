@@ -21,130 +21,113 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.config.RatisConfig;
 
+import org.apache.ratis.client.RaftClientConfigKeys;
+import org.apache.ratis.conf.RaftProperties;
+import org.apache.ratis.grpc.GrpcConfigKeys;
+import org.apache.ratis.proto.RaftProtos.RaftPeerProto;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
+import org.apache.ratis.protocol.RaftPeerId;
+import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
+import java.io.File;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Utils {
   private static final int tempBufferSize = 1024;
   private static final byte PADDING_MAGIC = 0x47;
-  private static final String DataRegionAbbr = "DR";
-  private static final String SchemaRegionAbbr = "SR";
-  private static final String PartitionRegionAbbr = "PR";
 
-  public static String IPAddress(TEndPoint endpoint) {
+  private Utils() {}
+
+  public static String HostAddress(TEndPoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }
 
-  public static String groupFullName(ConsensusGroupId consensusGroupId) {
+  public static String fromTEndPointToString(TEndPoint endpoint) {
+    return String.format("%s_%d", endpoint.getIp(), endpoint.getPort());
+  }
+
+  /** Encode the ConsensusGroupId into 6 bytes: 2 Bytes for Group Type and 4 Bytes for Group ID */
+  public static long groupEncode(ConsensusGroupId consensusGroupId) {
     // use abbreviations to prevent overflow
-    String groupTypeAbbr = null;
-    switch (consensusGroupId.getType()) {
-      case DataRegion:
-        {
-          groupTypeAbbr = DataRegionAbbr;
-          break;
-        }
-      case SchemaRegion:
-        {
-          groupTypeAbbr = SchemaRegionAbbr;
-          break;
-        }
-      case PartitionRegion:
-        {
-          groupTypeAbbr = PartitionRegionAbbr;
-          break;
-        }
-    }
-    return String.format("%s-%d", groupTypeAbbr, consensusGroupId.getId());
+    long groupType = consensusGroupId.getType().getValue();
+    long groupCode = groupType << 32;
+    groupCode += consensusGroupId.getId();
+    return groupCode;
   }
 
-  public static String RatisPeerId(TEndPoint endpoint) {
-    return String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
+  public static RaftPeerId fromTEndPointToRaftPeerId(TEndPoint endpoint) {
+    return RaftPeerId.valueOf(fromTEndPointToString(endpoint));
   }
 
-  public static TEndPoint parseFromRatisId(String ratisId) {
-    String[] items = ratisId.split("-");
+  public static TEndPoint formRaftPeerIdToTEndPoint(RaftPeerId id) {
+    String[] items = id.toString().split("_");
+    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+  }
+
+  public static TEndPoint formRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
+    String[] items = proto.getAddress().split(":");
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 
   // priority is used as ordinal of leader election
-  public static RaftPeer toRaftPeer(TEndPoint endpoint, int priority) {
+  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
-        .setId(RatisPeerId(endpoint))
-        .setAddress(IPAddress(endpoint))
+        .setId(fromTEndPointToRaftPeerId(endpoint))
+        .setAddress(HostAddress(endpoint))
         .setPriority(priority)
         .build();
   }
 
-  public static RaftPeer toRaftPeer(Peer peer, int priority) {
-    return toRaftPeer(peer.getEndpoint(), priority);
+  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(Peer peer, int priority) {
+    return fromTEndPointAndPriorityToRaftPeer(peer.getEndpoint(), priority);
   }
 
-  public static TEndPoint getEndpoint(RaftPeer raftPeer) {
-    String address = raftPeer.getAddress(); // ip:port
-    String[] split = address.split(":");
-    return new TEndPoint(split[0], Integer.parseInt(split[1]));
+  public static List<RaftPeer> fromPeersAndPriorityToRaftPeers(List<Peer> peers, int priority) {
+    return peers.stream()
+        .map(peer -> Utils.fromTEndPointAndPriorityToRaftPeer(peer, priority))
+        .collect(Collectors.toList());
+  }
+
+  public static List<Peer> fromRaftProtoListAndRaftGroupIdToPeers(
+      List<RaftPeerProto> raftProtoList, RaftGroupId id) {
+    ConsensusGroupId consensusGroupId = Utils.fromRaftGroupIdToConsensusGroupId(id);
+    return raftProtoList.stream()
+        .map(peer -> new Peer(consensusGroupId, Utils.formRaftPeerProtoToTEndPoint(peer)))
+        .collect(Collectors.toList());
   }
 
   /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme: */
-  public static RaftGroupId toRatisGroupId(ConsensusGroupId consensusGroupId) {
-    String groupFullName = groupFullName(consensusGroupId);
-    byte[] bGroupName = groupFullName.getBytes(StandardCharsets.UTF_8);
-    byte[] bPaddedGroupName = Arrays.copyOf(bGroupName, 16);
-    for (int i = bGroupName.length; i < 16; i++) {
+  public static RaftGroupId fromConsensusGroupIdToRaftGroupId(ConsensusGroupId consensusGroupId) {
+    long groupCode = groupEncode(consensusGroupId);
+    byte[] bGroupCode = ByteBuffer.allocate(Long.BYTES).putLong(groupCode).array();
+    byte[] bPaddedGroupName = new byte[16];
+    for (int i = 0; i < 10; i++) {
       bPaddedGroupName[i] = PADDING_MAGIC;
     }
+    System.arraycopy(bGroupCode, 2, bPaddedGroupName, 10, bGroupCode.length - 2);
 
     return RaftGroupId.valueOf(ByteString.copyFrom(bPaddedGroupName));
   }
 
   /** Given raftGroupId, decrypt ConsensusGroupId out of it */
-  public static ConsensusGroupId toConsensusGroupId(RaftGroupId raftGroupId) {
+  public static ConsensusGroupId fromRaftGroupIdToConsensusGroupId(RaftGroupId raftGroupId) {
     byte[] padded = raftGroupId.toByteString().toByteArray();
-    int validOffset = padded.length - 1;
-    while (padded[validOffset] == PADDING_MAGIC) {
-      validOffset--;
-    }
-    String consensusGroupString = new String(padded, 0, validOffset + 1);
-    String[] items = consensusGroupString.split("-");
-    ConsensusGroupId id;
-    switch (items[0]) {
-      case DataRegionAbbr:
-        {
-          id = new DataRegionId(Integer.parseInt(items[1]));
-          break;
-        }
-      case PartitionRegionAbbr:
-        {
-          id = new PartitionRegionId(Integer.parseInt(items[1]));
-          break;
-        }
-      case SchemaRegionAbbr:
-        {
-          id = new SchemaRegionId(Integer.parseInt(items[1]));
-          break;
-        }
-      default:
-        throw new IllegalArgumentException(
-            String.format("Unexpected consensusGroupId %s", items[0]));
-    }
-    return id;
+    long type = (long) ((padded[10] & 0xff) << 8) + (padded[11] & 0xff);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
+    byteBuffer.put(padded, 12, 4);
+    byteBuffer.flip();
+    return ConsensusGroupId.Factory.create((int) type, byteBuffer.getInt());
   }
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
@@ -164,17 +147,76 @@ public class Utils {
     return status;
   }
 
-  public static ByteBuffer getMetadataFromTermIndex(TermIndex termIndex) {
-    String ordinal = String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
-    ByteBuffer metadata = ByteBuffer.wrap(ordinal.getBytes());
-    return metadata;
+  public static String getMetadataFromTermIndex(TermIndex termIndex) {
+    return String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
   }
 
-  public static TermIndex getTermIndexFromMetadata(ByteBuffer metadata) {
-    Charset charset = Charset.defaultCharset();
-    CharBuffer charBuffer = charset.decode(metadata);
-    String ordinal = charBuffer.toString();
-    String[] items = ordinal.split("_");
+  public static TermIndex getTermIndexFromDir(File snapshotDir) {
+    return getTermIndexFromMetadataString(snapshotDir.getName());
+  }
+
+  public static TermIndex getTermIndexFromMetadataString(String metadata) {
+    String[] items = metadata.split("_");
     return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
+  }
+
+  public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
+    GrpcConfigKeys.setMessageSizeMax(properties, config.getGrpc().getMessageSizeMax());
+    GrpcConfigKeys.setFlowControlWindow(properties, config.getGrpc().getFlowControlWindow());
+    GrpcConfigKeys.Server.setAsyncRequestThreadPoolCached(
+        properties, config.getGrpc().isAsyncRequestThreadPoolCached());
+    GrpcConfigKeys.Server.setAsyncRequestThreadPoolSize(
+        properties, config.getGrpc().getAsyncRequestThreadPoolSize());
+    GrpcConfigKeys.Server.setLeaderOutstandingAppendsMax(
+        properties, config.getGrpc().getLeaderOutstandingAppendsMax());
+
+    RaftServerConfigKeys.Rpc.setSlownessTimeout(properties, config.getRpc().getSlownessTimeout());
+    RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
+    RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
+    RaftServerConfigKeys.Rpc.setSleepTime(properties, config.getRpc().getSleepTime());
+    RaftClientConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
+
+    RaftServerConfigKeys.LeaderElection.setLeaderStepDownWaitTime(
+        properties, config.getLeaderElection().getLeaderStepDownWaitTimeKey());
+    RaftServerConfigKeys.LeaderElection.setPreVote(
+        properties, config.getLeaderElection().isPreVote());
+
+    RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(
+        properties, config.getSnapshot().isAutoTriggerEnabled());
+    RaftServerConfigKeys.Snapshot.setAutoTriggerThreshold(
+        properties, config.getSnapshot().getAutoTriggerThreshold());
+    RaftServerConfigKeys.Snapshot.setCreationGap(properties, config.getSnapshot().getCreationGap());
+    RaftServerConfigKeys.Snapshot.setRetentionFileNum(
+        properties, config.getSnapshot().getRetentionFileNum());
+
+    RaftServerConfigKeys.ThreadPool.setClientCached(
+        properties, config.getThreadPool().isClientCached());
+    RaftServerConfigKeys.ThreadPool.setClientSize(
+        properties, config.getThreadPool().getClientSize());
+    RaftServerConfigKeys.ThreadPool.setProxyCached(
+        properties, config.getThreadPool().isProxyCached());
+    RaftServerConfigKeys.ThreadPool.setProxySize(properties, config.getThreadPool().getProxySize());
+    RaftServerConfigKeys.ThreadPool.setServerCached(
+        properties, config.getThreadPool().isServerCached());
+    RaftServerConfigKeys.ThreadPool.setServerSize(
+        properties, config.getThreadPool().getServerSize());
+
+    RaftServerConfigKeys.Log.setUseMemory(properties, config.getLog().isUseMemory());
+    RaftServerConfigKeys.Log.setQueueElementLimit(
+        properties, config.getLog().getQueueElementLimit());
+    RaftServerConfigKeys.Log.setQueueByteLimit(properties, config.getLog().getQueueByteLimit());
+    RaftServerConfigKeys.Log.setPurgeGap(properties, config.getLog().getPurgeGap());
+    RaftServerConfigKeys.Log.setPurgeUptoSnapshotIndex(
+        properties, config.getLog().isPurgeUptoSnapshotIndex());
+    RaftServerConfigKeys.Log.setSegmentSizeMax(properties, config.getLog().getSegmentSizeMax());
+    RaftServerConfigKeys.Log.setSegmentCacheNumMax(
+        properties, config.getLog().getSegmentCacheNumMax());
+    RaftServerConfigKeys.Log.setSegmentCacheSizeMax(
+        properties, config.getLog().getSegmentCacheSizeMax());
+    RaftServerConfigKeys.Log.setPreallocatedSize(properties, config.getLog().getPreallocatedSize());
+    RaftServerConfigKeys.Log.setWriteBufferSize(properties, config.getLog().getWriteBufferSize());
+    RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
+    RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
+        properties, config.getLog().isUnsafeFlushEnabled());
   }
 }

@@ -48,6 +48,7 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   protected volatile boolean ran = false;
   protected volatile boolean finished = false;
   protected ICompactionPerformer performer;
+  protected int hashCode = -1;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
@@ -74,9 +75,10 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
       doCompaction();
       isSuccess = true;
     } catch (InterruptedException e) {
-      LOGGER.warn("Current task is interrupted");
-    } catch (Exception e) {
-      LOGGER.error("Running compaction task failed", e);
+      LOGGER.warn("{} [Compaction] Current task is interrupted", fullStorageGroupName);
+    } catch (Throwable e) {
+      // Use throwable to catch OOM exception.
+      LOGGER.error("{} [Compaction] Running compaction task failed", fullStorageGroupName, e);
     } finally {
       this.currentTaskNum.decrementAndGet();
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);

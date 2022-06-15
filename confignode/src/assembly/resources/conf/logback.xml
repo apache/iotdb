@@ -127,6 +127,16 @@
             <level>INFO</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.FileAppender" name="ITForCluster">
+        <file>${IT_LOG_PATH:-/dev/null}</file>
+        <encoder>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${IT_LOG_LEVEL:-OFF}</level>
+        </filter>
+    </appender>
     <root level="info">
         <appender-ref ref="FILEDEBUG"/>
         <appender-ref ref="FILEWARN"/>
@@ -134,7 +144,8 @@
         <appender-ref ref="FILEINFO"/>
         <appender-ref ref="FILEALL"/>
         <appender-ref ref="stdout"/>
+        <appender-ref ref="ITForCluster"/>
     </root>
     <logger level="info" name="org.apache.iotdb.confignode"/>
-    <!-- <logger level="info" name="org.apache.ratis"/> -->
+    <logger level="info" name="org.apache.ratis"/>
 </configuration>

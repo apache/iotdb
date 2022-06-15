@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.exception.metadata;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+
 public class AcquireLockTimeoutException extends MetadataException {
   public AcquireLockTimeoutException(String msg) {
     super(msg);

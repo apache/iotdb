@@ -18,17 +18,19 @@
  */
 package org.apache.iotdb.db.wal.node;
 
+import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 /** This interface provides uniform interface for writing wal and making checkpoints. */
-public interface IWALNode extends FlushListener, AutoCloseable {
+public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqReader, DataSet {
   /** Log InsertRowPlan */
   WALFlushListener log(int memTableId, InsertRowPlan insertRowPlan);
 

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.ArrayList;
 import java.util.List;

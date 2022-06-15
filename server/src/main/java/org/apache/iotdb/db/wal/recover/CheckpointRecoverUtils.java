@@ -21,12 +21,10 @@ package org.apache.iotdb.db.wal.recover;
 import org.apache.iotdb.db.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.CheckpointReader;
-import org.apache.iotdb.db.wal.io.CheckpointWriter;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,26 +33,27 @@ public class CheckpointRecoverUtils {
   private CheckpointRecoverUtils() {}
 
   /** Recover memTable information from checkpoint folder */
-  public static Map<Integer, MemTableInfo> recoverMemTableInfo(File logDirectory) {
+  public static CheckpointInfo recoverMemTableInfo(File logDirectory) {
     // find all .checkpoint file
-    File[] checkpointFiles = logDirectory.listFiles(CheckpointWriter::checkpointFilenameFilter);
+    File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
     if (checkpointFiles == null) {
-      return Collections.emptyMap();
+      return new CheckpointInfo(0, Collections.emptyMap());
     }
-    Arrays.sort(
-        checkpointFiles,
-        Comparator.comparingInt(file -> CheckpointWriter.parseVersionId(((File) file).getName()))
-            .reversed());
+    // desc sort by version id
+    CheckpointFileUtils.descSortByVersionId(checkpointFiles);
     // find last valid .checkpoint file and load checkpoints from it
+    int maxMemTableId = 0;
     List<Checkpoint> checkpoints = null;
     for (File checkpointFile : checkpointFiles) {
-      checkpoints = new CheckpointReader(checkpointFile).readAll();
+      CheckpointReader reader = new CheckpointReader(checkpointFile);
+      maxMemTableId = reader.getMaxMemTableId();
+      checkpoints = reader.getCheckpoints();
       if (!checkpoints.isEmpty()) {
         break;
       }
     }
     if (checkpoints == null || checkpoints.isEmpty()) {
-      return Collections.emptyMap();
+      return new CheckpointInfo(0, Collections.emptyMap());
     }
     // recover memTables information by checkpoints
     Map<Integer, MemTableInfo> memTableId2Info = new HashMap<>();
@@ -63,6 +62,7 @@ public class CheckpointRecoverUtils {
         case GLOBAL_MEMORY_TABLE_INFO:
         case CREATE_MEMORY_TABLE:
           for (MemTableInfo memTableInfo : checkpoint.getMemTableInfos()) {
+            maxMemTableId = Math.max(maxMemTableId, memTableInfo.getMemTableId());
             memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
           }
           break;
@@ -73,6 +73,24 @@ public class CheckpointRecoverUtils {
           break;
       }
     }
-    return memTableId2Info;
+    return new CheckpointInfo(maxMemTableId, memTableId2Info);
+  }
+
+  public static class CheckpointInfo {
+    private final int maxMemTableId;
+    private final Map<Integer, MemTableInfo> memTableId2Info;
+
+    public CheckpointInfo(int maxMemTableId, Map<Integer, MemTableInfo> memTableId2Info) {
+      this.maxMemTableId = maxMemTableId;
+      this.memTableId2Info = memTableId2Info;
+    }
+
+    public int getMaxMemTableId() {
+      return maxMemTableId;
+    }
+
+    public Map<Integer, MemTableInfo> getMemTableId2Info() {
+      return memTableId2Info;
+    }
   }
 }

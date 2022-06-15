@@ -57,6 +57,15 @@ struct TRegionReplicaSet {
   2: required list<TDataNodeLocation> dataNodeLocations
 }
 
+struct TConfigNodeLocation {
+  1: required TEndPoint internalEndPoint
+  2: required TEndPoint consensusEndPoint
+}
+
+struct THeartbeatReq {
+  1: required i64 heartbeatTimestamp
+}
+
 struct TDataNodeLocation {
   1: required i32 dataNodeId
   // TEndPoint for DataNode's external rpc
@@ -65,6 +74,20 @@ struct TDataNodeLocation {
   3: required TEndPoint internalEndPoint
   // TEndPoint for transfering data between DataNodes
   4: required TEndPoint dataBlockManagerEndPoint
-  // TEndPoint for DataNode's ConsensusLayer
-  5: required TEndPoint consensusEndPoint
+  // TEndPoint for DataNode's dataRegion consensus protocol
+  5: required TEndPoint dataRegionConsensusEndPoint
+  // TEndPoint for DataNode's schemaRegion consensus protocol
+  6: required TEndPoint schemaRegionConsensusEndPoint
+}
+
+struct THeartbeatResp {
+  1: required i64 heartbeatTimestamp
+  2: optional i16 cpu
+  3: optional i16 memory
+}
+
+struct TDataNodeInfo {
+  1: required TDataNodeLocation location
+  2: required i32 cpuCoreNum
+  3: required i64 maxMemory
 }

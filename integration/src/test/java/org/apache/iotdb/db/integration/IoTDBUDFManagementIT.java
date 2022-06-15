@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -53,8 +53,10 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneTest.class})
 public class IoTDBUDFManagementIT {
 
-  private static final int NATIVE_FUNCTIONS_COUNT = SQLConstant.getNativeFunctionNames().size();
-  private static final int BUILTIN_FUNCTIONS_COUNT = BuiltinFunction.values().length;
+  private static final int NATIVE_FUNCTIONS_COUNT =
+      BuiltinAggregationFunction.getNativeFunctionNames().size();
+  private static final int BUILTIN_FUNCTIONS_COUNT =
+      BuiltinTimeSeriesGeneratingFunction.values().length;
 
   @Before
   public void setUp() throws Exception {

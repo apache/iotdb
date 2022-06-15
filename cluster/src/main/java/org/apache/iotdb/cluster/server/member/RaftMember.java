@@ -85,11 +85,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -2141,7 +2141,8 @@ public abstract class RaftMember implements RaftMemberMBean {
      * too many waiting requests on the peer's side.
      */
     long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-    PeerInfo peerInfo = peerMap.computeIfAbsent(node, k -> new PeerInfo(logManager.getLastLogIndex()));
+    PeerInfo peerInfo =
+        peerMap.computeIfAbsent(node, k -> new PeerInfo(logManager.getLastLogIndex()));
     if (!waitForPrevLog(peerInfo, log.getLog())) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;

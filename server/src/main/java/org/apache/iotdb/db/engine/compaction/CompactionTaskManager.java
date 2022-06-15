@@ -256,6 +256,8 @@ public class CompactionTaskManager implements IService {
           submitTask(task);
           CompactionMetricsManager.recordTaskInfo(
               task, CompactionTaskStatus.READY_TO_EXECUTE, currentTaskNum.get());
+        } else {
+          logger.warn("A task {} is not submitted", task);
         }
       }
     } catch (InterruptedException e) {
@@ -400,6 +402,13 @@ public class CompactionTaskManager implements IService {
               "Has been waiting over "
                   + MAX_WAITING_TIME / 1000
                   + " seconds for all sub compaction tasks to finish.");
+        }
+      }
+      if (this.subCompactionTaskExecutionPool != null) {
+        subCompactionTaskExecutionPool.shutdownNow();
+        if (!this.subCompactionTaskExecutionPool.awaitTermination(
+            MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new RuntimeException("Failed to shutdown subCompactionTaskExecutionPool");
         }
       }
       this.taskExecutionPool =

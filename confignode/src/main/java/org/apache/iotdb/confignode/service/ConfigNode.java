@@ -21,10 +21,16 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,12 +48,12 @@ public class ConfigNode implements ConfigNodeMBean {
   private final RegisterManager registerManager = new RegisterManager();
 
   private final ConfigNodeRPCService configNodeRPCService;
+  private final ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
   private ConfigManager configManager;
 
-  public ConfigNode() {
-    this.configNodeRPCService = new ConfigNodeRPCService();
-
+  private ConfigNode() {
+    // Init ConfigManager
     try {
       this.configManager = new ConfigManager();
     } catch (IOException e) {
@@ -57,8 +63,12 @@ public class ConfigNode implements ConfigNodeMBean {
       } catch (IOException e2) {
         LOGGER.error("Meet error when stop ConfigNode!", e);
       }
-      System.exit(0);
+      System.exit(-1);
     }
+
+    // Init RPC service
+    this.configNodeRPCService = new ConfigNodeRPCService();
+    this.configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
   }
 
   public static void main(String[] args) {
@@ -71,9 +81,26 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
-    configNodeRPCService.initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor(configManager));
+    registerManager.register(MetricsService.getInstance());
+    registerUdfServices();
+
+    configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
     LOGGER.info("Init rpc server success");
+
+    // start reporter
+    MetricsService.getInstance().startAllReporter();
+  }
+
+  private void registerUdfServices() throws StartupException {
+    final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+    registerManager.register(
+        UDFExecutableManager.setupAndGetInstance(
+            configNodeConf.getTemporaryLibDir(), configNodeConf.getUdfLibDir()));
+    registerManager.register(
+        UDFClassLoaderManager.setupAndGetInstance(configNodeConf.getUdfLibDir()));
+    registerManager.register(
+        UDFRegistrationService.setupAndGetInstance(configNodeConf.getSystemUdfDir()));
   }
 
   public void active() {
@@ -89,7 +116,8 @@ public class ConfigNode implements ConfigNodeMBean {
       return;
     }
 
-    LOGGER.info("{} has started.", ConfigNodeConstant.GLOBAL_NAME);
+    LOGGER.info(
+        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
   public void deactivate() throws IOException {
@@ -102,5 +130,18 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public void stop() throws IOException {
     deactivate();
+  }
+
+  private static class ConfigNodeHolder {
+
+    private static final ConfigNode INSTANCE = new ConfigNode();
+
+    private ConfigNodeHolder() {
+      // Empty constructor
+    }
+  }
+
+  public static ConfigNode getInstance() {
+    return ConfigNodeHolder.INSTANCE;
   }
 }

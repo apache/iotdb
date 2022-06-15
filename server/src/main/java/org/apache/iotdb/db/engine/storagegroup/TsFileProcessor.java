@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,16 +42,13 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -181,7 +181,7 @@ public class TsFileProcessor {
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode = WALManager.getInstance().applyForWALNode();
+    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeTsFileCallback);
@@ -203,7 +203,7 @@ public class TsFileProcessor {
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    this.walNode = WALManager.getInstance().applyForWALNode();
+    this.walNode = WALManager.getInstance().applyForWALNode(storageGroupName);
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);
@@ -1191,6 +1191,22 @@ public class TsFileProcessor {
     }
   }
 
+  /** This method will synchronize the memTable and release its flushing resources */
+  private void syncReleaseFlushedMemTable(IMemTable memTable) {
+    synchronized (memTable) {
+      releaseFlushedMemTable(memTable);
+      memTable.notifyAll();
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "{}: {} released a memtable (signal={}), flushingMemtables size ={}",
+            storageGroupName,
+            tsFileResource.getTsFile().getName(),
+            memTable.isSignalMemTable(),
+            flushingMemTables.size());
+      }
+    }
+  }
+
   /**
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
    * the flush manager pool
@@ -1206,7 +1222,7 @@ public class TsFileProcessor {
         MemTableFlushTask flushTask =
             new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
         flushTask.syncFlushMemTable();
-      } catch (Exception e) {
+      } catch (Throwable e) {
         if (writer == null) {
           logger.info(
               "{}: {} is closed during flush, abandon flush task",
@@ -1236,7 +1252,29 @@ public class TsFileProcessor {
                 tsFileResource.getTsFile().getName(),
                 e1);
           }
-          Thread.currentThread().interrupt();
+          // release resource
+          try {
+            syncReleaseFlushedMemTable(memTableToFlush);
+            // make sure no query will search this file
+            tsFileResource.setTimeIndex(config.getTimeIndexLevel().getTimeIndex());
+            // this callback method will register this empty tsfile into TsFileManager
+            for (CloseFileListener closeFileListener : closeFileListeners) {
+              closeFileListener.onClosed(this);
+            }
+            // close writer
+            writer.close();
+            writer = null;
+            synchronized (flushingMemTables) {
+              flushingMemTables.notifyAll();
+            }
+          } catch (Exception e1) {
+            logger.error(
+                "{}: {} Release resource meets error",
+                storageGroupName,
+                tsFileResource.getTsFile().getName(),
+                e1);
+          }
+          return;
         }
       }
     }
@@ -1278,19 +1316,9 @@ public class TsFileProcessor {
           tsFileResource.getTsFile().getName(),
           memTableToFlush.isSignalMemTable());
     }
+
     // for sync flush
-    synchronized (memTableToFlush) {
-      releaseFlushedMemTable(memTableToFlush);
-      memTableToFlush.notifyAll();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "{}: {} released a memtable (signal={}), flushingMemtables size ={}",
-            storageGroupName,
-            tsFileResource.getTsFile().getName(),
-            memTableToFlush.isSignalMemTable(),
-            flushingMemTables.size());
-      }
-    }
+    syncReleaseFlushedMemTable(memTableToFlush);
 
     if (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {

@@ -229,9 +229,9 @@ public class SessionConnection {
   }
 
   protected void setStorageGroup(String storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
-      RpcUtils.verifySuccessWithRedirection(client.setStorageGroup(sessionId, storageGroup));
+      RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroup));
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -246,9 +246,9 @@ public class SessionConnection {
   }
 
   protected void deleteStorageGroups(List<String> storageGroups)
-      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
-      RpcUtils.verifySuccessWithRedirection(client.deleteStorageGroups(sessionId, storageGroups));
+      RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroups));
     } catch (TException e) {
       if (reconnect()) {
         try {

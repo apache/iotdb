@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.impl;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.consensus.ISingleConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -28,6 +26,9 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+
+import java.io.IOException;
+import java.util.List;
 
 public class NativeSingleRaftConsensus implements ISingleConsensus {
 
