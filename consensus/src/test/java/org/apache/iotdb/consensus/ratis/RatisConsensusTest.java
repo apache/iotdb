@@ -29,8 +29,10 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 
 import org.apache.ratis.util.FileUtils;
+import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -60,12 +62,28 @@ public class RatisConsensusTest {
   private void makeServers() throws IOException {
     for (int i = 0; i < 3; i++) {
       stateMachines.add(new TestUtils.IntegerCounter());
+      RatisConfig config =
+          RatisConfig.newBuilder()
+              .setRpc(
+                  RatisConfig.Rpc.newBuilder()
+                      .setTimeoutMin(TimeDuration.valueOf(4, TimeUnit.SECONDS))
+                      .setTimeoutMax(TimeDuration.valueOf(8, TimeUnit.SECONDS))
+                      .setRequestTimeout(TimeDuration.valueOf(8, TimeUnit.SECONDS))
+                      .build())
+              .setLog(
+                  RatisConfig.Log.newBuilder()
+                      .setPurgeUptoSnapshotIndex(true)
+                      .setPurgeGap(10)
+                      .build())
+              .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(10).build())
+              .build();
       int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
                   ConsensusFactory.RatisConsensus,
                   ConsensusConfig.newBuilder()
                       .setThisNode(peers.get(i).getEndpoint())
+                      .setRatisConfig(config)
                       .setStorageDir(peersStorage.get(i).getAbsolutePath())
                       .build(),
                   groupId -> stateMachines.get(finalI))
