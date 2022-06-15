@@ -210,12 +210,12 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
   /** @return if already get the result */
   private boolean calcFromCacheData(TimeRange curTimeRange) throws IOException {
     calcFromBatch(preCachedData, curTimeRange);
-    boolean isTsBlockOutOfBound =
-        ascending
-            ? preCachedData.getEndTime() > curTimeRange.getMax()
-            : preCachedData.getEndTime() < curTimeRange.getMin();
     // The result is calculated from the cache
-    return (preCachedData != null && isTsBlockOutOfBound) || isEndCalc(aggregators);
+    return (preCachedData != null
+            && (ascending
+                ? preCachedData.getEndTime() > curTimeRange.getMax()
+                : preCachedData.getEndTime() < curTimeRange.getMin()))
+        || isEndCalc(aggregators);
   }
 
   @SuppressWarnings("squid:S3776")
