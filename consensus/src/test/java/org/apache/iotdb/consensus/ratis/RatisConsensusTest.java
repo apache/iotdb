@@ -75,7 +75,7 @@ public class RatisConsensusTest {
                       .setPurgeUptoSnapshotIndex(true)
                       .setPurgeGap(10)
                       .build())
-              .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(10).build())
+              .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(10000).build())
               .build();
       int finalI = i;
       servers.add(
