@@ -230,9 +230,10 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100)");
       fail();
     } catch (SQLException e) {
-      assertEquals(
-          "the measurementList's size 2 is not consistent with the valueList's size 1",
-          e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the measurementList's size 2 is not consistent with the valueList's size 1"));
     }
   }
 
@@ -244,9 +245,10 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100, 300, 400)");
       fail();
     } catch (SQLException e) {
-      assertEquals(
-          "the measurementList's size 2 is not consistent with the valueList's size 3",
-          e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the measurementList's size 2 is not consistent with the valueList's size 3"));
     }
   }
 
@@ -283,7 +285,7 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, s3, status, status) aligned values(100, true, 20.1, 20.2)");
       fail();
     } catch (SQLException e) {
-      assertEquals("Insertion contains duplicated measurement: status", e.getMessage());
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: status"));
     }
   }
 }
