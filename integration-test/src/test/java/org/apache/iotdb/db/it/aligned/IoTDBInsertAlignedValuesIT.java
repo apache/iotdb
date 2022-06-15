@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -232,8 +231,6 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  // TODO remove Ignore annotation while fixing this bug
-  @Ignore
   @Test(expected = Exception.class)
   public void testInsertWithWrongMeasurementNum2() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -268,8 +265,6 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  // TODO remove Ignore annotation while fixing this bug
-  @Ignore
   @Test
   public void testInsertWithDuplicatedMeasurements() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
