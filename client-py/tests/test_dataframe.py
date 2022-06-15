@@ -28,6 +28,7 @@ def test_simple_query():
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
 
+        session.execute_non_query_statement("set storage group to root.device")
         # Write data
         res = -1
         while res == -1:
@@ -45,9 +46,9 @@ def test_simple_query():
 
 
 def test_non_time_query():
-    with IoTDBContainer("iotdb:dev") as db:
+    with IoTDBContainer("apache/iotdb:latest") as db:
         db: IoTDBContainer
-        session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
+        session = Session("127.0.0.1", db.get_exposed_port(6667))
         session.open(False)
 
         # Write data
@@ -72,7 +73,6 @@ def test_non_time_query():
     assert_array_equal(
         df.values,
         [
-            [
                 "root.device.pressure",
                 None,
                 "root.device",
@@ -81,6 +81,5 @@ def test_non_time_query():
                 "SNAPPY",
                 None,
                 None,
-            ]
         ],
     )
