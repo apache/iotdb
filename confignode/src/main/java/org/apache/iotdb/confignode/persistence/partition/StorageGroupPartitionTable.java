@@ -20,11 +20,15 @@ package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -40,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -359,6 +364,48 @@ public class StorageGroupPartitionTable {
 
     result.sort(Comparator.comparingLong(Pair::getLeft));
     return result;
+  }
+
+  public void getRegionInfos(
+      GetRegionLocationsReq regionsInfoReq, List<TRegionLocation> tRegionInfosList) {
+    regionInfoMap.forEach(
+        (consensusGroupId, regionInfoMap) -> {
+          TRegionReplicaSet replicaSet = regionInfoMap.getReplicaSet();
+          if (replicaSet.getRegionId().getType().ordinal()
+              == regionsInfoReq.getRegionType().ordinal()) {
+            buildTRegionsInfo(tRegionInfosList, storageGroupName, replicaSet, regionInfoMap);
+          }
+          if (regionsInfoReq.getRegionType() == TConsensusGroupType.PartitionRegion) {
+            buildTRegionsInfo(tRegionInfosList, storageGroupName, replicaSet, regionInfoMap);
+          }
+        });
+  }
+
+  private void buildTRegionsInfo(
+      List<TRegionLocation> tRegionInfosList,
+      String storageGroup,
+      TRegionReplicaSet replicaSet,
+      RegionGroup regionInfoMap) {
+    List<Integer> dataNodeIdList = null;
+    List<String> rpcAddressList = null;
+    List<Integer> rpcPortList = null;
+    TRegionLocation tRegionInfos = new TRegionLocation();
+    tRegionInfos.setRegionId(replicaSet.getRegionId().getId());
+    tRegionInfos.setRegionType(replicaSet.getRegionId().getType().getValue());
+    tRegionInfos.setStorageGroup(storageGroup);
+    long slots = regionInfoMap.getCounter();
+    tRegionInfos.setSlots((int) slots);
+    for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
+      dataNodeIdList = Arrays.asList(dataNodeLocation.getDataNodeId());
+      rpcAddressList = Arrays.asList(dataNodeLocation.getExternalEndPoint().getIp());
+      rpcPortList = Arrays.asList(dataNodeLocation.getExternalEndPoint().getPort());
+    }
+    tRegionInfos.setDataNodeId(dataNodeIdList.stream().findFirst().get());
+    tRegionInfos.setRpcAddresss(rpcAddressList.toString());
+    tRegionInfos.setRpcPort(rpcPortList.stream().findFirst().get());
+    // TODO: Wait for data migration. And then add the state
+    tRegionInfos.setStatus(RegionStatus.Up.getStatus());
+    tRegionInfosList.add(tRegionInfos);
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

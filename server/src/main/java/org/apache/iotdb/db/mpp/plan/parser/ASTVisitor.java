@@ -2230,7 +2230,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SCHEMA() != null) {
       showRegionStatement.setRegionType(TConsensusGroupType.SchemaRegion.ordinal());
     } else {
-      showRegionStatement.setRegionType(-1);
+      showRegionStatement.setRegionType(TConsensusGroupType.PartitionRegion.ordinal());
     }
     return showRegionStatement;
   }

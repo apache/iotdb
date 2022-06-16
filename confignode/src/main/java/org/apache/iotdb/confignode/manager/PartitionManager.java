@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionsInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -463,7 +463,7 @@ public class PartitionManager {
     return executor.getSeriesPartitionSlot(devicePath);
   }
 
-  public DataSet getRegionInfos(GetRegionsInfoReq req) {
+  public DataSet getRegionInfos(GetRegionLocationsReq req) {
     return getConsensusManager().read(req).getDataset();
   }
 

@@ -77,6 +77,17 @@ struct TDataNodeLocation {
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
+struct TRegionLocation {
+  1: required i32 regionId;
+  2: required i64 regionType;
+  3: required string storageGroup
+  4: required i32 dataNodeId;
+  5: required string rpcAddresss;
+  6: required i32 rpcPort;
+  7: required i32 slots;
+  8: optional string status;
+}
+
 struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
 }

@@ -234,20 +234,9 @@ struct TShowRegionReq {
   1: optional i32 regionType;
 }
 
-struct TRegionInfos {
-  1: required i32 regionId;
-  2: required i32 regionType;
-  3: required string storageGroup
-  4: required list<i32> dataNodeId;
-  5: required list<string> rpcAddresss;
-  6: required list<i32> rpcPort;
-  7: required i32 slots;
-  8: optional string status;
-}
-
 struct TShowRegionResp {
   1: required common.TSStatus status
-  2: optional list<TRegionInfos> regionInfoList;
+  2: optional list<common.TRegionLocation> regionInfoList;
 }
 
 service ConfigIService {

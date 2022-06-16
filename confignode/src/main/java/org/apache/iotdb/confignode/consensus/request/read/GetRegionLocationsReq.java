@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.read;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -27,35 +28,35 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetRegionsInfoReq extends ConfigRequest {
+public class GetRegionLocationsReq extends ConfigRequest {
 
-  private int regionType;
+  private TConsensusGroupType regionType;
 
-  public GetRegionsInfoReq() {
-    super(ConfigRequestType.GetRegionsInfo);
+  public GetRegionLocationsReq() {
+    super(ConfigRequestType.GetRegionLocations);
   }
 
-  public GetRegionsInfoReq(int regionType) {
-    super(ConfigRequestType.GetRegionsInfo);
+  public GetRegionLocationsReq(TConsensusGroupType regionType) {
+    super(ConfigRequestType.GetRegionLocations);
     this.regionType = regionType;
   }
 
-  public int getRegionType() {
+  public TConsensusGroupType getRegionType() {
     return regionType;
   }
 
-  public void setRegionType(int regionType) {
+  public void setRegionType(TConsensusGroupType regionType) {
     this.regionType = regionType;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
-    ReadWriteIOUtils.write(regionType, stream);
+    ReadWriteIOUtils.write(regionType.ordinal(), stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    regionType = ReadWriteIOUtils.readInt(buffer);
+    regionType = TConsensusGroupType.values()[ReadWriteIOUtils.readInt(buffer)];
   }
 }
