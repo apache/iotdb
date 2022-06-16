@@ -987,7 +987,7 @@ public class Analyzer {
       PathPatternTree pathPatternTree = new PathPatternTree();
       for (String measurement : internalCreateTimeSeriesStatement.getMeasurements()) {
         pathPatternTree.appendFullPath(
-                internalCreateTimeSeriesStatement.getDevicePath(), measurement);
+            internalCreateTimeSeriesStatement.getDevicePath(), measurement);
       }
 
       SchemaPartition schemaPartitionInfo;
