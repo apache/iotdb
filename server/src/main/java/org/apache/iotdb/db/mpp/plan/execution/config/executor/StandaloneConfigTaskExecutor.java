@@ -52,18 +52,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class StandsloneConfigTaskExecutor implements IConfigTaskExecutor {
+public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneConfigTaskExecutor.class);
 
-  private static final class StandsloneConfigTaskExecutorHolder {
-    private static final StandsloneConfigTaskExecutor INSTANCE = new StandsloneConfigTaskExecutor();
+  private static final class StandaloneConfigTaskExecutorHolder {
+    private static final StandaloneConfigTaskExecutor INSTANCE = new StandaloneConfigTaskExecutor();
 
-    private StandsloneConfigTaskExecutorHolder() {}
+    private StandaloneConfigTaskExecutorHolder() {}
   }
 
-  public static StandsloneConfigTaskExecutor getInstance() {
-    return StandsloneConfigTaskExecutor.StandsloneConfigTaskExecutorHolder.INSTANCE;
+  public static StandaloneConfigTaskExecutor getInstance() {
+    return StandaloneConfigTaskExecutorHolder.INSTANCE;
   }
 
   @Override
