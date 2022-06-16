@@ -177,10 +177,10 @@ public class DataBlockManager implements IDataBlockManager {
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
                 .isAborted()) {
-          throw new TException(
-              "Target fragment instance not found. Fragment instance ID: "
-                  + e.getTargetFragmentInstanceId()
-                  + ".");
+          logger.warn(
+              "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
+              e.getTargetFragmentInstanceId());
+          return;
         }
         SourceHandle sourceHandle =
             (SourceHandle)
