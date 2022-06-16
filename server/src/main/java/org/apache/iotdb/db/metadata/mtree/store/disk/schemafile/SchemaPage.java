@@ -36,9 +36,9 @@ public abstract class SchemaPage implements ISchemaPage {
   // region Configuration of Page and Segment
   // TODO: may be better to move to extra Config class
 
-  public static int PAGE_LENGTH = 16 * 1024; // 16 kib for default
-  public static long PAGE_INDEX_MASK = 0xffff_ffffL; // highest bit is not included
-  public static short PAGE_HEADER_SIZE = 32;
+  public static final int PAGE_LENGTH = 16 * 1024; // 16 kib for default
+  public static final long PAGE_INDEX_MASK = 0xffff_ffffL; // highest bit is not included
+  public static final short PAGE_HEADER_SIZE = 32;
 
   public static final int SEG_HEADER_SIZE = 25; // in bytes
   public static final short SEG_OFF_DIG =
@@ -52,7 +52,7 @@ public abstract class SchemaPage implements ISchemaPage {
       IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile() > SEG_MAX_SIZ
           ? SEG_MAX_SIZ
           : IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile();
-  public static int PAGE_CACHE_SIZE =
+  public static final int PAGE_CACHE_SIZE =
       IoTDBDescriptor.getInstance()
           .getConfig()
           .getPageCacheSizeInSchemaFile(); // size of page cache
@@ -64,10 +64,12 @@ public abstract class SchemaPage implements ISchemaPage {
   // endregion
 
   // value of type flag of a schema page
-  public static byte INTERNAL_PAGE = 0x01;
-  public static int INDEX_OFFSET = 1;
+  public static final byte SEGMENTED_PAGE = 0x00;
+  public static final byte INTERNAL_PAGE = 0x01;
+  public static final byte ALIAS_PAGE = 0x02;
+
   // offset on the buffer of attributes about the page
-  public static byte SEGMENTED_PAGE = 0x00;
+  public static final int INDEX_OFFSET = 1;
 
   public static int OFFSET_DIGIT = 16;
   public static long OFFSET_MASK = 0x7fffL;
@@ -83,8 +85,7 @@ public abstract class SchemaPage implements ISchemaPage {
   protected SchemaPage(ByteBuffer pageBuffer) {
     this.pageBuffer = pageBuffer;
 
-    this.pageBuffer.limit(this.pageBuffer.capacity());
-    this.pageBuffer.position(INDEX_OFFSET);
+    this.pageBuffer.limit(this.pageBuffer.capacity()).position(INDEX_OFFSET);
 
     pageIndex = ReadWriteIOUtils.readInt(this.pageBuffer);
     spareOffset = ReadWriteIOUtils.readShort(this.pageBuffer);

@@ -49,6 +49,16 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
    * P_0, K_1, P_1, K_2, P_2, ... K_n-1, P_n-1<br>
    * Obviously Pi and Ki share the index, and P0 has no corresponding key for which it should be
    * initiated when constructed. By addition, n above is denoted by {@link #memberNum}.
+   *
+   * <p><b>Page Header Structure as in {@linkplain ISchemaPage}.</b>
+   *
+   * <p>Page Body Structure:
+   *
+   * <ul>
+   *   <li>8 bytes * memberNum: compound pointer as {@linkplain #compoundPointer} mentioned.
+   *   <li>... spare space...
+   *   <li>var length * (memberNum-1): keys corresponding to the pointers
+   * </ul>
    */
   public InternalPage(ByteBuffer pageBuffer) {
     super(pageBuffer);

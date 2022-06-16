@@ -47,13 +47,16 @@ public interface ISchemaPage {
     buffer.clear();
     byte pageType = ReadWriteIOUtils.readByte(buffer);
 
-    if (pageType == SchemaPage.SEGMENTED_PAGE) {
-      return new SegmentedPage(buffer);
-    } else if (pageType == SchemaPage.INTERNAL_PAGE) {
-      return new InternalPage(buffer);
-    } else {
-      throw new MetadataException(
-          "ByteBuffer is corrupted or set to a wrong position to load as a SchemaPage.");
+    switch (pageType) {
+      case SchemaPage.SEGMENTED_PAGE:
+        return new SegmentedPage(buffer);
+      case SchemaPage.INTERNAL_PAGE:
+        return new InternalPage(buffer);
+      case SchemaPage.ALIAS_PAGE:
+        return new AliasIndexPage(buffer);
+      default:
+        throw new MetadataException(
+            "ByteBuffer is corrupted or set to a wrong position to load as a SchemaPage.");
     }
   }
 
@@ -87,6 +90,17 @@ public interface ISchemaPage {
     ReadWriteIOUtils.write((short) 0, buffer);
     ReadWriteIOUtils.write(-1L, buffer);
     return new SegmentedPage(buffer);
+  }
+
+  static SchemaPage initAliasIndexPage(ByteBuffer buffer, int pageIndex) {
+    buffer.clear();
+    ReadWriteIOUtils.write(SchemaPage.ALIAS_PAGE, buffer);
+    ReadWriteIOUtils.write(pageIndex, buffer);
+    ReadWriteIOUtils.write((short) buffer.capacity(), buffer);
+    ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaPage.PAGE_HEADER_SIZE), buffer);
+    ReadWriteIOUtils.write((short) 0, buffer);
+    ReadWriteIOUtils.write(-1L, buffer);
+    return new AliasIndexPage(buffer);
   }
 
   boolean isCapableForSize(short size);

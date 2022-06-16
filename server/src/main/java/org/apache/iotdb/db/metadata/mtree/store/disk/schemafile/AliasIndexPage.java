@@ -10,14 +10,14 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 
 /**
- * This page stores measurement alias as key and name as record, aiming to provide a mapping
- * from alias to name so that secondary index could be built upon efficient structure.
+ * This page stores measurement alias as key and name as record, aiming to provide a mapping from
+ * alias to name so that secondary index could be built upon efficient structure.
  *
- * <p>Since it is not necessary to shift size of it, extending a {@linkplain SchemaPage}
- * might be more reasonable for this structure.
+ * <p>Since it is not necessary to shift size of it, extending a {@linkplain SchemaPage} might be
+ * more reasonable for this structure.
  *
  * <p>TODO: another abstract class for this and InternalPage is expected
- * */
+ */
 public class AliasIndexPage extends SchemaPage implements ISegment<String, String> {
 
   private static int OFFSET_LEN = 2;
@@ -25,16 +25,17 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   String penultKey = null, lastKey = null;
 
   /**
-   * <b>Page Header Structure: (19 bytes used, 13 bytes reserved)</b>
-   * As in {@linkplain ISchemaPage}.
+   * <b>Page Header Structure: (19 bytes used, 13 bytes reserved)</b> As in {@linkplain
+   * ISchemaPage}.
    *
    * <p>Page Body Structure:
+   *
    * <ul>
    *   <li>2 bytes * memberNum: offset of (alias, name) pair, to locate string content
    *   <li>... spare space...
-   *   <li>var length(4 byte, var length, 4 bytes, var length): (alias, name) pairs, ordered by alias
+   *   <li>var length(4 byte, var length, 4 bytes, var length): (alias, name) pairs, ordered by
+   *       alias
    * </ul>
-   *
    */
   protected AliasIndexPage(ByteBuffer pageBuffer) {
     super(pageBuffer);
@@ -51,26 +52,24 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
 
     // check whether key already exists
     int pos = getIndexByKey(alias);
-    if (getKeyByIndex(pos).equals(alias)) {
+    if (memberNum > 0 && pos < memberNum && getKeyByIndex(pos).equals(alias)) {
       // not insert duplicated alias
       return spareSize;
     }
 
     if (SchemaPage.PAGE_HEADER_SIZE
-        + OFFSET_LEN * (memberNum + 1)
-        + 8
-        + alias.getBytes().length
-        + name.getBytes().length
+            + OFFSET_LEN * (memberNum + 1)
+            + 8
+            + alias.getBytes().length
+            + name.getBytes().length
         > spareOffset) {
       compactKeys();
     }
 
     // append key
     this.pageBuffer.clear();
-    this.spareOffset = (short) (this.spareOffset
-        - alias.getBytes().length
-        - name.getBytes().length
-        - 8);
+    this.spareOffset =
+        (short) (this.spareOffset - alias.getBytes().length - name.getBytes().length - 8);
     this.pageBuffer.position(spareOffset);
     ReadWriteIOUtils.write(alias, this.pageBuffer);
     ReadWriteIOUtils.write(name, this.pageBuffer);
@@ -105,12 +104,17 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   }
 
   @Override
-  public int updateRecord(String key, String buffer) throws SegmentOverflowException, RecordDuplicatedException {
+  public int updateRecord(String key, String buffer)
+      throws SegmentOverflowException, RecordDuplicatedException {
     return -1;
   }
 
   @Override
   public int removeRecord(String key) {
+    if (memberNum <= 0) {
+      return spareSize;
+    }
+
     int pos = getIndexByKey(key);
     if (!key.equals(getKeyByIndex(pos))) {
       return spareSize;
@@ -126,7 +130,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
       this.pageBuffer.clear().position(PAGE_HEADER_SIZE + pos * OFFSET_LEN);
       this.pageBuffer.put(temBuf);
     }
-    memberNum --;
+    memberNum--;
     spareSize += OFFSET_LEN + 8 + key.getBytes().length + getNameByIndex(pos).getBytes().length;
 
     return spareSize;
@@ -135,7 +139,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   @Override
   public String getRecordByKey(String key) throws MetadataException {
     int pos = getIndexByKey(key);
-    if (!key.equals(getKeyByIndex(pos))) {
+    if (memberNum <= 0 || pos >= memberNum || !key.equals(getKeyByIndex(pos))) {
       return null;
     }
     return getNameByIndex(pos);
@@ -148,7 +152,8 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
 
   @Override
   public boolean hasRecordKey(String key) {
-    return key.equals(getKeyByIndex(getIndexByKey(key)));
+    int idx = getIndexByKey(key);
+    return memberNum > 0 && idx < memberNum && key.equals(getKeyByIndex(idx));
   }
 
   @Override
@@ -188,9 +193,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   }
 
   @Override
-  public void delete() {
-
-  }
+  public void delete() {}
 
   @Override
   public long getNextSegAddress() {
@@ -216,8 +219,125 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   }
 
   @Override
-  public String splitByKey(String key, String entry, ByteBuffer dstBuffer, boolean inclineSplit) throws MetadataException {
-    return null;
+  public String splitByKey(String key, String entry, ByteBuffer dstBuffer, boolean inclineSplit)
+      throws MetadataException {
+
+    if (this.pageBuffer.capacity() != dstBuffer.capacity()) {
+      throw new MetadataException("Segments only splits with same capacity.");
+    }
+
+    if (memberNum == 0) {
+      throw new MetadataException("Segment can not be split with no records.");
+    }
+
+    if (key == null && memberNum <= 1) {
+      throw new MetadataException("Segment can not be split with only one record.");
+    }
+
+    // notice that key can be null here
+    boolean monotonic =
+        penultKey != null
+            && key != null
+            && lastKey != null
+            && inclineSplit
+            && (key.compareTo(lastKey)) * (lastKey.compareTo(penultKey)) > 0;
+
+    int n = memberNum;
+
+    // actual index of key just smaller than the insert, -2 for null key
+    int pos = key != null ? getIndexByKey(key) : -2;
+
+    int sp; // virtual index to split
+    if (monotonic) {
+      // new entry into part with more space
+      sp = key.compareTo(lastKey) > 0 ? Math.max(pos, n / 2) : Math.min(pos, n / 2);
+    } else {
+      sp = n / 2;
+    }
+
+    // little different from InternalSegment, only the front edge key can not split
+    sp = sp <= 0 ? 1 : sp;
+
+    // this method BREAKS envelop of the passing in buffer to be more efficient
+    // attributes for dstBuffer
+    short memberNum = 0,
+        spareOffset = (short) dstBuffer.capacity(),
+        spareSize = (short) (spareOffset - PAGE_HEADER_SIZE);
+    long nextSegAddress = this.nextPage;
+    dstBuffer.clear();
+
+    short offset;
+    int recSize;
+    String mKey, sKey = null;
+    int aix; // aix for actual index on keyAddressList
+    n = key == null ? n - 1 : n; // null key
+    // TODO: implement bulk split further
+    for (int ix = sp; ix <= n; ix++) {
+      if (ix == pos) {
+        // migrate newly insert
+        mKey = key;
+        recSize = 8 + entry.getBytes().length + mKey.getBytes().length;
+
+        spareOffset -= recSize;
+        dstBuffer.position(spareOffset);
+        ReadWriteIOUtils.write(mKey, dstBuffer);
+        ReadWriteIOUtils.write(entry, dstBuffer);
+
+      } else {
+        // pos equals -2 if key is null
+        aix = (ix > pos) && (pos != -2) ? ix - 1 : ix;
+        mKey = getKeyByIndex(aix);
+
+        offset = getOffsetByIndex(aix);
+        pageBuffer.clear().position(offset);
+        recSize = ReadWriteIOUtils.readInt(pageBuffer);
+        pageBuffer.position(pageBuffer.position() + recSize);
+        recSize += ReadWriteIOUtils.readInt(pageBuffer) + 8;
+        pageBuffer.position(offset);
+        pageBuffer.limit(offset + recSize);
+
+        spareOffset -= recSize;
+        dstBuffer.position(spareOffset);
+        dstBuffer.put(this.pageBuffer);
+      }
+      dstBuffer.position(SchemaPage.PAGE_HEADER_SIZE + memberNum * OFFSET_LEN);
+      ReadWriteIOUtils.write(spareOffset, dstBuffer);
+
+      if (ix == sp) {
+        // search key is the first key in split segment
+        sKey = mKey;
+      }
+      memberNum++;
+      spareSize -= recSize + 2;
+    }
+
+    this.memberNum -= memberNum;
+    if (key != null && sp <= pos) {
+      // extra key has inserted into split buffer
+      this.memberNum++;
+    }
+
+    // compact and update status
+    compactKeys();
+    if (key != null && sp > pos) {
+      // new insert shall be in this
+      if (insertRecord(key, entry) < 0) {
+        throw new SegmentOverflowException(key);
+      }
+    }
+
+    // flush dstBuffer header
+    dstBuffer.clear();
+    ReadWriteIOUtils.write(SchemaPage.ALIAS_PAGE, dstBuffer);
+    ReadWriteIOUtils.write(-1, dstBuffer);
+    ReadWriteIOUtils.write(spareOffset, dstBuffer);
+    ReadWriteIOUtils.write(spareSize, dstBuffer);
+    ReadWriteIOUtils.write(memberNum, dstBuffer);
+    ReadWriteIOUtils.write(nextPage, dstBuffer);
+
+    penultKey = null;
+    lastKey = null;
+    return sKey;
   }
 
   @Override
@@ -227,7 +347,27 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
 
   @Override
   public String inspect() {
-    return null;
+    syncPageBuffer();
+    ByteBuffer bufferR = this.pageBuffer.asReadOnlyBuffer();
+    StringBuilder builder =
+        new StringBuilder(
+            String.format(
+                "page_id:%d, total_seg:%d, spare_before:%d\n", pageIndex, 1, spareOffset));
+    builder.append(
+        String.format(
+            "[AliasIndexSegment, total_alias: %d, spare_size:%d,", this.memberNum, this.spareSize));
+    bufferR.clear();
+
+    for (int i = 0; i < memberNum; i++) {
+      builder.append(String.format("(%s, %s),", getKeyByIndex(i), getNameByIndex(i)));
+    }
+    builder.append("]");
+    return builder.toString();
+  }
+
+  @Override
+  public String toString() {
+    return inspect();
   }
 
   @Override
@@ -243,7 +383,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     this.spareOffset = (short) this.pageBuffer.capacity();
     String key, name;
     int accSiz = 0;
-    for (int i = 1; i < this.memberNum; i++) {
+    for (int i = 0; i < this.memberNum; i++) {
       // this.pageBuffer will not be overridden immediately
       key = getKeyByIndex(i);
       name = getNameByIndex(i);
@@ -262,10 +402,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     this.pageBuffer.position(this.spareOffset);
     this.pageBuffer.put(tempBuffer);
     this.spareSize =
-        (short)
-            (this.spareOffset
-                - SchemaPage.PAGE_HEADER_SIZE
-                - OFFSET_LEN * this.memberNum);
+        (short) (this.spareOffset - SchemaPage.PAGE_HEADER_SIZE - OFFSET_LEN * this.memberNum);
   }
 
   /**
@@ -339,14 +476,14 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   }
 
   private String getKeyByIndex(int index) {
-    if (index <= 0 || index >= memberNum) {
+    if (index < 0 || index > memberNum) {
       throw new IndexOutOfBoundsException();
     }
     return getKeyByOffset(getOffsetByIndex(index));
   }
 
   private String getNameByIndex(int index) {
-    if (index <= 0 || index >= memberNum) {
+    if (index < 0 || index >= memberNum) {
       throw new IndexOutOfBoundsException();
     }
     return getNameByOffset(getOffsetByIndex(index));

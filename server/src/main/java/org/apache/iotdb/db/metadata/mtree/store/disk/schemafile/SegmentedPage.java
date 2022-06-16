@@ -54,6 +54,17 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    *   <li>Offset is meant for in-page indexing
    *   <li>Segment instance is meant for records manipulations
    * </ul>
+   *
+   * <b>Page Header Structure as in {@linkplain ISchemaPage}.</b>
+   *
+   * <p>Page Body Structure:
+   *
+   * <ul>
+   *   <li>var length * memberNum: {@linkplain WrappedSegment} contains serialized IMNodes.
+   *   <li>... spare space...
+   *   <li>2 bytes * memberNum: offset of segments, using marking deletion as {@linkplain
+   *       #deleteSegment} mentioned.
+   * </ul>
    */
   public SegmentedPage(ByteBuffer pageBuffer) {
     super(pageBuffer);
@@ -127,6 +138,10 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     getSegment(segId).removeRecord(key);
   }
 
+  /**
+   * Implementing marking deletion will not modify {@linkplain #memberNum} nor truncate {@linkplain
+   * #segOffsetLst}.
+   */
   @Override
   public synchronized void deleteSegment(short segId) throws SegmentNotFoundException {
     getSegment(segId).delete();

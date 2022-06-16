@@ -243,6 +243,10 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
       throw new MetadataException("Segments only splits with same capacity.");
     }
 
+    if (keyAddressList.size() == 0) {
+      throw new MetadataException("Segment can not be split with no records.");
+    }
+
     if (key == null && keyAddressList.size() == 1) {
       throw new MetadataException("Segment can not be split with only one record.");
     }
