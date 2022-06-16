@@ -54,7 +54,12 @@ public enum Metric {
   SYS_FREE_SWAP_SPACE_SIZE,
   SYS_COMMITTED_VM_SIZE,
   SYS_DISK_TOTAL_SPACE,
-  SYS_DISK_FREE_SPACE;
+  SYS_DISK_FREE_SPACE,
+  CONFIG_NODE,
+  DATA_NODE,
+  STORAGE_GROUP,
+  REGION,
+  SLOT;
 
   @Override
   public String toString() {

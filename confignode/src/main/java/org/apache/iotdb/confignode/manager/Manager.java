@@ -220,4 +220,6 @@ public interface Manager {
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  void addMetrics();
 }

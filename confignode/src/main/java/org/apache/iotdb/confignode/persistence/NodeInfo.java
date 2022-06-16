@@ -31,6 +31,11 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -102,6 +107,29 @@ public class NodeInfo implements SnapshotProcessor {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.onlineConfigNodes =
         new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
+  }
+
+  public void addMetrics() {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.CONFIG_NODE.toString(),
+              MetricLevel.CORE,
+              onlineConfigNodes,
+              o -> getOnlineDataNodeCount(),
+              Tag.NAME.toString(),
+              "online");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.DATA_NODE.toString(),
+              MetricLevel.CORE,
+              onlineDataNodes,
+              Map::size,
+              Tag.NAME.toString(),
+              "online");
+    }
   }
 
   /** @return true if the specific DataNode is now online */

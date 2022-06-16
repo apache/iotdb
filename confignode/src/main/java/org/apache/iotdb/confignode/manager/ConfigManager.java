@@ -664,4 +664,10 @@ public class ConfigManager implements Manager {
     }
     return noExistSg;
   }
+
+  @Override
+  public void addMetrics() {
+    partitionManager.addMetrics();
+    nodeManager.addMetrics();
+  }
 }
