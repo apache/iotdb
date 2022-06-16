@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.udf;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -53,27 +52,14 @@ public class IoTDBUDFManagementIT {
   private static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   private static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
 
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
-
   @Before
   public void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
@@ -261,6 +247,14 @@ public class IoTDBUDFManagementIT {
       } catch (SQLException throwable) {
         assertTrue(
             throwable.getMessage().contains("Built-in function ABS can not be deregistered"));
+      }
+      // ensure that abs is not dropped
+      statement.execute("INSERT INTO root.vehicle.d1(time, s1) VALUES(1, -10.0)");
+      try (ResultSet rs = statement.executeQuery("SELECT ABS(s1) FROM root.vehicle.d1")) {
+        Assert.assertTrue(rs.next());
+        Assert.assertEquals(1, rs.getLong(1));
+        Assert.assertEquals(10.0F, rs.getFloat(2), 0.00001);
+        Assert.assertFalse(rs.next());
       }
     }
   }
