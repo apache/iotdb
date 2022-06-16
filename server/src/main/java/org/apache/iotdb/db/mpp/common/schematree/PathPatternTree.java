@@ -134,31 +134,31 @@ public class PathPatternTree {
 
   public List<String> getAllDevicePatterns() {
     List<String> nodes = new ArrayList<>();
-    List<String> pathPatternList = new ArrayList<>();
-    searchDevicePattern(root, nodes, pathPatternList);
-    return pathPatternList;
+    List<String> results = new ArrayList<>();
+    searchDevicePattern(root, nodes, results);
+    return results;
   }
 
   private void searchDevicePattern(
-      PathPatternNode curNode, List<String> nodes, List<String> pathPatternList) {
+      PathPatternNode curNode, List<String> nodes, List<String> results) {
     nodes.add(curNode.getName());
     if (curNode.isLeaf()) {
       if (!curNode.getName().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        pathPatternList.add(
+        results.add(
             nodes.size() == 1 ? "" : convertNodesToString(nodes.subList(0, nodes.size() - 1)));
       } else {
-        pathPatternList.add(convertNodesToString(nodes));
+        results.add(convertNodesToString(nodes));
       }
       nodes.remove(nodes.size() - 1);
       return;
     }
     if (curNode.isWildcard()) {
-      pathPatternList.add(convertNodesToString(nodes));
+      results.add(convertNodesToString(nodes));
       nodes.remove(nodes.size() - 1);
       return;
     }
     for (PathPatternNode childNode : curNode.getChildren().values()) {
-      searchDevicePattern(childNode, nodes, pathPatternList);
+      searchDevicePattern(childNode, nodes, results);
     }
     nodes.remove(nodes.size() - 1);
   }
