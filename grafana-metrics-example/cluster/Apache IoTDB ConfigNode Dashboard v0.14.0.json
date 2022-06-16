@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1655341662230,
+  "iteration": 1655344207668,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -135,10 +135,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "partition_table{instance=~\"$instance\"}",
+          "expr": "partition_table{instance=~\"$instance\"} / 2",
           "hide": false,
           "interval": "",
-          "legendFormat": "Partition Table",
+          "legendFormat": "Storage Group",
           "refId": "E"
         },
         {
@@ -1154,8 +1154,8 @@
     ]
   },
   "time": {
-    "from": "2022-06-16T01:16:02.027Z",
-    "to": "2022-06-16T01:19:46.497Z"
+    "from": "2022-06-16T01:16:35.793Z",
+    "to": "2022-06-16T01:20:33.527Z"
   },
   "timepicker": {
     "refresh_intervals": [
