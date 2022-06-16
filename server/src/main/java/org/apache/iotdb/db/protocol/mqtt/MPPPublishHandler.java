@@ -29,11 +29,12 @@ import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import io.moquette.interception.AbstractInterceptHandler;
 import io.moquette.interception.messages.InterceptConnectMessage;
@@ -46,7 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 
 /** PublishHandler handle the messages from MQTT clients. */
@@ -69,12 +69,6 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       partitionFetcher = StandalonePartitionFetcher.getInstance();
       schemaFetcher = StandaloneSchemaFetcher.getInstance();
     }
-  }
-
-  public MPPPublishHandler(PayloadFormatter payloadFormat) {
-    this.payloadFormat = payloadFormat;
-    partitionFetcher = StandalonePartitionFetcher.getInstance();
-    schemaFetcher = StandaloneSchemaFetcher.getInstance();
   }
 
   @Override
@@ -123,8 +117,6 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       return;
     }
 
-    // since device ids from messages maybe different, so we use the InsertPlan not
-    // InsertTabletPlan.
     for (Message event : events) {
       if (event == null) {
         continue;
@@ -132,24 +124,14 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
       TSStatus tsStatus = null;
       try {
-        InsertStatement statement = new InsertStatement();
-        statement.setDevice(new PartialPath(event.getDevice()));
-        statement.setTimes(new long[] {event.getTimestamp()});
-        statement.setMeasurementList(event.getMeasurements().toArray(new String[0]));
-        String[] values = event.getValues().toArray(new String[0]);
-        List<String[]> valuesList = new ArrayList<>(1);
-        valuesList.add(values);
-        statement.setValuesList(valuesList);
-
-        // FIXME Using InsertRowStatement will cause insert failing
-        //        InsertRowStatement statement = new InsertRowStatement();
-        //        statement.setDevicePath(new PartialPath(event.getDevice()));
-        //        statement.setTime(event.getTimestamp());
-        //        statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
-        //        statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
-        //        statement.setValues(event.getValues().toArray(new String[0]));
-        //        statement.setNeedInferType(true);
-        //        statement.setAligned(false);
+        InsertRowStatement statement = new InsertRowStatement();
+        statement.setDevicePath(new PartialPath(event.getDevice()));
+        statement.setTime(event.getTimestamp());
+        statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
+        statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
+        statement.setValues(event.getValues().toArray(new Object[0]));
+        statement.setNeedInferType(true);
+        statement.setAligned(false);
 
         tsStatus = AuthorityChecker.checkAuthority(statement, sessionId);
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
