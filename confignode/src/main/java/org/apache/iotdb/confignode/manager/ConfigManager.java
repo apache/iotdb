@@ -298,7 +298,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
       Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-      List<PartialPath> relatedPaths = patternTree.splitToPathList();
+      List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
       List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
       Map<String, Boolean> scanAllRegions = new HashMap<>();
       for (PartialPath path : relatedPaths) {
@@ -357,7 +357,7 @@ public class ConfigManager implements Manager {
   public TSchemaPartitionResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> devicePaths = patternTree.getAllDevicePatterns();
       List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
 
       GetOrCreateSchemaPartitionReq getOrCreateSchemaPartitionReq =
@@ -667,5 +667,11 @@ public class ConfigManager implements Manager {
       }
     }
     return noExistSg;
+  }
+
+  @Override
+  public void addMetrics() {
+    partitionManager.addMetrics();
+    nodeManager.addMetrics();
   }
 }

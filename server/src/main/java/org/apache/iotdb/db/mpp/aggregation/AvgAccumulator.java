@@ -81,6 +81,9 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     initResult = true;
     countValue += statistics.getCount();
     if (statistics instanceof IntegerStatistics) {

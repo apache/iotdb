@@ -82,6 +82,7 @@ public class ConfigNode implements ConfigNodeMBean {
     JMXService.registerMBean(this, mbeanName);
 
     registerManager.register(MetricsService.getInstance());
+    configManager.addMetrics();
     registerUdfServices();
 
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);

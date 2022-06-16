@@ -69,6 +69,10 @@ public class DatasetHeader {
         .collect(Collectors.toList());
   }
 
+  public List<String> getColumnNameWithoutAlias() {
+    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
   public List<String> getRespDataTypeList() {
     return columnHeaders.stream()
         .map(ColumnHeader::getColumnType)
