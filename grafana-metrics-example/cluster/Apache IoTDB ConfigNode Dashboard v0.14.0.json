@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1655344207668,
+  "iteration": 1655363164080,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -135,7 +135,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "partition_table{instance=~\"$instance\"} / 2",
+          "expr": "storage_group{instance=~\"$instance\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Storage Group",
@@ -1097,7 +1097,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "",
   "schemaVersion": 35,
   "style": "dark",
   "tags": [
@@ -1154,8 +1154,8 @@
     ]
   },
   "time": {
-    "from": "2022-06-16T01:16:35.793Z",
-    "to": "2022-06-16T01:20:33.527Z"
+    "from": "now-6h",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -1170,6 +1170,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7g",
-  "version": 14,
+  "version": 16,
   "weekStart": ""
 }

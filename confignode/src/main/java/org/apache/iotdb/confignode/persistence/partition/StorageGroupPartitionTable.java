@@ -109,6 +109,7 @@ public class StorageGroupPartitionTable {
               storageGroupName,
               Tag.TYPE.toString(),
               TConsensusGroupType.DataRegion.toString());
+      // TODO slot will be updated in the future
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(

@@ -110,10 +110,10 @@ public class PartitionInfo implements SnapshotProcessor {
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
-              Metric.PARTITION_TABLE.toString(),
+              Metric.STORAGE_GROUP.toString(),
               MetricLevel.CORE,
               storageGroupPartitionTables,
-              Map::size,
+              o -> o.size() / 2,
               Tag.NAME.toString(),
               "number");
       MetricsService.getInstance()
@@ -122,7 +122,7 @@ public class PartitionInfo implements SnapshotProcessor {
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
               this,
-              o -> o.getTotalRegionCountAndUpdateMetric(TConsensusGroupType.SchemaRegion),
+              o -> o.updateRegionMetric(TConsensusGroupType.SchemaRegion),
               Tag.NAME.toString(),
               "total",
               Tag.TYPE.toString(),
@@ -133,7 +133,7 @@ public class PartitionInfo implements SnapshotProcessor {
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
               this,
-              o -> o.getTotalRegionCountAndUpdateMetric(TConsensusGroupType.DataRegion),
+              o -> o.updateRegionMetric(TConsensusGroupType.DataRegion),
               Tag.NAME.toString(),
               "total",
               Tag.TYPE.toString(),
@@ -530,19 +530,34 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get total region number and update metric
+   * Get total region number
    *
    * @param type SchemaRegion or DataRegion
    * @return the number of SchemaRegion or DataRegion
    */
-  private int getTotalRegionCountAndUpdateMetric(TConsensusGroupType type) {
+  public int getTotalRegionCount(TConsensusGroupType type) {
+    Set<RegionGroup> regionGroups = new HashSet<>();
+    for (Map.Entry<String, StorageGroupPartitionTable> entry :
+        storageGroupPartitionTables.entrySet()) {
+      regionGroups.addAll(entry.getValue().getRegion(type));
+    }
+    return regionGroups.size();
+  }
+
+  /**
+   * update region-related metric
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return the number of SchemaRegion or DataRegion
+   */
+  private int updateRegionMetric(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
     for (Map.Entry<String, StorageGroupPartitionTable> entry :
         storageGroupPartitionTables.entrySet()) {
       regionGroups.addAll(entry.getValue().getRegion(type));
     }
     int result = regionGroups.size();
-    // statistic
+    // datanode location -> region number
     Map<TDataNodeLocation, Integer> dataNodeLocationIntegerMap = new HashMap<>();
     for (RegionGroup regionGroup : regionGroups) {
       TRegionReplicaSet regionReplicaSet = regionGroup.getReplicaSet();
