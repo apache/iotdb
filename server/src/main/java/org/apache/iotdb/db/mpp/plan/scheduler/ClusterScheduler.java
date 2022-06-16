@@ -50,20 +50,15 @@ import java.util.concurrent.ScheduledExecutorService;
 public class ClusterScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(ClusterScheduler.class);
 
-  private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
-  private QueryStateMachine stateMachine;
-  private QueryType queryType;
+  private final QueryStateMachine stateMachine;
+  private final QueryType queryType;
   // The fragment instances which should be sent to corresponding Nodes.
-  private List<FragmentInstance> instances;
+  private final List<FragmentInstance> instances;
 
-  private ExecutorService executor;
-  private ExecutorService writeOperationExecutor;
-  private ScheduledExecutorService scheduledExecutor;
-
-  private IFragInstanceDispatcher dispatcher;
-  private IFragInstanceStateTracker stateTracker;
-  private IQueryTerminator queryTerminator;
+  private final IFragInstanceDispatcher dispatcher;
+  private final IFragInstanceStateTracker stateTracker;
+  private final IQueryTerminator queryTerminator;
 
   public ClusterScheduler(
       MPPQueryContext queryContext,
@@ -74,12 +69,9 @@ public class ClusterScheduler implements IScheduler {
       ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.instances = instances;
     this.queryType = queryType;
-    this.executor = executor;
-    this.scheduledExecutor = scheduledExecutor;
     this.dispatcher =
         new FragmentInstanceDispatcherImpl(
             queryType, executor, writeOperationExecutor, internalServiceClientManager);
