@@ -192,7 +192,7 @@ public class ExpressionAnalyzer {
       } else {
         for (PartialPath prefixPath : prefixPaths) {
           PartialPath concatPath = prefixPath.concatPath(rawPath);
-          patternTree.appendPath(concatPath);
+          patternTree.appendPathPattern(concatPath);
           actualPaths.add(concatPath);
         }
       }
@@ -232,12 +232,12 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
       if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
-        patternTree.appendPath(rawPath);
+        patternTree.appendPathPattern(rawPath);
         return;
       }
       for (PartialPath prefixPath : prefixPaths) {
         PartialPath concatPath = prefixPath.concatPath(rawPath);
-        patternTree.appendPath(concatPath);
+        patternTree.appendPathPattern(concatPath);
       }
     } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
       // do nothing
