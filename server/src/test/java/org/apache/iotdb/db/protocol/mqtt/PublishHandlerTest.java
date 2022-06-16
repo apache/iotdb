@@ -35,7 +35,7 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
+import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -59,8 +59,7 @@ public class PublishHandlerTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  // TODO need to change test environment
-  @Ignore
+  @Test
   public void onPublish() throws ClassNotFoundException {
     PayloadFormatter payloadFormat = PayloadFormatManager.getPayloadFormat("json");
     PublishHandler handler = new PublishHandler(payloadFormat);
