@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionsInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -221,5 +222,9 @@ public interface Manager {
 
   TSStatus dropFunction(String udfName);
 
+<<<<<<< HEAD
   void addMetrics();
+=======
+  DataSet showRegion(GetRegionsInfoReq getRegionsinfoReq);
+>>>>>>> 3e59ada74c (add new function: show (data | schema)? regions)
 }

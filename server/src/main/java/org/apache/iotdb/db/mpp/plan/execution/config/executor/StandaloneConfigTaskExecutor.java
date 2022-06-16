@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -254,6 +255,17 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     }
     // build TSBlock
     ShowTTLTask.buildTSBlock(storageGroupToTTL, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing this command in standalone mode is not supported")));
     return future;
   }
 }

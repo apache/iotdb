@@ -114,3 +114,68 @@ To get the executing `queryId`，you can use the `show query processlist` comman
 |      |         |           |
 
 The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.
+
+
+
+## Monitoring tool for cluster Region distribution
+
+A cluster uses a Region as a unit for data replication and data management . The Region status and distribution is helpful for system operation and maintenance testing , as shown in the following scenario ：
+
+-  Check which Datanodes are allocated to each Region in the cluster and whether the balance is correct.
+
+Currently, IoTDB supports Region query using the following SQL：
+
+- `SHOW REGIONS`: Show all Region
+- `SHOW SCHEMA REGIONS`: Show all SchemaRegion distribution
+- `SHOW DATA REGIONS`: Show all DataRegion distribution
+
+```sql
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+-----------+------+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId| HostAdress|  Port|
++--------+------------+------+-------------+-----+----------+-----------+------+
+|       5|  DataRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
+|       6|  DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
+|       4|SchemaRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
+|       9|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
+|      10|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
+|       7|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
+|       8|  DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
+|      13|  DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
+|      14|  DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
+|      11|  DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
+|      12|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
+|       2|SchemaRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
+|       3|SchemaRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
++--------+------------+------+-------------+-----+----------+-----------+------+
+Total line number = 13
+It costs 0.015s
+IoTDB> show schema regions
++--------+------------+------+-------------+-----+----------+-----------+------+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId| HostAdress|  Port|
++--------+------------+------+-------------+-----+----------+-----------+------+
+|       4|SchemaRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
+|       2|SchemaRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
+|       3|SchemaRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
++--------+------------+------+-------------+-----+----------+-----------+------+
+Total line number = 3
+It costs 0.008s
+IoTDB> show data regions
++--------+----------+------+-------------+-----+----------+-----------+------+
+|RegionId|      Type|Status|storage group|Slots|DataNodeId| HostAdress|  Port|
++--------+----------+------+-------------+-----+----------+-----------+------+
+|       5|DataRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
+|       6|DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
+|       9|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
+|      10|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
+|       7|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
+|       8|DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
+|      13|DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
+|      14|DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
+|      11|DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
+|      12|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
++--------+----------+------+-------------+-----+----------+-----------+------+
+Total line number = 10
+It costs 0.038s
+```
+

@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionsInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -51,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.RegionsInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -642,6 +644,18 @@ public class ConfigManager implements Manager {
   @Override
   public UDFManager getUDFManager() {
     return udfManager;
+  }
+
+  @Override
+  public DataSet showRegion(GetRegionsInfoReq getRegionsinfoReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return partitionManager.getRegionInfos(getRegionsinfoReq);
+    } else {
+      RegionsInfoResp regionResp = new RegionsInfoResp();
+      regionResp.setStatus(status);
+      return regionResp;
+    }
   }
 
   public ProcedureManager getProcedureManager() {

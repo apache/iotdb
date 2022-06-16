@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionsInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -39,15 +40,21 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.RegionsInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfos;
 import org.apache.iotdb.consensus.common.DataSet;
+<<<<<<< HEAD
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+=======
+import org.apache.iotdb.rpc.RpcUtils;
+>>>>>>> 3e59ada74c (add new function: show (data | schema)? regions)
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -64,6 +71,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -532,6 +540,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return storageGroupPartitionTables.get(storageGroup).getSortedRegionSlotsCounter(type);
   }
 
+<<<<<<< HEAD
   /**
    * Get total region number
    *
@@ -595,6 +604,9 @@ public class PartitionInfo implements SnapshotProcessor {
     return result;
   }
 
+=======
+  @Override
+>>>>>>> 3e59ada74c (add new function: show (data | schema)? regions)
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
@@ -683,6 +695,61 @@ public class PartitionInfo implements SnapshotProcessor {
         deletedRegionSet.add(regionReplicaSet);
       }
     }
+  }
+
+  public DataSet getRegionInfos(GetRegionsInfoReq regionsInfoReq) {
+    RegionsInfoResp regionResp = new RegionsInfoResp();
+    List<TRegionInfos> tRegionInfosList = new ArrayList<>();
+    if (storageGroupPartitionTables.isEmpty()) {
+      regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      return regionResp;
+    }
+    storageGroupPartitionTables.forEach(
+        (storageGroup, storageGroupPartitionTable) ->
+            storageGroupPartitionTable
+                .getRegionInfoMap()
+                .forEach(
+                    (consensusGroupId, regionInfoMap) -> {
+                      TRegionReplicaSet replicaSet = regionInfoMap.getReplicaSet();
+                      if (replicaSet.getRegionId().getType().ordinal()
+                          == regionsInfoReq.getRegionType()) {
+                        buildTRegionsInfo(
+                            tRegionInfosList, storageGroup, replicaSet, regionInfoMap);
+                      }
+                      if (regionsInfoReq.getRegionType() == -1) {
+                        buildTRegionsInfo(
+                            tRegionInfosList, storageGroup, replicaSet, regionInfoMap);
+                      }
+                    }));
+    regionResp.setRegionInfosList(tRegionInfosList);
+    regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return regionResp;
+  }
+
+  private void buildTRegionsInfo(
+      List<TRegionInfos> tRegionInfosList,
+      String storageGroup,
+      TRegionReplicaSet replicaSet,
+      RegionGroup regionInfoMap) {
+    List<Integer> dataNodeIdList = null;
+    List<String> rpcAddressList = null;
+    List<Integer> rpcPortList = null;
+    TRegionInfos tRegionInfos = new TRegionInfos();
+    tRegionInfos.setRegionId(replicaSet.getRegionId().getId());
+    tRegionInfos.setRegionType(replicaSet.getRegionId().getType().getValue());
+    tRegionInfos.setStorageGroup(storageGroup);
+    long slots = regionInfoMap.getCounter();
+    tRegionInfos.setSlots((int) slots);
+    for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
+      dataNodeIdList = Arrays.asList(dataNodeLocation.getDataNodeId());
+      rpcAddressList = Arrays.asList(dataNodeLocation.getExternalEndPoint().getIp());
+      rpcPortList = Arrays.asList(dataNodeLocation.getExternalEndPoint().getPort());
+    }
+    tRegionInfos.setDataNodeId(dataNodeIdList);
+    tRegionInfos.setRpcAddresss(rpcAddressList);
+    tRegionInfos.setRpcPort(rpcPortList);
+    tRegionInfos.setStatus("Up");
+    tRegionInfosList.add(tRegionInfos);
   }
 
   public void clear() {

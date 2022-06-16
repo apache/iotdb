@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionsInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -189,6 +190,8 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case GetNodePathsPartition:
           req = new GetNodePathsPartitionReq();
           break;
+        case GetRegionsInfo:
+          req = new GetRegionsInfoReq();
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);
       }

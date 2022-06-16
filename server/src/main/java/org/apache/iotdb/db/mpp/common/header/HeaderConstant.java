@@ -69,6 +69,12 @@ public class HeaderConstant {
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
+  // column names for show region statement
+  public static final String COLUMN_REGION_ID = "RegionId";
+  public static final String COLUMN_TYPE = "Type";
+  public static final String COLUMN_DATANODE_ID = "DataNodeId";
+  public static final String COLUMN_SLOTS = "Slots";
+
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
@@ -93,6 +99,9 @@ public class HeaderConstant {
 
   // dataset header for show functions
   public static final DatasetHeader SHOW_FUNCTIONS_HEADER;
+
+  // dataset header for show region
+  public static final DatasetHeader showRegionHeader;
 
   static {
     countStorageGroupHeader =
@@ -198,6 +207,21 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT)),
+            true);
+  }
+
+  static {
+    showRegionHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_SLOTS, TSDataType.INT32),
+                new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.TEXT)),
             true);
   }
 }

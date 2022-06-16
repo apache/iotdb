@@ -396,6 +396,10 @@ public class StorageGroupPartitionTable {
     dataPartitionTable.deserialize(inputStream, protocol);
   }
 
+  public Map<TConsensusGroupId, RegionGroup> getRegionInfoMap() {
+    return regionInfoMap;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;

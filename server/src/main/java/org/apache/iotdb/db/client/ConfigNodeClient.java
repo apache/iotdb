@@ -59,6 +59,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -648,6 +650,22 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
         TSStatus status = client.flush(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowRegionResp showRegion(TShowRegionReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowRegionResp showRegionResp = client.showRegion(req);
+        if (!updateConfigNodeLeader(showRegionResp.getStatus())) {
+          return showRegionResp;
         }
       } catch (TException e) {
         configLeader = null;
