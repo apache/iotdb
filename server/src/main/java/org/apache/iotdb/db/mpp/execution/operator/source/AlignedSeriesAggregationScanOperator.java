@@ -214,7 +214,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
     return (preCachedData != null
             && (ascending
                 ? preCachedData.getEndTime() > curTimeRange.getMax()
-                : preCachedData.getStartTime() < curTimeRange.getMin()))
+                : preCachedData.getEndTime() < curTimeRange.getMin()))
         || isEndCalc(aggregators);
   }
 
@@ -315,9 +315,11 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
       calcFromBatch(tsBlock, curTimeRange);
 
       // judge whether the calculation finished
-      if (isEndCalc(aggregators) || ascending
-          ? tsBlock.getEndTime() > curTimeRange.getMax()
-          : tsBlock.getEndTime() < curTimeRange.getMin()) {
+      boolean isTsBlockOutOfBound =
+          ascending
+              ? tsBlock.getEndTime() > curTimeRange.getMax()
+              : tsBlock.getEndTime() < curTimeRange.getMin();
+      if (isEndCalc(aggregators) || isTsBlockOutOfBound) {
         return true;
       }
     }
