@@ -347,7 +347,9 @@ public class SchemaEngine {
             });
     // remove the empty sg dir
     if (regionDirList == null || regionDirList.length == 0) {
-      FileUtils.deleteDirectory(sgDir);
+      if (sgDir.exists()) {
+        FileUtils.deleteDirectory(sgDir);
+      }
       sharedPrefixTree.deleteStorageGroup(new PartialPath(schemaRegion.getStorageGroupFullPath()));
     }
   }
