@@ -31,7 +31,7 @@ TYPES_MAP = {
     "INT32": types.Integer,
     "INT64": types.BigInteger,
     "FLOAT": types.Float,
-    "DOUBLE": types.DECIMAL,
+    "DOUBLE": types.Float,
     "TEXT": types.Text,
     "LONG": types.BigInteger,
 }
@@ -110,6 +110,9 @@ class IoTDBDialect(default.DefaultDialect):
         return "SHOW VERSION"
 
     def _general_time_column_info(self):
+        """
+        Treat Time as a column
+        """
         return {
             "name": "Time",
             "type": self._resolve_type("LONG"),
@@ -118,6 +121,9 @@ class IoTDBDialect(default.DefaultDialect):
         }
 
     def _create_column_info(self, row, schema, table_name):
+        """
+        Generate description information for each column
+        """
         return {
             "name": row[0].replace(schema + "." + table_name + ".", "", 1),
             "type": self._resolve_type(row[3]),

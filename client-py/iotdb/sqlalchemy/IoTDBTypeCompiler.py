@@ -24,7 +24,7 @@ class IoTDBTypeCompiler(GenericTypeCompiler):
         return "FLOAT"
 
     def visit_NUMERIC(self, type_, **kw):
-        return "LONG"
+        return "INT64"
 
     def visit_DECIMAL(self, type_, **kw):
         return "DOUBLE"
