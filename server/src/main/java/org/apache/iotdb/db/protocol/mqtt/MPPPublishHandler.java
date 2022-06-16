@@ -141,13 +141,15 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         valuesList.add(values);
         statement.setValuesList(valuesList);
 
-        // Using InsertRowStatement will cause insert failing
+        // FIXME Using InsertRowStatement will cause insert failing
         //        InsertRowStatement statement = new InsertRowStatement();
         //        statement.setDevicePath(new PartialPath(event.getDevice()));
         //        statement.setTime(event.getTimestamp());
         //        statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
-        //        statement.setAligned(false);
+        //        statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
         //        statement.setValues(event.getValues().toArray(new String[0]));
+        //        statement.setNeedInferType(true);
+        //        statement.setAligned(false);
 
         tsStatus = AuthorityChecker.checkAuthority(statement, sessionId);
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
