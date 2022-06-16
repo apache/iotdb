@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
@@ -233,7 +234,15 @@ public class QueryExecution implements IQueryExecution {
     logger.info(
         "distribution plan done. Fragment instance count is {}, details is: \n {}",
         distributedPlan.getInstances().size(),
-        distributedPlan.getInstances());
+        printFragmentInstances(distributedPlan.getInstances()));
+  }
+
+  private String printFragmentInstances(List<FragmentInstance> instances) {
+    StringBuilder ret = new StringBuilder();
+    for (FragmentInstance instance : instances) {
+      ret.append(System.lineSeparator()).append(instance);
+    }
+    return ret.toString();
   }
 
   // Stop the workers for this query

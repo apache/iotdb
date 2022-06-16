@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -28,6 +30,13 @@ public class PlanNodeUtil {
   private static final String BRO = "  ├──";
   private static final String CORNER = "  └──";
   private static final String LINE = "  │ ";
+
+  public static String printRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    if (regionReplicaSet == null) {
+      return "Not Assigned";
+    }
+    return String.valueOf(regionReplicaSet.getRegionId());
+  }
 
   public static void printPlanNode(PlanNode root) {
     printPlanNodeWithLevel(root, 0);

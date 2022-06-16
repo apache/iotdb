@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -124,7 +125,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
         "AlignedLastQueryScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
         this.getPlanNodeId(),
         this.getSeriesPath().getFormattedString(),
-        this.getRegionReplicaSet());
+        PlanNodeUtil.printRegionReplicaSet(this.getRegionReplicaSet()));
   }
 
   @Override
