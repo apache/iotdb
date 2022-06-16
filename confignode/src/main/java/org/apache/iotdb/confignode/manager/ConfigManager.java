@@ -297,7 +297,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
       Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-      List<PartialPath> relatedPaths = patternTree.getAllDevicePatterns();
+      List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
       List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
       Map<String, Boolean> scanAllRegions = new HashMap<>();
       for (PartialPath path : relatedPaths) {
