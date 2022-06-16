@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.IStateMachine.Registry;
@@ -48,7 +49,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -186,13 +186,7 @@ public class MultiLeaderConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          String path = buildPeerDir(groupId);
-          try {
-            Files.delete(Paths.get(path));
-          } catch (IOException e) {
-            logger.warn(
-                "Unable to delete consensus dir for group {} at {} because {}", groupId, path, e);
-          }
+          FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
           return null;
         });
 
