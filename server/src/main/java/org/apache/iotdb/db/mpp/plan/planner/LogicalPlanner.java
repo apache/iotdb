@@ -149,7 +149,7 @@ public class LogicalPlanner {
         planBuilder =
             planBuilder.planDeviceView(
                 deviceToSubPlanMap,
-                analysis.getRespDatasetHeader().getRespColumns().stream()
+                analysis.getRespDatasetHeader().getColumnNameWithoutAlias().stream()
                     .distinct()
                     .collect(Collectors.toList()),
                 analysis.getDeviceToMeasurementIndexesMap(),
