@@ -16,26 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.commons.cluster;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
+/** Node status for showing cluster */
+public enum NodeStatus {
+  // Node running properly
+  Running("Running"),
+  // Node connection failure
+  Unknown("Unknown");
 
-/** All the statistic interfaces that provided by HeartbeatCache */
-public interface IHeartbeatStatistic {
+  private final String status;
 
-  /**
-   * Cache the newest HeartbeatPackage
-   *
-   * @param newHeartbeat The newest HeartbeatData
-   */
-  void cacheHeartBeat(HeartbeatPackage newHeartbeat);
+  NodeStatus(String status) {
+    this.status = status;
+  }
 
-  /** Invoking periodically to update node load statistics */
-  void updateLoadStatistic();
-
-  /** @return The latest load score of a node, the higher the score the higher the load */
-  float getLoadScore();
-
-  /** @return The latest status of a node for showing cluster */
-  NodeStatus getNodeStatus();
+  public String getStatus() {
+    return status;
+  }
 }
