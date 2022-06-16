@@ -29,7 +29,7 @@ import java.nio.channels.FileChannel;
 
 public interface ISchemaPage {
   /**
-   * <b>Page Header Structure: (19 bytes used, 13 bytes reserved)</b>
+   * <b>Page Header Structure: (23 bytes used, 9 bytes reserved)</b>
    *
    * <ul>
    *   <li>1 byte: page type indicator
@@ -37,8 +37,8 @@ public interface ISchemaPage {
    *   <li>1 short (2 bytes): spareOffset, bound of the variable length part in a slotted structure
    *   <li>1 short (2 bytes): spareSize, space left to use
    *   <li>1 short (2 bytes): memberNum, amount of the member whose type depends on implementation
-   *   <li>1 long (8 bytes): firstLeaf, points to first segmented page, only exists in {@link
-   *       InternalPage}
+   *   <li>1 long (8 bytes): firstLeaf, points to first segmented page, only in {@link InternalPage}
+   *   <li>1 int (4 bytes): subIndexPage, points to sub-index, only in {@link InternalPage}
    * </ul>
    *
    * <p>While header of a page is partly fixed, the body is dependent on implementation.
@@ -77,6 +77,7 @@ public interface ISchemaPage {
         buffer);
     ReadWriteIOUtils.write((short) 1, buffer);
     ReadWriteIOUtils.write(-1L, buffer);
+    ReadWriteIOUtils.write(-1, buffer);
 
     return new InternalPage(buffer);
   }
@@ -114,6 +115,10 @@ public interface ISchemaPage {
   int getPageIndex();
 
   void setPageIndex(int pid);
+
+  int getSubIndex();
+
+  void setSubIndex(int pid);
 
   ISegment<Integer, Integer> getAsInternalPage();
 

@@ -195,6 +195,16 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
+  public void delete(IMNode node) throws IOException, MetadataException {
+    if (node.isStorageGroup()) {
+      // should clear this file
+      clear();
+    } else {
+      pageManager.delete(node);
+    }
+  }
+
+  @Override
   public void writeMNode(IMNode node) throws MetadataException, IOException {
     long curSegAddr = getNodeAddress(node);
 
@@ -214,11 +224,6 @@ public class SchemaFile implements ISchemaFile {
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
-  }
-
-  @Override
-  public void delete(IMNode node) throws IOException, MetadataException {
-    pageManager.delete(node);
   }
 
   @Override

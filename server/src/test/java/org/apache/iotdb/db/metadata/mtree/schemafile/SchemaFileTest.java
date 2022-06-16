@@ -270,6 +270,40 @@ public class SchemaFileTest {
   }
 
   @Test
+  public void test200KMeasurement() throws MetadataException, IOException {
+    int i = 200000, j = 20;
+    IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
+    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
+
+    while (j >= 0) {
+      IMNode aDevice = new EntityMNode(sgNode, "dev_" + j);
+      sgNode.addChild(aDevice);
+      j--;
+    }
+
+    sf.writeMNode(sgNode);
+
+    IMNode meas;
+    IMNode dev = sgNode.getChildren().get("dev_2");
+    while (i >= 0) {
+      meas = getMeasurementNode(dev, "m_" + i, "ma_" + i);
+      dev.addChild(meas);
+      i--;
+    }
+
+    sf.writeMNode(dev);
+
+    Assert.assertEquals(
+        "ma_199406", sf.getChildNode(dev, "m_199406").getAsMeasurementMNode().getAlias());
+    Assert.assertEquals("m_1995", sf.getChildNode(dev, "ma_1995").getName());
+
+    printSF(sf);
+    sf.delete(dev);
+    Assert.assertNull(sf.getChildNode(sgNode, "dev_2"));
+    sf.close();
+  }
+
+  @Test
   public void test10KDevices() throws MetadataException, IOException {
     int i = 1000;
     IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
@@ -622,6 +656,7 @@ public class SchemaFileTest {
     }
     Assert.assertTrue(checkSet.isEmpty());
     sf.close();
+    SchemaFile.INTERNAL_SPLIT_VALVE = 0;
   }
 
   @Test
@@ -723,6 +758,7 @@ public class SchemaFileTest {
     Assert.assertEquals(0, d010cs);
     Assert.assertTrue(checkSet.isEmpty());
     sf2.close();
+    SchemaFile.INTERNAL_SPLIT_VALVE = 0;
   }
 
   // endregion

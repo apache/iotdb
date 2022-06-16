@@ -27,6 +27,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.INTERNAL_SPLIT_VALVE;
+
 /**
  * A page which acts like a segment, manages index entry of the b+ tree constructed by MNode with
  * massive children. <br>
@@ -37,6 +39,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   public static int COMPOUND_POINT_LENGTH = 8;
 
   private long firstLeaf;
+  private int subIndexPage;
 
   private transient String penultKey, lastKey;
 
@@ -63,11 +66,13 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   public InternalPage(ByteBuffer pageBuffer) {
     super(pageBuffer);
     firstLeaf = ReadWriteIOUtils.readLong(pageBuffer);
+    subIndexPage = ReadWriteIOUtils.readInt(pageBuffer);
   }
 
   @Override
   public int insertRecord(String key, Integer pointer) throws RecordDuplicatedException {
-    if (spareSize < 8 + 4 + key.getBytes().length) {
+    // TODO: remove debug parameter INTERNAL_SPLIT_VALVE
+    if (spareSize < 8 + 4 + key.getBytes().length + INTERNAL_SPLIT_VALVE) {
       return -1;
     }
 
@@ -190,6 +195,17 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   }
 
   @Override
+  public int getSubIndex() {
+    return subIndexPage;
+  }
+
+  @Override
+  public void setSubIndex(int pid) {
+    this.subIndexPage = pid;
+    syncPageBuffer();
+  }
+
+  @Override
   public void extendsTo(ByteBuffer newBuffer) throws MetadataException {
     if (newBuffer.capacity() != this.pageBuffer.capacity()) {
       throw new MetadataException("InternalPage can only extend to buffer with same capacity.");
@@ -233,6 +249,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     // attributes for dstBuffer
     short spareOffset, memberNum, spareSize;
     long firstLeaf = this.firstLeaf;
+    int subIdx = this.subIndexPage;
 
     int pos = getIndexByKey(key);
 
@@ -374,6 +391,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     ReadWriteIOUtils.write(spareSize, dstBuffer);
     ReadWriteIOUtils.write(memberNum, dstBuffer);
     ReadWriteIOUtils.write(firstLeaf, dstBuffer);
+    ReadWriteIOUtils.write(subIdx, dstBuffer);
 
     this.syncPageBuffer();
 
@@ -386,6 +404,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   public synchronized void syncPageBuffer() {
     super.syncPageBuffer();
     ReadWriteIOUtils.write(firstLeaf, pageBuffer);
+    ReadWriteIOUtils.write(subIndexPage, pageBuffer);
   }
 
   @Override
@@ -394,10 +413,11 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "page_id:%d, total_seg:%d, spare_before:%d\n", pageIndex, 1, spareOffset));
+                "page_id:%d, spare_offset:%d, spare_size:%d\n", pageIndex, spareOffset, spareSize));
     builder.append(
         String.format(
-            "[IndexEntrySegment, total_ptrs: %d, spare_size:%d,", this.memberNum, this.spareSize));
+            "[IndexEntrySegment, total_ptrs:%d, spare_size:%d, sub_index:%d, ",
+            this.memberNum, this.spareSize, this.subIndexPage));
     bufferR.clear();
     builder.append(String.format("(MIN_POINT, %s),", pageIndex(getPointerByIndex(0))));
 
@@ -426,12 +446,12 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     memberNum = 1;
     spareSize =
         (short) (this.pageBuffer.capacity() - SchemaPage.PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH);
-    spareOffset = (short) (SchemaPage.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH);
+    spareOffset = (short) this.pageBuffer.capacity();
     firstLeaf = ptr;
 
     this.pageBuffer.clear();
     this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE);
-    ReadWriteIOUtils.write(ptr, this.pageBuffer);
+    ReadWriteIOUtils.write(compoundPointer(ptr, (short) 0), this.pageBuffer);
     syncPageBuffer();
     this.pageBuffer.clear();
 

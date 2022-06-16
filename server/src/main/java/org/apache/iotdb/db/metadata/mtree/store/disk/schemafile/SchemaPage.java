@@ -130,6 +130,14 @@ public abstract class SchemaPage implements ISchemaPage {
   }
 
   @Override
+  public int getSubIndex() {
+    return -1;
+  }
+
+  @Override
+  public void setSubIndex(int pid) {}
+
+  @Override
   public ISegment<Integer, Integer> getAsInternalPage() {
     return null;
   }

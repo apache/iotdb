@@ -144,9 +144,24 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    */
   @Override
   public synchronized void deleteSegment(short segId) throws SegmentNotFoundException {
+    spareSize += getSegmentSize(segId);
     getSegment(segId).delete();
     segCacheMap.remove(segId);
     segOffsetLst.set(segId, (short) -1);
+  }
+
+  @Override
+  public void purgeSegments() {
+    segCacheMap.clear();
+    segOffsetLst.clear();
+    memberNum = 0;
+    spareOffset = PAGE_HEADER_SIZE;
+    spareSize = (short) (pageBuffer.capacity() - PAGE_HEADER_SIZE);
+  }
+
+  @Override
+  public int validSegments() {
+    return memberNum;
   }
 
   @Override
@@ -235,7 +250,8 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "page_id:%d, total_seg:%d, spare_from:%d\n", pageIndex, memberNum, spareOffset));
+                "page_id:%d, total_seg:%d, spare_from:%d, spare_size:%d\n",
+                pageIndex, memberNum, spareOffset, spareSize));
     for (short idx = 0; idx < segOffsetLst.size(); idx++) {
       short offset = segOffsetLst.get(idx);
       if (offset < 0) {

@@ -58,6 +58,10 @@ public interface ISegmentedPage {
 
   void deleteSegment(short segId) throws SegmentNotFoundException;
 
+  void purgeSegments();
+
+  int validSegments();
+
   short getSpareSize();
 
   short getSegmentSize(short segId) throws SegmentNotFoundException;

@@ -95,11 +95,13 @@ public abstract class PageManager implements IPageManager {
   // region Framework Methods
   @Override
   public void writeNewChildren(IMNode node) throws MetadataException, IOException {
+    int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
     IMNode child;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
+    String alias;
     int secIdxEntrance = -1; // first page of secondary index
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, IMNode> entry :
@@ -109,6 +111,7 @@ public abstract class PageManager implements IPageManager {
       // check and pre-allocate
       child = entry.getValue();
       if (!child.isMeasurement()) {
+        alias = null;
         if (getNodeAddress(child) < 0) {
           short estSegSize = estimateSegmentSize(child);
           long glbIndex = preAllocateSegment(estSegSize);
@@ -117,6 +120,11 @@ public abstract class PageManager implements IPageManager {
           // new child with a valid segment address, weird
           throw new MetadataException("A child in newChildBuffer shall not have segmentAddress.");
         }
+      } else {
+        alias =
+            child.getAsMeasurementMNode().getAlias() == null
+                ? null
+                : child.getAsMeasurementMNode().getAlias();
       }
 
       // prepare buffer to write
@@ -127,10 +135,26 @@ public abstract class PageManager implements IPageManager {
       try {
         curPage.getAsSegmentedPage().write(getSegIndex(actualAddress), entry.getKey(), childBuffer);
         dirtyPages.put(curPage.getPageIndex(), curPage);
+        addPageToCache(curPage.getPageIndex(), curPage);
+
+        subIndex = subIndexRootPage(curSegAddr);
+        if (alias != null && subIndex >= 0) {
+          insertSubIndexEntry(subIndex, alias, entry.getKey());
+        }
+
       } catch (SchemaPageOverflowException e) {
         if (curPage.getAsSegmentedPage().getSegmentSize(getSegIndex(actualAddress))
             == SchemaPage.SEG_MAX_SIZ) {
+          // curPage might be replaced so unnecessary to mark it here
           multiPageInsertOverflowOperation(curPage, entry.getKey(), childBuffer);
+
+          subIndex = subIndexRootPage(curSegAddr);
+          if (node.isEntity() && subIndex < 0) {
+            buildSubIndex(node);
+          } else if (alias != null) {
+            // implied node is entity, so sub index must exist
+            insertSubIndexEntry(subIndex, alias, entry.getKey());
+          }
         } else {
           // transplant and delete former segment
           short actSegId = getSegIndex(actualAddress);
@@ -149,6 +173,7 @@ public abstract class PageManager implements IPageManager {
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
           dirtyPages.put(curPage.getPageIndex(), curPage);
+          addPageToCache(curPage.getPageIndex(), curPage);
         }
       }
     }
@@ -156,9 +181,12 @@ public abstract class PageManager implements IPageManager {
 
   @Override
   public void writeUpdatedChildren(IMNode node) throws MetadataException, IOException {
+    boolean removeOldSubEntry = false, insertNewSubEntry = false;
+    int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
-    IMNode child;
+    String alias, oldAlias;
+    IMNode child, oldChild;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
     for (Map.Entry<String, IMNode> entry :
@@ -174,15 +202,66 @@ public abstract class PageManager implements IPageManager {
                 "Node[%s] has no child[%s] in schema file.", node.getName(), entry.getKey()));
       }
 
+      // prepare alias comparison
+      if (child.isMeasurement() && child.getAsMeasurementMNode().getAlias() != null) {
+        alias = child.getAsMeasurementMNode().getAlias();
+      } else {
+        alias = null;
+      }
+      if (node.isEntity()) {
+        oldChild = curPage.getAsSegmentedPage().read(getSegIndex(actualAddress), entry.getKey());
+        oldAlias = oldChild.isMeasurement() ? oldChild.getAsMeasurementMNode().getAlias() : null;
+      } else {
+        oldAlias = null;
+      }
+
+      if (alias == null && oldAlias != null) {
+        // remove old alias index
+        removeOldSubEntry = true;
+      } else if (alias != null && oldAlias == null) {
+        // insert alias index
+        insertNewSubEntry = true;
+      } else if (alias != null && alias.compareTo(oldAlias) != 0) {
+        // remove and insert
+        insertNewSubEntry = removeOldSubEntry = true;
+      } else {
+        insertNewSubEntry = removeOldSubEntry = false;
+      }
+
       try {
         curPage
             .getAsSegmentedPage()
             .update(getSegIndex(actualAddress), entry.getKey(), childBuffer);
         dirtyPages.put(curPage.getPageIndex(), curPage);
+        addPageToCache(curPage.getPageIndex(), curPage);
+
+        subIndex = subIndexRootPage(curSegAddr);
+        if (subIndex >= 0) {
+          if (removeOldSubEntry) {
+            removeSubIndexEntry(subIndex, oldAlias);
+          }
+
+          if (insertNewSubEntry) {
+            insertSubIndexEntry(subIndex, alias, entry.getKey());
+          }
+        }
       } catch (SchemaPageOverflowException e) {
         if (curPage.getAsSegmentedPage().getSegmentSize(getSegIndex(actualAddress))
             == SchemaPage.SEG_MAX_SIZ) {
           multiPageUpdateOverflowOperation(curPage, entry.getKey(), childBuffer);
+
+          subIndex = subIndexRootPage(curSegAddr);
+          if (node.isEntity() && subIndex < 0) {
+            buildSubIndex(node);
+          } else if (insertNewSubEntry || removeOldSubEntry) {
+            if (removeOldSubEntry) {
+              removeSubIndexEntry(subIndex, oldAlias);
+            }
+
+            if (insertNewSubEntry) {
+              insertSubIndexEntry(subIndex, alias, entry.getKey());
+            }
+          }
         } else {
           // transplant into another bigger segment
           short actSegId = getSegIndex(actualAddress);
@@ -202,6 +281,7 @@ public abstract class PageManager implements IPageManager {
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
           dirtyPages.put(curPage.getPageIndex(), curPage);
+          addPageToCache(curPage.getPageIndex(), curPage);
         }
       }
     }
@@ -213,12 +293,40 @@ public abstract class PageManager implements IPageManager {
   protected abstract long getTargetSegmentAddress(long curAddr, String recKey)
       throws IOException, MetadataException;
 
+  /**
+   * Deal with split, transplant and index update about the overflow occurred by insert.
+   *
+   * @param curPage the page encounters overflow, shall be a {@linkplain SegmentedPage}.
+   * @param key the key to insert
+   * @param childBuffer content of the key
+   */
   protected abstract void multiPageInsertOverflowOperation(
       ISchemaPage curPage, String key, ByteBuffer childBuffer)
       throws MetadataException, IOException;
 
+  /**
+   * Same as {@linkplain #multiPageInsertOverflowOperation}
+   *
+   * @return the top internal page
+   */
   protected abstract void multiPageUpdateOverflowOperation(
       ISchemaPage curPage, String key, ByteBuffer childBuffer)
+      throws MetadataException, IOException;
+
+  /**
+   * Occurs only when an Entity Node encounters a multipart overflow.
+   *
+   * @param parNode node needs to build subordinate index.
+   */
+  protected abstract void buildSubIndex(IMNode parNode) throws MetadataException, IOException;
+
+  protected abstract void insertSubIndexEntry(int base, String key, String rec)
+      throws MetadataException, IOException;
+
+  protected abstract void removeSubIndexEntry(int base, String oldAlias)
+      throws MetadataException, IOException;
+
+  protected abstract String searchSubIndexAlias(int base, String alias)
       throws MetadataException, IOException;
 
   // endregion
@@ -380,6 +488,10 @@ public abstract class PageManager implements IPageManager {
   // endregion
 
   // region Inner Utilities
+
+  private int subIndexRootPage(long addr) throws IOException, MetadataException {
+    return getPageInstance(getPageIndex(addr)).getSubIndex();
+  }
 
   private static long getPageAddress(int pageIndex) {
     return (SchemaPage.PAGE_INDEX_MASK & pageIndex) * SchemaPage.PAGE_LENGTH + FILE_HEADER_SIZE;

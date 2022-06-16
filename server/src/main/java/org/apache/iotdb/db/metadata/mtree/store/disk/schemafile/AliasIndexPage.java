@@ -157,10 +157,17 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   @Override
   public String getRecordByKey(String key) throws MetadataException {
     int pos = getIndexByKey(key);
-    if (memberNum <= 0 || pos >= memberNum || !key.equals(getKeyByIndex(pos))) {
+
+    if (memberNum <= 0 || pos > memberNum) {
       return null;
     }
-    return getNameByIndex(pos);
+
+    // to tell whether pos is position to insert
+    if (pos == 0 || pos == memberNum) {
+      pos = pos == memberNum ? pos - 1 : pos;
+    }
+
+    return key.equals(getKeyByIndex(pos)) ? getNameByIndex(pos) : null;
   }
 
   @Override
