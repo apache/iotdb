@@ -538,13 +538,13 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
+    // TODO tuning snapshot create timeout
     SnapshotManagementRequest request =
         SnapshotManagementRequest.newCreate(
             localFakeId, myself.getId(), raftGroupId, localFakeCallId.incrementAndGet(), 30000);
 
     RaftClientReply reply;
     try {
-      // TODO tuning snapshot create timeout
       reply = server.submitClientRequest(request);
     } catch (IOException ioException) {
       return failed(new RatisRequestFailedException(ioException));
