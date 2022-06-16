@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -42,8 +45,9 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   private Set<IMNode> processedNodes = new HashSet<>();
 
-  public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
   @Override
@@ -68,14 +72,19 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
       if (level < targetLevel) {
         return false;
       }
+      Deque<IMNode> stack = new ArrayDeque<>();
       while (level > targetLevel) {
-        node = node.getParent();
+        node = traverseContext.pop();
+        stack.push(node);
         level--;
       }
       // record processed node so they will not be processed twice
       if (!processedNodes.contains(node)) {
         processedNodes.add(node);
         transferToResult(node);
+      }
+      while (!stack.isEmpty()) {
+        traverseContext.push(stack.pop());
       }
       return true;
     } else {

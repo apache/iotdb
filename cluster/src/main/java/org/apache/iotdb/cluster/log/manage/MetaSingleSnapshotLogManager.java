@@ -24,12 +24,12 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.service.IoTDB;
@@ -63,7 +63,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
     // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
     super.takeSnapshot();
     synchronized (this) {
-      storageGroupTTLMap = IoTDB.metaManager.getStorageGroupsTTL();
+      storageGroupTTLMap = IoTDB.schemaProcessor.getStorageGroupsTTL();
       try {
         IAuthorizer authorizer = BasicAuthorizer.getInstance();
         userMap = authorizer.getAllUsers();

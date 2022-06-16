@@ -197,6 +197,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Effective|After restarting system|
 
 
+* freq_snr
+
+|Name| freq_snr |
+|:---:|:---|
+|Description| Signal-noise-ratio (SNR) of lossy FREQ encoding |
+|Type|Double|
+|Default| 40.0 |
+|Effective|Trigger|
+
+
+* freq_block_size
+
+|Name| freq_block_size |
+|:---:|:---|
+|Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
+|Type|Int32|
+|Default| 1024 |
+|Effective|Trigger|
 
 ### Engine Layer
 
@@ -354,41 +372,14 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 600000 |
 |Effective| Trigger |
 
-* enable\_timed\_close\_tsfile
-
-|Name| enable\_timed\_close\_tsfile |
-|:---:|:---|
-|Description| whether to timed close tsfiles |
-|Type|Bool|
-|Default| false |
-|Effective| Trigger |
-
-* close\_tsfile\_interval\_after\_flushing\_in\_ms
-
-|Name| close\_tsfile\_interval\_after\_flushing\_in\_ms |
-|:---:|:---|
-|Description| if a TsfileProcessor's last working memtable flush time is older than current time minus this and its working memtable is null, the TsfileProcessor will be closed |
-|Type|Int32|
-|Default| 3600000 |
-|Effective| Trigger |
-
-* close\_tsfile\_check\_interval\_in\_ms
-
-|Name| close\_tsfile\_check\_interval\_in\_ms |
-|:---:|:---|
-|Description| the interval to check whether tsfiles need closing |
-|Type|Int32|
-|Default| 600000 |
-|Effective| Trigger |
-
 * avg\_series\_point\_number\_threshold
 
-|Name| avg\_series\_point\_number\_threshold |
-|:---:|:---|
-|Description| max average number of point of each series in memtable|
-|Type|Int32|
-|Default| 10000 |
-|Effective|After restarting system|
+|Name| avg\_series\_point\_number\_threshold                  |
+|:---:|:-------------------------------------------------------|
+|Description| max average number of point of each series in memtable |
+|Type| Int32                                                  |
+|Default| 100000                                                 |
+|Effective| After restarting system                                |
 
 * tsfile\_size\_threshold
 
@@ -480,6 +471,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| Int32 |
 |Default| 100000 |
 |Effective|After restarting system|
+
+* mlog\_buffer\_size
+
+|Name| mlog\_buffer\_size |
+|:---:|:---|
+|Description| size of log buffer in each metadata operation plan(in byte) |
+|Type|Int32|
+|Default| 1048576 |
+|Effective|After restart system|
+
+* sync\_mlog\_period\_in\_ms
+
+|Name| sync\_mlog\_period\_in\_ms |
+|:---:|:---|
+|Description| The cycle when metadata log is periodically forced to be written to disk(in milliseconds). If force_mlog_period_in_ms = 0 it means force metadata log to be written to disk after each refreshment|
+|Type| Int64 |
+|Default| 100 |
+|Effective|After restart system|
 
 * flush\_wal\_threshold
 
@@ -679,7 +688,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| the max bytes in a RPC request/response|
 |Type| long |
-|Default| 67108864 (should >= 8 * 1024 * 1024) |
+|Default| 536870912 (should >= 512 * 1024 * 1024) |
 |Effective|After restarting system|
 
 ### InfluxDB-Protocol Adaptor
@@ -773,9 +782,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| compaction\_priority |
 |:---:|:---|
-|Description| Priority of compaction task. When it is balance, system executes all types of compaction equally; when it is inner_cross, system takes precedence over executing inner space compaction task; when it is cross_inner, system takes precedence over executing cross space compaction task |
+|Description| Priority of compaction task. When it is BALANCE, system executes all types of compaction equally; when it is INNER_CROSS, system takes precedence over executing inner space compaction task; when it is CROSS_INNER, system takes precedence over executing cross space compaction task |
 |Type| String |
-|Default| balance|
+|Default| BALANCE|
 |Effective|After restart system|
 
 * target\_compaction\_file\_size
@@ -823,22 +832,22 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 100 |
 |Effective|After restart system|
 
-* max\_compaction\_candidate\_file\_num
+* max\_inner\_compaction\_candidate\_file\_num
 
-|Name| max\_compaction\_candidate\_file\_num |
+|Name| max\_inner\_compaction\_candidate\_file\_num |
 |:---:|:---|
-|Description| The max num of files encounter in compaction |
+|Description| The max num of files encounter in inner space compaction |
 |Type| Int32 |
 |Default| 30 |
 |Effective|After restart system|
 
-* max\_open\_file\_num\_in\_cross\_space\_compaction
+* max\_cross\_compaction\_file\_num
 
-|Name| max\_open\_file\_num\_in\_cross\_space\_compaction |
+|Name| max\_cross\_compaction\_candidate\_file\_num |
 |:---:|:---|
-|Description| Max open file num in a cross compaction |
+|Description| The max num of files encounter in cross space compaction |
 |Type| Int32 |
-|Default| 100 |
+|Default| 1000 |
 |Effective|After restart system|
 
 * cross\_compaction\_file\_selection\_time\_budget
@@ -892,7 +901,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| The write rate of all compaction tasks in MB/s |
 |Type| Int32 |
-|Default| 8 |
+|Default| 16 |
 |Effective|After restart system|
 
 ### Insertion
@@ -980,15 +989,16 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 604800 |
 |Effective|Only allowed to be modified in first start up|
 
-* virtual\_storage\_group\_num
+* data\_region\_num
 
-|Name| virtual\_storage\_group\_num |
-|:---:|:---|
-|Description| number of virtual storage groups per user-defined storage group, a virtual storage group is the unit of parallelism in memory as all ingestions in one virtual storage group are serialized, recommended value is [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
-|Type| LONG |
-|Default| 1 |
-|Effective|Only allowed to be modified in first start up|
+|    Name     | data\_region\_num                                                                                                                                                                                                                                                  |
+|:-----------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | number of data regions per user-defined storage group, a data region is the unit of parallelism in memory as all ingestions in one data region are serialized, recommended value is [data region number] = [CPU core number] / [user-defined storage group number] |
+|    Type     | LONG                                                                                                                                                                                                                                                               |
+|   Default   | 1                                                                                                                                                                                                                                                                  |
+|  Effective  | Only allowed to be modified in first start up                                                                                                                                                                                                                      |
 
+<!--
 * enable\_id\_table
 
 |Name| enable\_id\_table |
@@ -1015,6 +1025,8 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| bool |
 |Default| false |
 |Effective|After restarting system|
+
+-->
 
 ### UDF
 
@@ -1131,4 +1143,3 @@ sbin\start-server.bat printgc
 
 GC log is stored at `IOTDB_HOME/logs/gc.log`.
 There will be at most 10 gc.log.* files and each one can reach to 10MB.
-

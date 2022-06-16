@@ -45,13 +45,13 @@ public class Tablet {
   private static final String NOT_SUPPORT_DATATYPE = "Data type %s is not supported.";
 
   /** deviceId of this tablet */
-  public String prefixPath;
+  public String deviceId;
 
   /** the list of measurement schemas for creating the tablet */
   private List<MeasurementSchema> schemas;
 
   /** measurementId->indexOf(measurementSchema) */
-  private Map<String, Integer> measurementIndex;
+  private final Map<String, Integer> measurementIndex;
 
   /** timestamps in this tablet */
   public long[] timestamps;
@@ -62,46 +62,38 @@ public class Tablet {
   /** the number of rows to include in this tablet */
   public int rowSize;
   /** the maximum number of rows for this tablet */
-  private int maxRowNumber;
-  /** whether this tablet store data of aligned timeseries or not */
-  private boolean isAligned;
+  private final int maxRowNumber;
 
   /**
    * Return a tablet with default specified row number. This is the standard constructor (all Tablet
    * should be the same size).
    *
-   * @param prefixPath the name of the device specified to be written in
+   * @param deviceId the name of the device specified to be written in
    * @param schemas the list of measurement schemas for creating the tablet, only measurementId and
    *     type take effects
    */
-  public Tablet(String prefixPath, List<MeasurementSchema> schemas) {
-    this(prefixPath, schemas, DEFAULT_SIZE);
+  public Tablet(String deviceId, List<MeasurementSchema> schemas) {
+    this(deviceId, schemas, DEFAULT_SIZE);
   }
 
   /**
    * Return a tablet with the specified number of rows (maxBatchSize). Only call this constructor
    * directly for testing purposes. Tablet should normally always be default size.
    *
-   * @param prefixPath the name of the device specified to be written in
+   * @param deviceId the name of the device specified to be written in
    * @param schemas the list of measurement schemas for creating the row batch, only measurementId
    *     and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
-  public Tablet(String prefixPath, List<MeasurementSchema> schemas, int maxRowNumber) {
-    this.prefixPath = prefixPath;
+  public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
+    this.deviceId = deviceId;
     this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
     measurementIndex = new HashMap<>();
 
     int indexInSchema = 0;
     for (MeasurementSchema schema : schemas) {
-      if (schema.getType() == TSDataType.VECTOR) {
-        for (String measurementId : schema.getSubMeasurementsList()) {
-          measurementIndex.put(measurementId, indexInSchema);
-        }
-      } else {
-        measurementIndex.put(schema.getMeasurementId(), indexInSchema);
-      }
+      measurementIndex.put(schema.getMeasurementId(), indexInSchema);
       indexInSchema++;
     }
 
@@ -110,12 +102,19 @@ public class Tablet {
     reset();
   }
 
-  public void setPrefixPath(String prefixPath) {
-    this.prefixPath = prefixPath;
+  public void setDeviceId(String deviceId) {
+    this.deviceId = deviceId;
   }
 
   public void setSchemas(List<MeasurementSchema> schemas) {
     this.schemas = schemas;
+  }
+
+  public void initBitMaps() {
+    this.bitMaps = new BitMap[schemas.size()];
+    for (int column = 0; column < schemas.size(); column++) {
+      this.bitMaps[column] = new BitMap(getMaxRowNumber());
+    }
   }
 
   public void addTimestamp(int rowIndex, long timestamp) {
@@ -146,7 +145,9 @@ public class Tablet {
       case TEXT:
         {
           Binary[] sensor = (Binary[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
+          if (value instanceof Binary)
+            sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
+          else sensor[rowIndex] = value != null ? new Binary((String) value) : Binary.EMPTY_VALUE;
           break;
         }
       case FLOAT:
@@ -300,13 +301,5 @@ public class Tablet {
         throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
     }
     return valueOccupation;
-  }
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
-  public void setAligned(boolean aligned) {
-    isAligned = aligned;
   }
 }

@@ -28,9 +28,9 @@ import java.io.InputStream;
 import java.util.List;
 
 /**
- * BytesUtils is a utility class. It provide conversion among byte array and other type including
+ * BytesUtils is a utility class. It provides conversion among byte array and other type including
  * integer, long, float, boolean, double and string. <br>
- * It also provide other usable function as follow:<br>
+ * It also provide other usable function as follows:<br>
  * reading function which receives InputStream. <br>
  * concat function to join a list of byte array to one.<br>
  * get and set one bit in a byte array.

@@ -90,6 +90,12 @@ Example request:
 ```shell
 $ curl http://127.0.0.1:18080/ping
 ```
+
+Response status codes:
+
+- `200`: The service is alive.
+- `503`: The service cannot accept any requests now.
+
 Response parameters:
 
 |parameter name  |parameter type |parameter describe|
@@ -98,12 +104,24 @@ Response parameters:
 | message  |  string | message |
 
 Sample response:
-```json
-{
-  "code": 200,
-  "message": "SUCCESS_STATUS"
-}
-```
+
+- With HTTP status code `200`:
+
+  ```json
+  {
+    "code": 200,
+    "message": "SUCCESS_STATUS"
+  }
+  ```
+
+- With HTTP status code `503`:
+
+  ```json
+  {
+    "code": 500,
+    "message": "thrift service is unavailable"
+  }
+  ```
 
 > `/ping` can be accessed without authorization.
 

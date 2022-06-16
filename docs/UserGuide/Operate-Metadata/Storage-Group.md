@@ -19,8 +19,8 @@
 
 -->
 
-## Storage Group Management
-### Create Storage Group
+# Storage Group Management
+## Create Storage Group
 
 According to the storage model we can set up the corresponding storage group. Two SQL statements are supported for creating storage groups, as follows:
 
@@ -43,7 +43,7 @@ The LayerName of storage group can only be characters, numbers, underscores and 
  
 Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
-### Show Storage Group
+## Show Storage Group
 
 After creating the storage group, we can use the [SHOW STORAGE GROUP](../Reference/SQL-Reference.md) statement and [SHOW STORAGE GROUP \<PathPattern>](../Reference/SQL-Reference.md) to view the storage groups. The SQL statements are as follows:
 
@@ -65,7 +65,7 @@ Total line number = 2
 It costs 0.060s
 ```
 
-### Delete Storage Group
+## Delete Storage Group
 
 User can use the `DELETE STORAGE GROUP <PathPattern>` statement to delete all storage groups matching the pathPattern. Please note the data in the storage group will also be deleted. 
 
@@ -74,4 +74,64 @@ IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
 // delete all data, all timeseries and all storage groups
 IoTDB > DELETE STORAGE GROUP root.**
+```
+
+## Count Storage Group
+
+User can use the `COUNT STORAGE GROUP <PathPattern>` statement to count the number of storage groups. It is allowed to specify `PathPattern` to count the number of storage groups matching the `PathPattern`.
+
+SQL statement is as follows:
+
+```
+IoTDB> show storage group
+IoTDB> count storage group
+IoTDB> count storage group root.*
+IoTDB> count storage group root.sgcc.*
+IoTDB> count storage group root.sgcc
+```
+
+The result is as follows:
+
+```
++-------------+
+|storage group|
++-------------+
+|    root.sgcc|
+| root.turbine|
+|      root.ln|
++-------------+
+Total line number = 3
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            0|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            1|
++-------------+
+Total line number = 1
+It costs 0.002s
 ```

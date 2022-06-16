@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -78,38 +78,38 @@ public class UDTFAlignByTimeDataSetTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d3.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d3.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,

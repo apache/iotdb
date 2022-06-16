@@ -21,11 +21,13 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
+import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -37,13 +39,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
-  private String virtualStorageGroup;
+  private String dataRegion;
   private String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
@@ -59,11 +61,10 @@ public class TsFileManager {
 
   private boolean allowCompaction = true;
 
-  public TsFileManager(
-      String storageGroupName, String virtualStorageGroup, String storageGroupDir) {
+  public TsFileManager(String storageGroupName, String dataRegion, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
-    this.virtualStorageGroup = virtualStorageGroup;
+    this.dataRegion = dataRegion;
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
@@ -83,11 +84,21 @@ public class TsFileManager {
   }
 
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
-    return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    readLock();
+    try {
+      return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    } finally {
+      readUnlock();
+    }
   }
 
   public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    readLock();
+    try {
+      return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
+    } finally {
+      readUnlock();
+    }
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {
@@ -100,7 +111,7 @@ public class TsFileManager {
   }
 
   public void remove(TsFileResource tsFileResource, boolean sequence) {
-    readLock();
+    writeLock("remove");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
@@ -111,14 +122,19 @@ public class TsFileManager {
         }
       }
     } finally {
-      readUnlock();
+      writeUnlock();
     }
   }
 
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    for (TsFileResource resource : tsFileResourceList) {
-      remove(resource, sequence);
-      TsFileResourceManager.getInstance().removeTsFileResource(resource);
+    writeLock("removeAll");
+    try {
+      for (TsFileResource resource : tsFileResourceList) {
+        remove(resource, sequence);
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      }
+    } finally {
+      writeLock("removeAll");
     }
   }
 
@@ -152,6 +168,18 @@ public class TsFileManager {
     }
   }
 
+  public void keepOrderInsert(TsFileResource tsFileResource, boolean sequence) throws IOException {
+    writeLock("keepOrderInsert");
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      selectedMap
+          .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
+          .keepOrderInsert(tsFileResource);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   public void addForRecover(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
       sequenceRecoverTsFileResources.add(tsFileResource);
@@ -166,6 +194,45 @@ public class TsFileManager {
       for (TsFileResource resource : tsFileResourceList) {
         add(resource, sequence);
       }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** This method is called after compaction to update memory. */
+  public void replace(
+      List<TsFileResource> seqFileResources,
+      List<TsFileResource> unseqFileResources,
+      List<TsFileResource> targetFileResources,
+      long timePartition,
+      boolean isTargetSequence)
+      throws IOException {
+    writeLock("replace");
+    try {
+      for (TsFileResource tsFileResource : seqFileResources) {
+        if (sequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
+      }
+      for (TsFileResource tsFileResource : unseqFileResources) {
+        if (unsequenceFiles.get(timePartition).remove(tsFileResource)) {
+          TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+        }
+      }
+      if (isTargetSequence) {
+        // seq inner space compaction or cross space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          sequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
+      } else {
+        // unseq inner space compaction
+        for (TsFileResource resource : targetFileResources) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+        }
+      }
+
     } finally {
       writeUnlock();
     }
@@ -288,12 +355,12 @@ public class TsFileManager {
     this.allowCompaction = allowCompaction;
   }
 
-  public String getVirtualStorageGroup() {
-    return virtualStorageGroup;
+  public String getDataRegion() {
+    return dataRegion;
   }
 
-  public void setVirtualStorageGroup(String virtualStorageGroup) {
-    this.virtualStorageGroup = virtualStorageGroup;
+  public void setDataRegion(String dataRegion) {
+    this.dataRegion = dataRegion;
   }
 
   public List<TsFileResource> getSequenceRecoverTsFileResources() {
@@ -302,6 +369,43 @@ public class TsFileManager {
 
   public List<TsFileResource> getUnsequenceRecoverTsFileResources() {
     return unsequenceRecoverTsFileResources;
+  }
+
+  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+    readLock();
+    try {
+      List<File> historyTsFiles = new ArrayList<>();
+      collectTsFile(historyTsFiles, getTsFileList(true), dataStartTime);
+      collectTsFile(historyTsFiles, getTsFileList(false), dataStartTime);
+      return historyTsFiles;
+    } finally {
+      readUnlock();
+    }
+  }
+
+  private void collectTsFile(
+      List<File> historyTsFiles, List<TsFileResource> tsFileResources, long dataStartTime) {
+    TsFileSyncManager syncManager = TsFileSyncManager.getInstance();
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (tsFileResource.getFileEndTime() < dataStartTime) {
+        continue;
+      }
+      TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+      boolean isRealTimeTsFile = false;
+      if (tsFileProcessor != null) {
+        isRealTimeTsFile = tsFileProcessor.isMemtableNotNull();
+      }
+      File tsFile = tsFileResource.getTsFile();
+      if (!isRealTimeTsFile) {
+        File mods = new File(tsFileResource.getModFile().getFilePath());
+        long modsOffset = mods.exists() ? mods.length() : 0L;
+        File hardlink = syncManager.createHardlink(tsFile, modsOffset);
+        if (hardlink != null) {
+          historyTsFiles.add(hardlink);
+        }
+      }
+    }
   }
 
   // ({systemTime}-{versionNum}-{innerCompactionNum}-{crossCompactionNum}.tsfile)

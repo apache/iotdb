@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -30,12 +34,10 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -87,11 +89,11 @@ public class InnerSeqCompactionTest {
   public void setUp() throws MetadataException {
     prevMaxDegreeOfIndexNode = TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(2);
-    IoTDB.metaManager.init();
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    IoTDB.configManager.init();
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           path,
           TSDataType.INT64,
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
@@ -106,13 +108,13 @@ public class InnerSeqCompactionTest {
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(prevMaxDegreeOfIndexNode);
   }
 
   @Test
-  public void testDeserializePage() throws MetadataException, IOException {
+  public void testDeserializePage() throws MetadataException, IOException, WriteProcessException {
 
     long chunkSizeLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
@@ -227,10 +229,10 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(targetTsFileResource, sourceResources);
-              InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
-              InnerSpaceCompactionUtils.combineModsInCompaction(
-                  sourceResources, targetTsFileResource);
+              new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource).perform();
+              CompactionUtils.moveTargetFile(
+                  Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
+              CompactionUtils.combineModsInInnerCompaction(sourceResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               // check data
@@ -334,7 +336,7 @@ public class InnerSeqCompactionTest {
           }
         }
       }
-    } catch (InterruptedException e) {
+    } catch (InterruptedException | StorageEngineException e) {
       e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
@@ -347,7 +349,9 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendPage() throws IOException, MetadataException, InterruptedException {
+  public void testAppendPage()
+      throws IOException, MetadataException, InterruptedException, StorageEngineException,
+          WriteProcessException {
 
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -452,10 +456,10 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources);
-            InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
-            InnerSpaceCompactionUtils.combineModsInCompaction(
-                toMergeResources, targetTsFileResource);
+            new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource).perform();
+            CompactionUtils.moveTargetFile(
+                Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
+            CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
@@ -609,7 +613,9 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testAppendChunk() throws IOException, IllegalPathException, MetadataException {
+  public void testAppendChunk()
+      throws IOException, IllegalPathException, MetadataException, StorageEngineException,
+          WriteProcessException {
     long prevChunkPointNumLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
@@ -727,10 +733,10 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources);
-              InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
-              InnerSpaceCompactionUtils.combineModsInCompaction(
-                  toMergeResources, targetTsFileResource);
+              new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource).perform();
+              CompactionUtils.moveTargetFile(
+                  Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
+              CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);

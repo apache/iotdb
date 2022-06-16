@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxDBConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -188,7 +188,7 @@ public class InfluxDBMetaManager {
           .append(
               layerOrderToTagKeysInPath.containsKey(i)
                   ? tags.get(layerOrderToTagKeysInPath.get(i))
-                  : InfluxDBConstant.PLACE_HOLDER);
+                  : InfluxConstant.PLACE_HOLDER);
     }
     return path.toString();
   }
@@ -202,6 +202,19 @@ public class InfluxDBMetaManager {
         throw new InfluxDBException(e.getMessage());
       }
     }
+  }
+
+  public static Map<String, Integer> getTagOrders(String database, String measurement) {
+    Map<String, Integer> tagOrders = new HashMap<>();
+    Map<String, Map<String, Integer>> measurement2TagOrders =
+        database2Measurement2TagOrders.get(database);
+    if (measurement2TagOrders != null) {
+      tagOrders = measurement2TagOrders.get(measurement);
+    }
+    if (tagOrders == null) {
+      tagOrders = new HashMap<>();
+    }
+    return tagOrders;
   }
 
   private static class InfluxDBMetaManagerHolder {

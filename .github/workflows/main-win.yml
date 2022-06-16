@@ -8,17 +8,22 @@ on:
     branches:
       - master
       - 'rel/*'
+      - "new_*"
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
       - master
       - 'rel/*'
-      - cluster_new
+      - "new_*"
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
@@ -39,8 +44,7 @@ jobs:
         #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
         # but we just add labels here to make the action name more graceful
         it_task: [ 'others',
-                   'server',
-                   'cluster'
+                   'server'
         ]
     runs-on: windows-latest
 
@@ -108,6 +112,5 @@ jobs:
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
-        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true -P '!influxdb-protocol'
+        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
 

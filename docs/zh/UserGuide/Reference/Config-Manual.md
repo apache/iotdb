@@ -210,6 +210,26 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 100 |
 |改后生效方式|触发生效|
 
+
+* freq_snr
+
+|名字| freq_snr |
+|:---:|:---|
+|描述| 有损的FREQ编码的信噪比 |
+|类型|Double|
+|默认值| 40.0 |
+|改后生效方式|触发生效|
+
+
+* freq_block_size
+
+|名字| freq_block_size |
+|:---:|:---|
+|描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
+|类型|Int32|
+|默认值| 1024 |
+|改后生效方式|触发生效|
+
 ### 目录配置
 
 * system\_dir
@@ -412,6 +432,15 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
+* sync\_mlog\_period\_in\_ms
+
+|名字| sync\_mlog\_period\_in\_ms |
+|:---:|:---|
+|描述| mlog定期刷新到磁盘的周期，单位毫秒。如果该参数为0，则表示每次对元数据的更新操作都会被立即写到磁盘上。|
+|类型| Int64 |
+|默认值| 100 |
+|改后生效方式|重启服务生效|
+
 * memtable\_size\_threshold
 
 |名字| memtable\_size\_threshold |
@@ -505,11 +534,11 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 * avg\_series\_point\_number\_threshold
 
 |名字| avg\_series\_point\_number\_threshold |
-|:---:|:---|
-|描述| 内存中平均每个时间序列点数最大值，达到触发 flush |
-|类型| Int32 |
-|默认值| 10000 |
-|改后生效方式|重启服务生效|
+|:---:|:--------------------------------------|
+|描述| 内存中平均每个时间序列点数最大值，达到触发 flush           |
+|类型| Int32                                 |
+|默认值| 100000                                |
+|改后生效方式| 重启服务生效                                |
 
 * concurrent\_flush\_thread
 
@@ -823,7 +852,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 合并时的优先级，BALANCE 各种合并平等，INNER_CROSS 优先进行顺序文件和顺序文件或乱序文件和乱序文件的合并，CROSS_INNER 优先将乱序文件合并到顺序文件中 |
 |类型| String |
-|默认值| balance |
+|默认值| BALANCE |
 |改后生效方式|重启服务生效|
 
 * target\_compaction\_file\_size
@@ -871,22 +900,22 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 100 |
 |改后生效方式|重启服务生效|
 
-* max\_compaction\_candidate\_file\_num
+* max\_inner\_compaction\_candidate\_file\_num
 
-|名字| max\_compaction\_candidate\_file\_num |
+|名字| max\_inner\_compaction\_candidate\_file\_num |
 |:---:|:---|
 |描述| 空间内合并中一次合并最多参与的文件数 |
 |类型| Int32 |
 |默认值| 30|
 |改后生效方式|重启服务生效|
 
-* max\_open\_file\_num\_in\_cross\_space\_compaction
+* max\_cross\_compaction\_candidate\_file\_num
 
-|名字| max\_open\_file\_num\_in\_cross\_space\_compaction |
+|名字| max\_cross\_compaction\_candidate\_file\_num |
 |:---:|:---|
-|描述| 一次跨空间合并中打开文件的最大数目 |
+|描述| 跨空间合并中一次合并最多参与的文件数 |
 |类型| Int32 |
-|默认值| 100|
+|默认值| 1000|
 |改后生效方式|重启服务生效|
 
 * cross\_compaction\_file\_selection\_time\_budget
@@ -940,7 +969,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 每秒可达到的写入吞吐量合并限制。|
 |类型| Int32 |
-|默认值| 8 |
+|默认值| 16 |
 |改后生效方式| 重启服务生效|
 
 
@@ -988,7 +1017,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 |名字| metadata\_node\_cache\_size |
 |:---:|:---|
-|描述| Manager的缓存大小。所有路径检查和将具有相应路径的MManager中的TSDataType的缓存，都将被用作提高写入速度。|
+|描述| SchemaRegion的缓存大小。所有路径检查和将具有相应路径的SchemaRegion中的TSDataType的缓存，都将被用作提高写入速度。|
 |类型|Int32|
 |默认值| 300000 |
 |改后生效方式|重启服务生效|
@@ -1551,15 +1580,16 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 604800 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-* virtual\_storage\_group\_num
+* data\_region\_num
 
-|名字| virtual\_storage\_group\_num |
-|:---:|:---|
-|描述| 每一个用户定义存储组下虚拟存储组的数量, 虚拟存储组是内存中写入的并行单位，每一个虚拟存储组内的写入请求是串行的，推荐值为： [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
-|类型| INT32 |
-|默认值| 1 |
-|改后生效方式|仅允许在第一次启动服务前修改|
+|   名字   | data\_region\_num                                                                                                                                                    |
+|:------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|   描述   | 每一个用户定义存储组下 data region 的数量, data region 是内存中写入的并行单位，每一个 data region 内的写入请求是串行的，推荐值为： [data region number] = [CPU core number] / [user-defined storage group number] |
+|   类型   | INT32                                                                                                                                                                |
+|  默认值   | 1                                                                                                                                                                    |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                                                                                                                                                       |
 
+<!--
 * enable\_id\_table
 
 |名字| enable\_id\_table |
@@ -1586,6 +1616,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |类型| bool |
 |默认值| false |
 |改后生效方式|重启服务生效|
+
+-->
 
 * concurrent\_writing\_time\_partition
 

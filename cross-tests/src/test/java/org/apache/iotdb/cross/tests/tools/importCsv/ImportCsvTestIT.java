@@ -168,7 +168,6 @@ public class ImportCsvTestIT extends AbstractScript {
    */
   @Test
   public void test() throws IOException, ClassNotFoundException {
-    createSchema();
     assertTrue(generateTestCSV(false, false, false, false, false));
     String[] params = {"-f", CSV_FILE};
     testMethod(params, null);
@@ -181,6 +180,37 @@ public class ImportCsvTestIT extends AbstractScript {
       if (statement.execute("select * from root.**")) {
         ResultSet resultSet = statement.getResultSet();
         testResult(resultSet, 6, 3);
+        resultSet.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  /**
+   * test the situation that the schema has been created and CSV file has no problem
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testAligned() throws IOException, ClassNotFoundException {
+    assertTrue(generateTestCSV(false, false, false, false, false));
+    String[] params = {"-f", CSV_FILE, "-aligned "};
+    testMethod(params, null);
+    File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if (statement.execute("show devices")) {
+        ResultSet resultSet = statement.getResultSet();
+        while (resultSet.next()) {
+          assertTrue("true".equals(resultSet.getString(2)));
+        }
         resultSet.close();
       }
     } catch (Exception e) {

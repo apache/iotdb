@@ -5,17 +5,21 @@ name: E2E Tests
 
 on:
   push:
-    branches: 
+    branches:
       - test/e2e
     paths-ignore:
       - 'docs/**'
   pull_request:
-    branches: 
+    branches:
       - cluster_new
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3

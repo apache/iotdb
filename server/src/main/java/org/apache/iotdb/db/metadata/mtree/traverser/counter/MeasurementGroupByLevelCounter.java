@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,10 +37,33 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   // path representing current branch and matching the pattern and level
   private PartialPath path;
 
-  public MeasurementGroupByLevelCounter(IMNode startNode, PartialPath path, int groupByLevel)
+  public MeasurementGroupByLevelCounter(
+      IMNode startNode, PartialPath path, IMTreeStore store, int groupByLevel)
       throws MetadataException {
-    super(startNode, path);
+    super(startNode, path, store);
     this.groupByLevel = groupByLevel;
+    checkLevelAboveSG();
+  }
+
+  /**
+   * The traverser may start traversing from a storageGroupMNode, which is an InternalMNode of the
+   * whole MTree.
+   */
+  private void checkLevelAboveSG() {
+    if (groupByLevel >= startLevel) {
+      return;
+    }
+    IMNode parent = startNode.getParent();
+    int level = startLevel;
+    while (parent != null) {
+      level--;
+      if (level == groupByLevel) {
+        path = parent.getPartialPath();
+        result.putIfAbsent(path, 0);
+        break;
+      }
+      parent = parent.getParent();
+    }
   }
 
   @Override
@@ -70,5 +94,9 @@ public class MeasurementGroupByLevelCounter extends Traverser {
 
   public Map<PartialPath, Integer> getResult() {
     return result;
+  }
+
+  public void setResult(Map<PartialPath, Integer> result) {
+    this.result = result;
   }
 }

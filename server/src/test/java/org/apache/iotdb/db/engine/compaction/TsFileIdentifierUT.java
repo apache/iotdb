@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,7 +32,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 
-import static org.apache.iotdb.db.engine.compaction.TsFileIdentifier.INFO_SEPARATOR;
+import static org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier.INFO_SEPARATOR;
 
 public class TsFileIdentifierUT {
 
@@ -51,7 +52,7 @@ public class TsFileIdentifierUT {
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
-    Assert.assertEquals(firstInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(firstInfo.getDataRegionId(), "0");
     Assert.assertTrue(firstInfo.isSequence());
 
     String secondPath =
@@ -69,7 +70,7 @@ public class TsFileIdentifierUT {
     Assert.assertEquals(secondInfo.getFilename(), "999-3-24-12.tsfile");
     Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "426");
-    Assert.assertEquals(secondInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(secondInfo.getDataRegionId(), "0");
     Assert.assertFalse(secondInfo.isSequence());
 
     String illegalPath =
@@ -90,27 +91,27 @@ public class TsFileIdentifierUT {
 
   @Test
   public void testGetInfoFromInfoString() {
-    String[] firstInfoArray = new String[] {"root.test.sg", "0", "0", "true", "1-1-0-0.tsfile"};
+    String[] firstInfoArray = new String[] {"sequence", "root.test.sg", "0", "0", "1-1-0-0.tsfile"};
     String firstInfoString = String.join(INFO_SEPARATOR, firstInfoArray);
     TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromInfoString(firstInfoString);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
-    Assert.assertEquals(firstInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(firstInfo.getDataRegionId(), "0");
     Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertTrue(firstInfo.isSequence());
 
     String[] secondInfoArray =
-        new String[] {"root.test.sg", "0", "425", "false", "666-888-222-131.tsfile"};
+        new String[] {"unsequence", "root.test.sg", "0", "425", "666-888-222-131.tsfile"};
     String secondInfoString = String.join(INFO_SEPARATOR, secondInfoArray);
     TsFileIdentifier secondInfo =
         TsFileIdentifier.getFileIdentifierFromInfoString(secondInfoString);
     Assert.assertEquals(secondInfo.getFilename(), "666-888-222-131.tsfile");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "425");
-    Assert.assertEquals(secondInfo.getVirtualStorageGroupId(), "0");
+    Assert.assertEquals(secondInfo.getDataRegionId(), "0");
     Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertFalse(secondInfo.isSequence());
 
-    String[] illegalInfoArray = new String[] {"0", "425", "false", "666-888-222-131.tsfile"};
+    String[] illegalInfoArray = new String[] {"unsequence", "0", "425", "666-888-222-131.tsfile"};
     String illegalInfoString = String.join(INFO_SEPARATOR, illegalInfoArray);
 
     try {

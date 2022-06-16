@@ -28,7 +28,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -57,7 +58,8 @@ public class PullSnapshotHintService {
 
   public void start() {
     this.service = IoTDBThreadPoolFactory.newScheduledThreadPool(1, "PullSnapshotHint");
-    this.service.scheduleAtFixedRate(this::sendHints, 0, 10, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        this.service, this::sendHints, 0, 10, TimeUnit.MILLISECONDS);
   }
 
   public void stop() {

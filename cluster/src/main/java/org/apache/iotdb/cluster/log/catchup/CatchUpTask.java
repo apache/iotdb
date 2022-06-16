@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;

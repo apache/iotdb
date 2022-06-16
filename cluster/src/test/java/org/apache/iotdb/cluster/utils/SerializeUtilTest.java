@@ -26,8 +26,8 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -115,8 +115,6 @@ public class SerializeUtilTest {
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
-    tabletPlan.setStart(0);
-    tabletPlan.setEnd(4);
 
     Log log = new PhysicalPlanLog(tabletPlan);
     log.setCurrLogTerm(1);

@@ -19,9 +19,9 @@
 
 -->
 
-## 存储组管理
+# 存储组管理
 
-### 创建存储组
+## 创建存储组
 
 我们可以根据存储模型建立相应的存储组。创建存储组支持两种 SQL 语句，如下所示：
 
@@ -44,7 +44,7 @@ Msg: 300: root.ln has already been set to storage group.
 
 还需注意，如果在 Windows 系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
-### 查看存储组
+## 查看存储组
 
 在存储组创建后，我们可以使用 [SHOW STORAGE GROUP](../Reference/SQL-Reference.md) 语句和 [SHOW STORAGE GROUP \<PathPattern>](../Reference/SQL-Reference.md) 来查看存储组，SQL 语句如下所示：
 
@@ -67,7 +67,7 @@ Total line number = 2
 It costs 0.060s
 ```
 
-### 删除存储组
+## 删除存储组
 
 用户可以使用`DELETE STORAGE GROUP <PathPattern>`语句删除该路径模式匹配的所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
 
@@ -76,4 +76,64 @@ IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
 // 删除所有数据，时间序列以及存储组
 IoTDB > DELETE STORAGE GROUP root.**
+```
+
+## 统计存储组数量
+
+用户可以使用`COUNT STORAGE GROUP <PathPattern>`语句统计存储组的数量，允许指定`PathPattern` 用来统计匹配该`PathPattern` 的存储组的数量
+
+SQL 语句如下所示：
+
+```
+IoTDB> show storage group
+IoTDB> count storage group
+IoTDB> count storage group root.*
+IoTDB> count storage group root.sgcc.*
+IoTDB> count storage group root.sgcc
+```
+
+执行结果为：
+
+```
++-------------+
+|storage group|
++-------------+
+|    root.sgcc|
+| root.turbine|
+|      root.ln|
++-------------+
+Total line number = 3
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            0|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            1|
++-------------+
+Total line number = 1
+It costs 0.002s
 ```

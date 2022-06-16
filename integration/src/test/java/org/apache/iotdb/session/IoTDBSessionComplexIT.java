@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.example.Counter;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -418,17 +419,17 @@ public class IoTDBSessionComplexIT {
     session.createTimeseries(
         "root.sg1.d1.1_2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.1+2+3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.`1+2+3`", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.1+2+4", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.`1+2+4`", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.1_2"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+3`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+4`"));
 
-    session.setStorageGroup("root.1");
+    session.setStorageGroup("root.`1`");
     session.createTimeseries(
-        "root.1.2.3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.`1`.`2`.`3`", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.setStorageGroup("root.sg2");
     session.createTimeseries(
         "root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -471,8 +472,8 @@ public class IoTDBSessionComplexIT {
     session.setStorageGroup("root.sg1");
     String deviceId = "root.sg1.d1";
 
-    boolean isEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    WALMode prevWalMode = IoTDBDescriptor.getInstance().getConfig().getWalMode();
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(WALMode.DISABLE);
     createTimeseries();
 
     List<String> measurements = new ArrayList<>();
@@ -528,7 +529,7 @@ public class IoTDBSessionComplexIT {
     }
     Assert.assertEquals(201, count);
 
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(isEnableWAL);
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(prevWalMode);
     session.close();
   }
 

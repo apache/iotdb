@@ -35,7 +35,7 @@ With this connector, you can
 
 |Spark Version | Scala Version | Java Version | TsFile |
 |:-------------: | :-------------: | :------------: |:------------: |
-| `2.4.3`        | `2.11.8`        | `1.8`        | `0.13.0-SNAPSHOT`|
+| `2.4.3`        | `2.11.8`        | `1.8`        | `0.14.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 > Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it

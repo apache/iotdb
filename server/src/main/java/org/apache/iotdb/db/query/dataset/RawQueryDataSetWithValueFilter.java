@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -106,10 +106,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDF
     }
     RowRecord[] rowRecords = new RowRecord[cachedTimeCnt];
     for (int i = 0; i < cachedTimeCnt; i++) {
-      rowRecords[i] = new RowRecord(cachedTimeArray[i]);
-      for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
-        rowRecords[i].addField(null);
-      }
+      rowRecords[i] = new RowRecord(cachedTimeArray[i], columnNum);
     }
 
     boolean[] hasField = new boolean[cachedTimeCnt];
@@ -188,11 +185,11 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDF
 
   private boolean cacheRowInObjects() throws IOException {
     int cachedTimeCnt = 0;
-    long[] cachedTimeArray = new long[fetchSize];
+    int timeArraySize = rowLimit > 0 ? Math.min(fetchSize, rowLimit + rowOffset) : fetchSize;
+    long[] cachedTimeArray = new long[timeArraySize];
 
-    // TODO: LIMIT constraint
     // 1. fill time array from time Generator
-    while (timeGenerator.hasNext() && cachedTimeCnt < fetchSize) {
+    while (timeGenerator.hasNext() && cachedTimeCnt < timeArraySize) {
       cachedTimeArray[cachedTimeCnt++] = timeGenerator.next();
     }
     if (cachedTimeCnt == 0) {

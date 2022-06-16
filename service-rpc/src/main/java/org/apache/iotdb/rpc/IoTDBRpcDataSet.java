@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -115,8 +115,9 @@ public class IoTDBRpcDataSet {
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      this.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
-      for (int i = 0; i < columnNameIndex.size(); i++) {
+      int columnSize = (int) columnNameIndex.values().stream().distinct().count();
+      this.columnTypeDeduplicatedList = new ArrayList<>(columnSize);
+      for (int i = 0; i < columnSize; i++) {
         columnTypeDeduplicatedList.add(null);
       }
       for (int i = 0; i < columnNameList.size(); i++) {
@@ -125,8 +126,10 @@ public class IoTDBRpcDataSet {
         this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
+          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
+            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
+          }
           columnOrdinalMap.put(name, index + START_INDEX);
-          columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
         }
       }
     } else {
@@ -200,6 +203,7 @@ public class IoTDBRpcDataSet {
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
     if (hasCachedResults()) {
+      lastReadWasNull = false;
       constructOneRow();
       return true;
     }

@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
@@ -119,11 +119,16 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         && !timeHeap.isEmpty()) {
       long minTime = timeHeap.pollFirst();
       if (withoutAllNull || withoutAnyNull) {
-        int nullFieldsCnt = 0;
+        int nullFieldsCnt = 0, index = 0;
         for (LayerPointReader reader : transformers) {
+          if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
+            index++;
+            continue;
+          }
           if (!reader.next() || reader.currentTime() != minTime || reader.isCurrentNull()) {
             nullFieldsCnt++;
           }
+          index++;
         }
         // In method QueryDataSetUtils.convertQueryDataSetByFetchSize(), we fetch a row and can
         // easily
@@ -131,8 +136,18 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         // kept with clause 'with null'.
         // Here we get a timestamp first and then construct the row column by column.
         // We don't record this row when nullFieldsCnt > 0 and withoutAnyNull == true
-        // or nullFieldsCnt == columnNum and withoutAllNull == true
-        if ((nullFieldsCnt == columnsNum && withoutAllNull)
+        // or (
+        //        (
+        //            (withoutNullColumnsIndex != null && nullFieldsCnt ==
+        // withoutNullColumnsIndex.size())
+        //            or
+        //            (withoutNullColumnsIndex == null && nullFieldsCnt == columnsNum)
+        //        )
+        //        and withoutAllNull = true
+        //     )
+        if ((((withoutNullColumnsIndex != null && nullFieldsCnt == withoutNullColumnsIndex.size())
+                    || (withoutNullColumnsIndex == null && nullFieldsCnt == columnsNum))
+                && withoutAllNull)
             || (nullFieldsCnt > 0 && withoutAnyNull)) {
           for (LayerPointReader reader : transformers) {
             // if reader.currentTime() == minTime, it means that the value at this timestamp should
@@ -231,7 +246,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         --rowOffset;
       }
 
-      rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
+      queryDataSetInputLayer.updateRowRecordListEvictionUpperBound();
     }
 
     /*
@@ -335,7 +350,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       throw new IOException(e.getMessage());
     }
 
-    rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
+    queryDataSetInputLayer.updateRowRecordListEvictionUpperBound();
 
     return rowRecord;
   }

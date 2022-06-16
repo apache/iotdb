@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.dto;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
@@ -82,21 +82,17 @@ public class IoTDBPoint {
         if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
             && reflectField.getName().equalsIgnoreCase("fields")) {
           fields = (Map<String, Object>) reflectField.get(point);
-        }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
+        } else if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
             && reflectField.getName().equalsIgnoreCase("tags")) {
           tags = (Map<String, String>) reflectField.get(point);
-        }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
+        } else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
             && reflectField.getName().equalsIgnoreCase("measurement")) {
           measurement = (String) reflectField.get(point);
-        }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
+        } else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
             && reflectField.getName().equalsIgnoreCase("time")) {
           time = (Long) reflectField.get(point);
           time = TimeUnit.MILLISECONDS.convert(time, precision);
         }
-
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException(e.getMessage());
       }

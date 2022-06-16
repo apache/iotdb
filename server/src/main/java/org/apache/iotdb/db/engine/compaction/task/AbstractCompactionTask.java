@@ -19,70 +19,73 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * AbstractCompactionTask is the base class for all compaction task, it carries out the execution of
- * compaction. AbstractCompactionTask uses a template method, it execute the abstract function
- * <i>doCompaction</i> implemented by subclass, and decrease the currentTaskNum in
- * CompactionScheduler when the <i>doCompaction</i> finish.
+ * compaction. AbstractCompactionTask uses a template method, it executes the abstract function
+ * {@link AbstractCompactionTask#doCompaction()} implemented by subclass, and decrease the
+ * currentTaskNum in CompactionScheduler when the {@link AbstractCompactionTask#doCompaction()} is
+ * finished. The future returns the {@link CompactionTaskSummary} of this task execution.
  */
-public abstract class AbstractCompactionTask implements Callable<Void> {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+public abstract class AbstractCompactionTask implements Callable<CompactionTaskSummary> {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
+  protected final TsFileManager tsFileManager;
+  protected long timeCost = 0L;
+  protected volatile boolean ran = false;
+  protected volatile boolean finished = false;
+  protected ICompactionPerformer performer;
+  protected int hashCode = -1;
 
   public AbstractCompactionTask(
-      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
+      String fullStorageGroupName,
+      long timePartition,
+      TsFileManager tsFileManager,
+      AtomicInteger currentTaskNum) {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
+    this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
   }
+
+  public abstract void setSourceFilesToCompactionCandidate();
 
   protected abstract void doCompaction() throws Exception;
 
   @Override
-  public Void call() throws Exception {
+  public CompactionTaskSummary call() throws Exception {
+    ran = true;
     long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
+    boolean isSuccess = false;
     try {
       doCompaction();
-    } catch (Exception e) {
-      LOGGER.error(e.getMessage(), e);
+      isSuccess = true;
+    } catch (InterruptedException e) {
+      LOGGER.warn("{} [Compaction] Current task is interrupted", fullStorageGroupName);
+    } catch (Throwable e) {
+      // Use throwable to catch OOM exception.
+      LOGGER.error("{} [Compaction] Running compaction task failed", fullStorageGroupName, e);
     } finally {
-      if (!(this instanceof RewriteCrossCompactionRecoverTask)
-          && !(this instanceof SizeTieredCompactionRecoverTask)) {
-        CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
-      }
       this.currentTaskNum.decrementAndGet();
+      timeCost = System.currentTimeMillis() - startTime;
+      CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
+      finished = true;
     }
-
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .timer(
-              System.currentTimeMillis() - startTime,
-              TimeUnit.MILLISECONDS,
-              Metric.COST_TASK.toString(),
-              Tag.NAME.toString(),
-              "compaction");
-    }
-
-    return null;
+    return new CompactionTaskSummary(isSuccess);
   }
 
   public String getFullStorageGroupName() {
@@ -112,4 +115,22 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   }
 
   public abstract void resetCompactionCandidateStatusForAllSourceFiles();
+
+  public long getTimeCost() {
+    return timeCost;
+  }
+
+  protected void checkInterrupted() throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+    }
+  }
+
+  public boolean isTaskRan() {
+    return ran;
+  }
+
+  public boolean isTaskFinished() {
+    return finished;
+  }
 }

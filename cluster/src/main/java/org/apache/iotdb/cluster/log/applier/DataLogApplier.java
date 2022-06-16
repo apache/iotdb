@@ -29,15 +29,15 @@ import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
@@ -112,8 +112,8 @@ public class DataLogApplier extends BaseApplier {
     } else if (plan instanceof DeleteTimeSeriesPlan) {
       ((DeleteTimeSeriesPlan) plan).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
     }
-    if (plan instanceof InsertMultiTabletPlan) {
-      applyInsert((InsertMultiTabletPlan) plan);
+    if (plan instanceof InsertMultiTabletsPlan) {
+      applyInsert((InsertMultiTabletsPlan) plan);
     } else if (plan instanceof InsertRowsPlan) {
       applyInsert((InsertRowsPlan) plan);
     } else if (plan instanceof InsertPlan) {
@@ -123,12 +123,12 @@ public class DataLogApplier extends BaseApplier {
     }
   }
 
-  private void applyInsert(InsertMultiTabletPlan plan)
+  private void applyInsert(InsertMultiTabletsPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     boolean hasSync = false;
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
       try {
-        IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDevicePath());
+        IoTDB.schemaProcessor.getBelongedStorageGroup(insertTabletPlan.getDevicePath());
       } catch (StorageGroupNotSetException e) {
         try {
           if (!hasSync) {
@@ -150,7 +150,7 @@ public class DataLogApplier extends BaseApplier {
     boolean hasSync = false;
     for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
       try {
-        IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDevicePath());
+        IoTDB.schemaProcessor.getBelongedStorageGroup(insertRowPlan.getDevicePath());
       } catch (StorageGroupNotSetException e) {
         try {
           if (!hasSync) {
@@ -170,7 +170,7 @@ public class DataLogApplier extends BaseApplier {
   private void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     try {
-      IoTDB.metaManager.getBelongedStorageGroup(plan.getDevicePath());
+      IoTDB.schemaProcessor.getBelongedStorageGroup(plan.getDevicePath());
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization

@@ -28,8 +28,8 @@
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
@@ -169,11 +169,25 @@ Using `-P compile-cpp` for compiling cpp client (For more details, read client-c
 Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
 
 **NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
-"`thrift-cluster/target/generated-sources/thrift`"
+"`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 
 and "`antlr/target/generated-sources/antlr4`" need to be added to sources roots to avoid compilation errors in the IDE.**
 
 **In IDEA, you just need to right click on the root project name and choose "`Maven->Reload Project`" after 
 you run `mvn package` successfully.**
+
+#### Spotless problem
+**NOTE**: IF you are using JDK16+, you have to create a file called `jvm.config`,
+put it under `.mvn/`, before you use `spotless:apply`. The file contains the following content:
+```
+--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+```
+
+This is [an issue of Spotless](https://github.com/diffplug/spotless/issues/834),
+Once the issue is fixed, we can remove this file.
 
 ### Configurations
 
@@ -183,7 +197,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Appendix/Config-Manual.html).
+For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/Config-Manual.html).
 
 ## Start
 
@@ -363,7 +377,7 @@ or
 IoTDB> exit
 ```
 
-For more information about the commands supported by IoTDB SQL, please see [SQL Reference](https://iotdb.apache.org/UserGuide/Master/Appendix/SQL-Reference.html).
+For more information about the commands supported by IoTDB SQL, please see [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
 
 ### Stop IoTDB
 
@@ -400,7 +414,7 @@ After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-
 
 # Usage of CSV Import and Export Tool
 
-see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/System-Tools/CSV-Tool.html)
+see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/Write-And-Delete-Data/CSV-Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

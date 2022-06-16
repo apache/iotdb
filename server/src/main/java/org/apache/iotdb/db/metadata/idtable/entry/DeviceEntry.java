@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.HashMap;
 import java.util.Map;

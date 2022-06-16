@@ -102,8 +102,8 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 
 -   *SQL-like*：
 
-    -   IoTDB 和 InfluxDB 支持 SQL-like 语言。另外，IoTDB 和 Calcite 的集成几乎完成（PR 已经提交），这意味着 IoTDB 很快就能支持标准 SQL。
-    -   OpenTSDB 和 KairosDB 只支持 Rest API。IoTDB 也支持 Rest API（PR 已经提交）。
+    -   IoTDB 和 InfluxDB 支持 SQL-like 语言。
+    -   OpenTSDB 和 KairosDB 只支持 Rest API。IoTDB 也支持 Rest API。
     -   TimescaleDB 使用的是和 PostgreSQL 一样的 SQL。
 
 -   *Schema*：
@@ -233,9 +233,6 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 
     现在只有 IoTDB 支持了 JDBC driver（虽然不是所有接口都实现），这使得 IoTDB 可以整合许多其它的基于 JDBC driver 的软件。
 
--   *Standard SQL*：
-
-    正如之前提到的，IoTDB 和 Calcite 的集成几乎完成（PR 已经提交），这意味着 IoTDB 很快就能支持标准 SQL。
 
 -   *Spark and Hive integration*：
 
@@ -288,12 +285,6 @@ IoTDB 拥有许多其它时间序列数据库不支持的强大功能。
 <img src="https://user-images.githubusercontent.com/24886743/106254214-6cacbe80-6253-11eb-8532-d6a1829f8f66.png" alt="Batch Size with Write Throughput (points/second)"  />
 
 <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center>
-
-写入延迟（ms）如下图所示：
-
-![Batch Size with Write Delay (ms)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
-
-<center>Figure 2. Batch Size with Write Delay (ms) IoTDB v0.11.1</center>
 
 ###### 改变 client num
 

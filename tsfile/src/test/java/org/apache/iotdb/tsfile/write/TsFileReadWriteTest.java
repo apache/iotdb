@@ -84,7 +84,8 @@ public class TsFileReadWriteTest {
             TSEncoding.RLE,
             TSEncoding.TS_2DIFF,
             TSEncoding.REGULAR,
-            TSEncoding.GORILLA);
+            TSEncoding.GORILLA,
+            TSEncoding.ZIGZAG);
     for (TSEncoding encoding : encodings) {
       intTest(encoding);
     }

@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.commons.lang3.StringUtils;
 
 public class TypeInferenceUtils {
 
@@ -73,7 +76,7 @@ public class TypeInferenceUtils {
         return booleanStringInferType;
       } else if (isNumber(strValue)) {
         if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
-          if (isConvertFloatPrecisionLack(strValue)) {
+          if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
             return longStringInferType;
           }
           return integerStringInferType;
@@ -107,6 +110,10 @@ public class TypeInferenceUtils {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
+    if (!verifyIsAggregationDataTypeMatched(aggrFuncName, dataType)) {
+      throw new SemanticException(
+          "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+    }
 
     switch (aggrFuncName.toLowerCase()) {
       case SQLConstant.MIN_TIME:
@@ -122,6 +129,26 @@ public class TypeInferenceUtils {
       case SQLConstant.AVG:
       case SQLConstant.SUM:
         return TSDataType.DOUBLE;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  private static boolean verifyIsAggregationDataTypeMatched(
+      String aggrFuncName, TSDataType dataType) {
+    switch (aggrFuncName.toLowerCase()) {
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+      case SQLConstant.EXTREME:
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+        return dataType.isNumeric();
+      case SQLConstant.COUNT:
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.LAST_VALUE:
+        return true;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }

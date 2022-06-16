@@ -39,7 +39,7 @@
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.13.0-SNAPSHOT</version>
+  <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -141,7 +141,7 @@ default int[] fire(long[] timestamps, int[] values) throws Exception {
 
 2. 将项目打成 JAR 包，如果您使用 Maven 管理项目，可以参考上述 Maven 项目示例的写法
 
-3. 将 JAR 包放置到目录 `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.13.0-SNAPSHOT/ext/trigger`的子目录）下。
+3. 将 JAR 包放置到目录 `iotdb-server-0.14.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.14.0-SNAPSHOT/ext/trigger`的子目录）下。
 
    > 您可以通过修改配置文件中的`trigger_root_dir`来指定加载触发器 JAR 包的根路径。
 
@@ -189,11 +189,14 @@ WITH (
 
 目前触发器可以侦听序列上的所有的数据插入操作，触发器可以选择在数据插入前（`BEFORE INSERT`）或者数据插入后（`AFTER INSERT`）触发钩子调用。
 
-`FULL-PATH`是触发器侦听的目标序列名称，这个序列必须是一个测点。
+`FULL-PATH` 一个目标序列路径如root.sg1.d1.s1，或者是一个设备路径如root.sg1.d1，或者是一个存储组路径如root.sg1，抑或是一个业务语义节点路径如root.sg1.x。
 
 `CLASSNAME`是触发器类的全类名。
 
-请注意，`CLASSNAME`以及属性值中的`KEY`和`VALUE`都需要被单引号或者双引号引用起来。
+请注意：
+1. `CLASSNAME`以及属性值中的`KEY`和`VALUE`都需要被单引号或者双引号引用起来。
+2. 每个`FULL-PATH`只支持注册一个触发器。
+3. 当存在多层路径同时注册触发器时，如root.sg1.d1.s1 注册一个触发器trigger-sg1d1s1，root.sg1.d1注册一个触发器trigger-sg1d1，root.sg1注册一个触发器trigger-sg1，在向root.sg1.d1.s1写入数据时，其触发顺序为trigger-sg1d1s1 -》trigger-sg1d1-》trigger-sg1。
 
 ### 卸载触发器
 
@@ -274,7 +277,7 @@ SHOW TRIGGERS
 * `START_TRIGGER`：具备该权限的用户才被允许启动已被停止的触发器。该权限需要与触发器的路径绑定。
 * `STOP_TRIGGER`：具备该权限的用户才被允许停止正在运行的触发器。该权限需要与触发器的路径绑定。
 
-更多用户权限相关的内容，请参考 [权限管理语句](../Operation%20Manual/Administration.md)。
+更多用户权限相关的内容，请参考 [权限管理语句](../Administration-Management/Administration.md)。
 
 ## 实用工具类
 
@@ -614,6 +617,115 @@ annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
 alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annotations));
 ```
 
+#### ForwardSink
+
+触发器可以使用ForwardSink通过HTTP和MQTT协议转发写入的数据，其内置了HTTPForwardHandler和MQTTForwardHandler。为提高连接使用效率，所有HTTPForwardHandler共用一个连接池，而host，port和username参数相同的MQTTForwardHandler共用一个连接池。
+
+MQTTForwardHandler与MQTTHandler的区别在于，前者使用连接池而后者没有使用连接池，并且消息的格式也不同。
+
+使用示例见[ForwardTrigger](#ForwardTrigger)。
+
+## ForwardTrigger
+
+ForwardTrigger是内置的用于实现数据分发的触发器，它使用ForwardSink和消费队列实现了对触发事件的异步批量处理。采用异步的方式进行转发，可以避免因为转发阻塞导致的系统阻塞。而采用ForwardSink中的连接池可使得池中的连接可以得到高效、安全的复用，避免了连接频繁建立、关闭的开销。
+
+<img src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Triggers/ForwardQueueConsume.png?raw=true" alt="Forward Queue Consume">
+
+### 触发流程
+1. 触发事件到来。
+2. ForwardTrigger将触发事件放入队列池。
+3. 完成触发事件。
+
+### 队列池消费流程
+1. 将触发事件按照Device入队（如没有Device，则轮询）。
+2. 每个队列消费者线程监控当前队列，若超时或达到最大转发批量则调用Handler批量转发。
+3. Handler批量序列化触发事件，消息封装完成后调用内置的连接池完成转发。
+
+### 消息格式
+目前消息格式仅支持固定模板的JSON格式，模板如下：
+```
+[{"device":"%s","measurement":"%s","timestamp":%d,"value":%s}]
+```
+
+### 使用示例
+#### 创建ForwardTrigger
+创建一个使用HTTP协议的forward_http触发器和一个使用MQTT协议的forward_mqtt触发器，两者分别订阅前缀路径`root.http`和`root.mqtt`。
+```sql
+CREATE trigger forward_http AFTER INSERT ON root.http 
+AS 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' 
+WITH ('protocol' = 'http', 'endpoint' = 'http://127.0.0.1:8080/forward_receive')
+
+CREATE trigger forward_mqtt AFTER INSERT ON root.mqtt 
+AS 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' 
+WITH ('protocol' = 'mqtt', 'host' = '127.0.0.1', 'port' = '1883', 'username' = 'root', 'password' = 'root', 'topic' = 'mqtt-test')
+```
+
+#### 激发触发器
+向两个前缀路径的子路径插入数据，激发触发器。
+```sql
+INSERT INTO root.http.d1(timestamp, s1) VALUES (1, 1);
+INSERT INTO root.http.d1(timestamp, s2) VALUES (2, true);
+INSERT INTO root.mqtt.d1(timestamp, s1) VALUES (1, 1);
+INSERT INTO root.mqtt.d1(timestamp, s2) VALUES (2, true);
+```
+
+#### 接收转发的消息
+触发器激发后，在HTTP接收端会接收到如下格式的JSON数据：
+```json
+[
+    {
+        "device":"root.http.d1",
+        "measurement":"s1",
+        "timestamp":1,
+        "value":1.0
+    },
+    {
+        "device":"root.http.d1",
+        "measurement":"s2",
+        "timestamp":2,
+        "value":true
+    }
+]
+```
+
+触发器触发后，在MQTT接收端会接收到如下格式的JSON数据：
+```json
+[
+    {
+        "device":"root.mqtt.d1",
+        "measurement":"s1",
+        "timestamp":1,
+        "value":1.0
+    },
+    {
+        "device":"root.mqtt.d1",
+        "measurement":"s2",
+        "timestamp":2,
+        "value":true
+    }
+]
+```
+
+### ForwardTrigger的配置参数
+| 参数                 | 必填   | 默认值       | 上限 | 描述                                                                                                                                   |
+|--------------------|------| ------------ | ---- |--------------------------------------------------------------------------------------------------------------------------------------|
+| protocol           | true | http         |      | 转发协议，如HTTP/MQTT                                                                                                                      |
+| queueNumber        |      | 8            | 8    | 队列数量，与全局参数trigger_forward_max_queue_number比较取小                                                                                       |
+| queueSize          |      | 2000         | 2000 | 队列大小，与全局参数trigger_forward_max_size_per_queue比较取小                                                                                     |
+| batchSize          |      | 50           | 50   | 每次最大转发批量，与全局参数trigger_forward_batch_size比较取小                                                                                         |
+| stopIfException    |      | false        |      | 出现异常是否终止                                                                                                                             |
+| endpoint           | true |              |      | 请求端点地址（HTTP协议参数）<br/>说明：HTTP连接池参数取决于全局参数<br/>trigger_forward_http_pool_size=200<br/>和<br/>trigger_forward_http_pool_max_per_route=20 |
+| host               | true |              |      | MQTT Broker主机名（MQTT 协议参数）                                                                                                            |
+| port               | true |              |      | MQTT Broker端口号（MQTT 协议参数）                                                                                                            |
+| username           | true |              |      | 用户名（MQTT 协议参数）                                                                                                                       |
+| password           | true |              |      | 密码（MQTT 协议参数）                                                                                                                        |
+| topic              | true |              |      | MQTT消息的主题（MQTT 协议参数）                                                                                                                 |
+| reconnectDelay     |      | 10ms         |      | 重连等待时间（MQTT 协议参数）                                                                                                                    |
+| connectAttemptsMax |      | 3            |      | 最大尝试连接次数（MQTT 协议参数）                                                                                                                  |
+| qos                |      | exactly_once |      | 服务质量保证（MQTT 协议参数），可选exactly_once，at_least_once，at_most_once                                                                          |
+| poolSize           |      | 4            | 4    | MQTT连接池大小（MQTT 协议参数），与全局参数trigger_forward_mqtt_pool_size比较取小                                                                         |
+| retain             |      | false        |      | Publish后是否让MQTT Broker保持消息（MQTT 协议参数）                                                                                                |
+
 ## 完整的 Maven 示例项目
 
 如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 **trigger-example**。
@@ -632,7 +744,7 @@ package org.apache.iotdb.trigger;
 
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
@@ -754,7 +866,7 @@ public class TriggerExample implements Trigger {
   CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
   ```
 
-* 将 **trigger-example** 中打包好的 JAR（`trigger-example-0.13.0-SNAPSHOT.jar`）放置到目录 `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.13.0-SNAPSHOT/ext/trigger`的子目录）下
+* 将 **trigger-example** 中打包好的 JAR（`trigger-example-0.14.0-SNAPSHOT.jar`）放置到目录 `iotdb-server-0.14.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.14.0-SNAPSHOT/ext/trigger`的子目录）下
 
   > 您可以通过修改配置文件中的`trigger_root_dir`来指定加载触发器 JAR 包的根路径。
 

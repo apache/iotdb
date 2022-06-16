@@ -31,11 +31,18 @@
             <includes>
                 <include>*:iotdb-server:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
-                <include>*:iotdb-cluster:zip:*</include>
+                <include>*:iotdb-confignode:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
             <unpack>true</unpack>
+            <unpackOptions>
+                <excludes>
+                    <exclude>tools/**</exclude>
+                    <exclude>conf/**</exclude>
+                    <exclude>sbin/**</exclude>
+                </excludes>
+            </unpackOptions>
         </dependencySet>
         <dependencySet>
             <includes>
@@ -47,17 +54,34 @@
         </dependencySet>
     </dependencySets>
     <fileSets>
-        <!--        <fileSet>-->
-        <!--            <outputDirectory>conf</outputDirectory>-->
-        <!--            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>-->
-        <!--        </fileSet>-->
         <fileSet>
-            <outputDirectory>conf</outputDirectory>
+            <outputDirectory>datanode/conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>confignode/conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>confignode/conf</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
-            <outputDirectory>sbin</outputDirectory>
+            <outputDirectory>datanode/conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>grafana-metrics-example</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>datanode/sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>confignode/sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
@@ -66,7 +90,7 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <outputDirectory>sbin</outputDirectory>
+            <outputDirectory>datanode/sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
@@ -75,14 +99,13 @@
             <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
-        <!--        <fileSet>-->
-        <!--            <outputDirectory>conf</outputDirectory>-->
-        <!--            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/conf</directory>-->
-        <!--        </fileSet>-->
         <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/sbin</directory>
-            <fileMode>0755</fileMode>
+            <outputDirectory>datanode</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>confignode</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</directory>
         </fileSet>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/docs</directory>
@@ -96,7 +119,7 @@
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/iotdb-env.sh</source>
-            <destName>conf/iotdb-env.sh</destName>
+            <destName>datanode/conf/iotdb-env.sh</destName>
             <fileMode>0755</fileMode>
         </file>
     </files>

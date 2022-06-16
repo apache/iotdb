@@ -21,22 +21,29 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <properties>
+        <snakeyaml.version>1.17</snakeyaml.version>
+    </properties>
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-metrics</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>metrics-interface</artifactId>
     <name>metric interface</name>
-    <version>0.13.0-SNAPSHOT</version>
     <description>Metrics interface for IoTDB</description>
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
     <dependencies>
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.17</version>
+            <version>${snakeyaml.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-session</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
     <build>

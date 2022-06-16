@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
@@ -50,7 +51,7 @@ public class FileLoaderUtils {
 
   private FileLoaderUtils() {}
 
-  public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
+  public static void loadOrGenerateResource(TsFileResource tsFileResource) throws IOException {
     if (!tsFileResource.resourceFileExists()) {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader =
@@ -62,13 +63,13 @@ public class FileLoaderUtils {
     } else {
       tsFileResource.deserialize();
     }
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
   }
 
   public static void updateTsFileResource(
       TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
     for (Entry<String, List<TimeseriesMetadata>> entry :
-        reader.getAllTimeseriesMetadata().entrySet()) {
+        reader.getAllTimeseriesMetadata(false).entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         tsFileResource.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
@@ -99,6 +100,8 @@ public class FileLoaderUtils {
     TimeseriesMetadata timeSeriesMetadata;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
+      // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
+      // we should not ignore the non-exist of device in TsFileMetadata
       timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(
@@ -107,6 +110,7 @@ public class FileLoaderUtils {
                       seriesPath.getDevice(),
                       seriesPath.getMeasurement()),
                   allSensors,
+                  resource.getTimeIndexType() != 1,
                   context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
@@ -164,8 +168,15 @@ public class FileLoaderUtils {
       boolean isDebug = context.isDebug();
       String filePath = resource.getTsFilePath();
       String deviceId = vectorPath.getDevice();
+
+      // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
+      // we should not ignore the non-exist of device in TsFileMetadata
       TimeseriesMetadata timeColumn =
-          cache.get(new TimeSeriesMetadataCacheKey(filePath, deviceId, ""), allSensors, isDebug);
+          cache.get(
+              new TimeSeriesMetadataCacheKey(filePath, deviceId, ""),
+              allSensors,
+              resource.getTimeIndexType() != 1,
+              isDebug);
       if (timeColumn != null) {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -176,6 +187,7 @@ public class FileLoaderUtils {
               cache.get(
                   new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
                   allSensors,
+                  resource.getTimeIndexType() != 1,
                   isDebug);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);

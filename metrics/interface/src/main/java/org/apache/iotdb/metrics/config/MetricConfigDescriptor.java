@@ -53,6 +53,10 @@ public class MetricConfigDescriptor {
    */
   private String getPropsUrl() {
     String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
+    // try to get config node conf
+    if (url == null) {
+      url = System.getProperty(MetricConstant.CONFIGNODE_CONF, null);
+    }
     if (url == null) {
       logger.warn(
           "Cannot find IOTDB_CONF environment variable when loading "
@@ -62,6 +66,7 @@ public class MetricConfigDescriptor {
     } else {
       url += (File.separatorChar + MetricConstant.CONFIG_NAME);
     }
+
     return url;
   }
 
@@ -76,7 +81,10 @@ public class MetricConfigDescriptor {
         metricConfig = (MetricConfig) yaml.load(inputStream);
         return;
       } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default config.", url, e);
+        logger.warn(
+            "Fail to find config file : {} because of {}, use default config.",
+            url,
+            e.getMessage());
       }
     } else {
       logger.warn("Fail to find config file, use default");
@@ -94,7 +102,10 @@ public class MetricConfigDescriptor {
         logger.info("Start to read config file {}", url);
         newMetricConfig = (MetricConfig) yaml.load(inputStream);
       } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default", url, e);
+        logger.warn(
+            "Fail to find config file : {} because of {}, use default config.",
+            url,
+            e.getMessage());
       }
     } else {
       logger.warn("Fail to find config file, use default");
@@ -110,6 +121,7 @@ public class MetricConfigDescriptor {
       } else if (metricConfig.getEnableMetric()) {
         // restart reporters or restart service
         if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
+            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
             || !metricConfig
                 .getPredefinedMetrics()
                 .equals(newMetricConfig.getPredefinedMetrics())) {

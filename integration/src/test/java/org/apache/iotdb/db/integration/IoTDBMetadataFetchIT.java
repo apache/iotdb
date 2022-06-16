@@ -18,17 +18,15 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -45,7 +43,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -70,14 +67,14 @@ public class IoTDBMetadataFetchIT {
             "SET STORAGE GROUP TO root.ln2.wf01.wt01",
             "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3' ",
             "CREATE ALIGNED TIMESERIES root.ln.wf01.wt02(s1 INT32, s2 DOUBLE)",
             "CREATE TIMESERIES root.ln1.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln1.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3'",
             "CREATE TIMESERIES root.ln2.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln2.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3'"
           };
 
       for (String sql : insertSqls) {
@@ -89,15 +86,15 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
 
     insertSQL();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
@@ -219,19 +216,6 @@ public class IoTDBMetadataFetchIT {
           fail(e.getMessage());
         }
       }
-    }
-  }
-
-  @Test
-  @Category({LocalStandaloneTest.class})
-  public void databaseMetaDataTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      databaseMetaData = connection.getMetaData();
-      showTimeseriesInJson();
-
-    } catch (Exception e) {
-      logger.error("databaseMetaDataTest() failed", e);
-      fail(e.getMessage());
     }
   }
 
@@ -605,22 +589,72 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  /** show metadata in json */
-  private void showTimeseriesInJson() {
-    String metadataInJson = databaseMetaData.toString();
-    String standard =
-        "===  Timeseries Tree  ===\n"
-            + "\n"
-            + "{\"root\":{\"ln2\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln2.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln2.wf01.wt01\"}}}},\"ln\":{\"wf01\":{\"wt02\":{\"s1\":{\"DataType\":\"INT32\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"},\"s2\":{\"DataType\":\"DOUBLE\",\"Encoding\":\"GORILLA\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"}},\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt01\"}}}},\"ln1\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln1.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln1.wf01.wt01\"}}}}}}";
-    // TODO Remove the constant json String.
-    // Do not depends on the sequence of property in json string if you do not
-    // explictly mark the sequence, when we use jackson, the json result may change again
-    String rawJsonString = metadataInJson.substring(TIME_SERIES_TREE_HEADER.length());
-    Gson gson = new Gson();
-    JsonObject actual = gson.fromJson(rawJsonString, JsonObject.class);
-    JsonObject expected =
-        gson.fromJson(standard.substring(TIME_SERIES_TREE_HEADER.length()), JsonObject.class);
+  @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+  public void showAlignedTimeseriesWithAliasAndTags() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create aligned timeseries root.sg.d(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))");
+      String[] expected =
+          new String[] {
+            "root.sg.d.s1,alias1,root.sg,INT32,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,",
+            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,SNAPPY,null,{\"attr3\":\"v3\"},"
+          };
 
-    Assert.assertEquals(expected, actual);
+      int num = 0;
+      boolean hasResultSet = statement.execute("show timeseries root.sg.d.*");
+      if (hasResultSet) {
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            Assert.assertEquals(expected[num++], builder.toString());
+          }
+        }
+      }
+      Assert.assertEquals(2, num);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+  public void showLatestTimeseriesTest() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("insert into root.ln.wf01.wt01(time, status) values(1, 1)");
+      statement.execute("insert into root.ln.wf01.wt01(time, temperature) values(2, 1)");
+      String sql = "show latest timeseries root.ln.wf01.wt01.*";
+      Set<String> standard =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,"));
+      try {
+        boolean hasResultSet = statement.execute(sql);
+        if (hasResultSet) {
+          try (ResultSet resultSet = statement.getResultSet()) {
+            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+            while (resultSet.next()) {
+              StringBuilder builder = new StringBuilder();
+              for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                builder.append(resultSet.getString(i)).append(",");
+              }
+              String string = builder.toString();
+              Assert.assertTrue(standard.contains(string));
+              standard.remove(string);
+            }
+            assertEquals(0, standard.size());
+          }
+        }
+      } catch (SQLException e) {
+        logger.error("showTimeseriesTest() failed", e);
+        fail(e.getMessage());
+      }
+    }
   }
 }

@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
@@ -100,8 +101,7 @@ public class RpcUtils {
    *
    * @param status -status
    */
-  public static void verifySuccess(org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status)
-      throws StatementExecutionException {
+  public static void verifySuccess(InfluxTSStatus status) throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       return;
     }
@@ -123,7 +123,7 @@ public class RpcUtils {
     verifySuccess(status);
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
         || status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
+      Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
       List<TSStatus> statusSubStatus = status.getSubStatus();
       for (int i = 0; i < statusSubStatus.size(); i++) {
         TSStatus subStatus = statusSubStatus.get(i);
@@ -178,15 +178,12 @@ public class RpcUtils {
     return status;
   }
 
-  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(
-      TSStatusCode tsStatusCode) {
-    return new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(tsStatusCode.getStatusCode());
+  public static InfluxTSStatus getInfluxDBStatus(TSStatusCode tsStatusCode) {
+    return new InfluxTSStatus(tsStatusCode.getStatusCode());
   }
 
-  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(
-      int code, String message) {
-    org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status =
-        new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(code);
+  public static InfluxTSStatus getInfluxDBStatus(int code, String message) {
+    InfluxTSStatus status = new InfluxTSStatus(code);
     status.setMessage(message);
     return status;
   }
@@ -266,14 +263,27 @@ public class RpcUtils {
     }
   }
 
+  public static String formatDatetimeStr(String datetime, StringBuilder digits) {
+    if (datetime.contains("+")) {
+      String timeZoneStr = datetime.substring(datetime.length() - 6);
+      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
+    } else if (datetime.contains("Z")) {
+      String timeZoneStr = datetime.substring(datetime.length() - 1);
+      return datetime.substring(0, datetime.length() - 1) + "." + digits + timeZoneStr;
+    } else {
+      String timeZoneStr = "";
+      return datetime + "." + digits + timeZoneStr;
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
     if ("ms".equals(timestampPrecision)) {
-      long integerofDate = timestamp / 1000;
+      long integerOfDate = timestamp / 1000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 3) {
@@ -281,12 +291,12 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      return formatDatetimeStr(datetime, digits);
     } else if ("us".equals(timestampPrecision)) {
-      long integerofDate = timestamp / 1000_000;
+      long integerOfDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 6) {
@@ -294,12 +304,12 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      return formatDatetimeStr(datetime, digits);
     } else {
-      long integerofDate = timestamp / 1000_000_000L;
+      long integerOfDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 9) {
@@ -307,7 +317,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      return formatDatetimeStr(datetime, digits);
     }
   }
 }

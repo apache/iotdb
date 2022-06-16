@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -59,6 +59,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -73,6 +76,8 @@ import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenera
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class AggregationExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(AggregationExecutor.class);
 
   private List<PartialPath> selectedSeries;
   protected List<TSDataType> dataTypes;
@@ -121,37 +126,39 @@ public class AggregationExecutor {
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
     // TODO-Cluster: group the paths by storage group to reduce communications
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance().mergeLock(groupedPathList);
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-
-      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-        PartialPath seriesPath = entry.getKey();
-        aggregateOneSeries(
-            seriesPath,
-            entry.getValue(),
-            aggregationPlan.getAllMeasurementsInDevice(seriesPath.getDevice()),
-            timeFilter);
-      }
-      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
-          alignedPathToAggrIndexesMap.entrySet()) {
-        AlignedPath alignedPath = entry.getKey();
-        aggregateOneAlignedSeries(
-            alignedPath,
-            entry.getValue(),
-            aggregationPlan.getAllMeasurementsInDevice(alignedPath.getDevice()),
-            timeFilter);
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+      PartialPath seriesPath = entry.getKey();
+      aggregateOneSeries(
+          seriesPath,
+          entry.getValue(),
+          aggregationPlan.getAllMeasurementsInDevice(seriesPath.getDevice()),
+          timeFilter);
+    }
+    for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
+        alignedPathToAggrIndexesMap.entrySet()) {
+      AlignedPath alignedPath = entry.getKey();
+      aggregateOneAlignedSeries(
+          alignedPath,
+          entry.getValue(),
+          aggregationPlan.getAllMeasurementsInDevice(alignedPath.getDevice()),
+          timeFilter);
     }
 
     return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
@@ -627,11 +634,10 @@ public class AggregationExecutor {
     groupedPathList.addAll(pathToAggrIndexesMap.keySet());
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance().mergeLock(groupedPathList);
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
@@ -639,25 +645,29 @@ public class AggregationExecutor {
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(
               processorToSeriesMap, context, timestampGenerator.getTimeFilter());
-
-      for (PartialPath path : pathToAggrIndexesMap.keySet()) {
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTime(path, queryPlan, path.getSeriesType(), context);
-        readerToAggrIndexesMap.put(
-            seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
-      }
-      // assign null to be friendly for GC
-      pathToAggrIndexesMap = null;
-      for (AlignedPath vectorPath : alignedPathToAggrIndexesMap.keySet()) {
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTime(vectorPath, queryPlan, vectorPath.getSeriesType(), context);
-        readerToAggrIndexesMap.put(
-            seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(vectorPath));
-      }
-      alignedPathToAggrIndexesMap = null;
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
     }
+
+    for (PartialPath path : pathToAggrIndexesMap.keySet()) {
+      IReaderByTimestamp seriesReaderByTimestamp =
+          getReaderByTime(path, queryPlan, path.getSeriesType(), context);
+      readerToAggrIndexesMap.put(
+          seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
+    }
+    // assign null to be friendly for GC
+    pathToAggrIndexesMap = null;
+    for (AlignedPath vectorPath : alignedPathToAggrIndexesMap.keySet()) {
+      IReaderByTimestamp seriesReaderByTimestamp =
+          getReaderByTime(vectorPath, queryPlan, vectorPath.getSeriesType(), context);
+      readerToAggrIndexesMap.put(
+          seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(vectorPath));
+    }
+    // assign null to be friendly for GC
+    alignedPathToAggrIndexesMap = null;
 
     for (int i = 0; i < selectedSeries.size(); i++) {
       aggregateResultList[i] =

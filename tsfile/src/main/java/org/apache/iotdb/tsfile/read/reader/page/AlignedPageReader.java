@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
@@ -43,6 +45,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private final int valueCount;
   private Filter filter;
   private boolean isModified;
+  private TsBlockBuilder builder;
 
   public AlignedPageReader(
       PageHeader timePageHeader,
@@ -102,6 +105,43 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return pageData.flip();
   }
 
+  @Override
+  public TsBlock getAllSatisfiedData() throws IOException {
+    // TODO change from the row-based style to column-based style
+    builder.reset();
+    int timeIndex = -1;
+    while (timePageReader.hasNextTime()) {
+      long timestamp = timePageReader.nextTime();
+      timeIndex++;
+      // if all the sub sensors' value are null in current row, just discard it
+      boolean isNull = true;
+      Object notNullObject = null;
+      TsPrimitiveType[] v = new TsPrimitiveType[valueCount];
+      for (int i = 0; i < v.length; i++) {
+        ValuePageReader pageReader = valuePageReaderList.get(i);
+        v[i] = pageReader == null ? null : pageReader.nextValue(timestamp, timeIndex);
+        if (v[i] != null) {
+          isNull = false;
+          notNullObject = v[i].getValue();
+        }
+      }
+      // Currently, if it's a value filter, it will only accept AlignedPath with only one sub
+      // sensor
+      if (!isNull && (filter == null || filter.satisfy(timestamp, notNullObject))) {
+        builder.getTimeColumnBuilder().writeLong(timestamp);
+        for (int i = 0; i < v.length; i++) {
+          if (v[i] != null) {
+            builder.getColumnBuilder(i).writeTsPrimitiveType(v[i]);
+          } else {
+            builder.getColumnBuilder(i).appendNull();
+          }
+        }
+        builder.declarePosition();
+      }
+    }
+    return builder.build();
+  }
+
   public void setDeleteIntervalList(List<List<TimeRange>> list) {
     for (int i = 0; i < valueCount; i++) {
       if (valuePageReaderList.get(i) != null) {
@@ -140,5 +180,10 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public boolean isModified() {
     return isModified;
+  }
+
+  @Override
+  public void initTsBlockBuilder(List<TSDataType> dataTypes) {
+    builder = new TsBlockBuilder(dataTypes);
   }
 }

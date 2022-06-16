@@ -63,13 +63,6 @@ IoTDB> SET SYSTEM TO READONLY
 IoTDB> SET SYSTEM TO WRITABLE
 ```
 
-## SCHEMA SNAPSHOT
-
-为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。此功能不支持使用模板、标签或对齐序列的场景。
-```sql
-IoTDB> CREATE SNAPSHOT FOR SCHEMA
-```
-
 ## 超时
 
 IoTDB 支持 Session 超时和查询超时。

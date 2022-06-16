@@ -143,7 +143,9 @@ namespace TSEncoding {
         BITMAP = (char) 5,
         GORILLA_V1 = (char) 6,
         REGULAR = (char) 7,
-        GORILLA = (char) 8
+        GORILLA = (char) 8,
+        ZIGZAG = (char) 9,
+        FREQ = (char) 10
     };
 }
 

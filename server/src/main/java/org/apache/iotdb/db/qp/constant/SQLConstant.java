@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /** this class contains several constants used in SQL. */
-@SuppressWarnings("unused") // some fields are for future features
+// some fields are for future features
 public class SQLConstant {
 
-  private SQLConstant() {
+  public SQLConstant() throws InstantiationException {
     // forbidding instantiation
+    throw new InstantiationException();
   }
 
   private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};
@@ -56,36 +54,16 @@ public class SQLConstant {
   // names of aggregations
   public static final String MIN_TIME = "min_time";
   public static final String MAX_TIME = "max_time";
-
   public static final String MAX_VALUE = "max_value";
   public static final String MIN_VALUE = "min_value";
-
   public static final String EXTREME = "extreme";
-
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
-
-  public static final String LAST = "last";
-
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
 
-  public static final String ALL = "all";
-
-  private static final Set<String> NATIVE_FUNCTION_NAMES =
-      new HashSet<>(
-          Arrays.asList(
-              MIN_TIME,
-              MAX_TIME,
-              MIN_VALUE,
-              MAX_VALUE,
-              EXTREME,
-              FIRST_VALUE,
-              LAST_VALUE,
-              COUNT,
-              SUM,
-              AVG));
+  public static final String LAST = "last";
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;
@@ -189,8 +167,28 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_SET = 113;
   public static final int TOK_SCHEMA_TEMPLATE_ACTIVATE = 114;
   public static final int TOK_SCHEMA_TEMPLATE_UNSET = 115;
+  public static final int TOK_SCHEMA_TEMPLATE_APPEND = 116;
+  public static final int TOK_SCHEMA_TEMPLATE_PRUNE = 117;
+  public static final int TOK_SCHEMA_TEMPLATE_DROP = 118;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW = 119;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_NODES = 120;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET = 121;
+  public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING = 122;
 
-  public static final int TOK_SHOW_QUERY_RESOURCE = 116;
+  public static final int TOK_SHOW_QUERY_RESOURCE = 123;
+
+  public static final int TOK_CREATE_PIPESINK = 200;
+  public static final int TOK_DROP_PIPESINK = 201;
+  public static final int TOK_SHOW_PIPESINK = 202;
+  public static final int TOK_SHOW_PIPESINKTYPE = 203;
+  public static final int TOK_CREATE_PIPE = 204;
+  public static final int TOK_SHOW_PIPE = 205;
+  public static final int TOK_STOP_PIPE = 206;
+  public static final int TOK_START_PIPE = 207;
+  public static final int TOK_DROP_PIPE = 208;
+  public static final int TOK_SHOW_PIPE_SERVER = 209;
+  public static final int TOK_PIPE_SERVER_START = 210;
+  public static final int TOK_PIPE_SERVER_STOP = 211;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
@@ -269,15 +267,35 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_APPEND, "TOK_SCHEMA_TEMPLATE_APPEND");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_PRUNE, "TOK_SCHEMA_TEMPLATE_PRUNE");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_DROP, "TOK_SCHEMA_TEMPLATE_DROP");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW, "TOK_SCHEMA_TEMPLATE_SHOW");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_NODES, "TOK_SCHEMA_TEMPLATE_SHOW_NODES");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET");
+    tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING");
 
     tokenNames.put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE");
+
+    tokenNames.put(TOK_CREATE_PIPESINK, "TOK_CREATE_PIPESINK");
+    tokenNames.put(TOK_DROP_PIPESINK, "TOK_DROP_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINK, "TOK_SHOW_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINKTYPE, "TOK_SHOW_PIPESINKTYPE");
+    tokenNames.put(TOK_CREATE_PIPE, "TOK_CREATE_PIPE");
+    tokenNames.put(TOK_SHOW_PIPE, "TOK_SHOW_PIPE");
+    tokenNames.put(TOK_STOP_PIPE, "TOK_STOP_PIPE");
+    tokenNames.put(TOK_START_PIPE, "TOK_START_PIPE");
+    tokenNames.put(TOK_DROP_PIPE, "TOK_DROP_PIPE");
+    tokenNames.put(TOK_SHOW_PIPE_SERVER, "TOK_SHOW_PIPE_SERVER");
+    tokenNames.put(TOK_PIPE_SERVER_START, "TOK_PIPE_SERVER_START");
+    tokenNames.put(TOK_PIPE_SERVER_STOP, "TOK_PIPE_SERVER_STOP");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {
     return pathStr.equals(TIME_PATH);
   }
 
-  public static Set<String> getNativeFunctionNames() {
-    return NATIVE_FUNCTION_NAMES;
+  public static boolean isNotReservedPath(PartialPath pathStr) {
+    return !pathStr.equals(TIME_PATH);
   }
 }

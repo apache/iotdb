@@ -24,22 +24,19 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>influxdb-protocol</artifactId>
     <name>InfluxDB Protocol</name>
     <description>compatible with the protocol of influxdb.</description>
     <properties>
-        <influxdb.test.skip>false</influxdb.test.skip>
+        <influxdb.test.skip>true</influxdb.test.skip>
         <influxdb.it.skip>${influxdb.test.skip}</influxdb.it.skip>
         <influxdb.ut.skip>${influxdb.test.skip}</influxdb.ut.skip>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <docker.test.skip>false</docker.test.skip>
-        <docker.build.executable>docker</docker.build.executable>
-        <docker.build.single.argument>build -t apache/iotdb:maven-development -f ${basedir}/../docker/src/main/Dockerfile-single ${basedir}/../.</docker.build.single.argument>
-        <docker.clean.single.argument>image rm apache/iotdb:maven-development</docker.clean.single.argument>
+        <influxdb-java.version>2.21</influxdb-java.version>
     </properties>
     <dependencies>
         <dependency>
@@ -65,12 +62,12 @@
         <dependency>
             <groupId>org.influxdb</groupId>
             <artifactId>influxdb-java</artifactId>
-            <version>2.21</version>
+            <version>${influxdb-java.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
@@ -79,38 +76,6 @@
     </dependencies>
     <build>
         <plugins>
-            <!-- before integration test, we build the docker image -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <executions>
-                    <execution>
-                        <id>build-docker-image</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${docker.test.skip}</skip>
-                            <executable>${docker.build.executable}</executable>
-                            <commandlineArgs>${docker.build.single.argument}</commandlineArgs>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>clean-docker-image</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${docker.test.skip}</skip>
-                            <executable>${docker.build.executable}</executable>
-                            <commandlineArgs>${docker.clean.single.argument}</commandlineArgs>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

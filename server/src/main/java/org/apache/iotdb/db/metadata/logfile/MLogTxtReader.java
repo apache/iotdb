@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.logfile;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ public class MLogTxtReader implements AutoCloseable {
   public MLogTxtReader(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
-      logger.error("no mlog.txt to init MManager.");
+      logger.error("no mlog.txt to init SchemaRegion.");
       throw new IOException("mlog.txt does not exist.");
     }
 

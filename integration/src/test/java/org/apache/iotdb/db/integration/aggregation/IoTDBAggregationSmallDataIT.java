@@ -563,7 +563,7 @@ public class IoTDBAggregationSmallDataIT {
                   + resultSet.getString(minTime(d0s3))
                   + ","
                   + resultSet.getString(minTime(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
           Assert.assertEquals(1, cnt);
         }
@@ -601,7 +601,7 @@ public class IoTDBAggregationSmallDataIT {
                   + resultSet.getString(maxTime(d0s3))
                   + ","
                   + resultSet.getString(maxTime(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -635,7 +635,7 @@ public class IoTDBAggregationSmallDataIT {
                   + resultSet.getString(minValue(d0s1))
                   + ","
                   + resultSet.getString(minValue(d0s2));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -758,7 +758,7 @@ public class IoTDBAggregationSmallDataIT {
                     + resultSet.getString(d0s3)
                     + ","
                     + resultSet.getString(d1s0);
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(17, cnt);
@@ -772,7 +772,7 @@ public class IoTDBAggregationSmallDataIT {
           int cnt = 0;
           while (resultSet.next()) {
             String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
-            Assert.assertEquals(ans, retArray[cnt]);
+            Assert.assertEquals(retArray[cnt], ans);
             cnt++;
           }
           Assert.assertEquals(1, cnt);

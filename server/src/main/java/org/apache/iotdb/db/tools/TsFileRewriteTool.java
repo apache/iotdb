@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -503,7 +504,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
     tsFileResource.setMinPlanIndex(minPlanIndex);
     tsFileResource.setMaxPlanIndex(maxPlanIndex);
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     tsFileResource.serialize();
     return tsFileResource;
   }

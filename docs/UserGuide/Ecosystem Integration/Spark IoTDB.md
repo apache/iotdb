@@ -20,17 +20,21 @@
 -->
 ## Spark-IoTDB
 
-### version
+### Version
 
 The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | :-------------: | :-------------: | :------------: |:------------: |
-| `2.4.5`        | `2.12`        | `1.8`        | `0.13.0`|
+| `2.4.0-3.2.0`        | `2.12`        | `1.8`        | `0.13.0`|
 
+### Notice
 
-> Currently we only support spark version 2.4.5 and there are some known issue on 2.4.7, do no use it
-
+1. `Spark IoTDB Connector` only supports Spark `2.4.5` to `3.2.0` with `Scala 2.12`.
+If you need to support other versions, you can modify the Scala version of the POM file in the module `spark-iotdb-connector` in the source code and then recompile it.
+2. There is a conflict of thrift version between IoTDB and Spark.
+   Therefore, if you want to debug in spark-shell, you need to execute `rm -f $SPARK_HOME/jars/libthrift*` and `cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/` to resolve it.
+   Otherwise, you can only debug the code in IDE. If you want to run your task by `spark-submit`, you must package with dependency.
 
 ### Install
 ```shell
@@ -48,11 +52,6 @@ mvn clean scala:compile compile install
 ```
 
 #### spark-shell user guide
-
-Notice: There is a conflict of thrift version between IoTDB and Spark. 
-Therefore, if you want to debug in spark-shell, you need to execute `rm -f $SPARK_HOME/jars/libthrift*` and `cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/` to resolve it.
-Otherwise, you can only debug the code in IDE. If you want to run your task by `spark-submit`, you must package with dependency.
-
 
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar,iotdb-session-0.13.0-jar-with-dependencies.jar

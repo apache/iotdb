@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -34,7 +36,7 @@ public class SHA256DeviceID implements IDeviceID {
   long l3;
   long l4;
 
-  private static final String SEPARATOR = "#";
+  private static final String SEPARATOR = "_";
 
   /** using lots of message digest for improving parallelism */
   private static MessageDigest[] md;
@@ -56,6 +58,8 @@ public class SHA256DeviceID implements IDeviceID {
     }
   }
 
+  public SHA256DeviceID() {}
+
   public SHA256DeviceID(String deviceID) {
     // if this device id string is a sha 256 form, we just translate it without sha256
     if (deviceID.indexOf('.') == -1) {
@@ -71,6 +75,9 @@ public class SHA256DeviceID implements IDeviceID {
    * @param deviceID a sha 256 string
    */
   private void fromSHA256String(String deviceID) {
+    if (deviceID.startsWith("`") && deviceID.endsWith("`")) {
+      deviceID = deviceID.substring(1, deviceID.length() - 1);
+    }
     String[] part = deviceID.split(SEPARATOR);
     l1 = Long.parseLong(part[0]);
     l2 = Long.parseLong(part[1]);
@@ -143,6 +150,23 @@ public class SHA256DeviceID implements IDeviceID {
 
   @Override
   public String toStringID() {
-    return l1 + SEPARATOR + l2 + SEPARATOR + l3 + SEPARATOR + l4;
+    return "`" + l1 + SEPARATOR + l2 + SEPARATOR + l3 + SEPARATOR + l4 + "`";
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(l1, byteBuffer);
+    ReadWriteIOUtils.write(l2, byteBuffer);
+    ReadWriteIOUtils.write(l3, byteBuffer);
+    ReadWriteIOUtils.write(l4, byteBuffer);
+  }
+
+  public static SHA256DeviceID deserialize(ByteBuffer byteBuffer) {
+    SHA256DeviceID sha256DeviceID = new SHA256DeviceID();
+    sha256DeviceID.l1 = ReadWriteIOUtils.readLong(byteBuffer);
+    sha256DeviceID.l2 = ReadWriteIOUtils.readLong(byteBuffer);
+    sha256DeviceID.l3 = ReadWriteIOUtils.readLong(byteBuffer);
+    sha256DeviceID.l4 = ReadWriteIOUtils.readLong(byteBuffer);
+    return sha256DeviceID;
   }
 }

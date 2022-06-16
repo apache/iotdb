@@ -20,12 +20,12 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan.getTimeExpression;
 import static org.junit.Assert.assertFalse;
 
 public class ClusterQueryRouterTest extends BaseQueryTest {
@@ -275,6 +276,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       groupByPlan.setSlidingStep(5);
       groupByPlan.setInterval(5);
 
+      groupByPlan.setExpression(getTimeExpression(groupByPlan));
       QueryDataSet dataSet = clusterQueryRouter.groupBy(groupByPlan, queryContext);
 
       Object[][] answers =

@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MeasurementSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -44,12 +45,12 @@ import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -60,6 +61,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -195,9 +198,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getAllMeasurementSchema(
-              RaftNode header,
-              ByteBuffer planBinary,
-              AsyncMethodCallback<ByteBuffer> resultHandler) {
+              MeasurementSchemaRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
             resultHandler.onComplete(getAllMeasurementSchemaResult);
           }
 
@@ -246,10 +247,12 @@ public class SyncClientAdaptorTest {
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
             List<Byte> dataTypes = new ArrayList<>();
+            List<Boolean> underAlignedEntity = new ArrayList<>();
             for (int i = 0; i < path.size(); i++) {
               dataTypes.add(TSDataType.DOUBLE.serialize());
+              underAlignedEntity.add(false);
             }
-            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes));
+            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes, underAlignedEntity));
           }
 
           @Override
@@ -380,12 +383,21 @@ public class SyncClientAdaptorTest {
     assertEquals(
         new HashSet<>(Arrays.asList("1", "2", "3")),
         SyncClientAdaptor.getNextChildren(dataClient, TestUtils.getRaftNode(0, 0), "root"));
+
+    MeasurementSchemaRequest request;
+    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      new ShowTimeSeriesPlan(new PartialPath("root")).serialize(dataOutputStream);
+      request =
+          new MeasurementSchemaRequest(
+              0,
+              TestUtils.getRaftNode(0, 0),
+              TestUtils.getNode(1),
+              ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    }
     assertEquals(
         getAllMeasurementSchemaResult,
-        SyncClientAdaptor.getAllMeasurementSchema(
-            dataClient,
-            TestUtils.getRaftNode(0, 0),
-            new ShowTimeSeriesPlan(new PartialPath("root"))));
+        SyncClientAdaptor.getAllMeasurementSchema(dataClient, request));
     assertEquals(
         measurementSchemas,
         SyncClientAdaptor.pullMeasurementSchema(dataClient, new PullSchemaRequest()));
@@ -439,7 +451,7 @@ public class SyncClientAdaptorTest {
         lastResult,
         SyncClientAdaptor.last(
             dataClient,
-            Collections.singletonList(new PartialPath("1")),
+            Collections.singletonList(new PartialPath("`1`")),
             Collections.singletonList(TSDataType.INT64.ordinal()),
             null,
             new QueryContext(),

@@ -96,7 +96,7 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%IOTDB_HOME%\lib\*"
+if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
 set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 
@@ -110,7 +110,7 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+"%JAVA_HOME%\bin\java" %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
 goto finally
 
 :err

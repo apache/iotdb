@@ -37,7 +37,7 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"
 
 REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-set CLASSPATH="%IOTDB_HOME%\lib\*"
+if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
 
 REM -----------------------------------------------------------------------------
 set PARAMETERS=%*
@@ -59,12 +59,13 @@ echo %PARAMETERS% | findstr /c:"-h ">nul && (set PARAMETERS=%PARAMETERS%) || (se
 echo %PARAMETERS%
 
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
-
+set ret_code=%ERRORLEVEL%
 goto finally
 
 
 :err
 echo JAVA_HOME environment variable must be set!
+set ret_code=1
 pause
 
 
@@ -72,3 +73,5 @@ pause
 :finally
 
 ENDLOCAL
+
+EXIT /B %ret_code%

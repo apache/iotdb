@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -43,9 +43,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -53,20 +53,22 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneTest.class})
 public class IoTDBUDFManagementIT {
 
-  private static final int NATIVE_FUNCTIONS_COUNT = SQLConstant.getNativeFunctionNames().size();
-  private static final int BUILTIN_FUNCTIONS_COUNT = BuiltinFunction.values().length;
+  private static final int NATIVE_FUNCTIONS_COUNT =
+      BuiltinAggregationFunction.getNativeFunctionNames().size();
+  private static final int BUILTIN_FUNCTIONS_COUNT =
+      BuiltinTimeSeriesGeneratingFunction.values().length;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,

@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-metrics</artifactId>
@@ -32,9 +32,50 @@
     <name>metric module</name>
     <description>Metrics interface for IoTDB</description>
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
+    <properties>
+        <metrics.test.skip>false</metrics.test.skip>
+    </properties>
     <modules>
         <module>interface</module>
         <module>micrometer-metrics</module>
         <module>dropwizard-metrics</module>
     </modules>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>${metrics.test.skip}</skipTests>
+                    <forkMode>pertest</forkMode>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <profile>
+            <id>skipMetricsTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <metrics.test.skip>true</metrics.test.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_Metrics_Tests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <metrics.test.skip>true</metrics.test.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

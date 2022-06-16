@@ -20,12 +20,18 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -196,6 +202,25 @@ public class DoubleTVList extends TVList {
   }
 
   @Override
+  protected void writeValidValuesIntoTsBlock(
+      TsBlockBuilder builder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList) {
+    Integer deleteCursor = 0;
+    for (int i = 0; i < rowCount; i++) {
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
+        builder.getTimeColumnBuilder().writeLong(getTime(i));
+        builder
+            .getColumnBuilder(0)
+            .writeDouble(roundValueWithGivenPrecision(getDouble(i), floatPrecision, encoding));
+        builder.declarePosition();
+      }
+    }
+  }
+
+  @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
@@ -279,5 +304,33 @@ public class DoubleTVList extends TVList {
   @Override
   public TSDataType getDataType() {
     return TSDataType.DOUBLE;
+  }
+
+  @Override
+  public int serializedSize() {
+    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Double.BYTES);
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    WALWriteUtils.write(TSDataType.DOUBLE, buffer);
+    buffer.putInt(rowCount);
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      buffer.putLong(getTime(rowIdx));
+      buffer.putDouble(getDouble(rowIdx));
+    }
+  }
+
+  public static DoubleTVList deserialize(DataInputStream stream) throws IOException {
+    DoubleTVList tvList = new DoubleTVList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    double[] values = new double[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readDouble();
+    }
+    tvList.putDoubles(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

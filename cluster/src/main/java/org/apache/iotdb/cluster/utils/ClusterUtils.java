@@ -29,9 +29,9 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -323,7 +323,7 @@ public class ClusterUtils {
       PartialPath prefixPath, MetaGroupMember metaGroupMember) throws MetadataException {
     int slot;
     try {
-      PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(prefixPath);
+      PartialPath storageGroup = IoTDB.schemaProcessor.getBelongedStorageGroup(prefixPath);
       slot =
           SlotPartitionTable.getSlotStrategy()
               .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);
@@ -335,7 +335,7 @@ public class ClusterUtils {
       } catch (CheckConsistencyException checkConsistencyException) {
         throw new MetadataException(checkConsistencyException.getMessage());
       }
-      PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(prefixPath);
+      PartialPath storageGroup = IoTDB.schemaProcessor.getBelongedStorageGroup(prefixPath);
       slot =
           SlotPartitionTable.getSlotStrategy()
               .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.udf.example.ExampleUDFConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -45,6 +45,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class})
@@ -65,32 +66,38 @@ public class IoTDBNestedQueryIT {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.INT32,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
+        new PartialPath("root.vehicle.d1.s3"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s2"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.empty"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
@@ -106,10 +113,10 @@ public class IoTDBNestedQueryIT {
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
         statement.execute(
             String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i));
+                "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%d,%d,%s)", i, i, i, i));
         statement.execute(
             (String.format(
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -578,6 +585,55 @@ public class IoTDBNestedQueryIT {
           Assert.assertEquals((1.0D / 3.0D) * (1.0D - i), rs.getDouble(4), 0.01);
         }
         Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRegularLikeInExpressions() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT s1 FROM root.vehicle.d1 WHERE s3 LIKE '_' && s3 REGEXP '[0-9]' && s3 IN ('4', '2', '3')";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i <= 4; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTimeExpressions() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT s1, time, time, -(-time), time + 1 - 1, time + s1 - s1, time + 1 - 1 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; ++i) {
+          assertTrue(rs.next());
+          for (int j = 1; j <= 8; ++j) {
+            assertEquals(i, Double.parseDouble(rs.getString(j)), 0.001);
+          }
+        }
+        assertFalse(rs.next());
+      }
+
+      query = "SELECT time, 2 * time FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        assertFalse(rs.next());
       }
     } catch (SQLException e) {
       e.printStackTrace();

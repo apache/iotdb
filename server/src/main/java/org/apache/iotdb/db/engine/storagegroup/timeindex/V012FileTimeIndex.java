@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -165,6 +165,12 @@ public class V012FileTimeIndex implements ITimeIndex {
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
     throw new UnsupportedOperationException(
-        "V012FileTimeIndex should be rewritten while upgrading.");
+        "V012FileTimeIndex should be rewritten while upgrading and compareDegradePriority() method should not be called any more.");
+  }
+
+  @Override
+  public boolean mayContainsDevice(String device) {
+    throw new UnsupportedOperationException(
+        "V012FileTimeIndex should be rewritten while upgrading and containsDevice() method should not be called any more.");
   }
 }

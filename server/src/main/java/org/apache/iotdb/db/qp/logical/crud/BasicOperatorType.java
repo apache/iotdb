@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
 /** all basic operator in filter. */
 public enum BasicOperatorType {

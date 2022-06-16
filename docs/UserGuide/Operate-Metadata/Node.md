@@ -19,8 +19,8 @@
 
 -->
 
-## Node Management
-### Show Child Paths
+# Node Management
+## Show Child Paths
 
 ```
 SHOW CHILD PATHS pathPattern
@@ -45,7 +45,7 @@ It costs 0.002s
 
 > get all paths in form of root.xx.xx.xx：show child paths root.xx.xx
 
-### Show Child Nodes
+## Show Child Nodes
 
 ```
 SHOW CHILD NODES pathPattern
@@ -76,7 +76,7 @@ Example：
 +------------+
 ```
 
-### Count Nodes
+## Count Nodes
 
 IoTDB is able to use `COUNT NODES <PathPattern> LEVEL=<INTEGER>` to count the number of nodes at
  the given level in current Metadata Tree considering a given pattern. IoTDB will find paths that
@@ -129,7 +129,7 @@ It costs 0.002s
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
-### Show Devices
+## Show Devices
 
 * SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
 
@@ -206,4 +206,49 @@ It costs 0.003s
 +-----------------+-------------+---------+
 Total line number = 2
 It costs 0.001s
+```
+
+## Count Devices
+
+* COUNT DEVICES <PathPattern>
+
+The above statement is used to count the number of devices. At the same time, it is allowed to specify `PathPattern` to count the number of devices matching the `PathPattern`.
+
+SQL statement is as follows:
+
+```
+IoTDB> show devices
+IoTDB> count devices
+IoTDB> count devices root.ln.**
+```
+
+You can get results below:
+
+```
++-------------------+---------+
+|            devices|isAligned|
++-------------------+---------+
+|root.sgcc.wf03.wt03|    false|
+|    root.turbine.d1|    false|
+|  root.ln.wf02.wt02|    false|
+|  root.ln.wf01.wt01|    false|
++-------------------+---------+
+Total line number = 4
+It costs 0.024s
+
++-------+
+|devices|
++-------+
+|      4|
++-------+
+Total line number = 1
+It costs 0.004s
+
++-------+
+|devices|
++-------+
+|      2|
++-------+
+Total line number = 1
+It costs 0.004s
 ```
