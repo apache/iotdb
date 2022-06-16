@@ -45,6 +45,7 @@ import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
+import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
@@ -530,7 +531,28 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    RaftGroup groupInfo = getGroupInfo(raftGroupId);
+
+    if (groupInfo == null || !groupInfo.getPeers().contains(myself)) {
+      return failed(new ConsensusGroupNotExistException(groupId));
+    }
+
+    RatisClient client = null;
+    RaftClientReply reply;
+    try {
+      client = getRaftClient(groupInfo);
+      // TODO tuning snapshot create timeout
+      reply = client.getRaftClient().getSnapshotManagementApi().create(30000);
+    } catch (IOException ioException) {
+      return failed(new RatisRequestFailedException(ioException));
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
+    }
+
+    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {
