@@ -81,25 +81,25 @@ public class IoTDBUDFManagementIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      statement.execute("select udf(*, *) from root.vehicle");
+      statement.executeQuery("select udf(*, *) from root.vehicle");
 
-      ResultSet resultSet = statement.executeQuery("show functions");
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-      int count = 0;
-      while (resultSet.next()) {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
-          stringBuilder.append(resultSet.getString(i)).append(",");
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        int count = 0;
+        while (resultSet.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
+            stringBuilder.append(resultSet.getString(i)).append(",");
+          }
+          String result = stringBuilder.toString();
+          if (result.contains(FUNCTION_TYPE_NATIVE)) {
+            continue;
+          }
+          ++count;
         }
-        String result = stringBuilder.toString();
-        if (result.contains(FUNCTION_TYPE_NATIVE)) {
-          continue;
-        }
-        ++count;
+        Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
+        statement.execute("drop function udf");
       }
-      Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
-      resultSet.close();
-      statement.execute("drop function udf");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -110,30 +110,30 @@ public class IoTDBUDFManagementIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      statement.execute("select udf(*, *) from root.vehicle");
+      statement.executeQuery("select udf(*, *) from root.vehicle");
 
-      ResultSet resultSet = statement.executeQuery("show functions");
-      int count = 0;
-      while (resultSet.next()) {
-        ++count;
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        int count = 0;
+        while (resultSet.next()) {
+          ++count;
+        }
+        Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
+        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        statement.execute("drop function udf");
+
+        statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
+        statement.executeQuery("select udf(*, *) from root.vehicle");
       }
-      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-      resultSet.close();
-      statement.execute("drop function udf");
 
-      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      statement.execute("select udf(*, *) from root.vehicle");
-
-      resultSet = statement.executeQuery("show functions");
-      count = 0;
-      while (resultSet.next()) {
-        ++count;
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        int count = 0;
+        while (resultSet.next()) {
+          ++count;
+        }
+        Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
+        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        statement.execute("drop function udf");
       }
-      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-      resultSet.close();
-      statement.execute("drop function udf");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -143,7 +143,7 @@ public class IoTDBUDFManagementIT {
   public void testReflectBeforeCreate() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("select udf(*, *) from root.vehicle");
+      statement.executeQuery("select udf(*, *) from root.vehicle");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Failed to reflect UDF instance"));
     }
@@ -155,7 +155,7 @@ public class IoTDBUDFManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("drop function udf");
-      statement.execute("select udf(*, *) from root.vehicle");
+      statement.executeQuery("select udf(*, *) from root.vehicle");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Failed to reflect UDF instance"));
     }
@@ -295,7 +295,7 @@ public class IoTDBUDFManagementIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      statement.execute("select adder(*, *) from root.vehicle");
+      statement.executeQuery("select adder(*, *) from root.vehicle");
       statement.execute("drop function adder");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -308,33 +308,33 @@ public class IoTDBUDFManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
-      ResultSet resultSet = statement.executeQuery("show functions");
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-      int count = 0;
-      while (resultSet.next()) {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
-          stringBuilder.append(resultSet.getString(i)).append(",");
-        }
-        String result = stringBuilder.toString();
-        if (result.contains(FUNCTION_TYPE_NATIVE)) {
-          continue;
-        }
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        int count = 0;
+        while (resultSet.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
+            stringBuilder.append(resultSet.getString(i)).append(",");
+          }
+          String result = stringBuilder.toString();
+          if (result.contains(FUNCTION_TYPE_NATIVE)) {
+            continue;
+          }
 
-        if (result.contains(FUNCTION_TYPE_EXTERNAL_UDTF)) {
-          Assert.assertEquals(
-              String.format(
-                  "UDF,%s,org.apache.iotdb.db.query.udf.example.Adder,",
-                  FUNCTION_TYPE_EXTERNAL_UDTF),
-              result);
-          ++count;
-        } else if (result.contains(FUNCTION_TYPE_BUILTIN_UDTF)) {
-          ++count;
+          if (result.contains(FUNCTION_TYPE_EXTERNAL_UDTF)) {
+            Assert.assertEquals(
+                String.format(
+                    "UDF,%s,org.apache.iotdb.db.query.udf.example.Adder,",
+                    FUNCTION_TYPE_EXTERNAL_UDTF),
+                result);
+            ++count;
+          } else if (result.contains(FUNCTION_TYPE_BUILTIN_UDTF)) {
+            ++count;
+          }
         }
+        Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
+        statement.execute("drop function udf");
       }
-      Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
-      resultSet.close();
-      statement.execute("drop function udf");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
