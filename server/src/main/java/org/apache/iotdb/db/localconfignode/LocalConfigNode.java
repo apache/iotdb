@@ -59,7 +59,6 @@ import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateExceptio
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -170,17 +169,18 @@ public class LocalConfigNode {
     }
 
     try {
-      SchemaResourceManager.initSchemaResource();
 
       templateManager.init();
       storageGroupSchemaManager.init();
 
-      Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo = schemaEngine.init();
+      Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo =
+          schemaEngine.initForLocalConfigNode();
       schemaPartitionTable.init(recoveredLocalSchemaRegionInfo);
 
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                "LocalConfigNode-TimedForceMLog-Thread");
         ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
             timedForceMLogThread,
             this::forceMlog,
@@ -209,7 +209,6 @@ public class LocalConfigNode {
     }
 
     try {
-      SchemaResourceManager.clearSchemaResource();
 
       if (timedForceMLogThread != null) {
         timedForceMLogThread.shutdown();
@@ -237,7 +236,6 @@ public class LocalConfigNode {
 
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
-    schemaEngine.forceMlog();
   }
 
   // endregion

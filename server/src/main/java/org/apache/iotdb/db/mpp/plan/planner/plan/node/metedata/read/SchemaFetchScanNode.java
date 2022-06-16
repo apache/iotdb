@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
@@ -81,6 +82,15 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public List<String> getOutputColumnNames() {
     return ImmutableList.of();
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "SchemaFetchScan-%s:[StorageGroup: %s, DataRegion: %s]",
+        this.getPlanNodeId(),
+        storageGroup,
+        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override
