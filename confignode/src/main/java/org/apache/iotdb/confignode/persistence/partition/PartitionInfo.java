@@ -46,15 +46,12 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfos;
 import org.apache.iotdb.consensus.common.DataSet;
-<<<<<<< HEAD
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-=======
 import org.apache.iotdb.rpc.RpcUtils;
->>>>>>> 3e59ada74c (add new function: show (data | schema)? regions)
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -540,7 +537,6 @@ public class PartitionInfo implements SnapshotProcessor {
     return storageGroupPartitionTables.get(storageGroup).getSortedRegionSlotsCounter(type);
   }
 
-<<<<<<< HEAD
   /**
    * Get total region number
    *
@@ -604,9 +600,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return result;
   }
 
-=======
   @Override
->>>>>>> 3e59ada74c (add new function: show (data | schema)? regions)
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);

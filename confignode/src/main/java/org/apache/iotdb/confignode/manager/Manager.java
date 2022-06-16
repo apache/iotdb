@@ -222,9 +222,7 @@ public interface Manager {
 
   TSStatus dropFunction(String udfName);
 
-<<<<<<< HEAD
   void addMetrics();
-=======
+
   DataSet showRegion(GetRegionsInfoReq getRegionsinfoReq);
->>>>>>> 3e59ada74c (add new function: show (data | schema)? regions)
 }
