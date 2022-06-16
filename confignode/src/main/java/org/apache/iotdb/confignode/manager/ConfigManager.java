@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
@@ -552,7 +552,7 @@ public class ConfigManager implements Manager {
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     // Check global configuration
-    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
     if (!req.getDataRegionConsensusProtocolClass()

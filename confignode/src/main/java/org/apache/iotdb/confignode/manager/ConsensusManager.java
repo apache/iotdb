@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit;
 public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 

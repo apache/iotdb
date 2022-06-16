@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class ConfigNodeConf {
+public class ConfigNodeConfig {
 
   /** could set ip or hostname */
   private String rpcAddress = "0.0.0.0";
@@ -59,7 +59,7 @@ public class ConfigNodeConf {
   private final String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.MultiLeaderConsensus;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
 
   /** DataNode schema region consensus protocol */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
@@ -142,7 +142,7 @@ public class ConfigNodeConf {
   /** This parameter only exists for a few days */
   private boolean enableHeartbeat = true;
 
-  ConfigNodeConf() {
+  ConfigNodeConfig() {
     // empty constructor
   }
 
@@ -298,7 +298,7 @@ public class ConfigNodeConf {
     return connectionTimeoutInMS;
   }
 
-  public ConfigNodeConf setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+  public ConfigNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
     return this;
   }
