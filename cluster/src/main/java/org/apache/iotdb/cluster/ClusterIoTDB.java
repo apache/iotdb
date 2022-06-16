@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -158,7 +159,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     TProtocolFactory protocolFactory =
         ThriftServiceThread.getProtocolFactory(
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
-    metaGroupMember = new MetaGroupMember(thisNode, coordinator);
+    PlanBasedStateMachine stateMachine = new PlanBasedStateMachine();
+    metaGroupMember = new MetaGroupMember(thisNode, coordinator, stateMachine);
+    stateMachine.setMetaGroupMember(metaGroupMember);
     IoTDB.setClusterMode();
     IoTDB.setSchemaProcessor(CSchemaProcessor.getInstance());
     ((CSchemaProcessor) IoTDB.schemaProcessor).setMetaGroupMember(metaGroupMember);

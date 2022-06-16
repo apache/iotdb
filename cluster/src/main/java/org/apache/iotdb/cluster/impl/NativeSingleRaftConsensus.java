@@ -51,7 +51,7 @@ public class NativeSingleRaftConsensus implements ISingleConsensus {
 
   @Override
   public ConsensusReadResponse read(IConsensusRequest request) {
-    return null;
+    return new ConsensusReadResponse(null, raftMember.read(request));
   }
 
   @Override

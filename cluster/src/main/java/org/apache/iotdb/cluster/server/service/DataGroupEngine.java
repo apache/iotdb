@@ -75,7 +75,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   private static TProtocolFactory protocolFactory;
 
   private DataGroupEngine() {
-    dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
+    dataMemberFactory = new DataGroupMember.Factory(metaGroupMember);
     stoppedMemberManager = new StoppedMemberManager(dataMemberFactory, thisNode);
   }
 
@@ -88,7 +88,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
 
   @TestOnly
   public void resetFactory() {
-    dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
+    dataMemberFactory = new DataGroupMember.Factory(metaGroupMember);
   }
 
   @TestOnly

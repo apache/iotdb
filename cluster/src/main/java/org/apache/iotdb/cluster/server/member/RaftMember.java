@@ -90,6 +90,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -862,6 +863,10 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return A TSStatus indicating the execution result.
    */
   public abstract ConsensusWriteResponse executeRequest(IConsensusRequest plan);
+
+  public DataSet read(IConsensusRequest request) {
+    return stateMachine.read(request);
+  }
 
   abstract ClientCategory getClientCategory();
 
