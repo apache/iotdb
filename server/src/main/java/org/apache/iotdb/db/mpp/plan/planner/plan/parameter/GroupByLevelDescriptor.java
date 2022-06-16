@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,11 +33,11 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
   private final Expression outputExpression;
 
   public GroupByLevelDescriptor(
-      AggregationType aggregationType,
+      String aggregationFuncName,
       AggregationStep step,
       List<Expression> inputExpressions,
       Expression outputExpression) {
-    super(aggregationType, step, inputExpressions);
+    super(aggregationFuncName, step, inputExpressions);
     this.outputExpression = outputExpression;
   }
 
@@ -69,7 +68,7 @@ public class GroupByLevelDescriptor extends AggregationDescriptor {
 
   public GroupByLevelDescriptor deepClone() {
     return new GroupByLevelDescriptor(
-        this.getAggregationType(),
+        this.getAggregationFuncName(),
         this.getStep(),
         this.getInputExpressions(),
         this.getOutputExpression());
