@@ -20,11 +20,14 @@ package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 
+import java.util.LinkedList;
+
 /** HeartbeatCache caches and maintains all the heartbeat data */
 public class HeartbeatCache implements IHeartbeatStatistic {
 
-  // Cached heartbeat samples
-  private final HeartbeatWindow window;
+  // Cache heartbeat samples
+  private static final int maximumWindowSize = 100;
+  private final LinkedList<HeartbeatPackage> slidingWindow;
 
   // For guiding queries, the higher the score the higher the load
   private volatile float loadScore;
@@ -32,7 +35,7 @@ public class HeartbeatCache implements IHeartbeatStatistic {
   private volatile NodeStatus status;
 
   public HeartbeatCache() {
-    this.window = new HeartbeatWindow();
+    this.slidingWindow = new LinkedList<>();
 
     this.loadScore = 0;
     this.status = NodeStatus.Running;
@@ -40,12 +43,29 @@ public class HeartbeatCache implements IHeartbeatStatistic {
 
   @Override
   public void cacheHeartBeat(HeartbeatPackage newHeartbeat) {
-    window.addHeartbeat(newHeartbeat);
+    synchronized (slidingWindow) {
+      // Only sequential heartbeats are accepted.
+      // And un-sequential heartbeats will be discarded.
+      if (slidingWindow.size() == 0
+          || slidingWindow.getLast().getSendTimestamp() < newHeartbeat.getSendTimestamp()) {
+        slidingWindow.add(newHeartbeat);
+      }
+
+      while (slidingWindow.size() > maximumWindowSize) {
+        slidingWindow.removeFirst();
+      }
+    }
   }
 
   @Override
   public void updateLoadStatistic() {
-    long lastSendTime = window.getLastSendTime();
+    long lastSendTime = 0;
+    synchronized (slidingWindow) {
+      if (slidingWindow.size() > 0) {
+        lastSendTime = slidingWindow.getLast().getSendTimestamp();
+      }
+    }
+
     // TODO: Optimize
     loadScore = -lastSendTime;
     if (System.currentTimeMillis() - lastSendTime > 20_000) {

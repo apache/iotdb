@@ -44,10 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -179,17 +177,6 @@ public class LoadManager implements Runnable {
    * @param onlineDataNodes DataNodes that currently online
    */
   private void pingOnlineDataNodes(List<TDataNodeInfo> onlineDataNodes) {
-    // Discard heartbeat cache of the offline DataNodes
-    Set<Integer> onlineIds = new HashSet<>();
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
-      onlineIds.add(dataNodeInfo.getLocation().getDataNodeId());
-    }
-    for (Integer dataNodeId : heartbeatCacheMap.keySet()) {
-      if (!onlineIds.contains(dataNodeId)) {
-        heartbeatCacheMap.remove(dataNodeId);
-      }
-    }
-
     // Send heartbeat requests
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       HeartbeatHandler handler =
