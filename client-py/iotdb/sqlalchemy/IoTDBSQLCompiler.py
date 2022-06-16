@@ -36,16 +36,16 @@ class IoTDBSQLCompiler(SQLCompiler):
         return ""
 
     def visit_select(
-            self,
-            select,
-            asfrom=False,
-            parens=True,
-            fromhints=None,
-            compound_index=0,
-            nested_join_translation=False,
-            select_wraps_for=None,
-            lateral=False,
-            **kwargs
+        self,
+        select,
+        asfrom=False,
+        parens=True,
+        fromhints=None,
+        compound_index=0,
+        nested_join_translation=False,
+        select_wraps_for=None,
+        lateral=False,
+        **kwargs,
     ):
         """
         Override this method to solve two problems
@@ -53,16 +53,14 @@ class IoTDBSQLCompiler(SQLCompiler):
         2. IoTDB does not support path.measurement format to determine a column (e.g. select root.storagegroup.device.temperature from root.storagegroup.device)
         """
         needs_nested_translation = (
-                select.use_labels
-                and not nested_join_translation
-                and not self.stack
-                and not self.dialect.supports_right_nested_joins
+            select.use_labels
+            and not nested_join_translation
+            and not self.stack
+            and not self.dialect.supports_right_nested_joins
         )
 
         if needs_nested_translation:
-            transformed_select = self._transform_select_for_nested_joins(
-                select
-            )
+            transformed_select = self._transform_select_for_nested_joins(select)
             text = self.visit_select(
                 transformed_select,
                 asfrom=asfrom,
@@ -70,16 +68,16 @@ class IoTDBSQLCompiler(SQLCompiler):
                 fromhints=fromhints,
                 compound_index=compound_index,
                 nested_join_translation=True,
-                **kwargs
+                **kwargs,
             )
 
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
         populate_result_map = need_column_expressions = (
-                toplevel
-                or entry.get("need_result_map_for_compound", False)
-                or entry.get("need_result_map_for_nested", False)
+            toplevel
+            or entry.get("need_result_map_for_compound", False)
+            or entry.get("need_result_map_for_nested", False)
         )
 
         if compound_index > 0:
@@ -93,9 +91,7 @@ class IoTDBSQLCompiler(SQLCompiler):
 
         if needs_nested_translation:
             if populate_result_map:
-                self._transform_result_map_for_nested_joins(
-                    select, transformed_select
-                )
+                self._transform_result_map_for_nested_joins(select, transformed_select)
             return text
 
         froms = self._setup_select_stack(select, entry, asfrom, lateral)
@@ -134,9 +130,7 @@ class IoTDBSQLCompiler(SQLCompiler):
                     need_column_expressions=need_column_expressions,
                 )
             )
-        inner_columns = [
-            c for c in columns if c is not None
-        ]
+        inner_columns = [c for c in columns if c is not None]
 
         if populate_result_map and select_wraps_for is not None:
             # if this select is a compiler-generated wrapper,
@@ -145,10 +139,7 @@ class IoTDBSQLCompiler(SQLCompiler):
             translate = dict(
                 zip(
                     [name for (key, name) in select._columns_plus_names],
-                    [
-                        name
-                        for (key, name) in select_wraps_for._columns_plus_names
-                    ],
+                    [name for (key, name) in select_wraps_for._columns_plus_names],
                 )
             )
 
@@ -162,19 +153,32 @@ class IoTDBSQLCompiler(SQLCompiler):
         time_column_index = []
         time_column_names = []
         for i in range(len(inner_columns)):
-            column_strs = inner_columns[i].replace(self.preparer.initial_quote, "").split()
+            column_strs = (
+                inner_columns[i].replace(self.preparer.initial_quote, "").split()
+            )
             if "Time" in column_strs:
                 time_column_index.append(str(i))
-                time_column_names.append(column_strs[2] if OPERATORS[operators.as_] in column_strs else column_strs[0])
+                time_column_names.append(
+                    column_strs[2]
+                    if OPERATORS[operators.as_] in column_strs
+                    else column_strs[0]
+                )
         # delete Time column
         inner_columns = list(
             filter(
-                lambda x: "Time" not in x.replace(self.preparer.initial_quote, "").split(), inner_columns
+                lambda x: "Time"
+                not in x.replace(self.preparer.initial_quote, "").split(),
+                inner_columns,
             )
         )
         if inner_columns and time_column_index:
-            inner_columns[-1] = inner_columns[-1] + " \n FROM Time Index " + " ".join(
-                time_column_index) + "\n FROM Time Name " + " ".join(time_column_names)
+            inner_columns[-1] = (
+                inner_columns[-1]
+                + " \n FROM Time Index "
+                + " ".join(time_column_index)
+                + "\n FROM Time Name "
+                + " ".join(time_column_names)
+            )
 
         text = self._compose_select_body(
             text, select, inner_columns, froms, byfrom, kwargs
@@ -193,9 +197,7 @@ class IoTDBSQLCompiler(SQLCompiler):
             text = self._render_cte_clause() + text
 
         if select._suffixes:
-            text += " " + self._generate_prefixes(
-                select, select._suffixes, **kwargs
-            )
+            text += " " + self._generate_prefixes(select, select._suffixes, **kwargs)
 
         self.stack.pop(-1)
 
@@ -205,14 +207,14 @@ class IoTDBSQLCompiler(SQLCompiler):
             return text
 
     def visit_table(
-            self,
-            table,
-            asfrom=False,
-            iscrud=False,
-            ashint=False,
-            fromhints=None,
-            use_schema=True,
-            **kwargs
+        self,
+        table,
+        asfrom=False,
+        iscrud=False,
+        ashint=False,
+        fromhints=None,
+        use_schema=True,
+        **kwargs,
     ):
         """
         IoTDB's table does not support quotation marks (e.g. select ** from `root.`)
@@ -222,23 +224,17 @@ class IoTDBSQLCompiler(SQLCompiler):
             effective_schema = self.preparer.schema_for_object(table)
 
             if use_schema and effective_schema:
-                ret = (
-                        effective_schema
-                        + "."
-                        + table.name
-                )
+                ret = effective_schema + "." + table.name
             else:
                 ret = table.name
             if fromhints and table in fromhints:
-                ret = self.format_from_hint_text(
-                    ret, table, fromhints[table], iscrud
-                )
+                ret = self.format_from_hint_text(ret, table, fromhints[table], iscrud)
             return ret
         else:
             return ""
 
     def visit_column(
-            self, column, add_to_result_map=None, include_table=True, **kwargs
+        self, column, add_to_result_map=None, include_table=True, **kwargs
     ):
         """
         IoTDB's where statement does not support "table".column format(e.g. "table".column > 1)

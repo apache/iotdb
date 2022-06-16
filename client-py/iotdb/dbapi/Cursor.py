@@ -123,8 +123,7 @@ class Cursor(object):
                     ]
                 elif seq.find("FROM Time Name") >= 0:
                     time_names = [
-                        name
-                        for name in seq.replace("FROM Time Name", "").split()
+                        name for name in seq.replace("FROM Time Name", "").split()
                     ]
                 else:
                     sql_seqs.append(seq)
