@@ -19,11 +19,20 @@ package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import io.moquette.interception.AbstractInterceptHandler;
@@ -37,24 +46,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 
 /** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
 
-  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private long sessionId;
-
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
 
+  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private long sessionId;
   private final PayloadFormatter payloadFormat;
+  private final IPartitionFetcher partitionFetcher;
+  private final ISchemaFetcher schemaFetcher;
 
   public PublishHandler(IoTDBConfig config) {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
+    if (config.isClusterMode()) {
+      partitionFetcher = ClusterPartitionFetcher.getInstance();
+      schemaFetcher = ClusterSchemaFetcher.getInstance();
+    } else {
+      partitionFetcher = StandalonePartitionFetcher.getInstance();
+      schemaFetcher = StandaloneSchemaFetcher.getInstance();
+    }
   }
 
   protected PublishHandler(PayloadFormatter payloadFormat) {
     this.payloadFormat = payloadFormat;
+    partitionFetcher = StandalonePartitionFetcher.getInstance();
+    schemaFetcher = StandaloneSchemaFetcher.getInstance();
   }
 
   @Override
@@ -110,20 +130,40 @@ public class PublishHandler extends AbstractInterceptHandler {
         continue;
       }
 
-      boolean status = false;
+      TSStatus tsStatus = null;
       try {
-        PartialPath path = new PartialPath(event.getDevice());
-        InsertRowPlan plan =
-            new InsertRowPlan(
-                path,
-                event.getTimestamp(),
-                event.getMeasurements().toArray(new String[0]),
-                event.getValues().toArray(new String[0]));
-        TSStatus tsStatus = SESSION_MANAGER.checkAuthority(plan, sessionId);
-        if (tsStatus != null) {
+        InsertStatement statement = new InsertStatement();
+        statement.setDevice(new PartialPath(event.getDevice()));
+        statement.setTimes(new long[] {event.getTimestamp()});
+        statement.setMeasurementList(event.getMeasurements().toArray(new String[0]));
+        String[] values = event.getValues().toArray(new String[0]);
+        List<String[]> valuesList = new ArrayList<>(1);
+        valuesList.add(values);
+        statement.setValuesList(valuesList);
+
+        // Using InsertRowStatement will cause insert failing
+        //        InsertRowStatement statement = new InsertRowStatement();
+        //        statement.setDevicePath(new PartialPath(event.getDevice()));
+        //        statement.setTime(event.getTimestamp());
+        //        statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
+        //        statement.setAligned(false);
+        //        statement.setValues(event.getValues().toArray(new String[0]));
+
+        tsStatus = AuthorityChecker.checkAuthority(statement, sessionId);
+        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOG.warn(tsStatus.message);
         } else {
-          status = IoTDB.serviceProvider.executeNonQuery(plan);
+          long queryId = SESSION_MANAGER.requestQueryId(false);
+          ExecutionResult result =
+              Coordinator.getInstance()
+                  .execute(
+                      statement,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(sessionId),
+                      "",
+                      partitionFetcher,
+                      schemaFetcher);
+          tsStatus = result.status;
         }
       } catch (Exception e) {
         LOG.warn(
@@ -133,8 +173,7 @@ public class PublishHandler extends AbstractInterceptHandler {
             event.getTimestamp(),
             e);
       }
-
-      LOG.debug("event process result: {}", status);
+      LOG.debug("event process result: {}", tsStatus);
     }
   }
 }
