@@ -58,6 +58,7 @@ import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
+import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
@@ -537,18 +538,16 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
-    RatisClient client = null;
+    SnapshotManagementRequest request =
+        SnapshotManagementRequest.newCreate(
+            localFakeId, myself.getId(), raftGroupId, localFakeCallId.incrementAndGet(), 30000);
+
     RaftClientReply reply;
     try {
-      client = getRaftClient(groupInfo);
       // TODO tuning snapshot create timeout
-      reply = client.getRaftClient().getSnapshotManagementApi().create(30000);
+      reply = server.submitClientRequest(request);
     } catch (IOException ioException) {
       return failed(new RatisRequestFailedException(ioException));
-    } finally {
-      if (client != null) {
-        client.returnSelf();
-      }
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
