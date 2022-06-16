@@ -118,22 +118,23 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(insertSql);
       }
 
-      ResultSet resultSet;
-      resultSet = statement.executeQuery("SHOW TIMESERIES");
-      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
-        expectedResult.remove(resultSet.getString("timeseries"));
+        while (resultSet.next()) {
+          Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
+          expectedResult.remove(resultSet.getString("timeseries"));
+        }
+        Assert.assertEquals(0, expectedResult.size());
       }
-      Assert.assertEquals(0, expectedResult.size());
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
             String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
-        resultSet = statement.executeQuery(selectSql);
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+        try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+        }
       }
 
     } catch (SQLException e) {
@@ -210,22 +211,23 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(insertSql);
       }
 
-      ResultSet resultSet;
-      resultSet = statement.executeQuery("SHOW TIMESERIES");
-      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
-        expectedResult.remove(resultSet.getString("timeseries"));
+        while (resultSet.next()) {
+          Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
+          expectedResult.remove(resultSet.getString("timeseries"));
+        }
+        Assert.assertEquals(0, expectedResult.size());
       }
-      Assert.assertEquals(0, expectedResult.size());
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
             String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
-        resultSet = statement.executeQuery(selectSql);
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+        try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+        }
       }
 
     } catch (SQLException e) {
@@ -379,62 +381,74 @@ public class IoTDBSyntaxConventionIdentifierIT {
       }
 
       int cnt = 0;
-      ResultSet resultSet;
-      resultSet = statement.executeQuery("SELECT `1` + 1 FROM root.sg1.d1");
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("SELECT `1` + 1 FROM root.sg1.d1")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(pointCnt, cnt);
       }
-      Assert.assertEquals(pointCnt, cnt);
 
       cnt = 0;
-      resultSet = statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1` > 1");
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1` > 1")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
 
       cnt = 0;
-      resultSet = statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1");
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(pointCnt, cnt);
       }
-      Assert.assertEquals(pointCnt, cnt);
 
       cnt = 0;
-      resultSet = statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1`>0");
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1`>0")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
       }
-      Assert.assertEquals(2, cnt);
 
       cnt = 0;
-      resultSet = statement.executeQuery("SELECT avg(`1`)+1 FROM root.sg1.d1");
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("SELECT avg(`1`)+1 FROM root.sg1.d1")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
 
       cnt = 0;
-      resultSet = statement.executeQuery("SELECT count(`1`)+1 FROM root.sg1.d1 where `1`>1");
-      while (resultSet.next()) {
-        Assert.assertEquals(2.0, resultSet.getDouble(1), 1e-7);
-        cnt++;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT count(`1`)+1 FROM root.sg1.d1 where `1`>1")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(2.0, resultSet.getDouble(1), 1e-7);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
 
       cnt = 0;
-      resultSet = statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1");
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(pointCnt, cnt);
       }
-      Assert.assertEquals(pointCnt, cnt);
 
       cnt = 0;
-      resultSet = statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1 where `1`>1");
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1 where `1`>1")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -453,14 +467,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
       for (String udfName : udfNames) {
         statement.execute(String.format(createSql, udfName));
       }
-      statement.execute("show functions");
-      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-      ResultSet resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        if (resultSet.getString(2).equals("external UDTF")) {
-          String udf = resultSet.getString(1).toLowerCase();
-          Assert.assertTrue(expectedResult.contains(udf));
-          expectedResult.remove(udf);
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
+        while (resultSet.next()) {
+          if (resultSet.getString(2).equals("external UDTF")) {
+            String udf = resultSet.getString(1).toLowerCase();
+            Assert.assertTrue(expectedResult.contains(udf));
+            expectedResult.remove(udf);
+          }
         }
       }
     } catch (SQLException e) {
@@ -532,8 +546,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
       };
 
       // show
-      ResultSet resultSet = statement.executeQuery("show triggers");
-      assertFalse(resultSet.next());
+      try (ResultSet resultSet = statement.executeQuery("show triggers")) {
+        assertFalse(resultSet.next());
+      }
 
       String createTimeSereisSql = "CREATE TIMESERIES %s FLOAT";
       String createTriggerSql =
@@ -544,11 +559,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(String.format(createTriggerSql, triggerNames[i], timeseries[i]));
       }
       Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-      resultSet = statement.executeQuery("show triggers");
-      while (resultSet.next()) {
-        String trigger = resultSet.getString(1).toLowerCase();
-        Assert.assertTrue(expectedResult.contains(trigger));
-        expectedResult.remove(trigger);
+      try (ResultSet resultSet = statement.executeQuery("show triggers")) {
+        while (resultSet.next()) {
+          String trigger = resultSet.getString(1).toLowerCase();
+          Assert.assertTrue(expectedResult.contains(trigger));
+          expectedResult.remove(trigger);
+        }
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -691,16 +707,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(createTemplateSql);
       }
 
-      boolean hasResult = statement.execute("SHOW TEMPLATES");
-      Assert.assertTrue(hasResult);
-      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-
-      ResultSet resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
-        expectedResult.remove(resultSet.getString("template name"));
+      try (ResultSet resultSet = statement.executeQuery("SHOW TEMPLATES")) {
+        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
+        while (resultSet.next()) {
+          Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
+          expectedResult.remove(resultSet.getString("template name"));
+        }
+        Assert.assertEquals(0, expectedResult.size());
       }
-      Assert.assertEquals(0, expectedResult.size());
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -793,11 +807,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(String.format(createUsersSql, userName));
       }
       Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-      ResultSet resultSet = statement.executeQuery("list user");
-      while (resultSet.next()) {
-        String user = resultSet.getString("user").toLowerCase();
-        Assert.assertTrue(expectedResult.contains(user));
-        expectedResult.remove(user);
+      try (ResultSet resultSet = statement.executeQuery("list user")) {
+        while (resultSet.next()) {
+          String user = resultSet.getString("user").toLowerCase();
+          Assert.assertTrue(expectedResult.contains(user));
+          expectedResult.remove(user);
+        }
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -879,11 +894,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(String.format(createRolesSql, roleName));
       }
       Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-      ResultSet resultSet = statement.executeQuery("list role");
-      while (resultSet.next()) {
-        String role = resultSet.getString("role").toLowerCase();
-        Assert.assertTrue(expectedResult.contains(role));
-        expectedResult.remove(role);
+      try (ResultSet resultSet = statement.executeQuery("list role")) {
+        while (resultSet.next()) {
+          String role = resultSet.getString("role").toLowerCase();
+          Assert.assertTrue(expectedResult.contains(role));
+          expectedResult.remove(role);
+        }
       }
     } catch (SQLException e) {
       e.printStackTrace();

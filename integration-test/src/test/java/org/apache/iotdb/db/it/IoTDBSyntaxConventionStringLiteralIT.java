@@ -95,20 +95,20 @@ public class IoTDBSyntaxConventionStringLiteralIT {
         statement.execute(insertSql);
       }
 
-      ResultSet resultSet;
-      resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1");
-
-      int cnt = 0;
-      while (resultSet.next()) {
-        Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
+          cnt++;
+        }
+        Assert.assertEquals(insertData.length, cnt);
       }
-      Assert.assertEquals(insertData.length, cnt);
 
       for (String insertDatum : insertData) {
         String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
-        resultSet = statement.executeQuery(querySql);
-        Assert.assertTrue(resultSet.next());
+        try (ResultSet resultSet = statement.executeQuery(querySql)) {
+          Assert.assertTrue(resultSet.next());
+        }
       }
 
     } catch (SQLException e) {
@@ -157,19 +157,20 @@ public class IoTDBSyntaxConventionStringLiteralIT {
         statement.execute(insertSql);
       }
 
-      ResultSet resultSet;
-      resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1");
-      int cnt = 0;
-      while (resultSet.next()) {
-        Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
+          cnt++;
+        }
+        Assert.assertEquals(insertData.length, cnt);
       }
-      Assert.assertEquals(insertData.length, cnt);
 
       for (String insertDatum : insertData) {
         String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
-        resultSet = statement.executeQuery(querySql);
-        Assert.assertTrue(resultSet.next());
+        try (ResultSet resultSet = statement.executeQuery(querySql)) {
+          Assert.assertTrue(resultSet.next());
+        }
       }
 
     } catch (SQLException e) {
@@ -468,22 +469,22 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       // executed correctly
-      ResultSet resultSet = statement.executeQuery("show functions");
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
-      int count = 0;
-      while (resultSet.next()) {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
-          stringBuilder.append(resultSet.getString(i)).append(",");
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        int count = 0;
+        while (resultSet.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
+            stringBuilder.append(resultSet.getString(i)).append(",");
+          }
+          String result = stringBuilder.toString();
+          if (result.contains(FUNCTION_TYPE_NATIVE)) {
+            continue;
+          }
+          ++count;
         }
-        String result = stringBuilder.toString();
-        if (result.contains(FUNCTION_TYPE_NATIVE)) {
-          continue;
-        }
-        ++count;
+        Assert.assertEquals(1 + BuiltinTimeSeriesGeneratingFunction.values().length, count);
       }
-      Assert.assertEquals(1 + BuiltinTimeSeriesGeneratingFunction.values().length, count);
-      resultSet.close();
       statement.execute("drop function udf");
 
       // without '' or ""
@@ -517,13 +518,16 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
       statement.execute("INSERT INTO root.vehicle.d1(time,s1) values (1,2.0),(2,3.0)");
 
-      ResultSet resultSet =
-          statement.executeQuery("select bottom_k(s1,'k' = '1') from root.vehicle.d1");
-      assertTrue(resultSet.next());
-      Assert.assertEquals("2.0", resultSet.getString(2));
-      resultSet = statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1");
-      assertTrue(resultSet.next());
-      Assert.assertEquals("2.0", resultSet.getString(2));
+      try (ResultSet resultSet =
+          statement.executeQuery("select bottom_k(s1,'k' = '1') from root.vehicle.d1")) {
+        assertTrue(resultSet.next());
+        Assert.assertEquals("2.0", resultSet.getString(2));
+      }
+      try (ResultSet resultSet =
+          statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1")) {
+        assertTrue(resultSet.next());
+        Assert.assertEquals("2.0", resultSet.getString(2));
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -569,12 +573,13 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute(
           "create timeseries root.vehicle.d1.s6 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = `5`");
-      ResultSet resultSet = statement.executeQuery("show timeseries");
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(6, cnt);
       }
-      Assert.assertEquals(6, cnt);
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -617,12 +622,13 @@ public class IoTDBSyntaxConventionStringLiteralIT {
           "create timeseries root.vehicle.d1.s8 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
               + "tags(tag1=v1)");
-      ResultSet resultSet = statement.executeQuery("show timeseries");
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(8, cnt);
       }
-      Assert.assertEquals(8, cnt);
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -650,12 +656,13 @@ public class IoTDBSyntaxConventionStringLiteralIT {
           "create timeseries root.vehicle.d1.s4 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
               + "attributes('attr1'=v1, attr2=v2)");
-      ResultSet resultSet = statement.executeQuery("show timeseries");
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(4, cnt);
       }
-      Assert.assertEquals(4, cnt);
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -695,8 +702,9 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
       String selectSql = "select a as %s from root.sg";
       for (int i = 0; i < alias.length; i++) {
-        ResultSet resultSet = statement.executeQuery(String.format(selectSql, alias[i]));
-        Assert.assertEquals(res[i], resultSet.getMetaData().getColumnName(2));
+        try (ResultSet resultSet = statement.executeQuery(String.format(selectSql, alias[i]))) {
+          Assert.assertEquals(res[i], resultSet.getMetaData().getColumnName(2));
+        }
       }
 
       try {
@@ -729,9 +737,10 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       String alterSql = "ALTER timeseries root.sg.a UPSERT alias = %s";
       for (int i = 0; i < alias.length; i++) {
         statement.execute(String.format(alterSql, alias[i]));
-        ResultSet resultSet = statement.executeQuery("show timeseries");
-        resultSet.next();
-        Assert.assertEquals(res[i], resultSet.getString("alias"));
+        try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+          resultSet.next();
+          Assert.assertEquals(res[i], resultSet.getString("alias"));
+        }
       }
 
       try {
