@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlign
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
@@ -124,7 +125,8 @@ public enum PlanNodeType {
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY_MERGE((short) 48),
-  NODE_PATHS_COUNT((short) 49);
+  NODE_PATHS_COUNT((short) 49),
+  INTERNAL_CREATE_TIMESERIES((short) 50);
 
   private final short nodeType;
 
@@ -254,6 +256,8 @@ public enum PlanNodeType {
         return LastQueryMergeNode.deserialize(buffer);
       case 49:
         return NodePathsCountNode.deserialize(buffer);
+      case 50:
+        return InternalCreateTimeSeriesNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
