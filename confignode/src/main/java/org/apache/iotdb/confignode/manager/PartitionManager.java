@@ -448,6 +448,10 @@ public class PartitionManager {
     }
   }
 
+  public void addMetrics() {
+    partitionInfo.addMetrics();
+  }
+
   /**
    * Get TSeriesPartitionSlot
    *

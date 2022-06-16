@@ -119,4 +119,9 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), hasSgCol);
   }
+
+  @Override
+  public String toString() {
+    return String.format("DevicesSchemaScanNode-%s[Path: %s]", getPlanNodeId(), path);
+  }
 }

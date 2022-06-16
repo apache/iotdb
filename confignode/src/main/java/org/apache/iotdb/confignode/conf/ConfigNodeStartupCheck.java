@@ -171,6 +171,7 @@ public class ConfigNodeStartupCheck {
       conf.setConfigNodeList(
           Collections.singletonList(
               new TConfigNodeLocation(
+                  0,
                   new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                   new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
     }
@@ -182,6 +183,7 @@ public class ConfigNodeStartupCheck {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
+                -1,
                 new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
             conf.getDataRegionConsensusProtocolClass(),

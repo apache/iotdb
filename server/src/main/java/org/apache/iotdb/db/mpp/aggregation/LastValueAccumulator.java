@@ -104,6 +104,9 @@ public class LastValueAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
