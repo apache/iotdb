@@ -251,6 +251,11 @@ session.execute_query_statement(sql)
 session.execute_non_query_statement(sql)
 ```
 
+* Execute statement
+
+```python
+session.execute_statement(sql)
+```
 
 ### Schema Template
 #### Create Schema Template
@@ -470,15 +475,66 @@ The mapping relationship between them is：
 | Table                | Path ( from storage group to entity ) + Entity |
 | Column               | Measurement                                    |
 
+The following figure shows the relationship between the two more intuitively:
+
+![sqlalchemy-to-iotdb](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+
+#### Data type mapping
+| data type in IoTDB | data type in SQLAlchemy |
+|--------------------|-------------------------|
+| BOOLEAN            | Boolean                 |
+| INT32              | Integer                 |
+| INT64              | BigInteger              |
+| FLOAT              | Float                   |
+| DOUBLE             | Float                   |
+| TEXT               | Text                    |
+| LONG               | BigInteger              |
+
 #### Example
+
++ execute statement
+
 ```python
 from sqlalchemy import create_engine
+
 engine = create_engine("iotdb://root:root@127.0.0.1:6667")
 connect = engine.connect()
 result = connect.execute("SELECT ** FROM root")
 for row in result.fetchall():
     print(row)
 ```
+
++ ORM (now only simple queries are supported)
+
+```python
+from sqlalchemy import create_engine, Column, Float, BigInteger, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+metadata = MetaData(
+    schema='root.factory'
+)
+Base = declarative_base(metadata=metadata)
+
+
+class Device(Base):
+    __tablename__ = "room2.device1"
+    Time = Column(BigInteger, primary_key=True)
+    temperature = Column(Float)
+    status = Column(Float)
+
+
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+
+DbSession = sessionmaker(bind=engine)
+session = DbSession()
+
+res = session.query(Device.status).filter(Device.temperature > 1)
+
+for row in res:
+    print(row)
+```
+
 
 ## Developers
 

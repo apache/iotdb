@@ -246,6 +246,12 @@ session.execute_query_statement(sql)
 session.execute_non_query_statement(sql)
 ```
 
+* 执行语句
+
+```python
+session.execute_statement(sql)
+```
+
 
 ### 元数据模版接口
 #### 构建元数据模版
@@ -462,15 +468,65 @@ SQLAlchemy 中的元数据有：
 | Table                | Path ( from storage group to entity ) + Entity |
 | Column               | Measurement                                    |
 
-#### 简单示例
+下图更加清晰的展示了二者的映射关系：
+
+![sqlalchemy-to-iotdb](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+
+#### 数据类型映射
+| IoTDB 中的数据类型 | SQLAlchemy 中的数据类型 |
+|--------------|-------------------|
+| BOOLEAN      | Boolean           |
+| INT32        | Integer           |
+| INT64        | BigInteger        |
+| FLOAT        | Float             |
+| DOUBLE       | Float             |
+| TEXT         | Text              |
+| LONG         | BigInteger        |
+#### Example
+
++ 执行语句
+
 ```python
 from sqlalchemy import create_engine
+
 engine = create_engine("iotdb://root:root@127.0.0.1:6667")
 connect = engine.connect()
 result = connect.execute("SELECT ** FROM root")
 for row in result.fetchall():
     print(row)
 ```
+
++ ORM (目前只支持简单的查询)
+
+```python
+from sqlalchemy import create_engine, Column, Float, BigInteger, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+metadata = MetaData(
+    schema='root.factory'
+)
+Base = declarative_base(metadata=metadata)
+
+
+class Device(Base):
+    __tablename__ = "room2.device1"
+    Time = Column(BigInteger, primary_key=True)
+    temperature = Column(Float)
+    status = Column(Float)
+
+
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+
+DbSession = sessionmaker(bind=engine)
+session = DbSession()
+
+res = session.query(Device.status).filter(Device.temperature > 1)
+
+for row in res:
+    print(row)
+```
+
 ## 给开发人员
 
 ### 介绍
