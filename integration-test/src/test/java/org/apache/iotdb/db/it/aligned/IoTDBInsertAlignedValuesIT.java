@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -223,23 +222,33 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  @Test(expected = Exception.class)
+  @Test
   public void testInsertWithWrongMeasurementNum1() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the measurementList's size 2 is not consistent with the valueList's size 1"));
     }
   }
 
-  // TODO remove Ignore annotation while fixing this bug
-  @Ignore
-  @Test(expected = Exception.class)
-  public void testInsertWithWrongMeasurementNum2() throws SQLException {
+  @Test
+  public void testInsertWithWrongMeasurementNum2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "insert into root.t1.wf01.wt01(time, status, temperature) aligned values(11000, 100, 300, 400)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the measurementList's size 2 is not consistent with the valueList's size 3"));
     }
   }
 
@@ -268,8 +277,6 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  // TODO remove Ignore annotation while fixing this bug
-  @Ignore
   @Test
   public void testInsertWithDuplicatedMeasurements() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -278,7 +285,7 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, s3, status, status) aligned values(100, true, 20.1, 20.2)");
       fail();
     } catch (SQLException e) {
-      assertEquals("411: Insertion contains duplicated measurement: status", e.getMessage());
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: status"));
     }
   }
 }

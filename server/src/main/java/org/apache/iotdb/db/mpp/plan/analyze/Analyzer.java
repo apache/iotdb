@@ -58,6 +58,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
@@ -69,7 +70,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesByDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
@@ -880,7 +880,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsert(InsertStatement insertStatement, MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
-
+      insertStatement.semanticCheck();
       long[] timeArray = insertStatement.getTimes();
       PartialPath devicePath = insertStatement.getDevice();
       String[] measurements = insertStatement.getMeasurementList();
@@ -976,18 +976,18 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitCreateTimeseriesByDevice(
-        CreateTimeSeriesByDeviceStatement createTimeSeriesByDeviceStatement,
+    public Analysis visitInternalCreateTimeseries(
+        InternalCreateTimeSeriesStatement internalCreateTimeSeriesStatement,
         MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
 
       Analysis analysis = new Analysis();
-      analysis.setStatement(createTimeSeriesByDeviceStatement);
+      analysis.setStatement(internalCreateTimeSeriesStatement);
 
       PathPatternTree pathPatternTree = new PathPatternTree();
-      for (String measurement : createTimeSeriesByDeviceStatement.getMeasurements()) {
+      for (String measurement : internalCreateTimeSeriesStatement.getMeasurements()) {
         pathPatternTree.appendFullPath(
-            createTimeSeriesByDeviceStatement.getDevicePath(), measurement);
+                internalCreateTimeSeriesStatement.getDevicePath(), measurement);
       }
 
       SchemaPartition schemaPartitionInfo;

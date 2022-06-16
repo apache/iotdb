@@ -15,27 +15,28 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
+package org.apache.iotdb.db.exception.metadata;
 
-/** All the statistic interfaces that provided by HeartbeatCache */
-public interface IHeartbeatStatistic {
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  /**
-   * Cache the newest HeartbeatPackage
-   *
-   * @param newHeartbeat The newest HeartbeatData
-   */
-  void cacheHeartBeat(HeartbeatPackage newHeartbeat);
+public class MeasurementAlreadyExistException extends MetadataException {
 
-  /** Invoking periodically to update node load statistics */
-  void updateLoadStatistic();
+  private MeasurementPath measurementPath;
 
-  /** @return The latest load score of a node, the higher the score the higher the load */
-  float getLoadScore();
+  public MeasurementAlreadyExistException(String path, MeasurementPath measurementPath) {
+    super(
+        String.format("Path [%s] already exist", path),
+        TSStatusCode.MEASUREMENT_ALREADY_EXIST.getStatusCode());
+    this.isUserException = true;
+    this.measurementPath = measurementPath;
+  }
 
-  /** @return The latest status of a node for showing cluster */
-  NodeStatus getNodeStatus();
+  public MeasurementPath getMeasurementPath() {
+    return measurementPath;
+  }
 }
