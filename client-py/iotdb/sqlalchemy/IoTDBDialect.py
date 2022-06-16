@@ -24,6 +24,7 @@ from iotdb import dbapi
 
 from .IoTDBSQLCompiler import IoTDBSQLCompiler
 from .IoTDBTypeCompiler import IoTDBTypeCompiler
+from .IoTDBIdentifierPreparer import IoTDBIdentifierPreparer
 
 TYPES_MAP = {
     "BOOLEAN": types.Boolean,
@@ -41,29 +42,23 @@ class IoTDBDialect(default.DefaultDialect):
     driver = "iotdb-python"
     statement_compiler = IoTDBSQLCompiler
     type_compiler = IoTDBTypeCompiler
+    preparer = IoTDBIdentifierPreparer
     convert_unicode = True
 
     supports_unicode_statements = True
     supports_unicode_binds = True
+    supports_simple_order_by_label = False
+    supports_schemas = True
+    supports_right_nested_joins = False
     description_encoding = None
 
     if hasattr(String, "RETURNS_UNICODE"):
         returns_unicode_strings = String.RETURNS_UNICODE
     else:
-
         def _check_unicode_returns(self, connection, additional_tests=None):
             return True
 
         _check_unicode_returns = _check_unicode_returns
-
-    def _get_default_schema_name(self, connection):
-        return "root"
-
-    @util.memoized_property
-    def _dialect_specific_select_one(self):
-        # IoTDB does not support select 1
-        # so replace the statement with "show version"
-        return "SHOW VERSION"
 
     def create_connect_args(self, url):
         # inherits the docstring from interfaces.Dialect.create_connect_args
@@ -108,11 +103,17 @@ class IoTDBDialect(default.DefaultDialect):
     def get_indexes(self, connection, table_name, schema=None, **kw):
         return []
 
+    @util.memoized_property
+    def _dialect_specific_select_one(self):
+        # IoTDB does not support select 1
+        # so replace the statement with "show version"
+        return "SHOW VERSION"
+
     def _general_time_column_info(self):
         return {
             "name": "Time",
             "type": self._resolve_type("LONG"),
-            "nullable": True,
+            "nullable": False,
             "default": None,
         }
 
@@ -120,9 +121,6 @@ class IoTDBDialect(default.DefaultDialect):
         return {
             "name": row[0].replace(schema + "." + table_name + ".", "", 1),
             "type": self._resolve_type(row[3]),
-            # In Crate every column is nullable except PK
-            # Primary Key Constraints are not nullable anyway, no matter what
-            # we return here, so it's fine to return always `True`
             "nullable": True,
             "default": None,
         }
