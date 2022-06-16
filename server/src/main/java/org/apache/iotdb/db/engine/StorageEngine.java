@@ -976,7 +976,7 @@ public class StorageEngine implements IService {
       throws LoadFileException, StorageEngineException, MetadataException {
     Set<String> deviceSet = newTsFileResource.getDevices();
     if (deviceSet == null || deviceSet.isEmpty()) {
-      throw new StorageEngineException("Can not get the corresponding storage group.");
+      throw new StorageEngineException("The TsFile is empty, cannot be loaded.");
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
