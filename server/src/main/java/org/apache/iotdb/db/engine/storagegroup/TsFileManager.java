@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -60,6 +61,7 @@ public class TsFileManager {
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
 
   private boolean allowCompaction = true;
+  private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
   public TsFileManager(String storageGroupName, String dataRegion, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -424,5 +426,9 @@ public class TsFileManager {
     } else {
       return cmp;
     }
+  }
+
+  public long getNextCompactionTaskId() {
+    return currentCompactionTaskSerialId.getAndIncrement();
   }
 }
