@@ -742,6 +742,7 @@ public class PartitionInfo implements SnapshotProcessor {
     tRegionInfos.setDataNodeId(dataNodeIdList);
     tRegionInfos.setRpcAddresss(rpcAddressList);
     tRegionInfos.setRpcPort(rpcPortList);
+    // TODO: Wait for data migration. And then add the state
     tRegionInfos.setStatus("Up");
     tRegionInfosList.add(tRegionInfos);
   }
