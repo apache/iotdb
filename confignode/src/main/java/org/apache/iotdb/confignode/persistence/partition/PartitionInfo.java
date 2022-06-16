@@ -558,9 +558,11 @@ public class PartitionInfo implements SnapshotProcessor {
     for (Map.Entry<TDataNodeLocation, Integer> entry : dataNodeLocationIntegerMap.entrySet()) {
       TDataNodeLocation dataNodeLocation = entry.getKey();
       String name =
-          dataNodeLocation.getExternalEndPoint().ip
+          "EndPoint("
+              + dataNodeLocation.getExternalEndPoint().ip
               + ":"
-              + dataNodeLocation.getExternalEndPoint().port;
+              + dataNodeLocation.getExternalEndPoint().port
+              + ")";
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
