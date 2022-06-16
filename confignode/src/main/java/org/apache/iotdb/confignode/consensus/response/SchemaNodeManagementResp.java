@@ -19,19 +19,26 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SchemaNodeManagementResp implements DataSet {
 
   private TSStatus status;
 
-  private SchemaPartition schemaPartition;
+  // Map<StorageGroup, SchemaPartitionTable>
+  // TODO: Replace this map whit new SchemaPartition
+  private Map<String, SchemaPartitionTable> schemaPartition;
 
   private Set<String> matchedNode;
 
@@ -47,27 +54,39 @@ public class SchemaNodeManagementResp implements DataSet {
     this.status = status;
   }
 
-  public void setSchemaPartition(SchemaPartition schemaPartition) {
+  public void setSchemaPartition(Map<String, SchemaPartitionTable> schemaPartition) {
     this.schemaPartition = schemaPartition;
-  }
-
-  public SchemaPartition getSchemaPartition() {
-    return schemaPartition;
-  }
-
-  public Set<String> getMatchedNode() {
-    return matchedNode;
   }
 
   public void setMatchedNode(Set<String> matchedNode) {
     this.matchedNode = matchedNode;
   }
 
-  public void convertToRpcSchemaNodeManagementPartitionResp(TSchemaNodeManagementResp resp) {
+  public void convertToRpcSchemaNodeManagementPartitionResp(
+      TSchemaNodeManagementResp resp, Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setSchemaRegionMap(schemaPartition.getSchemaPartitionMap());
       resp.setMatchedNode(matchedNode);
+
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+          new ConcurrentHashMap<>();
+
+      schemaPartition.forEach(
+          (storageGroup, schemaPartitionTable) -> {
+            Map<TSeriesPartitionSlot, TRegionReplicaSet> seriesPartitionSlotMap =
+                new ConcurrentHashMap<>();
+
+            schemaPartitionTable
+                .getSchemaPartitionMap()
+                .forEach(
+                    (seriesPartitionSlot, consensusGroupId) ->
+                        seriesPartitionSlotMap.put(
+                            seriesPartitionSlot, replicaSetMap.get(consensusGroupId)));
+
+            schemaPartitionMap.put(storageGroup, seriesPartitionSlotMap);
+          });
+
+      resp.setSchemaRegionMap(schemaPartitionMap);
     }
   }
 }
