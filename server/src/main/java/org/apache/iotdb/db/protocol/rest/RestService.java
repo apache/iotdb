@@ -53,7 +53,8 @@ public class RestService implements IService {
       String trustStorePath,
       String keyStorePwd,
       String trustStorePwd,
-      int idleTime) {
+      int idleTime,
+      boolean clientAuth) {
     server = new Server();
 
     HttpConfiguration httpsConfig = new HttpConfiguration();
@@ -63,8 +64,11 @@ public class RestService implements IService {
     SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
     sslContextFactory.setKeyStorePath(keyStorePath);
     sslContextFactory.setKeyStorePassword(keyStorePwd);
-    sslContextFactory.setTrustStorePath(trustStorePath);
-    sslContextFactory.setTrustStorePassword(trustStorePwd);
+    if (clientAuth) {
+      sslContextFactory.setTrustStorePath(trustStorePath);
+      sslContextFactory.setTrustStorePassword(trustStorePwd);
+      sslContextFactory.setNeedClientAuth(clientAuth);
+    }
 
     ServerConnector httpsConnector =
         new ServerConnector(
@@ -121,7 +125,8 @@ public class RestService implements IService {
           config.getTrustStorePath(),
           config.getKeyStorePwd(),
           config.getTrustStorePwd(),
-          config.getIdleTimeoutInSeconds());
+          config.getIdleTimeoutInSeconds(),
+          config.isClientAuth());
     } else {
       startNonSSL(config.getRestServicePort());
     }
