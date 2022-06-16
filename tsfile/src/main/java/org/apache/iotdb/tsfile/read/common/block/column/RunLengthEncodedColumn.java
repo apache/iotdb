@@ -69,7 +69,7 @@ public class RunLengthEncodedColumn implements Column {
 
   @Override
   public ColumnEncoding getEncoding() {
-    return value.getEncoding();
+    return ColumnEncoding.RLE;
   }
 
   @Override

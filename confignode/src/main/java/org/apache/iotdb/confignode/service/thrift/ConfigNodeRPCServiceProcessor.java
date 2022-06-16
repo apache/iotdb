@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.SyncConfigNodeToDataNodeClientPool;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -61,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -131,6 +133,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
 
     return resp;
+  }
+
+  @Override
+  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
+    // TODO: implement active data node
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -283,7 +291,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    PartialPath partialPath = patternTree.splitToPathList().get(0);
+    PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
     SchemaNodeManagementResp schemaNodeManagementResp;
     schemaNodeManagementResp =
         (SchemaNodeManagementResp) configManager.getNodePathsPartition(partialPath, req.getLevel());
@@ -389,6 +397,17 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
+  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+    ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
+    TSStatus status = configManager.applyConfigNode(applyConfigNodeReq);
+
+    // Print log to record the ConfigNode that performs the ApplyConfigNodeRequest
+    LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
+
+    return status;
+  }
+
+  @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
     return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
   }
@@ -417,7 +436,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     TSStatus tsStatus = new TSStatus();
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       tsStatus =
-          SyncConfigNodeToDataNodeClientPool.getInstance()
+          SyncDataNodeClientPool.getInstance()
               .flush(dataNodeInfo.getLocation().getInternalEndPoint(), req);
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return tsStatus;

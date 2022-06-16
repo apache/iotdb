@@ -59,6 +59,6 @@ public class SchemaFetchStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return patternTree.splitToPathList();
+    return patternTree.getAllPathPatterns();
   }
 }

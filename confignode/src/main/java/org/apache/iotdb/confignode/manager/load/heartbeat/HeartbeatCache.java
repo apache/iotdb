@@ -18,34 +18,78 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+
+import java.util.LinkedList;
 
 /** HeartbeatCache caches and maintains all the heartbeat data */
 public class HeartbeatCache implements IHeartbeatStatistic {
 
-  private boolean containsCache = false;
+  // Cache heartbeat samples
+  private static final int maximumWindowSize = 100;
+  private final LinkedList<HeartbeatPackage> slidingWindow;
 
-  // Map<DataNodeId, HeartbeatWindow>
-  private final Map<Integer, HeartbeatWindow> windowMap;
+  // For guiding queries, the higher the score the higher the load
+  private volatile float loadScore;
+  // For showing cluster
+  private volatile NodeStatus status;
 
   public HeartbeatCache() {
-    this.windowMap = new HashMap<>();
+    this.slidingWindow = new LinkedList<>();
+
+    this.loadScore = 0;
+    this.status = NodeStatus.Running;
   }
 
   @Override
-  public void cacheHeartBeat(int dataNodeId, HeartbeatPackage newHeartbeat) {
-    containsCache = true;
-    windowMap
-        .computeIfAbsent(dataNodeId, window -> new HeartbeatWindow())
-        .addHeartbeat(newHeartbeat);
+  public void cacheHeartBeat(HeartbeatPackage newHeartbeat) {
+    synchronized (slidingWindow) {
+      // Only sequential heartbeats are accepted.
+      // And un-sequential heartbeats will be discarded.
+      if (slidingWindow.size() == 0
+          || slidingWindow.getLast().getSendTimestamp() < newHeartbeat.getSendTimestamp()) {
+        slidingWindow.add(newHeartbeat);
+      }
+
+      while (slidingWindow.size() > maximumWindowSize) {
+        slidingWindow.removeFirst();
+      }
+    }
   }
 
   @Override
-  public void discardAllCache() {
-    if (containsCache) {
-      containsCache = false;
-      windowMap.clear();
+  public void updateLoadStatistic() {
+    long lastSendTime = 0;
+    synchronized (slidingWindow) {
+      if (slidingWindow.size() > 0) {
+        lastSendTime = slidingWindow.getLast().getSendTimestamp();
+      }
+    }
+
+    // TODO: Optimize
+    loadScore = -lastSendTime;
+    if (System.currentTimeMillis() - lastSendTime > 20_000) {
+      status = NodeStatus.Unknown;
+    } else {
+      status = NodeStatus.Running;
+    }
+  }
+
+  @Override
+  public float getLoadScore() {
+    // Return a copy of loadScore
+    return loadScore;
+  }
+
+  @Override
+  public NodeStatus getNodeStatus() {
+    // Return a copy of status
+    switch (status) {
+      case Running:
+        return NodeStatus.Running;
+      case Unknown:
+      default:
+        return NodeStatus.Unknown;
     }
   }
 }

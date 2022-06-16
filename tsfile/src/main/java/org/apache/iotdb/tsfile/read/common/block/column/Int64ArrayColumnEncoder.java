@@ -28,7 +28,24 @@ import java.nio.ByteBuffer;
 public class Int64ArrayColumnEncoder implements ColumnEncoder {
 
   @Override
-  public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
+  public TimeColumn readTimeColumn(ByteBuffer input, int positionCount) {
+    return (TimeColumn)
+        readColumnInternal(new TimeColumnBuilder(null, positionCount), input, positionCount);
+  }
+
+  @Override
+  public Column readColumn(ByteBuffer input, TSDataType dataType, int positionCount) {
+    if (TSDataType.INT64.equals(dataType)) {
+      return readColumnInternal(new LongColumnBuilder(null, positionCount), input, positionCount);
+    } else if (TSDataType.DOUBLE.equals(dataType)) {
+      return readColumnInternal(new DoubleColumnBuilder(null, positionCount), input, positionCount);
+    } else {
+      throw new IllegalArgumentException("Invalid data type: " + dataType);
+    }
+  }
+
+  private Column readColumnInternal(
+      ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
 
     // Serialized data layout:
     //    +---------------+-----------------+-------------+
@@ -38,7 +55,6 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
     //    +---------------+-----------------+-------------+
 
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
-
     TSDataType dataType = columnBuilder.getDataType();
     if (TSDataType.INT64.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
@@ -59,6 +75,7 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
     } else {
       throw new IllegalArgumentException("Invalid data type: " + dataType);
     }
+    return columnBuilder.build();
   }
 
   @Override

@@ -104,6 +104,9 @@ public class FirstValueAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntFirstValue((int) statistics.getFirstValue(), statistics.getStartTime());

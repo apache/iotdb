@@ -43,7 +43,6 @@ public class HeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
   @Override
   public void onComplete(THeartbeatResp tHeartbeatResp) {
     heartbeatCache.cacheHeartBeat(
-        dataNodeLocation.getDataNodeId(),
         new HeartbeatPackage(tHeartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
   }
 
