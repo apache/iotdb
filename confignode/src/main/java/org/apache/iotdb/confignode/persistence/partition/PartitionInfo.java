@@ -140,10 +140,13 @@ public class PartitionInfo implements SnapshotProcessor {
                           Math.max(maxRegionId.get(), regionReplicaSet.getRegionId().getId())));
             });
 
-    if (nextRegionGroupId.get() < maxRegionId.get()) {
-      // In this case, at least one Region is created by the leader ConfigNode,
-      // so the nextRegionGroupID of the followers needs to be added
-      nextRegionGroupId.getAndAdd(req.getRegionMap().size());
+    // To ensure that the nextRegionGroupId is updated correctly when
+    // the ConfigNode-followers concurrently processes CreateRegionsReq,
+    // we need to add a synchronization lock here
+    synchronized (nextRegionGroupId) {
+      if (nextRegionGroupId.get() < maxRegionId.get()) {
+        nextRegionGroupId.set(maxRegionId.get());
+      }
     }
 
     result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
