@@ -479,7 +479,7 @@ public class StorageEngine implements IService {
       PartialPath path, int virtualStorageGroupId) throws StorageEngineException {
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-      return getStorageGroupProcessorByPath(virtualStorageGroupId, storageGroupMNode);
+      return getStorageGroupProcessorById(virtualStorageGroupId, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
     }
@@ -556,7 +556,7 @@ public class StorageEngine implements IService {
    */
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  private VirtualStorageGroupProcessor getStorageGroupProcessorByPath(
+  private VirtualStorageGroupProcessor getStorageGroupProcessorById(
       int virtualStorageGroupId, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
@@ -938,7 +938,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException, IllegalPathException {
     return getProcessorDirectly(
             new PartialPath(getSgByEngineFile(deletedTsfile, true)),
-            getVirtualSgIdByEngineFile(deletedTsfile))
+            getVirtualSgIdByEngineFile(deletedTsfile, true))
         .deleteTsfile(deletedTsfile);
   }
 
@@ -946,7 +946,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException, IllegalPathException {
     return getProcessorDirectly(
             new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)),
-            getVirtualSgIdByEngineFile(tsfileToBeUnloaded))
+            getVirtualSgIdByEngineFile(tsfileToBeUnloaded, true))
         .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
@@ -987,10 +987,31 @@ public class StorageEngine implements IService {
    * files which are not loaded.
    *
    * @param file internal file
+   * @param needCheck check if the tsfile is an internal TsFile. If you make sure it is inside, no
+   *     need to check
    * @return virtual storage group partition id
+   * @throws IllegalPathException throw if tsfile is not an internal TsFile
    */
-  public int getVirtualSgIdByEngineFile(File file) {
-    return Integer.parseInt(file.getParentFile().getParentFile().getName());
+  public int getVirtualSgIdByEngineFile(File file, boolean needCheck) throws IllegalPathException {
+    if (needCheck) {
+      File dataDir =
+          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+      if (dataDir.exists()) {
+        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+        for (String dir : dataDirs) {
+          try {
+            if (Files.isSameFile(Paths.get(dir), dataDir.toPath())) {
+              return Integer.parseInt(file.getParentFile().getParentFile().getName());
+            }
+          } catch (IOException e) {
+            throw new IllegalPathException(file.getAbsolutePath(), e.getMessage());
+          }
+        }
+      }
+      throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
+    } else {
+      return Integer.parseInt(file.getParentFile().getParentFile().getName());
+    }
   }
 
   /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */
