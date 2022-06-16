@@ -85,7 +85,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     ```
     # Linux
     > sudo sysctl -w net.core.somaxconn=65535
-   
+     
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
@@ -96,7 +96,15 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   with what you set in the old version.
   * stop the old vesion instance, and start the new one.
 
+- **How to upgrade from v.13.x to v0.14.x?**
+  
+  - **Version 0.14 has changed the SQL syntax conventions (please refer to the syntax conventions section of the user manual), the incompatibilities are as follows:**
+    - **Identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. If the above occurs in an identifier, use backquotes to enclose the identifier.**
+    - **Identifiers no longer support quoting with single and double quotes, please use backquotes instead.**
+    - **When using the path node name in the Session API, it needs to be consistent with that in the SQL statement. If the path node is a pure number 111, it needs to be enclosed in backquotes in the SQL statement and written as \`111\`, then when using the Session API, the corresponding parameter also needs to be written as \`111\`.**
+  
 - How to upgrade from v.12.x to v0.13.x?
+
   * The data format (i.e., TsFile data) of v0.12.x and v0.13.x are compatible, but the WAL file is
     incompatible. So, you can follow the steps:
   * **<font color=red> Execute `SET STSTEM TO READONLY` command in CLI. </font>**
@@ -108,9 +116,13 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     other settings if you want.
   * Stop IoTDB v0.12.x instance, and then start v0.13.x.
   * **<font color=red>After the steps above, please make sure the `iotdb_version` in `data/system/schema/system.properties` file is `0.13.x`. 
-If not, please change it to `0.13.x` manually.</font>**
+    If not, please change it to `0.13.x` manually.</font>**
   * __NOTICE: V0.13 changes many settings in conf/iotdb-engine.properties, so do not use v0.12's
     configuration file directly.__
+  * **In 0.13, the SQL syntax has been changed. The identifiers not enclosed in backquotes can only contain the following characters, otherwise they need to be enclosed in backquotes.**
+    * **[0-9 a-z A-Z _ : @ # $ { }] (letters, digits, some special characters)**
+    * **['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)**
+  * **In 0.13, if the path node name in the `SELECT` clause consists of pure numbers, it needs to be enclosed in backquotes to distinguish it from the constant in the expression. For example, in the statement "select 123 + \`123\` from root.sg", the former 123 represents a constant, and the latter \`123\` will be spliced with root.sg, indicating the path root.sg.\`123\`.**
 
 - How to upgrade from v.11.x or v0.10.x to v0.12.x?
   * Upgrading from v0.11 or v0.10 to v0.12 is similar as v0.9 to v0.10. The upgrade tool will rewrite the data files automatically.
@@ -157,10 +169,10 @@ If not, please change it to `0.13.x` manually.</font>**
   directories point to the folders set in v0.8.x (or the backup folder). 
   You can also modify other settings if you want. 
   * Stop IoTDB v0.8 instance, and start v0.9.x, then the IoTDB will upgrade data file format automatically.
-  
 
 
-       
+
+​       
 
 # All releases
 

@@ -65,7 +65,6 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -874,14 +873,6 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
-
-    if (insertRowNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertRowNode.getFailedMeasurements(),
-          insertRowNode.getFailedMessages());
-      checkFailedMeasurements(insertRowNode);
-    }
   }
 
   /**
@@ -1095,14 +1086,6 @@ public class DataRegion {
       //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
-    }
-
-    if (insertTabletNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertTabletNode.getFailedMeasurements(),
-          insertTabletNode.getFailedMessages());
-      checkFailedMeasurements(insertTabletNode);
     }
   }
 
@@ -1621,7 +1604,8 @@ public class DataRegion {
       File dataRegionSystemFolder =
           SystemFileFactory.INSTANCE.getFile(
               systemDir + File.separator + logicalStorageGroupName, dataRegionId);
-      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndParent(dataRegionSystemFolder);
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+          dataRegionSystemFolder);
     } finally {
       writeUnlock();
     }
@@ -1677,7 +1661,8 @@ public class DataRegion {
       File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
       if (dataRegionDataFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndParent(dataRegionDataFolder);
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+            dataRegionDataFolder);
       }
     }
   }
@@ -3496,14 +3481,6 @@ public class DataRegion {
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
     }
-  }
-
-  private void checkFailedMeasurements(InsertNode node) throws WriteProcessException {
-    List<Exception> exceptions = node.getFailedExceptions();
-    throw new WriteProcessException(
-        "failed to insert measurements "
-            + node.getFailedMeasurements()
-            + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : ""));
   }
 
   @TestOnly

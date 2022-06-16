@@ -880,7 +880,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsert(InsertStatement insertStatement, MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
-
+      insertStatement.semanticCheck();
       long[] timeArray = insertStatement.getTimes();
       PartialPath devicePath = insertStatement.getDevice();
       String[] measurements = insertStatement.getMeasurementList();

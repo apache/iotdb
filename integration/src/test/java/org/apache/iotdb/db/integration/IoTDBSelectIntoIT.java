@@ -418,7 +418,7 @@ public class IoTDBSelectIntoIT {
           throwable
               .getMessage()
               .contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
-      assertTrue(throwable.getMessage().contains("mismatch"));
+      assertTrue(throwable.getMessage().contains("not consistent"));
     }
   }
 
@@ -438,7 +438,8 @@ public class IoTDBSelectIntoIT {
       assertTrue(
           throwable
               .getMessage()
-              .contains("failed to insert measurements [s1, s2] caused by DataType mismatch"));
+              .contains(
+                  "failed to insert measurements [s1, s2] caused by data type of root.sg.aligned.s1 is not consistent"));
     }
   }
 

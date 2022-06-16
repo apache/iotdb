@@ -80,6 +80,12 @@ public class IoTDBNestedQueryIT {
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.schemaProcessor.createTimeseries(
+        new PartialPath("root.vehicle.d1.s3"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
@@ -107,10 +113,10 @@ public class IoTDBNestedQueryIT {
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
         statement.execute(
             String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i));
+                "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%d,%d,%s)", i, i, i, i));
         statement.execute(
             (String.format(
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -593,13 +599,11 @@ public class IoTDBNestedQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       String query =
-          "SELECT ((CAST(s1, 'type'='TEXT') LIKE '_') REGEXP '[0-9]') IN ('4', '2', '3') "
-              + "FROM root.vehicle.d1";
+          "SELECT s1 FROM root.vehicle.d1 WHERE s3 LIKE '_' && s3 REGEXP '[0-9]' && s3 IN ('4', '2', '3')";
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = 2; i <= 4; i++) {
           Assert.assertTrue(rs.next());
           Assert.assertEquals(i, rs.getLong(1));
-          Assert.assertEquals(String.valueOf(i), rs.getString(2));
         }
         Assert.assertFalse(rs.next());
       }

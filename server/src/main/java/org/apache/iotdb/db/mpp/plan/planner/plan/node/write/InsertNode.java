@@ -242,12 +242,18 @@ public abstract class InsertNode extends WritePlanNode {
                   devicePath.getFullPath(),
                   measurements[i],
                   measurementSchemas[i].getType(),
-                  dataTypes[i]));
+                  dataTypes[i],
+                  getMinTime(),
+                  getFirstValueOfIndex(i)));
         }
       }
     }
     return true;
   }
+
+  public abstract long getMinTime();
+
+  public abstract Object getFirstValueOfIndex(int index);
 
   // region partial insert
   /**
