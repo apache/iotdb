@@ -333,6 +333,7 @@ public class ConfigManager implements Manager {
                 new HashMap<>(),
                 IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
                 IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum()));
+        return resp;
       }
 
       getSchemaPartitionReq.setPartitionSlotsMap(
