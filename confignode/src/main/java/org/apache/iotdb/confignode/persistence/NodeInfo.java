@@ -87,7 +87,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   // Online DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-  private AtomicInteger nextNodeId = new AtomicInteger(1);
+  private final AtomicInteger nextNodeId = new AtomicInteger(1);
   private final ConcurrentNavigableMap<Integer, TDataNodeInfo> onlineDataNodes =
       new ConcurrentSkipListMap<>();
 
@@ -137,11 +137,15 @@ public class NodeInfo implements SnapshotProcessor {
     try {
       onlineDataNodes.put(info.getLocation().getDataNodeId(), info);
 
-      if (nextNodeId.get() < info.getLocation().getDataNodeId()) {
-        // In this case, at least one DataNode is registered with the leader node,
-        // so the nextNodeID of the followers needs to be added
-        nextNodeId.getAndIncrement();
+      // To ensure that the nextNodeId is updated correctly when
+      // the ConfigNode-followers concurrently processes RegisterDataNodeReq,
+      // we need to add a synchronization lock here
+      synchronized (nextNodeId) {
+        if (nextNodeId.get() < info.getLocation().getDataNodeId()) {
+          nextNodeId.set(info.getLocation().getDataNodeId());
+        }
       }
+
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       if (nextNodeId.get() < minimumDataNode) {
         result.setMessage(
@@ -242,11 +246,15 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
-      if (nextNodeId.get() < applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId()) {
-        // In this case, at least one ConfigNode is registered with the leader node,
-        // so the nextNodeID of the followers needs to be added
-        nextNodeId.getAndIncrement();
+      // To ensure that the nextNodeId is updated correctly when
+      // the ConfigNode-followers concurrently processes ApplyConfigNodeReq,
+      // we need to add a synchronization lock here
+      synchronized (nextNodeId) {
+        if (nextNodeId.get() < applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId()) {
+          nextNodeId.set(applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId());
+        }
       }
+
       onlineConfigNodes.add(applyConfigNodeReq.getConfigNodeLocation());
       storeConfigNode();
       LOGGER.info(
@@ -425,7 +433,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public void clear() {
-    nextNodeId = new AtomicInteger(0);
+    nextNodeId.set(0);
     onlineDataNodes.clear();
     drainingDataNodes.clear();
     onlineConfigNodes.clear();
