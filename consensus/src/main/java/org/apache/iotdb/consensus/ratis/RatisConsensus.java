@@ -410,6 +410,7 @@ class RatisConsensus implements IConsensus {
   }
 
   /**
+   * NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader.
    * transferLeader is implemented by 1. modify peer priority 2. ask current leader to step down
    *
    * <p>1. call setConfiguration to upgrade newLeader's priority to 1 and degrade all follower peers
