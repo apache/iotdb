@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -27,17 +28,17 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
 
   public ShowRegionStatement() {}
 
-  public ShowRegionStatement(int regionType) {
+  public ShowRegionStatement(TConsensusGroupType regionType) {
     this.regionType = regionType;
   }
 
-  private int regionType;
+  private TConsensusGroupType regionType;
 
-  public int getRegionType() {
+  public TConsensusGroupType getRegionType() {
     return regionType;
   }
 
-  public void setRegionType(int regionType) {
+  public void setRegionType(TConsensusGroupType regionType) {
     this.regionType = regionType;
   }
 

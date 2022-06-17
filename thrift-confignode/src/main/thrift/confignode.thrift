@@ -231,7 +231,7 @@ struct TDropFunctionReq {
 
 // show regions
 struct TShowRegionReq {
-  1: optional i32 regionType;
+  1: optional common.TConsensusGroupType consensusGroupType;
 }
 
 struct TShowRegionResp {

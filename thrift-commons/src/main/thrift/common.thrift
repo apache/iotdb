@@ -78,14 +78,13 @@ struct TDataNodeLocation {
 }
 
 struct TRegionLocation {
-  1: required i32 regionId;
-  2: required i64 regionType;
-  3: required string storageGroup
-  4: required i32 dataNodeId;
-  5: required string rpcAddresss;
-  6: required i32 rpcPort;
-  7: required i32 slots;
-  8: optional string status;
+  1: required TConsensusGroupId consensusGroupId
+  2: required string storageGroup
+  3: required string dataNodeId;
+  4: required string rpcAddresss;
+  5: required string rpcPort;
+  6: required i64 slots;
+  7: optional string status;
 }
 
 struct THeartbeatReq {

@@ -55,12 +55,14 @@ public class ShowRegionTask implements IConfigTask {
     if (showRegionResp.getRegionInfoList() != null) {
       for (TRegionLocation regionLocation : showRegionResp.getRegionInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeInt(regionLocation.getRegionId());
-        if (regionLocation.getRegionType() == TConsensusGroupType.SchemaRegion.ordinal()) {
+        builder.getColumnBuilder(0).writeInt(regionLocation.getConsensusGroupId().getId());
+        if (regionLocation.getConsensusGroupId().getType().ordinal()
+            == TConsensusGroupType.SchemaRegion.ordinal()) {
           builder
               .getColumnBuilder(1)
               .writeBinary(Binary.valueOf(String.valueOf(TConsensusGroupType.SchemaRegion)));
-        } else if (regionLocation.getRegionType() == TConsensusGroupType.DataRegion.ordinal()) {
+        } else if (regionLocation.getConsensusGroupId().getType().ordinal()
+            == TConsensusGroupType.DataRegion.ordinal()) {
           builder
               .getColumnBuilder(1)
               .writeBinary(Binary.valueOf(String.valueOf(TConsensusGroupType.DataRegion)));
@@ -71,7 +73,7 @@ public class ShowRegionTask implements IConfigTask {
                 Binary.valueOf(
                     regionLocation.getStatus() == null ? "" : regionLocation.getStatus()));
         builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionLocation.getStorageGroup()));
-        builder.getColumnBuilder(4).writeInt(regionLocation.getSlots());
+        builder.getColumnBuilder(4).writeInt((int) regionLocation.getSlots());
         builder
             .getColumnBuilder(5)
             .writeBinary(Binary.valueOf(String.valueOf(regionLocation.getDataNodeId())));

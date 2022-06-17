@@ -335,7 +335,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowRegionResp showRegionResp = new TShowRegionResp();
     TShowRegionReq showRegionReq = new TShowRegionReq();
-    showRegionReq.setRegionType(showRegionStatement.getRegionType());
+    showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       showRegionResp = client.showRegion(showRegionReq);

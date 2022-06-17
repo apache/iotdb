@@ -2226,11 +2226,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitShowRegion(IoTDBSqlParser.ShowRegionContext ctx) {
     ShowRegionStatement showRegionStatement = new ShowRegionStatement();
     if (ctx.DATA() != null) {
-      showRegionStatement.setRegionType(TConsensusGroupType.DataRegion.ordinal());
+      showRegionStatement.setRegionType(TConsensusGroupType.DataRegion);
     } else if (ctx.SCHEMA() != null) {
-      showRegionStatement.setRegionType(TConsensusGroupType.SchemaRegion.ordinal());
+      showRegionStatement.setRegionType(TConsensusGroupType.SchemaRegion);
     } else {
-      showRegionStatement.setRegionType(TConsensusGroupType.PartitionRegion.ordinal());
+      showRegionStatement.setRegionType(TConsensusGroupType.PartitionRegion);
     }
     return showRegionStatement;
   }

@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -369,40 +368,38 @@ public class StorageGroupPartitionTable {
   public void getRegionInfos(
       GetRegionLocationsReq regionsInfoReq, List<TRegionLocation> tRegionInfosList) {
     regionInfoMap.forEach(
-        (consensusGroupId, regionInfoMap) -> {
-          TRegionReplicaSet replicaSet = regionInfoMap.getReplicaSet();
+        (consensusGroupId, regionGroup) -> {
+          TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
           if (replicaSet.getRegionId().getType().ordinal()
               == regionsInfoReq.getRegionType().ordinal()) {
-            buildTRegionsInfo(tRegionInfosList, storageGroupName, replicaSet, regionInfoMap);
+            buildTRegionsInfo(tRegionInfosList, replicaSet, regionGroup);
           }
           if (regionsInfoReq.getRegionType() == TConsensusGroupType.PartitionRegion) {
-            buildTRegionsInfo(tRegionInfosList, storageGroupName, replicaSet, regionInfoMap);
+            buildTRegionsInfo(tRegionInfosList, replicaSet, regionGroup);
           }
         });
   }
 
   private void buildTRegionsInfo(
       List<TRegionLocation> tRegionInfosList,
-      String storageGroup,
       TRegionReplicaSet replicaSet,
-      RegionGroup regionInfoMap) {
+      RegionGroup regionGroup) {
     List<Integer> dataNodeIdList = null;
     List<String> rpcAddressList = null;
     List<Integer> rpcPortList = null;
     TRegionLocation tRegionInfos = new TRegionLocation();
-    tRegionInfos.setRegionId(replicaSet.getRegionId().getId());
-    tRegionInfos.setRegionType(replicaSet.getRegionId().getType().getValue());
-    tRegionInfos.setStorageGroup(storageGroup);
-    long slots = regionInfoMap.getCounter();
+    tRegionInfos.setConsensusGroupId(replicaSet.getRegionId());
+    tRegionInfos.setStorageGroup(storageGroupName);
+    long slots = regionGroup.getCounter();
     tRegionInfos.setSlots((int) slots);
     for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-      dataNodeIdList = Arrays.asList(dataNodeLocation.getDataNodeId());
-      rpcAddressList = Arrays.asList(dataNodeLocation.getExternalEndPoint().getIp());
-      rpcPortList = Arrays.asList(dataNodeLocation.getExternalEndPoint().getPort());
+      dataNodeIdList.add(dataNodeLocation.getDataNodeId());
+      rpcAddressList.add(dataNodeLocation.getExternalEndPoint().getIp());
+      rpcPortList.add(dataNodeLocation.getExternalEndPoint().getPort());
     }
-    tRegionInfos.setDataNodeId(dataNodeIdList.stream().findFirst().get());
-    tRegionInfos.setRpcAddresss(rpcAddressList.toString());
-    tRegionInfos.setRpcPort(rpcPortList.stream().findFirst().get());
+    tRegionInfos.setDataNodeId(dataNodeIdList.toString().substring(1, dataNodeIdList.size() - 1));
+    tRegionInfos.setRpcAddresss(rpcAddressList.toString().substring(1, dataNodeIdList.size() - 1));
+    tRegionInfos.setRpcPort(rpcPortList.toString().substring(1, dataNodeIdList.size() - 1));
     // TODO: Wait for data migration. And then add the state
     tRegionInfos.setStatus(RegionStatus.Up.getStatus());
     tRegionInfosList.add(tRegionInfos);
@@ -441,10 +438,6 @@ public class StorageGroupPartitionTable {
 
     schemaPartitionTable.deserialize(inputStream, protocol);
     dataPartitionTable.deserialize(inputStream, protocol);
-  }
-
-  public Map<TConsensusGroupId, RegionGroup> getRegionInfoMap() {
-    return regionInfoMap;
   }
 
   @Override
