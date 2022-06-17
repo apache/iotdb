@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -33,46 +32,6 @@ import java.nio.channels.FileChannel;
  * {@link ISegment} or a collection of wrapped segments.
  */
 public abstract class SchemaPage implements ISchemaPage {
-  // region Configuration of Page and Segment
-  // TODO: may be better to move to extra Config class
-
-  public static final int PAGE_LENGTH = 16 * 1024; // 16 kib for default
-  public static final long PAGE_INDEX_MASK = 0xffff_ffffL; // highest bit is not included
-  public static final short PAGE_HEADER_SIZE = 32;
-
-  public static final int SEG_HEADER_SIZE = 25; // in bytes
-  public static final short SEG_OFF_DIG =
-      2; // length of short, which is the type of segment offset and index
-  public static final int SEG_INDEX_DIGIT = 16; // for type short in bits
-  public static final long SEG_INDEX_MASK = 0xffffL; // help to translate address
-
-  public static final short SEG_MAX_SIZ = (short) (16 * 1024 - PAGE_HEADER_SIZE - SEG_OFF_DIG);
-  public static final short[] SEG_SIZE_LST = {1024, 2 * 1024, 4 * 1024, 8 * 1024, SEG_MAX_SIZ};
-  public static final short SEG_MIN_SIZ =
-      IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile() > SEG_MAX_SIZ
-          ? SEG_MAX_SIZ
-          : IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile();
-  public static final int PAGE_CACHE_SIZE =
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getPageCacheSizeInSchemaFile(); // size of page cache
-
-  public static final boolean INCLINED_SPLIT =
-      true; // segment split into 2 part with different entries
-  public static final boolean BULK_SPLIT = true; // split may implement a fast bulk way
-
-  // endregion
-
-  // value of type flag of a schema page
-  public static final byte SEGMENTED_PAGE = 0x00;
-  public static final byte INTERNAL_PAGE = 0x01;
-  public static final byte ALIAS_PAGE = 0x02;
-
-  // offset on the buffer of attributes about the page
-  public static final int INDEX_OFFSET = 1;
-
-  public static int OFFSET_DIGIT = 16;
-  public static long OFFSET_MASK = 0x7fffL;
 
   // All other attributes are to describe this ByteBuffer
   protected final ByteBuffer pageBuffer;
@@ -85,7 +44,9 @@ public abstract class SchemaPage implements ISchemaPage {
   protected SchemaPage(ByteBuffer pageBuffer) {
     this.pageBuffer = pageBuffer;
 
-    this.pageBuffer.limit(this.pageBuffer.capacity()).position(INDEX_OFFSET);
+    this.pageBuffer
+        .limit(this.pageBuffer.capacity())
+        .position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);
 
     pageIndex = ReadWriteIOUtils.readInt(this.pageBuffer);
     spareOffset = ReadWriteIOUtils.readShort(this.pageBuffer);
@@ -101,7 +62,7 @@ public abstract class SchemaPage implements ISchemaPage {
   @Override
   public void syncPageBuffer() {
     this.pageBuffer.limit(this.pageBuffer.capacity());
-    this.pageBuffer.position(INDEX_OFFSET);
+    this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);
     ReadWriteIOUtils.write(pageIndex, pageBuffer);
     ReadWriteIOUtils.write(spareOffset, pageBuffer);
     ReadWriteIOUtils.write(spareSize, pageBuffer);
@@ -124,7 +85,7 @@ public abstract class SchemaPage implements ISchemaPage {
   public void setPageIndex(int pid) {
     pageIndex = pid;
     this.pageBuffer.clear();
-    this.pageBuffer.position(INDEX_OFFSET);
+    this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);
     ReadWriteIOUtils.write(pageIndex, pageBuffer);
     this.pageBuffer.clear();
   }

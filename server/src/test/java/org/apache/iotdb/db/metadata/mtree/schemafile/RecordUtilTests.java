@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -41,12 +42,12 @@ public class RecordUtilTests {
 
   @Before
   public void setUp() {
-    // EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    // EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

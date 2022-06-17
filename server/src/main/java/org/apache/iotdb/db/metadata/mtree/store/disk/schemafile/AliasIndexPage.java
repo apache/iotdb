@@ -27,6 +27,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.ALIAS_PAGE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_HEADER_SIZE;
+
 /**
  * This page stores measurement alias as key and name as record, aiming to provide a mapping from
  * alias to name so that secondary index could be built upon efficient structure.
@@ -38,7 +41,7 @@ import java.util.Queue;
  */
 public class AliasIndexPage extends SchemaPage implements ISegment<String, String> {
 
-  private static int OFFSET_LEN = 2;
+  private static final int OFFSET_LEN = 2;
   long nextPage;
   String penultKey = null, lastKey = null;
 
@@ -75,7 +78,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
       return spareSize;
     }
 
-    if (SchemaPage.PAGE_HEADER_SIZE
+    if (PAGE_HEADER_SIZE
             + OFFSET_LEN * (memberNum + 1)
             + 8
             + alias.getBytes().length
@@ -96,11 +99,11 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     if (migNum > 0) {
       // move compound pointers
       ByteBuffer buf = ByteBuffer.allocate(migNum * OFFSET_LEN);
-      this.pageBuffer.limit(SchemaPage.PAGE_HEADER_SIZE + OFFSET_LEN * memberNum);
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + OFFSET_LEN * pos);
+      this.pageBuffer.limit(PAGE_HEADER_SIZE + OFFSET_LEN * memberNum);
+      this.pageBuffer.position(PAGE_HEADER_SIZE + OFFSET_LEN * pos);
       buf.put(this.pageBuffer);
 
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + OFFSET_LEN * pos);
+      this.pageBuffer.position(PAGE_HEADER_SIZE + OFFSET_LEN * pos);
       ReadWriteIOUtils.write(spareOffset, this.pageBuffer);
 
       buf.clear();
@@ -325,7 +328,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
         dstBuffer.position(spareOffset);
         dstBuffer.put(this.pageBuffer);
       }
-      dstBuffer.position(SchemaPage.PAGE_HEADER_SIZE + memberNum * OFFSET_LEN);
+      dstBuffer.position(PAGE_HEADER_SIZE + memberNum * OFFSET_LEN);
       ReadWriteIOUtils.write(spareOffset, dstBuffer);
 
       if (ix == sp) {
@@ -353,7 +356,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
 
     // flush dstBuffer header
     dstBuffer.clear();
-    ReadWriteIOUtils.write(SchemaPage.ALIAS_PAGE, dstBuffer);
+    ReadWriteIOUtils.write(ALIAS_PAGE, dstBuffer);
     ReadWriteIOUtils.write(-1, dstBuffer);
     ReadWriteIOUtils.write(spareOffset, dstBuffer);
     ReadWriteIOUtils.write(spareSize, dstBuffer);
@@ -415,7 +418,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
       accSiz += key.getBytes().length + name.getBytes().length + 8;
       this.spareOffset = (short) (this.pageBuffer.capacity() - accSiz);
 
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + OFFSET_LEN * i);
+      this.pageBuffer.position(PAGE_HEADER_SIZE + OFFSET_LEN * i);
       ReadWriteIOUtils.write(this.spareOffset, this.pageBuffer);
 
       // write tempBuffer backward
@@ -426,8 +429,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     tempBuffer.position(tempBuffer.capacity() - accSiz);
     this.pageBuffer.position(this.spareOffset);
     this.pageBuffer.put(tempBuffer);
-    this.spareSize =
-        (short) (this.spareOffset - SchemaPage.PAGE_HEADER_SIZE - OFFSET_LEN * this.memberNum);
+    this.spareSize = (short) (this.spareOffset - PAGE_HEADER_SIZE - OFFSET_LEN * this.memberNum);
   }
 
   /**
@@ -478,7 +480,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     }
     synchronized (pageBuffer) {
       this.pageBuffer.limit(this.pageBuffer.capacity());
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + index * OFFSET_LEN);
+      this.pageBuffer.position(PAGE_HEADER_SIZE + index * OFFSET_LEN);
       return ReadWriteIOUtils.readShort(this.pageBuffer);
     }
   }

@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.Queue;
 
 /** Interface for a {@link SchemaPage} manages one or more {@link WrappedSegment}. */
-public interface ISegmentedPage extends ISchemaPage{
+public interface ISegmentedPage extends ISchemaPage {
 
   /**
    * Insert a content directly into specified segment. If not enough spare within the segment,

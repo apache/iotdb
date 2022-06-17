@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -90,7 +90,7 @@ public class AliasIndexPageTest {
     }
 
     ByteBuffer buf2 = ByteBuffer.allocate(170);
-    String sk = seg.splitByKey("a8", "alias", buf2, SchemaPage.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a8", "alias", buf2, SchemaFileConfig.INCLINED_SPLIT);
 
     Assert.assertEquals("a5", sk);
     buf2.clear();
@@ -120,7 +120,7 @@ public class AliasIndexPageTest {
     ByteBuffer buf2 = ByteBuffer.allocate(400);
 
     // split when insert the biggest key
-    String sk = seg.splitByKey("a99", "a99_nm", buf2, SchemaPage.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a99", "a99_nm", buf2, SchemaFileConfig.INCLINED_SPLIT);
 
     Assert.assertEquals("a99", sk);
     Assert.assertEquals(
@@ -136,17 +136,15 @@ public class AliasIndexPageTest {
     seg.insertRecord("a23", "a23_nm");
 
     // split when insert the second-biggest key
-    sk = seg.splitByKey("a64", "a64_mm", buf2, SchemaPage.INCLINED_SPLIT);
+    sk = seg.splitByKey("a64", "a64_mm", buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a64", sk);
 
     seg.insertRecord("a11", "a11_nm");
     seg.insertRecord("a12", "a12_nm");
 
     buf2.clear();
-    print(seg);
-    sk = seg.splitByKey("a24", "a24_nm", buf2, SchemaPage.INCLINED_SPLIT);
+    sk = seg.splitByKey("a24", "a24_nm", buf2, SchemaFileConfig.INCLINED_SPLIT);
 
-    print(seg);
     Assert.assertEquals("a24", sk);
     buf2.clear();
     Assert.assertEquals(
@@ -176,7 +174,7 @@ public class AliasIndexPageTest {
     ByteBuffer buf2 = ByteBuffer.allocate(350);
 
     // split with the smallest key
-    String sk = seg.splitByKey("a0", "a0_nm", buf2, SchemaPage.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a0", "a0_nm", buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a1", sk);
 
     int spare = seg.getSpareSize();
@@ -190,7 +188,7 @@ public class AliasIndexPageTest {
     seg.insertRecord("a12", "a122");
 
     // split with the second-smallest key
-    sk = seg.splitByKey("a11", "a11_nm", buf2, SchemaPage.INCLINED_SPLIT);
+    sk = seg.splitByKey("a11", "a11_nm", buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a11", sk);
     spare = seg.getSpareSize();
     Assert.assertEquals(spare, seg.insertRecord("a0", "a00"));
@@ -216,7 +214,7 @@ public class AliasIndexPageTest {
     ByteBuffer buf2 = ByteBuffer.allocate(300);
 
     // split when insert the biggest key
-    String sk = seg.splitByKey("a04", "a0044", buf2, SchemaPage.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a04", "a0044", buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a3", sk);
     Assert.assertEquals(5, seg.getAllRecords().size());
   }

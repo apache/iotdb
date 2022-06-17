@@ -114,11 +114,9 @@ public class WrappedSegment extends Segment<IMNode> {
     for (Pair<String, Short> p : keyAddressList) {
       if (p.right >= 0) {
         bufferR.position(p.right);
-        if (RecordUtils.getRecordType(bufferR) == RecordUtils.MEASUREMENT_TYPE) {
-          String alias = RecordUtils.getRecordAlias(bufferR);
-          if (alias != null) {
-            aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, p.left));
-          }
+        String alias = RecordUtils.getRecordAlias(bufferR);
+        if (alias != null) {
+          aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, p.left));
         }
       }
     }
@@ -134,7 +132,7 @@ public class WrappedSegment extends Segment<IMNode> {
     int recordStartAddr = freeAddr - buf.capacity();
 
     int newPairLength = pairLength + key.getBytes().length + 4 + 2;
-    if (recordStartAddr < SchemaPage.SEG_HEADER_SIZE + newPairLength) {
+    if (recordStartAddr < SchemaFileConfig.SEG_HEADER_SIZE + newPairLength) {
       return -1;
     }
     pairLength = (short) newPairLength;
@@ -142,11 +140,9 @@ public class WrappedSegment extends Segment<IMNode> {
     int tarIdx = binaryInsertPairList(keyAddressList, key);
 
     // update aliasKeyList
-    if (RecordUtils.getRecordType(buf) == RecordUtils.MEASUREMENT_TYPE) {
-      String alias = RecordUtils.getRecordAlias(buf);
-      if (alias != null && !alias.equals("")) {
-        aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
-      }
+    String alias = RecordUtils.getRecordAlias(buf);
+    if (alias != null && !alias.equals("")) {
+      aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
     }
 
     buf.clear();
@@ -159,7 +155,7 @@ public class WrappedSegment extends Segment<IMNode> {
 
     penuKey = lastKey;
     lastKey = key;
-    return recordStartAddr - pairLength - SchemaPage.SEG_HEADER_SIZE;
+    return recordStartAddr - pairLength - SchemaFileConfig.SEG_HEADER_SIZE;
   }
 
   @Override
@@ -237,10 +233,7 @@ public class WrappedSegment extends Segment<IMNode> {
     uBuffer.clear();
     this.buffer.position(keyAddressList.get(idx).right);
 
-    String oriAlias = null;
-    if (RecordUtils.getRecordType(this.buffer) == RecordUtils.MEASUREMENT_TYPE) {
-      oriAlias = RecordUtils.getRecordAlias(this.buffer);
-    }
+    String oriAlias = RecordUtils.getRecordAlias(this.buffer);
 
     short oriLen = RecordUtils.getRecordLength(this.buffer);
     short newLen = (short) uBuffer.capacity();
@@ -250,7 +243,7 @@ public class WrappedSegment extends Segment<IMNode> {
       this.buffer.put(uBuffer);
     } else {
       // allocate new space for record, modify key-address list, freeAddr
-      if (SchemaPage.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
+      if (SchemaFileConfig.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
         // not enough space
         throw new SegmentOverflowException(idx);
       }
@@ -296,11 +289,9 @@ public class WrappedSegment extends Segment<IMNode> {
     }
 
     // update alias-key list accordingly
-    if (RecordUtils.getRecordType(this.buffer) == RecordUtils.MEASUREMENT_TYPE) {
-      String alias = RecordUtils.getRecordAlias(this.buffer);
-      if (alias != null && !alias.equals("")) {
-        aliasKeyList.remove(binarySearchPairList(aliasKeyList, alias));
-      }
+    String alias = RecordUtils.getRecordAlias(this.buffer);
+    if (alias != null && !alias.equals("")) {
+      aliasKeyList.remove(binarySearchPairList(aliasKeyList, alias));
     }
 
     // TODO: compact segment further as well
@@ -373,7 +364,7 @@ public class WrappedSegment extends Segment<IMNode> {
             "[size: %d, K-AL size: %d, spare:%d,",
             this.length,
             keyAddressList.size(),
-            freeAddr - pairLength - SchemaPage.SEG_HEADER_SIZE));
+            freeAddr - pairLength - SchemaFileConfig.SEG_HEADER_SIZE));
     bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
       bufferR.position(pair.right);
@@ -397,7 +388,7 @@ public class WrappedSegment extends Segment<IMNode> {
 
   @Override
   public String inspect() {
-    if (!SchemaFile.DETAIL_SKETCH) {
+    if (!SchemaFileConfig.DETAIL_SKETCH) {
       return "";
     }
 
@@ -410,7 +401,7 @@ public class WrappedSegment extends Segment<IMNode> {
             "[length: %d, total_records: %d, spare_size:%d,",
             this.length,
             keyAddressList.size(),
-            freeAddr - pairLength - SchemaPage.SEG_HEADER_SIZE));
+            freeAddr - pairLength - SchemaFileConfig.SEG_HEADER_SIZE));
     bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
       bufferR.position(pair.right);

@@ -48,11 +48,11 @@ public interface ISchemaPage {
     byte pageType = ReadWriteIOUtils.readByte(buffer);
 
     switch (pageType) {
-      case SchemaPage.SEGMENTED_PAGE:
+      case SchemaFileConfig.SEGMENTED_PAGE:
         return new SegmentedPage(buffer);
-      case SchemaPage.INTERNAL_PAGE:
+      case SchemaFileConfig.INTERNAL_PAGE:
         return new InternalPage(buffer);
-      case SchemaPage.ALIAS_PAGE:
+      case SchemaFileConfig.ALIAS_PAGE:
         return new AliasIndexPage(buffer);
       default:
         throw new MetadataException(
@@ -64,16 +64,20 @@ public interface ISchemaPage {
   static SchemaPage initInternalPage(ByteBuffer buffer, int pageIndex, int ptr) {
     buffer.clear();
 
-    buffer.position(SchemaPage.PAGE_HEADER_SIZE);
-    ReadWriteIOUtils.write(((SchemaPage.PAGE_INDEX_MASK & ptr) << SchemaPage.OFFSET_DIGIT), buffer);
+    buffer.position(SchemaFileConfig.PAGE_HEADER_SIZE);
+    ReadWriteIOUtils.write(
+        ((SchemaFileConfig.PAGE_INDEX_MASK & ptr) << SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT),
+        buffer);
 
     buffer.position(0);
-    ReadWriteIOUtils.write(SchemaPage.INTERNAL_PAGE, buffer);
+    ReadWriteIOUtils.write(SchemaFileConfig.INTERNAL_PAGE, buffer);
     ReadWriteIOUtils.write(pageIndex, buffer);
     ReadWriteIOUtils.write((short) buffer.capacity(), buffer);
     ReadWriteIOUtils.write(
         (short)
-            (buffer.capacity() - SchemaPage.PAGE_HEADER_SIZE - InternalPage.COMPOUND_POINT_LENGTH),
+            (buffer.capacity()
+                - SchemaFileConfig.PAGE_HEADER_SIZE
+                - InternalPage.COMPOUND_POINT_LENGTH),
         buffer);
     ReadWriteIOUtils.write((short) 1, buffer);
     ReadWriteIOUtils.write(-1L, buffer);
@@ -84,10 +88,10 @@ public interface ISchemaPage {
 
   static ISegmentedPage initSegmentedPage(ByteBuffer buffer, int pageIndex) {
     buffer.clear();
-    ReadWriteIOUtils.write(SchemaPage.SEGMENTED_PAGE, buffer);
+    ReadWriteIOUtils.write(SchemaFileConfig.SEGMENTED_PAGE, buffer);
     ReadWriteIOUtils.write(pageIndex, buffer);
-    ReadWriteIOUtils.write(SchemaPage.PAGE_HEADER_SIZE, buffer);
-    ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaPage.PAGE_HEADER_SIZE), buffer);
+    ReadWriteIOUtils.write(SchemaFileConfig.PAGE_HEADER_SIZE, buffer);
+    ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaFileConfig.PAGE_HEADER_SIZE), buffer);
     ReadWriteIOUtils.write((short) 0, buffer);
     ReadWriteIOUtils.write(-1L, buffer);
     return new SegmentedPage(buffer);
@@ -95,10 +99,10 @@ public interface ISchemaPage {
 
   static SchemaPage initAliasIndexPage(ByteBuffer buffer, int pageIndex) {
     buffer.clear();
-    ReadWriteIOUtils.write(SchemaPage.ALIAS_PAGE, buffer);
+    ReadWriteIOUtils.write(SchemaFileConfig.ALIAS_PAGE, buffer);
     ReadWriteIOUtils.write(pageIndex, buffer);
     ReadWriteIOUtils.write((short) buffer.capacity(), buffer);
-    ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaPage.PAGE_HEADER_SIZE), buffer);
+    ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaFileConfig.PAGE_HEADER_SIZE), buffer);
     ReadWriteIOUtils.write((short) 0, buffer);
     ReadWriteIOUtils.write(-1L, buffer);
     return new AliasIndexPage(buffer);

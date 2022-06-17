@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -60,15 +59,6 @@ public class SchemaFile implements ISchemaFile {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
-  public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
-
-  // folder to store .pmt files
-  public static String SCHEMA_FOLDER = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
-
-  // debug only config
-  public static boolean DETAIL_SKETCH = true; // whether sketch leaf segment in detail
-  public static int INTERNAL_SPLIT_VALVE = 0; // internal segment split at this spare
-
   // attributes for this schema file
   private String filePath;
   private String storageGroupName;
@@ -92,7 +82,7 @@ public class SchemaFile implements ISchemaFile {
 
     this.storageGroupName = sgName;
     filePath =
-        SchemaFile.SCHEMA_FOLDER
+        SchemaFileConfig.SCHEMA_FOLDER
             + File.separator
             + sgName
             + File.separator
@@ -115,13 +105,17 @@ public class SchemaFile implements ISchemaFile {
     if (!pmtFile.exists() || !pmtFile.isFile()) {
       File folder =
           SystemFileFactory.INSTANCE.getFile(
-              SchemaFile.SCHEMA_FOLDER + File.separator + sgName + File.separator + schemaRegionId);
+              SchemaFileConfig.SCHEMA_FOLDER
+                  + File.separator
+                  + sgName
+                  + File.separator
+                  + schemaRegionId);
       folder.mkdirs();
       pmtFile.createNewFile();
     }
 
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
-    headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
+    headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     // will be overwritten if to init
     this.dataTTL = ttl;
     this.isEntity = isEntity;
@@ -132,7 +126,7 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(File file) throws IOException, MetadataException {
     // only be called to sketch a schema file so an arbitrary file object is necessary
     channel = new RandomAccessFile(file, "rw").getChannel();
-    headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
+    headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
     if (channel.size() <= 0) {
       channel.close();
@@ -265,7 +259,7 @@ public class SchemaFile implements ISchemaFile {
     pmtFile.createNewFile();
 
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
-    headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
+    headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
     initFileHeader();
   }
 
@@ -351,31 +345,32 @@ public class SchemaFile implements ISchemaFile {
   // region Utilities
 
   public static long getGlobalIndex(int pageIndex, short segIndex) {
-    return (((SchemaPage.PAGE_INDEX_MASK & pageIndex) << SchemaPage.SEG_INDEX_DIGIT)
-        | (segIndex & SchemaPage.SEG_INDEX_MASK));
+    return (((SchemaFileConfig.PAGE_INDEX_MASK & pageIndex) << SchemaFileConfig.SEG_INDEX_DIGIT)
+        | (segIndex & SchemaFileConfig.SEG_INDEX_MASK));
   }
 
   public static int getPageIndex(long globalIndex) {
     return (int)
-        ((globalIndex & (SchemaPage.PAGE_INDEX_MASK << SchemaPage.SEG_INDEX_DIGIT))
-            >> SchemaPage.SEG_INDEX_DIGIT);
+        ((globalIndex & (SchemaFileConfig.PAGE_INDEX_MASK << SchemaFileConfig.SEG_INDEX_DIGIT))
+            >> SchemaFileConfig.SEG_INDEX_DIGIT);
   }
 
   public static short getSegIndex(long globalIndex) {
-    return (short) (globalIndex & SchemaPage.SEG_INDEX_MASK);
+    return (short) (globalIndex & SchemaFileConfig.SEG_INDEX_MASK);
   }
 
   static short reEstimateSegSize(int oldSize) {
-    for (short size : SchemaPage.SEG_SIZE_LST) {
+    for (short size : SchemaFileConfig.SEG_SIZE_LST) {
       if (oldSize < size) {
         return size;
       }
     }
-    return SchemaPage.SEG_MAX_SIZ;
+    return SchemaFileConfig.SEG_MAX_SIZ;
   }
 
   public static long getPageAddress(int pageIndex) {
-    return (SchemaPage.PAGE_INDEX_MASK & pageIndex) * SchemaPage.PAGE_LENGTH + FILE_HEADER_SIZE;
+    return (SchemaFileConfig.PAGE_INDEX_MASK & pageIndex) * SchemaFileConfig.PAGE_LENGTH
+        + SchemaFileConfig.FILE_HEADER_SIZE;
   }
 
   public static long getNodeAddress(IMNode node) {

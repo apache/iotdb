@@ -43,19 +43,20 @@ import java.nio.ByteBuffer;
  */
 public class RecordUtils {
   // Offsets of IMNode infos in a record buffer
-  static short INTERNAL_NODE_LENGTH = (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
-  static short MEASUREMENT_BASIC_LENGTH =
+  private static final short INTERNAL_NODE_LENGTH =
+      (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
+  private static final short MEASUREMENT_BASIC_LENGTH =
       (short) 1 + 2 + 8 + 8; // final length depends on its alias
 
-  static short LENGTH_OFFSET = 1;
-  static short ALIAS_OFFSET = 19;
-  static short SEG_ADDRESS_OFFSET = 3;
-  static short SCHEMA_OFFSET = 11;
-  static short INTERNAL_BITFLAG_OFFSET = 15;
+  private static final short LENGTH_OFFSET = 1;
+  private static final short ALIAS_OFFSET = 19;
+  private static final short SEG_ADDRESS_OFFSET = 3;
+  private static final short SCHEMA_OFFSET = 11;
+  private static final short INTERNAL_BITFLAG_OFFSET = 15;
 
-  static byte INTERNAL_TYPE = 0;
-  static byte ENTITY_TYPE = 1;
-  static byte MEASUREMENT_TYPE = 4;
+  private static final byte INTERNAL_TYPE = 0;
+  private static final byte ENTITY_TYPE = 1;
+  private static final byte MEASUREMENT_TYPE = 4;
 
   public static ByteBuffer node2Buffer(IMNode node) {
     if (node.isMeasurement()) {
@@ -234,6 +235,10 @@ public class RecordUtils {
 
   public static String getRecordAlias(ByteBuffer recBuf) {
     int oriPos = recBuf.position();
+    if (ReadWriteIOUtils.readByte(recBuf) != MEASUREMENT_TYPE) {
+      recBuf.position(oriPos);
+      return null;
+    }
     recBuf.position(oriPos + ALIAS_OFFSET);
     String alias = ReadWriteIOUtils.readString(recBuf);
     recBuf.position(oriPos);

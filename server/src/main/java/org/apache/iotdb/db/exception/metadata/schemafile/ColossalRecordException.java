@@ -23,14 +23,16 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
- * Record is the element stored in {@link org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment}.
- * Huge record is expected to be supported further.
+ * Record is the element stored in {@link
+ * org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment}. Huge record is expected to be
+ * supported further.
  */
 public class ColossalRecordException extends MetadataException {
 
   public ColossalRecordException(String key, int size) {
     super(
-        String.format("Record of key [%s] is too large for SchemaFile to store, content size:%d", key, size),
+        String.format(
+            "Record of key [%s] is too large for SchemaFile to store, content size:%d", key, size),
         TSStatusCode.COLOSSAL_RECORD.getStatusCode(),
         true);
   }

@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
 
 import java.io.IOException;
@@ -44,11 +43,19 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.FILE_HEADER_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getNodeAddress;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getPageIndex;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.getSegIndex;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.setNodeAddress;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.FILE_HEADER_SIZE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_CACHE_SIZE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_INDEX_MASK;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_LENGTH;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MAX_SIZ;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MIN_SIZ;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_LST;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_METRIC;
 
 /**
  * Abstraction for various implementation of structure of pages. But multi-level index is hard-coded
@@ -57,8 +64,6 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
  * <p>Hierarchy of index may be decoupled from this framework in further improvement.
  */
 public abstract class PageManager implements IPageManager {
-
-  public static final short[] segSizeMetric = {300, 150, 75, 40, 20};
 
   protected final Map<Integer, ISchemaPage> pageInstCache;
   protected final Map<Integer, ISchemaPage> dirtyPages;
@@ -74,8 +79,7 @@ public abstract class PageManager implements IPageManager {
   private final FileChannel channel;
 
   PageManager(FileChannel channel, int lpi) throws IOException, MetadataException {
-    pageInstCache =
-        Collections.synchronizedMap(new LinkedHashMap<>(SchemaPage.PAGE_CACHE_SIZE, 1, true));
+    pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     dirtyPages = new ConcurrentHashMap<>();
     evictLock = new ReentrantLock();
     pageLocks = new PageLocks();
@@ -85,9 +89,8 @@ public abstract class PageManager implements IPageManager {
 
     // construct first page if file to init
     if (lpi < 0) {
-      ISegmentedPage rootPage =
-          ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaPage.PAGE_LENGTH), 0);
-      rootPage.allocNewSegment(SchemaPage.SEG_MAX_SIZ);
+      ISegmentedPage rootPage = ISchemaPage.initSegmentedPage(ByteBuffer.allocate(PAGE_LENGTH), 0);
+      rootPage.allocNewSegment(SEG_MAX_SIZ);
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
       dirtyPages.put(rootPage.getPageIndex(), rootPage);
     }
@@ -145,7 +148,7 @@ public abstract class PageManager implements IPageManager {
 
       } catch (SchemaPageOverflowException e) {
         if (curPage.getAsSegmentedPage().getSegmentSize(getSegIndex(actualAddress))
-            == SchemaPage.SEG_MAX_SIZ) {
+            == SEG_MAX_SIZ) {
           // curPage might be replaced so unnecessary to mark it here
           multiPageInsertOverflowOperation(curPage, entry.getKey(), childBuffer);
 
@@ -165,7 +168,8 @@ public abstract class PageManager implements IPageManager {
           ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize);
 
           // with single segment, curSegAddr equals actualAddress
-          curSegAddr = newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
+          curSegAddr =
+              newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
           newPage.write(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
           setNodeAddress(node, curSegAddr);
@@ -183,7 +187,7 @@ public abstract class PageManager implements IPageManager {
     int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
-    String alias, oldAlias;
+    String alias, oldAlias; // key of the sub-index entry now
     IMNode child, oldChild;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
@@ -245,7 +249,7 @@ public abstract class PageManager implements IPageManager {
         }
       } catch (SchemaPageOverflowException e) {
         if (curPage.getAsSegmentedPage().getSegmentSize(getSegIndex(actualAddress))
-            == SchemaPage.SEG_MAX_SIZ) {
+            == SEG_MAX_SIZ) {
           multiPageUpdateOverflowOperation(curPage, entry.getKey(), childBuffer);
 
           subIndex = subIndexRootPage(curSegAddr);
@@ -315,6 +319,13 @@ public abstract class PageManager implements IPageManager {
    */
   protected abstract void buildSubIndex(IMNode parNode) throws MetadataException, IOException;
 
+  /**
+   * Insert an entry of subordinate index of the target node.
+   *
+   * @param base index of the top page contains sub-index entries.
+   * @param key key of the sub-index entry.
+   * @param rec value of the sub-index entry.
+   */
   protected abstract void insertSubIndexEntry(int base, String key, String rec)
       throws MetadataException, IOException;
 
@@ -380,7 +391,7 @@ public abstract class PageManager implements IPageManager {
     try {
       pageLocks.writeLock(pageIdx);
 
-      ByteBuffer newBuf = ByteBuffer.allocate(SchemaPage.PAGE_LENGTH);
+      ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
 
       loadFromFile(newBuf, pageIdx);
       return addPageToCache(pageIdx, ISchemaPage.loadSchemaPage(newBuf));
@@ -393,8 +404,7 @@ public abstract class PageManager implements IPageManager {
   // TODO: improve to remove
   private long preAllocateSegment(short size) throws IOException, MetadataException {
     ISegmentedPage page = getMinApplSegmentedPageInMem(size);
-    return SchemaFile.getGlobalIndex(
-        page.getPageIndex(), page.allocNewSegment(size));
+    return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
   }
 
   protected ISchemaPage replacePageInCache(ISchemaPage page) {
@@ -423,8 +433,7 @@ public abstract class PageManager implements IPageManager {
   protected synchronized ISchemaPage allocateNewSegmentedPage() {
     lastPageIndex.incrementAndGet();
     ISchemaPage newPage =
-        ISchemaPage.initSegmentedPage(
-            ByteBuffer.allocate(SchemaPage.PAGE_LENGTH), lastPageIndex.get());
+        ISchemaPage.initSegmentedPage(ByteBuffer.allocate(PAGE_LENGTH), lastPageIndex.get());
     dirtyPages.put(newPage.getPageIndex(), newPage);
     return addPageToCache(newPage.getPageIndex(), newPage);
   }
@@ -440,7 +449,7 @@ public abstract class PageManager implements IPageManager {
     // only one thread evicts and flushes pages
     if (evictLock.tryLock()) {
       try {
-        if (pageInstCache.size() > SchemaPage.PAGE_CACHE_SIZE) {
+        if (pageInstCache.size() > PAGE_CACHE_SIZE) {
           int removeCnt =
               (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
           List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
@@ -489,7 +498,7 @@ public abstract class PageManager implements IPageManager {
   }
 
   private static long getPageAddress(int pageIndex) {
-    return (SchemaPage.PAGE_INDEX_MASK & pageIndex) * SchemaPage.PAGE_LENGTH + FILE_HEADER_SIZE;
+    return (PAGE_INDEX_MASK & pageIndex) * PAGE_LENGTH + FILE_HEADER_SIZE;
   }
 
   /**
@@ -500,18 +509,16 @@ public abstract class PageManager implements IPageManager {
    */
   private static short estimateSegmentSize(IMNode node) {
     int childNum = node.getChildren().size();
-    int tier = SchemaPage.SEG_SIZE_LST.length;
+    int tier = SEG_SIZE_LST.length;
 
-    for (int i = 1; i < segSizeMetric.length + 1; i++) {
-      if (childNum > segSizeMetric[i - 1]) {
-        return SchemaPage.SEG_SIZE_LST[tier - i] > SchemaPage.SEG_MIN_SIZ
-            ? SchemaPage.SEG_SIZE_LST[tier - i]
-            : SchemaPage.SEG_MIN_SIZ;
+    for (int i = 1; i < SEG_SIZE_METRIC.length + 1; i++) {
+      if (childNum > SEG_SIZE_METRIC[i - 1]) {
+        return SEG_SIZE_LST[tier - i] > SEG_MIN_SIZ ? SEG_SIZE_LST[tier - i] : SEG_MIN_SIZ;
       }
     }
 
     // for childNum < 20, count for actually
-    int totalSize = SchemaPage.SEG_HEADER_SIZE;
+    int totalSize = SEG_HEADER_SIZE;
     for (IMNode child : node.getChildren().values()) {
       totalSize += child.getName().getBytes().length;
       totalSize += 2 + 4; // for record offset, length of string key
@@ -525,21 +532,21 @@ public abstract class PageManager implements IPageManager {
         totalSize += 16; // slightly larger
       }
     }
-    return (short) totalSize > SchemaPage.SEG_MIN_SIZ ? (short) totalSize : SchemaPage.SEG_MIN_SIZ;
+    return (short) totalSize > SEG_MIN_SIZ ? (short) totalSize : SEG_MIN_SIZ;
   }
 
   private static short reEstimateSegSize(int expSize) throws MetadataException {
-    if (expSize > SchemaPage.SEG_MAX_SIZ) {
+    if (expSize > SEG_MAX_SIZ) {
       // TODO: to support extreme large MNode
       throw new MetadataException(
           "Single record larger than half page is not supported in SchemaFile now.");
     }
-    for (short size : SchemaPage.SEG_SIZE_LST) {
+    for (short size : SEG_SIZE_LST) {
       if (expSize < size) {
         return size;
       }
     }
-    return SchemaPage.SEG_MAX_SIZ;
+    return SEG_MAX_SIZ;
   }
 
   // endregion

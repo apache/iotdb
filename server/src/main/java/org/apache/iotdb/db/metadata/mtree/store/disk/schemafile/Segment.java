@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -29,11 +28,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage.SEG_HEADER_SIZE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
 
 /**
- * Segments store [String]keys with bytebuffer records, which can be serialized IMNode,
- * bytes of alias string or any other attributes need to store with hierarchy structure.
+ * Segments store [String]keys with bytebuffer records, which can be serialized IMNode, bytes of
+ * alias string or any other attributes need to store with hierarchy structure.
  *
  * @param <R> type to construct from bytebuffer
  */
@@ -165,7 +164,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
   public void delete() {
     this.delFlag = true;
     this.buffer.clear();
-    this.buffer.position(SchemaPage.SEG_HEADER_SIZE - 1);
+    this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE - 1);
     ReadWriteIOUtils.write(true, this.buffer);
   }
 
@@ -207,7 +206,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     ReadWriteIOUtils.write(nextSegAddress, newBuffer);
     ReadWriteIOUtils.write(delFlag, newBuffer);
 
-    newBuffer.position(SchemaPage.SEG_HEADER_SIZE);
+    newBuffer.position(SchemaFileConfig.SEG_HEADER_SIZE);
     for (Pair<String, Short> pair : keyAddressList) {
       ReadWriteIOUtils.write(pair.left, newBuffer);
       ReadWriteIOUtils.write((short) (pair.right + sizeGap), newBuffer);
@@ -324,7 +323,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
       dstBuffer.position(freeAddr);
       dstBuffer.put(srcBuf);
 
-      dstBuffer.position(SchemaPage.SEG_HEADER_SIZE + pairLength);
+      dstBuffer.position(SchemaFileConfig.SEG_HEADER_SIZE + pairLength);
       ReadWriteIOUtils.write(mKey, dstBuffer);
       ReadWriteIOUtils.write(freeAddr, dstBuffer);
 

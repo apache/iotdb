@@ -71,7 +71,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     segCacheMap = new ConcurrentHashMap<>();
     segOffsetLst = new ArrayList<>();
 
-    pageBuffer.position(pageBuffer.capacity() - SchemaPage.SEG_OFF_DIG * memberNum);
+    pageBuffer.position(pageBuffer.capacity() - SchemaFileConfig.SEG_OFF_DIG * memberNum);
     for (int idx = 0; idx < memberNum; idx++) {
       segOffsetLst.add(ReadWriteIOUtils.readShort(pageBuffer));
     }
@@ -155,8 +155,8 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     segCacheMap.clear();
     segOffsetLst.clear();
     memberNum = 0;
-    spareOffset = PAGE_HEADER_SIZE;
-    spareSize = (short) (pageBuffer.capacity() - PAGE_HEADER_SIZE);
+    spareOffset = SchemaFileConfig.PAGE_HEADER_SIZE;
+    spareSize = (short) (pageBuffer.capacity() - SchemaFileConfig.PAGE_HEADER_SIZE);
   }
 
   @Override
@@ -235,8 +235,8 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
       throws MetadataException {
     // only full page leaf segment can be split
     if (segOffsetLst.size() != 1
-        || segOffsetLst.get(0) != PAGE_HEADER_SIZE
-        || getSegment((short) 0).size() != SEG_MAX_SIZ) {
+        || segOffsetLst.get(0) != SchemaFileConfig.PAGE_HEADER_SIZE
+        || getSegment((short) 0).size() != SchemaFileConfig.SEG_MAX_SIZ) {
       throw new SegmentNotFoundException(pageIndex);
     }
 
@@ -278,7 +278,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
       entry.getValue().syncBuffer();
     }
 
-    pageBuffer.position(SchemaPage.PAGE_LENGTH - memberNum * SEG_OFF_DIG);
+    pageBuffer.position(SchemaFileConfig.PAGE_LENGTH - memberNum * SchemaFileConfig.SEG_OFF_DIG);
     for (short offset : segOffsetLst) {
       ReadWriteIOUtils.write(offset, pageBuffer);
     }
@@ -292,17 +292,17 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   @Override
   public ByteBuffer getEntireSegmentSlice() throws MetadataException {
     if (segOffsetLst.size() != 1
-        || segOffsetLst.get(0) != PAGE_HEADER_SIZE
+        || segOffsetLst.get(0) != SchemaFileConfig.PAGE_HEADER_SIZE
         || spareSize != 0
-        || spareOffset != this.pageBuffer.capacity() - SEG_OFF_DIG) {
+        || spareOffset != this.pageBuffer.capacity() - SchemaFileConfig.SEG_OFF_DIG) {
       throw new MetadataException(
           "SegmentedPage can share entire buffer slice only when it contains one MAX SIZE segment.");
     }
     // buffer may be modified, segment instance shall be abolished
     segCacheMap.clear();
     synchronized (this.pageBuffer) {
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE);
-      this.pageBuffer.limit(this.pageBuffer.capacity() - SchemaPage.SEG_OFF_DIG);
+      this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE);
+      this.pageBuffer.limit(this.pageBuffer.capacity() - SchemaFileConfig.SEG_OFF_DIG);
       return this.pageBuffer.slice();
     }
   }
@@ -373,7 +373,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    */
   private ISegment<ByteBuffer, IMNode> relocateSegment(
       ISegment<?, ?> seg, short segIdx, short newSize) throws MetadataException {
-    if (seg.size() == SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
+    if (seg.size() == SchemaFileConfig.SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
       throw new SchemaPageOverflowException(pageIndex);
     }
 
@@ -408,8 +408,8 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    */
   private ByteBuffer allocSpareBufferSlice(short size) {
     // check whether enough space to be directly allocate
-    if (this.pageBuffer.capacity() - spareOffset - memberNum * SchemaPage.SEG_OFF_DIG
-        < size + SchemaPage.SEG_OFF_DIG) {
+    if (this.pageBuffer.capacity() - spareOffset - memberNum * SchemaFileConfig.SEG_OFF_DIG
+        < size + SchemaFileConfig.SEG_OFF_DIG) {
       // since this may occur frequently, throw exception here may be inefficient
       return null;
     }
@@ -443,7 +443,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     mirrorPage.put(this.pageBuffer);
     this.pageBuffer.clear();
 
-    spareOffset = SchemaPage.PAGE_HEADER_SIZE;
+    spareOffset = SchemaFileConfig.PAGE_HEADER_SIZE;
 
     short offset, len;
     for (short i = 0; i < segOffsetLst.size(); i++) {
@@ -480,7 +480,9 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
       spareOffset += len;
     }
 
-    spareSize = (short) (this.pageBuffer.capacity() - spareOffset - memberNum * SEG_OFF_DIG);
+    spareSize =
+        (short)
+            (this.pageBuffer.capacity() - spareOffset - memberNum * SchemaFileConfig.SEG_OFF_DIG);
   }
 
   /**

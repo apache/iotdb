@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -65,12 +65,10 @@ public class WrappedSegmentTest {
     WrappedSegment sf = new WrappedSegment(500);
     IMNode rNode = virtualFlatMTree(10);
     for (IMNode node : rNode.getChildren().values()) {
-      int res = sf.insertRecord(node.getName(), RecordUtils.node2Buffer(node));
-      // System.out.println(res);
+      sf.insertRecord(node.getName(), RecordUtils.node2Buffer(node));
     }
     sf.syncBuffer();
 
-    // System.out.println(sf);
     ByteBuffer recMid01 = sf.getRecord("mid1");
     Assert.assertEquals(
         "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: SNAPPY]",
@@ -85,7 +83,6 @@ public class WrappedSegmentTest {
 
     WrappedSegment nsf = new WrappedSegment(sf.getBufferCopy(), false);
     System.out.println(nsf);
-    printBuffer(nsf.getBufferCopy());
     ByteBuffer nrec = nsf.getRecord("mid1");
     Assert.assertEquals(
         "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: SNAPPY]",
@@ -131,7 +128,7 @@ public class WrappedSegmentTest {
     }
 
     ByteBuffer buf2 = ByteBuffer.allocate(500);
-    String sk = seg.splitByKey("a55", buf, buf2, SchemaPage.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a55", buf, buf2, SchemaFileConfig.INCLINED_SPLIT);
 
     Assert.assertEquals("a5", sk);
     Assert.assertEquals(4, seg.getAllRecords().size());
@@ -167,7 +164,7 @@ public class WrappedSegmentTest {
       seg.insertRecord(test[i], buf);
     }
     // at largest
-    String sk = seg.splitByKey("a9", buf, buf2, SchemaPage.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a9", buf, buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a9", sk);
     Assert.assertEquals(1, WrappedSegment.loadAsSegment(buf2).getAllRecords().size());
 
@@ -175,7 +172,7 @@ public class WrappedSegmentTest {
     seg.insertRecord("a71", buf);
     seg.insertRecord("a72", buf);
     buf2.clear();
-    sk = seg.splitByKey("a73", buf, buf2, SchemaPage.INCLINED_SPLIT);
+    sk = seg.splitByKey("a73", buf, buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a73", sk);
     Assert.assertEquals(2, WrappedSegment.loadAsSegment(buf2).getAllRecords().size());
 
@@ -183,7 +180,7 @@ public class WrappedSegmentTest {
     seg.insertRecord("a00", buf);
     seg.insertRecord("a01", buf);
     buf2.clear();
-    sk = seg.splitByKey("a02", buf, buf2, SchemaPage.INCLINED_SPLIT);
+    sk = seg.splitByKey("a02", buf, buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a3", sk);
     Assert.assertEquals(5, seg.getAllRecords().size());
   }
@@ -204,7 +201,7 @@ public class WrappedSegmentTest {
     seg.insertRecord("a12", buf);
     seg.insertRecord("a11", buf);
 
-    String sk = seg.splitByKey("a10", buf, buf2, SchemaPage.INCLINED_SPLIT);
+    String sk = seg.splitByKey("a10", buf, buf2, SchemaFileConfig.INCLINED_SPLIT);
     Assert.assertEquals("a11", sk);
     Assert.assertEquals(2, seg.getAllRecords().size());
     Assert.assertEquals(9, WrappedSegment.loadAsSegment(buf2).getAllRecords().size());
@@ -217,7 +214,7 @@ public class WrappedSegmentTest {
     seg.insertRecord("a84", buf);
     seg.insertRecord("a83", buf);
     buf2.clear();
-    sk = seg.splitByKey("a82", buf, buf2, SchemaPage.INCLINED_SPLIT);
+    sk = seg.splitByKey("a82", buf, buf2, SchemaFileConfig.INCLINED_SPLIT);
 
     Assert.assertEquals("a7", sk);
     Assert.assertEquals(4, seg.getAllRecords().size());
@@ -227,7 +224,7 @@ public class WrappedSegmentTest {
     seg.insertRecord("a42", buf);
 
     buf2.clear();
-    sk = seg.splitByKey("a41", buf, buf2, SchemaPage.INCLINED_SPLIT);
+    sk = seg.splitByKey("a41", buf, buf2, SchemaFileConfig.INCLINED_SPLIT);
 
     Assert.assertEquals("a42", sk);
     Assert.assertEquals(3, seg.getAllRecords().size());

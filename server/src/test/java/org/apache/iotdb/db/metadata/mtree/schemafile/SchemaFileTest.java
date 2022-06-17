@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -297,7 +298,6 @@ public class SchemaFileTest {
         "ma_199406", sf.getChildNode(dev, "m_199406").getAsMeasurementMNode().getAlias());
     Assert.assertEquals("m_1995", sf.getChildNode(dev, "ma_1995").getName());
 
-    printSF(sf);
     sf.delete(dev);
     Assert.assertNull(sf.getChildNode(sgNode, "dev_2"));
     sf.close();
@@ -627,7 +627,7 @@ public class SchemaFileTest {
 
   @Test
   public void basicTest() throws IOException, MetadataException {
-    SchemaFile.INTERNAL_SPLIT_VALVE = 16000;
+    SchemaFileConfig.INTERNAL_SPLIT_VALVE = 16000;
     int i = 10000;
     IMNode sgNode = new StorageGroupEntityMNode(null, "sgRoot", 11111111L);
     Set<String> checkSet = new HashSet<>();
@@ -650,19 +650,18 @@ public class SchemaFileTest {
     sf.writeMNode(sgNode);
 
     Iterator<IMNode> res = sf.getChildren(sgNode);
-    printSF(sf);
     while (res.hasNext()) {
       checkSet.remove(res.next().getName());
     }
     Assert.assertTrue(checkSet.isEmpty());
     sf.close();
-    SchemaFile.INTERNAL_SPLIT_VALVE = 0;
+    SchemaFileConfig.INTERNAL_SPLIT_VALVE = 0;
   }
 
   @Test
   public void basicSplitTest() throws MetadataException, IOException {
-    SchemaFile.INTERNAL_SPLIT_VALVE = 16230;
-    SchemaFile.DETAIL_SKETCH = true;
+    SchemaFileConfig.INTERNAL_SPLIT_VALVE = 16230;
+    SchemaFileConfig.DETAIL_SKETCH = true;
     int i = 999;
     IMNode sgNode = new StorageGroupEntityMNode(null, "sgRoot", 11111111L);
     Set<String> checkSet = new HashSet<>();
@@ -758,7 +757,7 @@ public class SchemaFileTest {
     Assert.assertEquals(0, d010cs);
     Assert.assertTrue(checkSet.isEmpty());
     sf2.close();
-    SchemaFile.INTERNAL_SPLIT_VALVE = 0;
+    SchemaFileConfig.INTERNAL_SPLIT_VALVE = 0;
   }
 
   // endregion

@@ -27,7 +27,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
-import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile.INTERNAL_SPLIT_VALVE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.BULK_SPLIT;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.COMP_PTR_OFFSET_MASK;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.INTERNAL_PAGE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.INTERNAL_SPLIT_VALVE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_HEADER_SIZE;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.PAGE_INDEX_MASK;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_INDEX_MASK;
 
 /**
  * A page which acts like a segment, manages index entry of the b+ tree constructed by MNode with
@@ -36,7 +43,7 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
  */
 public class InternalPage extends SchemaPage implements ISegment<Integer, Integer> {
 
-  public static int COMPOUND_POINT_LENGTH = 8;
+  protected static int COMPOUND_POINT_LENGTH = 8;
 
   private long firstLeaf;
   private int subIndexPage;
@@ -82,10 +89,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       return spareSize;
     }
 
-    if (SchemaPage.PAGE_HEADER_SIZE
-            + COMPOUND_POINT_LENGTH * (memberNum + 1)
-            + 4
-            + key.getBytes().length
+    if (PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (memberNum + 1) + 4 + key.getBytes().length
         > spareOffset) {
       compactKeys();
     }
@@ -100,11 +104,11 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     if (migNum > 0) {
       // move compound pointers
       ByteBuffer buf = ByteBuffer.allocate(migNum * COMPOUND_POINT_LENGTH);
-      this.pageBuffer.limit(SchemaPage.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * memberNum);
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
+      this.pageBuffer.limit(PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * memberNum);
+      this.pageBuffer.position(PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
       buf.put(this.pageBuffer);
 
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
+      this.pageBuffer.position(PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
       ReadWriteIOUtils.write(compoundPointer(pointer, spareOffset), this.pageBuffer);
 
       buf.clear();
@@ -256,7 +260,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     dstBuffer.clear();
     this.pageBuffer.clear();
     // bulk split will not compact buffer immediately, thus save some time
-    if (SchemaPage.BULK_SPLIT && pos == 0 && monotonic) {
+    if (BULK_SPLIT && pos == 0 && monotonic) {
       // insert key is the smallest key, migrate all existed keys
       spareOffset = this.spareOffset;
       dstBuffer.position(this.spareOffset);
@@ -291,7 +295,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       ReadWriteIOUtils.write(key, this.pageBuffer);
       this.pageBuffer.position(PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH);
       ReadWriteIOUtils.write(compoundPointer(pk, this.spareOffset), this.pageBuffer);
-    } else if (SchemaPage.BULK_SPLIT && pos == this.memberNum - 1 && monotonic) {
+    } else if (BULK_SPLIT && pos == this.memberNum - 1 && monotonic) {
       // only p_n-1 and key will be written into split segment
       spareOffset = (short) (dstBuffer.capacity() - key.getBytes().length - 4);
       dstBuffer.position(spareOffset);
@@ -385,7 +389,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     }
 
     dstBuffer.clear();
-    ReadWriteIOUtils.write(SchemaPage.INTERNAL_PAGE, dstBuffer);
+    ReadWriteIOUtils.write(INTERNAL_PAGE, dstBuffer);
     ReadWriteIOUtils.write(-1, dstBuffer);
     ReadWriteIOUtils.write(spareOffset, dstBuffer);
     ReadWriteIOUtils.write(spareSize, dstBuffer);
@@ -444,13 +448,12 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   @Override
   public ByteBuffer resetBuffer(int ptr) {
     memberNum = 1;
-    spareSize =
-        (short) (this.pageBuffer.capacity() - SchemaPage.PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH);
+    spareSize = (short) (this.pageBuffer.capacity() - PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH);
     spareOffset = (short) this.pageBuffer.capacity();
     firstLeaf = ptr;
 
     this.pageBuffer.clear();
-    this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE);
+    this.pageBuffer.position(PAGE_HEADER_SIZE);
     ReadWriteIOUtils.write(compoundPointer(ptr, (short) 0), this.pageBuffer);
     syncPageBuffer();
     this.pageBuffer.clear();
@@ -474,7 +477,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
 
       // for lowest 2 bytes denote key offset, FIXME: '+6' is dependent on encoding of
       // ReadWriteIOUtils
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * i + 6);
+      this.pageBuffer.position(PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * i + 6);
       ReadWriteIOUtils.write(this.spareOffset, this.pageBuffer);
 
       // write tempBuffer backward
@@ -485,10 +488,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     this.pageBuffer.position(this.spareOffset);
     this.pageBuffer.put(tempBuffer);
     this.spareSize =
-        (short)
-            (this.spareOffset
-                - SchemaPage.PAGE_HEADER_SIZE
-                - COMPOUND_POINT_LENGTH * this.memberNum);
+        (short) (this.spareOffset - PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH * this.memberNum);
   }
 
   /**
@@ -539,15 +539,17 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
    * </ul>
    */
   private long compoundPointer(int pageIndex, short offset) {
-    return (((PAGE_INDEX_MASK & pageIndex) << OFFSET_DIGIT) | (offset & SEG_INDEX_MASK));
+    return (((PAGE_INDEX_MASK & pageIndex) << COMP_POINTER_OFFSET_DIGIT)
+        | (offset & SEG_INDEX_MASK));
   }
 
   private int pageIndex(long pointer) {
-    return (int) ((pointer & (PAGE_INDEX_MASK << OFFSET_DIGIT)) >> OFFSET_DIGIT);
+    return (int)
+        ((pointer & (PAGE_INDEX_MASK << COMP_POINTER_OFFSET_DIGIT)) >> COMP_POINTER_OFFSET_DIGIT);
   }
 
   private short keyOffset(long pointer) {
-    return (short) (pointer & OFFSET_MASK);
+    return (short) (pointer & COMP_PTR_OFFSET_MASK);
   }
 
   private long getPointerByIndex(int index) {
@@ -557,7 +559,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     }
     synchronized (pageBuffer) {
       this.pageBuffer.limit(this.pageBuffer.capacity());
-      this.pageBuffer.position(SchemaPage.PAGE_HEADER_SIZE + index * COMPOUND_POINT_LENGTH);
+      this.pageBuffer.position(PAGE_HEADER_SIZE + index * COMPOUND_POINT_LENGTH);
       return ReadWriteIOUtils.readLong(this.pageBuffer);
     }
   }

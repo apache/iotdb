@@ -19,16 +19,15 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -45,22 +44,21 @@ public class SchemaPageTest {
 
   @Before
   public void setUp() {
-    // EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    // EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void flatTreeInsert()
-      throws SchemaPageOverflowException, IOException, SegmentNotFoundException,
-          RecordDuplicatedException, MetadataException {
-    SchemaPage page = ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaPage.PAGE_LENGTH), 0);
+  public void flatTreeInsert() throws IOException, MetadataException {
+    ISchemaPage page =
+        ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
     IMNode root = virtualFlatMTree(15);
     for (int i = 0; i < 7; i++) {
-      page.getAsSegmentedPage().allocNewSegment(SchemaPage.SEG_SIZE_LST[0]);
+      page.getAsSegmentedPage().allocNewSegment(SchemaFileConfig.SEG_SIZE_LST[0]);
       int cnt = 0;
       for (IMNode child : root.getChildren().values()) {
         cnt++;
@@ -76,7 +74,7 @@ public class SchemaPageTest {
       }
     }
 
-    ByteBuffer newBuf = ByteBuffer.allocate(SchemaPage.PAGE_LENGTH);
+    ByteBuffer newBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
     page.syncPageBuffer();
     page.getPageBuffer(newBuf);
     SchemaPage newPage = ISchemaPage.loadSchemaPage(newBuf);
@@ -86,8 +84,8 @@ public class SchemaPageTest {
 
   @Test
   public void essentialPageTest() throws MetadataException, IOException {
-    ByteBuffer buf = ByteBuffer.allocate(SchemaPage.PAGE_LENGTH);
-    SchemaPage page = ISchemaPage.initSegmentedPage(buf, 0);
+    ByteBuffer buf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
+    ISchemaPage page = ISchemaPage.initSegmentedPage(buf, 0);
     page.getAsSegmentedPage().allocNewSegment((short) 500);
     Assert.assertFalse(page.getAsInternalPage() != null);
 
