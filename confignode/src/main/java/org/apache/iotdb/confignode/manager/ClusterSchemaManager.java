@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
@@ -36,6 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -150,15 +153,21 @@ public class ClusterSchemaManager {
     int dataNodeNum = getNodeManager().getOnlineDataNodeCount();
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     Map<String, TStorageGroupSchema> storageGroupSchemaMap = getMatchedStorageGroupSchemasByName(getStorageGroupNames());
+    int storageGroupNum = storageGroupSchemaMap.size();
 
     AdjustMaxRegionGroupCountReq adjustMaxRegionGroupCountReq = new AdjustMaxRegionGroupCountReq();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
-      // Adjust maxSchemaRegionGroupCount
+      // Adjust maxSchemaRegionGroupCount.
+      // All StorageGroups share the DataNodes equally.
+      int maxSchemaRegionGroupCount = Math.max(1, dataNodeNum /
+        (storageGroupNum * storageGroupSchema.getSchemaReplicationFactor()));
+      // Adjust maxDataRegionGroupCount.
+      // All StorageGroups divide one-third of the total cpu cores equally.
+      int maxDataRegionGroupCount = Math.max(2, totalCpuCoreNum / (3 * storageGroupNum * storageGroupSchema.getDataReplicationFactor()));
 
-
-      // Adjust maxDataRegionGroupCount
-
+      adjustMaxRegionGroupCountReq.putEntry(storageGroupSchema.getName(), new Pair<>(maxSchemaRegionGroupCount, maxDataRegionGroupCount));
     }
+    getConsensusManager().write(adjustMaxRegionGroupCountReq);
   }
 
   /**

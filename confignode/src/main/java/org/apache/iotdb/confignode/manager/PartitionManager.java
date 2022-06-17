@@ -146,7 +146,7 @@ public class PartitionManager {
     // This block of code is still parallel and concurrent safe.
     // Thus, we can prepare the SchemaRegions with maximum efficiency.
     try {
-      checkAndAllocateRegionsIfNecessary(
+      initializeRegionsIfNecessary(
           new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.SchemaRegion);
     } catch (NotEnoughDataNodeException e) {
       resp.setStatus(
@@ -188,7 +188,7 @@ public class PartitionManager {
       }
     }
 
-    // TODO: Allocate more SchemaRegions if necessary
+    extendRegionsIfNecessary(new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.SchemaRegion);
 
     return getSchemaPartition(req);
   }
@@ -215,7 +215,7 @@ public class PartitionManager {
     // This block of code is still parallel and concurrent safe.
     // Thus, we can prepare the DataRegions with maximum efficiency.
     try {
-      checkAndAllocateRegionsIfNecessary(
+      initializeRegionsIfNecessary(
           new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.DataRegion);
     } catch (NotEnoughDataNodeException e) {
       resp.setStatus(
@@ -258,14 +258,17 @@ public class PartitionManager {
       }
     }
 
-    // TODO: Allocate more Regions if necessary
+    extendRegionsIfNecessary(new ArrayList<>(req.getPartitionSlotsMap().keySet()), TConsensusGroupType.DataRegion);
 
     return getDataPartition(req);
   }
 
+  // ======================================================
+  // Leader scheduling interfaces
+  // ======================================================
+
   /**
-   * Check whether each StorageGroup already has a Region of the specified type, and allocate one
-   * Region for each StorageGroup who doesn't have any.
+   * Initialize one Region for each StorageGroup who doesn't have any.
    *
    * @param storageGroups List<StorageGroupName>
    * @param consensusGroupType SchemaRegion or DataRegion
@@ -274,9 +277,9 @@ public class PartitionManager {
    * @throws TimeoutException When waiting other threads to allocate Regions for too long
    * @throws StorageGroupNotExistsException When some StorageGroups don't exist
    */
-  private void checkAndAllocateRegionsIfNecessary(
-      List<String> storageGroups, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, TimeoutException, StorageGroupNotExistsException {
+  private void initializeRegionsIfNecessary(
+    List<String> storageGroups, TConsensusGroupType consensusGroupType)
+    throws NotEnoughDataNodeException, TimeoutException, StorageGroupNotExistsException {
 
     int leastDataNode = 0;
     List<String> unreadyStorageGroups = new ArrayList<>();
@@ -284,11 +287,11 @@ public class PartitionManager {
       if (getRegionCount(storageGroup, consensusGroupType) == 0) {
         // Update leastDataNode
         TStorageGroupSchema storageGroupSchema =
-            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
+          getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
         switch (consensusGroupType) {
           case SchemaRegion:
             leastDataNode =
-                Math.max(leastDataNode, storageGroupSchema.getSchemaReplicationFactor());
+              Math.max(leastDataNode, storageGroupSchema.getSchemaReplicationFactor());
             break;
           case DataRegion:
             leastDataNode = Math.max(leastDataNode, storageGroupSchema.getDataReplicationFactor());
@@ -312,25 +315,6 @@ public class PartitionManager {
       } else {
         storageGroupsInAllocation.add(storageGroup);
       }
-    }
-
-    // Calculate the number of Regions
-    // TODO: This is a temporary code, delete it later
-    int regionNum;
-    if (consensusGroupType == TConsensusGroupType.SchemaRegion) {
-      regionNum =
-          Math.max(
-              1,
-              getNodeManager().getOnlineDataNodeCount()
-                  / ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
-    } else {
-      regionNum =
-          Math.max(
-              2,
-              (int)
-                  (getNodeManager().getTotalCpuCoreCount()
-                      * 0.3
-                      / ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor()));
     }
 
     // Do Region allocation for those StorageGroups who get the particle
@@ -361,9 +345,9 @@ public class PartitionManager {
     throw new TimeoutException("");
   }
 
-  // ======================================================
-  // Leader scheduling interfaces
-  // ======================================================
+  private void extendRegionsIfNecessary(List<String> storageGroups, TConsensusGroupType consensusGroupType) {
+
+  }
 
   /**
    * Only leader use this interface
