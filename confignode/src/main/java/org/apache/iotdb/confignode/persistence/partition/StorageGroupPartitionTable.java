@@ -369,11 +369,10 @@ public class StorageGroupPartitionTable {
     regionInfoMap.forEach(
         (consensusGroupId, regionGroup) -> {
           TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
-          if (replicaSet.getRegionId().getType().ordinal()
-              == regionsInfoReq.getRegionType().ordinal()) {
-            buildTRegionsInfo(regionLocationList, replicaSet, regionGroup);
-          }
           if (regionsInfoReq.getRegionType() == TConsensusGroupType.PartitionRegion) {
+            buildTRegionsInfo(regionLocationList, replicaSet, regionGroup);
+          } else if (regionsInfoReq.getRegionType().ordinal()
+              == replicaSet.getRegionId().getType().ordinal()) {
             buildTRegionsInfo(regionLocationList, replicaSet, regionGroup);
           }
         });
