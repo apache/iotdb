@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+
+package org.apache.iotdb.db.it.query;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
 
 import org.junit.AfterClass;
@@ -30,23 +32,23 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
- * IoTDB server should be defined as integration test.
- */
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
-public class IoTDBLimitSlimitIT {
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class IoTDBPaginationIT {
 
-  private static String[] insertSqls =
+  private static final String[] insertSqls =
       new String[] {
         "SET STORAGE GROUP TO root.vehicle",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -200,5 +202,29 @@ public class IoTDBLimitSlimitIT {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  /** Test path num over limit, there is supposed to throw pathNumOverLimitException. */
+  @Test
+  public void pathNumOverLimitTest() {
+    final int maxQueryDeduplicatedPathNum =
+        ConfigFactory.getConfig().getMaxQueryDeduplicatedPathNum();
+    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(2);
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("insert into root.sg.d1(time, s1, s2, s3) values(1, 1, 1, 1)");
+
+      // fail
+      statement.execute("select ** from root");
+      fail();
+    } catch (Exception e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "Too many paths in one query! Currently allowed max deduplicated path number is 2."));
+    }
+    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
   }
 }

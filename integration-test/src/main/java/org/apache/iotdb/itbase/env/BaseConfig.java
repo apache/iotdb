@@ -153,4 +153,8 @@ public interface BaseConfig {
   default String getFlushCommand() {
     return "flush";
   }
+
+  default int getMaxQueryDeduplicatedPathNum() {
+    return 1000;
+  }
 }
