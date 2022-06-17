@@ -95,6 +95,9 @@ public class MaxValueAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntResult((int) statistics.getMaxValue());

@@ -20,10 +20,15 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -32,6 +37,8 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertAlignedValues2IT {
   private int numOfPointsPerPage;
   private boolean autoCreateSchemaEnabled;

@@ -113,6 +113,9 @@ public class Coordinator {
 
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+      if (sql != null) {
+        LOGGER.info("start executing sql: {}", sql);
+      }
       IQueryExecution execution =
           createQueryExecution(
               statement,
@@ -135,6 +138,10 @@ public class Coordinator {
 
   public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
+  }
+
+  public void removeQueryExecution(Long queryId) {
+    queryExecutionMap.remove(queryId);
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management

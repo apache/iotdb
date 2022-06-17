@@ -232,10 +232,15 @@ public class WALBuffer extends AbstractWALBuffer {
     private boolean handleSignalEntry(SignalWALEntry signalWALEntry) {
       switch (signalWALEntry.getSignalType()) {
         case ROLL_WAL_LOG_WRITER_SIGNAL:
+          logger.debug("Handle roll log writer signal for wal node-{}.", identifier);
           rollWALFileWriterListener = signalWALEntry.getWalFlushListener();
           fsyncWorkingBuffer(currentSearchIndex, fsyncListeners, rollWALFileWriterListener);
           return true;
         case CLOSE_SIGNAL:
+          logger.debug(
+              "Handle close signal for wal node-{}, there are {} entries left.",
+              identifier,
+              walEntries.size());
           boolean dataExists = batchSize > 0;
           if (dataExists) {
             fsyncWorkingBuffer(currentSearchIndex, fsyncListeners, rollWALFileWriterListener);
@@ -417,24 +422,23 @@ public class WALBuffer extends AbstractWALBuffer {
       }
 
       // try to roll log writer
-      try {
-        if (rollWALFileWriterListener != null
-            || (forceFlag
-                && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
+      if (rollWALFileWriterListener != null
+          || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
+        try {
           rollLogWriter(searchIndex);
           if (rollWALFileWriterListener != null) {
             rollWALFileWriterListener.succeed();
           }
+        } catch (IOException e) {
+          logger.error(
+              "Fail to roll wal node-{}'s log writer, change system mode to read-only.",
+              identifier,
+              e);
+          if (rollWALFileWriterListener != null) {
+            rollWALFileWriterListener.fail(e);
+          }
+          config.setReadOnly(true);
         }
-      } catch (IOException e) {
-        logger.error(
-            "Fail to roll wal node-{}'s log writer, change system mode to read-only.",
-            identifier,
-            e);
-        if (rollWALFileWriterListener != null) {
-          rollWALFileWriterListener.fail(e);
-        }
-        config.setReadOnly(true);
       }
     }
   }

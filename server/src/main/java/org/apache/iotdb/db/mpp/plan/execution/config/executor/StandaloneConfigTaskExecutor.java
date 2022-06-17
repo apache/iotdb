@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -48,23 +47,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-public class StandsloneConfigTaskExecutor implements IConfigTaskExecutor {
+public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StandsloneConfigTaskExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneConfigTaskExecutor.class);
 
-  private static final class StandsloneConfigTaskExecutorHolder {
-    private static final StandsloneConfigTaskExecutor INSTANCE = new StandsloneConfigTaskExecutor();
+  private static final class StandaloneConfigTaskExecutorHolder {
+    private static final StandaloneConfigTaskExecutor INSTANCE = new StandaloneConfigTaskExecutor();
 
-    private StandsloneConfigTaskExecutorHolder() {}
+    private StandaloneConfigTaskExecutorHolder() {}
   }
 
-  public static StandsloneConfigTaskExecutor getInstance() {
-    return StandsloneConfigTaskExecutor.StandsloneConfigTaskExecutorHolder.INSTANCE;
+  public static StandaloneConfigTaskExecutor getInstance() {
+    return StandaloneConfigTaskExecutorHolder.INSTANCE;
   }
 
   @Override
@@ -103,9 +102,9 @@ public class StandsloneConfigTaskExecutor implements IConfigTaskExecutor {
         String storageGroup = storageGroupMNode.getFullPath();
         TStorageGroupSchema storageGroupSchema = storageGroupMNode.getStorageGroupSchema();
         storageGroupSchemaMap.put(storageGroup, storageGroupSchema);
-        // build TSBlock
-        ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
       }
+      // build TSBlock
+      ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
     } catch (MetadataException e) {
       future.setException(e);
     }
@@ -158,17 +157,12 @@ public class StandsloneConfigTaskExecutor implements IConfigTaskExecutor {
       DeleteStorageGroupStatement deleteStorageGroupStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
-      List<PartialPath> deletePathList =
-          deleteStorageGroupStatement.getPrefixPath().stream()
-              .map(
-                  path -> {
-                    try {
-                      return new PartialPath(path);
-                    } catch (IllegalPathException e) {
-                      return null;
-                    }
-                  })
-              .collect(Collectors.toList());
+      List<PartialPath> deletePathList = new ArrayList<>();
+      for (String path : deleteStorageGroupStatement.getPrefixPath()) {
+        PartialPath prefixPath = new PartialPath(path);
+        deletePathList.addAll(
+            LocalConfigNode.getInstance().getMatchedStorageGroups(prefixPath, false));
+      }
       LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
     } catch (MetadataException e) {
       future.setException(e);

@@ -54,10 +54,10 @@ public class FlushTask implements IConfigTask {
       tFlushReq.setIsSeq(flushStatement.isSeq().toString());
     }
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    if (flushStatement.isLocal()) {
-      tFlushReq.setDataNodeId(config.getDataNodeId());
-    } else {
+    if (flushStatement.isCluster()) {
       tFlushReq.setDataNodeId(-1);
+    } else {
+      tFlushReq.setDataNodeId(config.getDataNodeId());
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.

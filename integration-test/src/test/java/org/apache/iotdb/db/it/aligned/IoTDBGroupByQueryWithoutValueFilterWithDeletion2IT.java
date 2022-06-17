@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.aligned;
+package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -32,7 +30,7 @@ import org.junit.experimental.categories.Category;
 import java.sql.Connection;
 import java.sql.Statement;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByQueryWithoutValueFilterWithDeletion2IT
     extends IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
@@ -40,25 +38,24 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletion2IT
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
-    enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
+
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(3);
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(3);
+    EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
-    Class.forName(Config.JDBC_DRIVER_NAME);
+
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      statement.execute("delete timeseries root.sg1.d1.s2");
+      // TODO replace it while delete timeseries is supported in cluster mode
+      //      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
       statement.execute("delete from root.sg1.d1.s3 where time > 25");
     } catch (Exception e) {
       e.printStackTrace();
@@ -67,11 +64,10 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletion2IT
 
   @AfterClass
   public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
-    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
   }
 }

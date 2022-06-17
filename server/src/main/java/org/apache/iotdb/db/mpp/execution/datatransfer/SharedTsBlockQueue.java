@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -33,6 +35,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 public class SharedTsBlockQueue {
+
+  private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
@@ -54,6 +58,9 @@ public class SharedTsBlockQueue {
 
   @GuardedBy("this")
   private boolean destroyed = false;
+
+  private LocalSourceHandle sourceHandle;
+  private LocalSinkHandle sinkHandle;
 
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId, LocalMemoryManager localMemoryManager) {
@@ -79,12 +86,26 @@ public class SharedTsBlockQueue {
     return queue.isEmpty();
   }
 
+  public void setSinkHandle(LocalSinkHandle sinkHandle) {
+    this.sinkHandle = sinkHandle;
+  }
+
+  public void setSourceHandle(LocalSourceHandle sourceHandle) {
+    this.sourceHandle = sourceHandle;
+  }
+
   /** Notify no more tsblocks will be added to the queue. */
   public synchronized void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     if (destroyed) {
       throw new IllegalStateException("queue has been destroyed");
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
+    if (!blocked.isDone()) {
+      blocked.set(null);
+    }
+    if (this.sourceHandle != null) {
+      this.sourceHandle.checkAndInvokeOnFinished();
+    }
   }
 
   /**
@@ -96,6 +117,11 @@ public class SharedTsBlockQueue {
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
+    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
+    // corresponding LocalSinkHandle.
+    if (sinkHandle != null) {
+      sinkHandle.checkAndInvokeOnFinished();
+    }
     localMemoryManager
         .getQueryPool()
         .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
@@ -115,7 +141,7 @@ public class SharedTsBlockQueue {
       throw new IllegalStateException("queue has been destroyed");
     }
 
-    Validate.notNull(tsBlock, "tsblock cannot be null");
+    Validate.notNull(tsBlock, "TsBlock cannot be null");
     Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
     blockedOnMemory =
         localMemoryManager

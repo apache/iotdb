@@ -52,7 +52,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
-      logger.info("create folder {} for wal buffer-{}.", logDirectory, identifier);
+      logger.info("Create folder {} for wal node-{}'s buffer.", logDirectory, identifier);
     }
     currentSearchIndex = startSearchIndex;
     currentWALFileVersion.set(startFileVersion);
@@ -68,6 +68,11 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     return currentWALFileVersion.get();
   }
 
+  @Override
+  public long getCurrentWALFileSize() {
+    return currentWALFileWriter.size();
+  }
+
   /** Notice: only called by syncBufferThread and old log writer will be closed by this function. */
   protected void rollLogWriter(long searchIndex) throws IOException {
     currentWALFileWriter.close();
@@ -76,5 +81,6 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
             logDirectory,
             WALFileUtils.getLogFileName(currentWALFileVersion.incrementAndGet(), searchIndex));
     currentWALFileWriter = new WALWriter(nextLogFile);
+    logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
   }
 }
