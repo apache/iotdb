@@ -816,6 +816,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
+  @Ignore
   public void UDFAliasResultTest() {
 
     String[] expect = {
