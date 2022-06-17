@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -337,7 +338,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     if (sp > pos + 1 && key != null) {
       // new insert shall be in this
       if (insertRecord(key, recBuf) < 0) {
-        throw new SegmentOverflowException(key);
+        throw new ColossalRecordException(key, recBuf.capacity());
       }
     }
 

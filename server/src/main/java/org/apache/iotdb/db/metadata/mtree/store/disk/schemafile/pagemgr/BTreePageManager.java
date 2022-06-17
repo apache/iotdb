@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
@@ -186,7 +187,11 @@ public class BTreePageManager extends PageManager {
                 ByteBuffer.allocate(SchemaPage.PAGE_LENGTH),
                 tarPage.getPageIndex(),
                 trsPage.getPageIndex());
-        repPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex());
+
+        if ( 0 > repPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex())) {
+          throw new ColossalRecordException(sk, alias);
+        }
+
         repPage
             .getAsInternalPage()
             .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
@@ -219,7 +224,10 @@ public class BTreePageManager extends PageManager {
               curPage.getPageIndex(),
               trsPage.getPageIndex());
 
-      repPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex());
+      if (0 > repPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex())) {
+        throw new ColossalRecordException(sk);
+      }
+
       repPage
           .getAsInternalPage()
           .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
@@ -262,7 +270,7 @@ public class BTreePageManager extends PageManager {
 
         iPage.getAsInternalPage().resetBuffer(trsPage.getPageIndex());
         if (iPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex()) < 0) {
-          throw new MetadataException("Key too large to store in a new InternalSegment: " + sk);
+          throw new ColossalRecordException(sk);
         }
         iPage
             .getAsInternalPage()
