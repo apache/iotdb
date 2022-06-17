@@ -37,7 +37,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
@@ -98,11 +98,11 @@ public class ConfigNodeRPCServiceProcessorTest {
 
   @BeforeClass
   public static void beforeClass() throws StartupException, ConfigurationException, IOException {
-    final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
     UDFExecutableManager.setupAndGetInstance(
-        configNodeConf.getTemporaryLibDir(), configNodeConf.getUdfLibDir());
-    UDFClassLoaderManager.setupAndGetInstance(configNodeConf.getUdfLibDir());
-    UDFRegistrationService.setupAndGetInstance(configNodeConf.getSystemUdfDir());
+        configNodeConfig.getTemporaryLibDir(), configNodeConfig.getUdfLibDir());
+    UDFClassLoaderManager.setupAndGetInstance(configNodeConfig.getUdfLibDir());
+    UDFRegistrationService.setupAndGetInstance(configNodeConfig.getSystemUdfDir());
     ConfigNodeStartupCheck.getInstance().startUpCheck();
   }
 

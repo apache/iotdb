@@ -38,13 +38,13 @@ public class ConfigNodeDescriptor {
 
   private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final ConfigNodeConf conf = new ConfigNodeConf();
+  private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
   private ConfigNodeDescriptor() {
     loadProps();
   }
 
-  public ConfigNodeConf getConf() {
+  public ConfigNodeConfig getConf() {
     return conf;
   }
 
