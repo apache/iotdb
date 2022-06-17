@@ -384,9 +384,9 @@ public class StorageGroupPartitionTable {
       List<TRegionLocation> tRegionInfosList,
       TRegionReplicaSet replicaSet,
       RegionGroup regionGroup) {
-    List<Integer> dataNodeIdList = null;
-    List<String> rpcAddressList = null;
-    List<Integer> rpcPortList = null;
+    List<Integer> dataNodeIdList = new ArrayList<>();
+    List<String> rpcAddressList = new ArrayList<>();
+    List<Integer> rpcPortList = new ArrayList<>();
     TRegionLocation tRegionInfos = new TRegionLocation();
     tRegionInfos.setConsensusGroupId(replicaSet.getRegionId());
     tRegionInfos.setStorageGroup(storageGroupName);
@@ -397,9 +397,9 @@ public class StorageGroupPartitionTable {
       rpcAddressList.add(dataNodeLocation.getExternalEndPoint().getIp());
       rpcPortList.add(dataNodeLocation.getExternalEndPoint().getPort());
     }
-    tRegionInfos.setDataNodeId(dataNodeIdList.toString().substring(1, dataNodeIdList.size() - 1));
-    tRegionInfos.setRpcAddresss(rpcAddressList.toString().substring(1, dataNodeIdList.size() - 1));
-    tRegionInfos.setRpcPort(rpcPortList.toString().substring(1, dataNodeIdList.size() - 1));
+    tRegionInfos.setDataNodeId(dataNodeIdList.toString());
+    tRegionInfos.setRpcAddresss(rpcAddressList.toString());
+    tRegionInfos.setRpcPort(rpcPortList.toString());
     // TODO: Wait for data migration. And then add the state
     tRegionInfos.setStatus(RegionStatus.Up.getStatus());
     tRegionInfosList.add(tRegionInfos);

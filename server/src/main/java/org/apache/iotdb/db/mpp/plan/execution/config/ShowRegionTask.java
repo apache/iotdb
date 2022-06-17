@@ -76,11 +76,25 @@ public class ShowRegionTask implements IConfigTask {
         builder.getColumnBuilder(4).writeInt((int) regionLocation.getSlots());
         builder
             .getColumnBuilder(5)
-            .writeBinary(Binary.valueOf(String.valueOf(regionLocation.getDataNodeId())));
-        builder.getColumnBuilder(6).writeBinary(Binary.valueOf(regionLocation.getRpcAddresss()));
+            .writeBinary(
+                Binary.valueOf(
+                    regionLocation
+                        .getDataNodeId()
+                        .substring(1, regionLocation.getDataNodeId().length() - 1)));
+        builder
+            .getColumnBuilder(6)
+            .writeBinary(
+                Binary.valueOf(
+                    regionLocation
+                        .getRpcAddresss()
+                        .substring(1, regionLocation.getRpcAddresss().length() - 1)));
         builder
             .getColumnBuilder(7)
-            .writeBinary(Binary.valueOf(String.valueOf(regionLocation.getRpcPort())));
+            .writeBinary(
+                Binary.valueOf(
+                    regionLocation
+                        .getRpcPort()
+                        .substring(1, regionLocation.getRpcPort().length() - 1)));
 
         builder.declarePosition();
       }
