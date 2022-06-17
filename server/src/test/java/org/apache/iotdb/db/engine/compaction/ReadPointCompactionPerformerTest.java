@@ -46,18 +46,13 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
@@ -3778,6 +3773,189 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         deleteMap.put(path, new Pair<>(startValue, endValue));
       }
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
+    }
+  }
+
+  /**
+   * Total 4 seq files and 5 unseq files, each file has different nonAligned timeseries. Limit
+   * target file size as 20KB.
+   *
+   * <p>Seq files<br>
+   * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
+   * is 0 ~ 299 and 350 ~ 649.<br>
+   * third and forth file has d0 ~ d3 and s0 ~ S4,time range is 700 ~ 999 and 1050 ~ 1349, value
+   * range is 700 ~ 999 and 1050 ~ 1349.<br>
+   *
+   * <p>UnSeq files<br>
+   * first, second and third file has d0 ~ d2 and s0 ~ s3, time range is 20 ~ 219, 250 ~ 449 and 480
+   * ~ 679, value range is 10020 ~ 10219, 10250 ~ 10449 and 10480 ~ 10679.<br>
+   * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
+   * 20450 ~ 20549 and 20550 ~ 20649.
+   */
+  @Test
+  public void testCrossSpaceCompactionWithDifferentTimeseriesAndSplitTargetFiles()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException,
+          InterruptedException {
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(20480);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(2048);
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3 && j < 4) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    //    List<String> deviceIdList = new ArrayList<>();
+    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    //    for (int i = 0; i < 2; i++) {
+    //      Assert.assertTrue(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    //      Assert.assertTrue(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    //      Assert.assertFalse(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    //      Assert.assertFalse(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    //      check(targetResources.get(i), deviceIdList);
+    //    }
+    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    //    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    //    for (int i = 2; i < 4; i++) {
+    //      Assert.assertTrue(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    //      Assert.assertTrue(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    //      Assert.assertTrue(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    //      Assert.assertTrue(
+    //          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    //      check(targetResources.get(i), deviceIdList);
+    //    }
+
+    Map<String, Long> measurementMaxTime = new HashMap<>();
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                targetResources,
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= batchData.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                batchData.currentTime());
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3 && j < 4) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
     }
   }
 

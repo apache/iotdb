@@ -23,7 +23,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -35,6 +37,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected static final int subTaskNum =
@@ -148,7 +151,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
+  protected boolean checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
     if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
       flushChunkToFileWriter(fileWriter, subTaskId);
@@ -159,7 +162,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
           ProcessChunkType.DESERIALIZE_CHUNK,
           this.isAlign,
           chunkWriters[subTaskId].estimateMaxSeriesMemSize());
+      return true;
     }
+    return false;
   }
 
   protected boolean checkChunkSize(int subTaskId) {
@@ -177,4 +182,24 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public abstract List<TsFileIOWriter> getFileIOWriter();
+
+  public abstract void checkFileSizeAndMayOpenANewFile() throws IOException;
+
+  public void updateDeviceStartTimeAndEndTime(
+      TsFileResource targetResource, TsFileIOWriter fileIOWriter) {
+    // The tmp target file may does not have any data points written due to the existence of the
+    // mods file, and it will be deleted after compaction. So skip the target file that has been
+    // deleted.
+    if (!targetResource.getTsFile().exists()) {
+      return;
+    }
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry :
+        fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
+      String device = entry.getKey();
+      for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        targetResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
+        targetResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
+      }
+    }
+  }
 }

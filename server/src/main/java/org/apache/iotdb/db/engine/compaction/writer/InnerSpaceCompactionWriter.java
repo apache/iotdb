@@ -82,4 +82,9 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   public List<TsFileIOWriter> getFileIOWriter() {
     return Collections.singletonList(fileWriter);
   }
+
+  @Override
+  public void checkFileSizeAndMayOpenANewFile() throws IOException {
+    throw new RuntimeException("Does not support checkFileSizeAndMayOpenANewFile method.");
+  }
 }

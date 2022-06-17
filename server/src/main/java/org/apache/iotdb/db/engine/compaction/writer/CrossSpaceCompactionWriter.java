@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -51,9 +53,15 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // current chunk group header size
   private int chunkGroupHeaderSize;
 
+  private final List<TsFileResource> targetResources;
+
+  private final long targetFileSizeThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
+    this.targetResources = targetResources;
     currentDeviceEndTime = new long[seqFileResources.size()];
     isEmptyFile = new boolean[seqFileResources.size()];
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
@@ -99,7 +107,10 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     writeDataPoint(timestamp, value, subTaskId);
-    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
+    if (checkChunkSizeAndMayOpenANewChunk(
+        fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId)) {
+      // checkFileSizeAndMayOpenANewFile(subTaskId);
+    }
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
   }
@@ -148,6 +159,55 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
         // which are not exist in seq files. (2) timestamp of one timeseries in unseq files may
         // later than any seq files. Then write these data into the last target file.
         return;
+      }
+    }
+  }
+
+  private void checkFileSizeAndMayOpenANewFile2(int subTaskId) throws IOException {
+    int fileIndex = seqFileIndexArray[subTaskId];
+    long estimateFileSize = fileWriterList.get(fileIndex).getIOWriterOut().getPosition();
+    if (estimateFileSize >= targetFileSizeThreshold) {
+      // end current target file
+      fileWriterList.get(fileIndex).endFile();
+      // add new target file resource
+      TsFileResource newTargetResource =
+          new TsFileResource(
+              TsFileNameGenerator.increaseFileVersion(targetResources.get(fileIndex).getTsFile()));
+      targetResources.add(fileIndex + 1, newTargetResource);
+      // replace target fileIOWriter
+      fileWriterList.remove(fileIndex);
+      fileWriterList.add(fileIndex, new TsFileIOWriter(newTargetResource.getTsFile()));
+      isEmptyFile[subTaskId] = true;
+    }
+  }
+
+  public void checkFileSizeAndMayOpenANewFile() throws IOException {
+    for (int fileIndex = 0; fileIndex < fileWriterList.size(); fileIndex++) {
+      long estimateFileSize = fileWriterList.get(fileIndex).getIOWriterOut().getPosition();
+      if (estimateFileSize >= targetFileSizeThreshold) {
+        // end current target file
+        fileWriterList.get(fileIndex).endFile();
+        // add new target file resource
+        TsFileResource newTargetResource =
+            new TsFileResource(
+                TsFileNameGenerator.increaseFileVersion(fileWriterList.get(fileIndex).getFile()));
+        int i;
+        for (i = 0; i < targetResources.size(); i++) {
+          if (targetResources
+              .get(i)
+              .getTsFile()
+              .getName()
+              .equals(fileWriterList.get(fileIndex).getFile().getName())) {
+            targetResources.add(i + 1, newTargetResource);
+            break;
+          }
+        }
+        // use fileIOWriter to update target resource
+        updateDeviceStartTimeAndEndTime(targetResources.get(i), fileWriterList.get(fileIndex));
+        // replace target fileIOWriter
+        fileWriterList.remove(fileIndex);
+        fileWriterList.add(fileIndex, new TsFileIOWriter(newTargetResource.getTsFile()));
+        isEmptyFile[fileIndex] = true;
       }
     }
   }
