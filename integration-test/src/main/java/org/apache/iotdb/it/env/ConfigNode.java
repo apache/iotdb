@@ -100,13 +100,16 @@ public class ConfigNode extends ClusterNodeBase {
       configProperties.setProperty("consensus_port", String.valueOf(this.consensusPort));
       configProperties.setProperty("target_confignode", this.targetConfigNode);
       configProperties.setProperty(
+          "config_node_consensus_protocol_class",
+          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+      configProperties.setProperty(
           "schema_region_consensus_protocol_class",
-          "org.apache.iotdb.consensus.ratis.RatisConsensus");
+          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
       configProperties.setProperty(
           "data_region_consensus_protocol_class",
-          "org.apache.iotdb.consensus.ratis.RatisConsensus");
-      configProperties.setProperty("schema_replication_factor", "2");
-      configProperties.setProperty("data_replication_factor", "2");
+          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+      configProperties.setProperty("schema_replication_factor", "1");
+      configProperties.setProperty("data_replication_factor", "1");
       configProperties.setProperty("connection_timeout_ms", "30000");
       if (properties != null && !properties.isEmpty()) {
         configProperties.putAll(properties);

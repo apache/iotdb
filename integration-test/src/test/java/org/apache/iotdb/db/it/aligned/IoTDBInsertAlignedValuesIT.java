@@ -246,6 +246,7 @@ public class IoTDBInsertAlignedValuesIT {
       fail();
     } catch (SQLException e) {
       assertTrue(
+          e.getMessage(),
           e.getMessage()
               .contains(
                   "the measurementList's size 2 is not consistent with the valueList's size 3"));
@@ -285,7 +286,9 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, s3, status, status) aligned values(100, true, 20.1, 20.2)");
       fail();
     } catch (SQLException e) {
-      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: status"));
+      assertTrue(
+          e.getMessage(),
+          e.getMessage().contains("Insertion contains duplicated measurement: status"));
     }
   }
 }
