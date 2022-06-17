@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowExcep
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
@@ -84,9 +85,9 @@ public abstract class PageManager implements IPageManager {
 
     // construct first page if file to init
     if (lpi < 0) {
-      ISchemaPage rootPage =
+      ISegmentedPage rootPage =
           ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaPage.PAGE_LENGTH), 0);
-      rootPage.getAsSegmentedPage().allocNewSegment(SchemaPage.SEG_MAX_SIZ);
+      rootPage.allocNewSegment(SchemaPage.SEG_MAX_SIZ);
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
       dirtyPages.put(rootPage.getPageIndex(), rootPage);
     }
@@ -161,14 +162,11 @@ public abstract class PageManager implements IPageManager {
           short newSegSize =
               reEstimateSegSize(
                   curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity());
-          ISchemaPage newPage = getMinApplSegmentedPageInMem(newSegSize);
+          ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize);
 
           // with single segment, curSegAddr equals actualAddress
-          curSegAddr =
-              newPage
-                  .getAsSegmentedPage()
-                  .transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
-          newPage.getAsSegmentedPage().write(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
+          curSegAddr = newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
+          newPage.write(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
@@ -268,16 +266,13 @@ public abstract class PageManager implements IPageManager {
           short newSegSiz =
               reEstimateSegSize(
                   curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity());
-          ISchemaPage newPage = getMinApplSegmentedPageInMem(newSegSiz);
+          ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSiz);
 
           // assign new segment address
-          curSegAddr =
-              newPage
-                  .getAsSegmentedPage()
-                  .transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSiz);
+          curSegAddr = newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSiz);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
 
-          newPage.getAsSegmentedPage().update(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
+          newPage.update(getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
           dirtyPages.put(curPage.getPageIndex(), curPage);
@@ -397,9 +392,9 @@ public abstract class PageManager implements IPageManager {
   @Deprecated
   // TODO: improve to remove
   private long preAllocateSegment(short size) throws IOException, MetadataException {
-    ISchemaPage page = getMinApplSegmentedPageInMem(size);
+    ISegmentedPage page = getMinApplSegmentedPageInMem(size);
     return SchemaFile.getGlobalIndex(
-        page.getPageIndex(), page.getAsSegmentedPage().allocNewSegment(size));
+        page.getPageIndex(), page.allocNewSegment(size));
   }
 
   protected ISchemaPage replacePageInCache(ISchemaPage page) {
@@ -407,11 +402,11 @@ public abstract class PageManager implements IPageManager {
     return addPageToCache(page.getPageIndex(), page);
   }
 
-  protected ISchemaPage getMinApplSegmentedPageInMem(short size) {
+  protected ISegmentedPage getMinApplSegmentedPageInMem(short size) {
     for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
           && entry.getValue().isCapableForSize(size)) {
-        return dirtyPages.get(entry.getKey());
+        return dirtyPages.get(entry.getKey()).getAsSegmentedPage();
       }
     }
 
@@ -419,10 +414,10 @@ public abstract class PageManager implements IPageManager {
       if (entry.getValue().getAsSegmentedPage() != null
           && entry.getValue().isCapableForSize(size)) {
         dirtyPages.putIfAbsent(entry.getKey(), entry.getValue());
-        return pageInstCache.get(entry.getKey());
+        return pageInstCache.get(entry.getKey()).getAsSegmentedPage();
       }
     }
-    return allocateNewSegmentedPage();
+    return allocateNewSegmentedPage().getAsSegmentedPage();
   }
 
   protected synchronized ISchemaPage allocateNewSegmentedPage() {

@@ -21,7 +21,9 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.eclipse.jetty.security.IdentityService;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -51,8 +53,8 @@ public class BTreePageManager extends PageManager {
       ISchemaPage curPage, String key, ByteBuffer childBuffer)
       throws MetadataException, IOException {
     // cur is a leaf, split and set next ptr as link between
-    ISchemaPage newPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
-    newPage.getAsSegmentedPage().allocNewSegment(SchemaPage.SEG_MAX_SIZ);
+    ISegmentedPage newPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
+    newPage.allocNewSegment(SchemaPage.SEG_MAX_SIZ);
     String sk =
         curPage
             .getAsSegmentedPage()
@@ -68,8 +70,8 @@ public class BTreePageManager extends PageManager {
       ISchemaPage curPage, String key, ByteBuffer childBuffer)
       throws MetadataException, IOException {
     // split and update higer nodes
-    ISchemaPage splPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
-    splPage.getAsSegmentedPage().allocNewSegment(SchemaPage.SEG_MAX_SIZ);
+    ISegmentedPage splPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
+    splPage.allocNewSegment(SchemaPage.SEG_MAX_SIZ);
     String sk = curPage.getAsSegmentedPage().splitWrappedSegment(null, null, splPage, false);
     curPage
         .getAsSegmentedPage()
@@ -77,7 +79,7 @@ public class BTreePageManager extends PageManager {
 
     // update on page where it exists
     if (key.compareTo(sk) >= 0) {
-      splPage.getAsSegmentedPage().update((short) 0, key, childBuffer);
+      splPage.update((short) 0, key, childBuffer);
     } else {
       curPage.getAsSegmentedPage().update((short) 0, key, childBuffer);
     }
@@ -209,10 +211,8 @@ public class BTreePageManager extends PageManager {
   private void insertIndexEntryEntrance(ISchemaPage curPage, ISchemaPage splPage, String sk)
       throws MetadataException, IOException {
     if (treeTrace[0] < 1) {
-      ISchemaPage trsPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
-      trsPage
-          .getAsSegmentedPage()
-          .transplantSegment(curPage.getAsSegmentedPage(), (short) 0, SchemaPage.SEG_MAX_SIZ);
+      ISegmentedPage trsPage = getMinApplSegmentedPageInMem(SchemaPage.SEG_MAX_SIZ);
+      trsPage.transplantSegment(curPage.getAsSegmentedPage(), (short) 0, SchemaPage.SEG_MAX_SIZ);
       ISchemaPage repPage =
           ISchemaPage.initInternalPage(
               ByteBuffer.allocate(SchemaPage.PAGE_LENGTH),

@@ -82,7 +82,7 @@ public interface ISchemaPage {
     return new InternalPage(buffer);
   }
 
-  static SchemaPage initSegmentedPage(ByteBuffer buffer, int pageIndex) {
+  static ISegmentedPage initSegmentedPage(ByteBuffer buffer, int pageIndex) {
     buffer.clear();
     ReadWriteIOUtils.write(SchemaPage.SEGMENTED_PAGE, buffer);
     ReadWriteIOUtils.write(pageIndex, buffer);

@@ -31,8 +31,8 @@ import java.util.List;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage.SEG_HEADER_SIZE;
 
 /**
- * Segments store keys with bytebuffer records, which can be serialized IMNode, bytes of alias
- * string or any other attributes of IMNode as secondary index.
+ * Segments store [String]keys with bytebuffer records, which can be serialized IMNode,
+ * bytes of alias string or any other attributes need to store with hierarchy structure.
  *
  * @param <R> type to construct from bytebuffer
  */

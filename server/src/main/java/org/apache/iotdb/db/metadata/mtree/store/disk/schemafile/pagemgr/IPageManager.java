@@ -28,8 +28,8 @@ import java.util.Iterator;
 
 /**
  * Framework to decouple {@link SchemaFile} from structure of {@link SchemaPage}. Various data
- * structure between {@link SchemaPage} could be implemented within this interface considering the
- * requirement.
+ * structure between {@link SchemaPage} could be implemented under this interface with respect to
+ * the requirement.
  *
  * <p>{@linkplain SchemaFile} only needs to handle initialization and header content, and interact
  * with this Manager ignoring pages since this interface implements all read and write methods about
