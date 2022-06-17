@@ -219,9 +219,9 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_SLOTS, TSDataType.INT32),
-                new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
                 new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_PORT, TSDataType.TEXT)),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }
 }

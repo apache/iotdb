@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -384,25 +383,22 @@ public class StorageGroupPartitionTable {
       List<TRegionLocation> regionLocationList,
       TRegionReplicaSet replicaSet,
       RegionGroup regionGroup) {
-    List<Integer> dataNodeIdList = new ArrayList<>();
-    List<String> rpcAddressList = new ArrayList<>();
-    List<Integer> rpcPortList = new ArrayList<>();
-    TRegionLocation tRegionInfos = new TRegionLocation();
-    tRegionInfos.setConsensusGroupId(replicaSet.getRegionId());
-    tRegionInfos.setStorageGroup(storageGroupName);
-    long slots = regionGroup.getCounter();
-    tRegionInfos.setSlots((int) slots);
-    for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-      dataNodeIdList.add(dataNodeLocation.getDataNodeId());
-      rpcAddressList.add(dataNodeLocation.getExternalEndPoint().getIp());
-      rpcPortList.add(dataNodeLocation.getExternalEndPoint().getPort());
-    }
-    tRegionInfos.setDataNodeId(dataNodeIdList.toString());
-    tRegionInfos.setRpcAddresss(rpcAddressList.toString());
-    tRegionInfos.setRpcPort(rpcPortList.toString());
-    // TODO: Wait for data migration. And then add the state
-    tRegionInfos.setStatus(RegionStatus.Up.getStatus());
-    regionLocationList.add(tRegionInfos);
+    replicaSet
+        .getDataNodeLocations()
+        .forEach(
+            (dataNodeLocation) -> {
+              TRegionLocation tRegionInfos = new TRegionLocation();
+              tRegionInfos.setConsensusGroupId(replicaSet.getRegionId());
+              tRegionInfos.setStorageGroup(storageGroupName);
+              long slots = regionGroup.getCounter();
+              tRegionInfos.setSlots((int) slots);
+              tRegionInfos.setDataNodeId(dataNodeLocation.getDataNodeId());
+              tRegionInfos.setRpcAddresss(dataNodeLocation.getExternalEndPoint().getIp());
+              tRegionInfos.setRpcPort(dataNodeLocation.getExternalEndPoint().getPort());
+              // TODO: Wait for data migration. And then add the state
+              tRegionInfos.setStatus(RegionStatus.Up.getStatus());
+              regionLocationList.add(tRegionInfos);
+            });
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
