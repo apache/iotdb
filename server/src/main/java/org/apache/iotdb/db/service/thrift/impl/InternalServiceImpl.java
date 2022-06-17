@@ -95,7 +95,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -305,7 +307,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
-    THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp());
+    THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp(), getJudgedLeaders());
     Random whetherToGetMetric = new Random();
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
         && whetherToGetMetric.nextDouble() < loadBalanceThreshold) {
@@ -325,6 +327,27 @@ public class InternalServiceImpl implements InternalService.Iface {
       }
     }
     return resp;
+  }
+
+  private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
+    Map<TConsensusGroupId, Boolean> result = new HashMap<>();
+    DataRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId -> {
+              result.put(
+                  groupId.convertToTConsensusGroupId(),
+                  DataRegionConsensusImpl.getInstance().isLeader(groupId));
+            });
+    SchemaRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId -> {
+              result.put(
+                  groupId.convertToTConsensusGroupId(),
+                  SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
+            });
+    return result;
   }
 
   private long getMemory(String gaugeName) {

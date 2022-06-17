@@ -83,8 +83,9 @@ struct THeartbeatReq {
 
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
-  2: optional i16 cpu
-  3: optional i16 memory
+  2: required map<TConsensusGroupId, bool> judgedLeaders
+  3: optional i16 cpu
+  4: optional i16 memory
 }
 
 struct TDataNodeInfo {
