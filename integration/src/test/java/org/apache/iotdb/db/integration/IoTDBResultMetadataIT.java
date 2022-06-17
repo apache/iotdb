@@ -68,7 +68,6 @@ public class IoTDBResultMetadataIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      long lastTimestamp;
       try (ResultSet resultSet = statement.executeQuery("select status from root.sg.dev")) {
         Assert.assertTrue(resultSet.next());
         ResultSetMetaData metaData = resultSet.getMetaData();

@@ -34,8 +34,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import static org.junit.Assert.fail;
 
@@ -47,45 +47,31 @@ import static org.junit.Assert.fail;
  */
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBResultSetIT {
-  private static List<String> sqls = new ArrayList<>();
-  private static Connection connection;
+
+  private static final List<String> SQLs = Arrays.asList(
+          "SET STORAGE GROUP TO root.t1",
+          "CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.t1.wf01.wt01.type WITH DATATYPE=INT32, ENCODING=RLE",
+          "CREATE TIMESERIES root.t1.wf01.wt01.grade WITH DATATYPE=INT64, ENCODING=RLE"
+  );
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
-    initCreateSQLStatement();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    close();
     EnvFactory.getEnv().cleanAfterClass();
-  }
-
-  private static void close() {
-    if (Objects.nonNull(connection)) {
-      try {
-        connection.close();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
-  private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.t1");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.type WITH DATATYPE=INT32, ENCODING=RLE");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.grade WITH DATATYPE=INT64, ENCODING=RLE");
   }
 
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String sql : sqls) {
+      for (String sql : SQLs) {
         statement.execute(sql);
       }
     } catch (Exception e) {
@@ -109,21 +95,21 @@ public class IoTDBResultSetIT {
       rs1.next();
       // type of r1 is INT64(long), test long convert to int
       int countStatus = rs1.getInt(1);
-      Assert.assertTrue(countStatus == 2L);
+      Assert.assertEquals(2L, countStatus);
 
       ResultSet rs2 =
           st1.executeQuery("select type from root.t1.wf01.wt01 where time = 1000 limit 1");
       rs2.next();
       // type of r2 is INT32(int), test int convert to long
       long type = rs2.getLong(2);
-      Assert.assertTrue(type == 1);
+      Assert.assertEquals(1, type);
 
       ResultSet rs3 =
           st1.executeQuery("select grade from root.t1.wf01.wt01 where time = 1000 limit 1");
       rs3.next();
       // type of r3 is INT64(long), test long convert to int
       int grade = rs3.getInt(2);
-      Assert.assertTrue(grade == 1000);
+      Assert.assertEquals(1000, grade);
 
       st1.close();
     } catch (Exception e) {
