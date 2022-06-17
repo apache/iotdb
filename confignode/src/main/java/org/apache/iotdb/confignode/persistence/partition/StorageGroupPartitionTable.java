@@ -366,22 +366,22 @@ public class StorageGroupPartitionTable {
   }
 
   public void getRegionInfos(
-      GetRegionLocationsReq regionsInfoReq, List<TRegionLocation> tRegionInfosList) {
+      GetRegionLocationsReq regionsInfoReq, List<TRegionLocation> regionLocationList) {
     regionInfoMap.forEach(
         (consensusGroupId, regionGroup) -> {
           TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
           if (replicaSet.getRegionId().getType().ordinal()
               == regionsInfoReq.getRegionType().ordinal()) {
-            buildTRegionsInfo(tRegionInfosList, replicaSet, regionGroup);
+            buildTRegionsInfo(regionLocationList, replicaSet, regionGroup);
           }
           if (regionsInfoReq.getRegionType() == TConsensusGroupType.PartitionRegion) {
-            buildTRegionsInfo(tRegionInfosList, replicaSet, regionGroup);
+            buildTRegionsInfo(regionLocationList, replicaSet, regionGroup);
           }
         });
   }
 
   private void buildTRegionsInfo(
-      List<TRegionLocation> tRegionInfosList,
+      List<TRegionLocation> regionLocationList,
       TRegionReplicaSet replicaSet,
       RegionGroup regionGroup) {
     List<Integer> dataNodeIdList = new ArrayList<>();
@@ -402,7 +402,7 @@ public class StorageGroupPartitionTable {
     tRegionInfos.setRpcPort(rpcPortList.toString());
     // TODO: Wait for data migration. And then add the state
     tRegionInfos.setStatus(RegionStatus.Up.getStatus());
-    tRegionInfosList.add(tRegionInfos);
+    regionLocationList.add(tRegionInfos);
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

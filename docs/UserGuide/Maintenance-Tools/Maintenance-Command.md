@@ -131,50 +131,50 @@ Currently, IoTDB supports Region query using the following SQL：
 
 ```sql
 IoTDB> show regions
-+--------+------------+------+-------------+-----+----------+-----------+------+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId| HostAdress|  Port|
-+--------+------------+------+-------------+-----+----------+-----------+------+
-|       5|  DataRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
-|       6|  DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
-|       4|SchemaRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
-|       9|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-|      10|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-|       7|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-|       8|  DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
-|      13|  DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
-|      14|  DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
-|      11|  DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
-|      12|  DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-|       2|SchemaRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
-|       3|SchemaRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-+--------+------------+------+-------------+-----+----------+-----------+------+
++--------+------------+------+-------------+-----+----------+----------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+------------+------+-------------+-----+----------+----------+----+
+|       5|  DataRegion|    Up|      root.sg|    1|         2| 127.0.0.1|6671|
+|       6|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       3|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       4|  DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
+|       9|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       7|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       8|  DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
+|      11|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      12|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       2|SchemaRegion|    Up|      root.sg|    1|         3| 127.0.0.1|6669|
+|       0|SchemaRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
+|       1|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+----------+----+
 Total line number = 13
 It costs 0.015s
 IoTDB> show schema regions
-+--------+------------+------+-------------+-----+----------+-----------+------+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId| HostAdress|  Port|
-+--------+------------+------+-------------+-----+----------+-----------+------+
-|       4|SchemaRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
-|       2|SchemaRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
-|       3|SchemaRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-+--------+------------+------+-------------+-----+----------+-----------+------+
++--------+------------+------+-------------+-----+----------+----------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+------------+------+-------------+-----+----------+----------+----+
+|       2|SchemaRegion|    Up|      root.sg|    1|         3| 127.0.0.1|6669|
+|       0|SchemaRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
+|       1|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+----------+----+
 Total line number = 3
 It costs 0.008s
 IoTDB> show data regions
-+--------+----------+------+-------------+-----+----------+-----------+------+
-|RegionId|      Type|Status|storage group|Slots|DataNodeId| HostAdress|  Port|
-+--------+----------+------+-------------+-----+----------+-----------+------+
-|       5|DataRegion|    Up|      root.sg|    1|       [2]|[127.0.0.1]|[6671]|
-|       6|DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
-|       9|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-|      10|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-|       7|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-|       8|DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
-|      13|DataRegion|    Up|      root.sg|    0|       [1]|[127.0.0.1]|[6669]|
-|      14|DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
-|      11|DataRegion|    Up|      root.sg|    0|       [2]|[127.0.0.1]|[6671]|
-|      12|DataRegion|    Up|      root.sg|    0|       [0]|[127.0.0.1]|[6667]|
-+--------+----------+------+-------------+-----+----------+-----------+------+
++--------+----------+------+-------------+-----+----------+----------+----+
+|RegionId|      Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+----------+------+-------------+-----+----------+----------+----+
+|       5|DataRegion|    Up|      root.sg|    1|         2| 127.0.0.1|6671|
+|       6|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       3|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       4|DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
+|       9|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       7|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       8|DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
+|      11|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      12|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
++--------+----------+------+-------------+-----+----------+----------+----+
 Total line number = 10
 It costs 0.038s
 ```

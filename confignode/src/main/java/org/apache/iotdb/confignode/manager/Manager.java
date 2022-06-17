@@ -224,5 +224,6 @@ public interface Manager {
 
   void addMetrics();
 
+  /** Show (data/schema) regions */
   DataSet showRegion(GetRegionLocationsReq getRegionsinfoReq);
 }

@@ -423,18 +423,19 @@ public class PartitionInfo implements SnapshotProcessor {
     return schemaNodeManagementResp;
   }
 
+  /** Get region information */
   public DataSet getRegionInfos(GetRegionLocationsReq regionsInfoReq) {
     RegionLocationsResp regionResp = new RegionLocationsResp();
-    List<TRegionLocation> tRegionInfosList = new ArrayList<>();
+    List<TRegionLocation> regionLocationList = new ArrayList<>();
     if (storageGroupPartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return regionResp;
     }
     storageGroupPartitionTables.forEach(
         (storageGroup, storageGroupPartitionTable) -> {
-          storageGroupPartitionTable.getRegionInfos(regionsInfoReq, tRegionInfosList);
+          storageGroupPartitionTable.getRegionInfos(regionsInfoReq, regionLocationList);
         });
-    regionResp.setRegionInfosList(tRegionInfosList);
+    regionResp.setRegionInfosList(regionLocationList);
     regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return regionResp;
   }
