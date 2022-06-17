@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
@@ -127,10 +128,10 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
   public void testWorking() throws InterruptedException {
     int counter = 0;
-    Thread.sleep(2000);
+    TimeUnit.SECONDS.sleep(2);
 
     do {
-      Thread.sleep(1000);
+      TimeUnit.SECONDS.sleep(1);
 
       counter++;
       if (counter > 30) {
