@@ -204,7 +204,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
                   new FragmentInstanceAbortedException(
                       task.getFragmentInstance().getInfo(), task.getAbortCause()));
         } catch (Exception e) {
-          logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
+          logger.error("Clear DriverTask failed", e);
         }
       }
       if (task.getStatus() == DriverTaskStatus.ABORTED) {
@@ -215,7 +215,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
                   task.getId().getFragmentId().getId(),
                   task.getId().getInstanceId()));
         } catch (Exception e) {
-          logger.error("Clear DriverTask {} failed", task.getId().toString(), e);
+          logger.error("Clear DriverTask failed", e);
         }
       }
     }

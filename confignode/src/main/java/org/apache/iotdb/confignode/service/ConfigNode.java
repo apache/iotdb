@@ -82,6 +82,7 @@ public class ConfigNode implements ConfigNodeMBean {
     JMXService.registerMBean(this, mbeanName);
 
     registerManager.register(MetricsService.getInstance());
+    configManager.addMetrics();
     registerUdfServices();
 
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
@@ -116,14 +117,8 @@ public class ConfigNode implements ConfigNodeMBean {
       return;
     }
 
-    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-    if (conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-        && conf.getRpcPort() == conf.getTargetConfigNode().getPort()) {
-      LOGGER.info("{} has successfully started as a seed", ConfigNodeConstant.GLOBAL_NAME);
-    } else {
-      LOGGER.info(
-          "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
-    }
+    LOGGER.info(
+        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
   public void deactivate() throws IOException {

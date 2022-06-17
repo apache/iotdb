@@ -79,13 +79,7 @@ public class RegularExpression extends UnaryExpression {
 
   @Override
   public TSDataType inferTypes(TypeProvider typeProvider) throws SemanticException {
-    final String expressionString = toString();
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      checkInputExpressionDataType(
-          expression.toString(), expression.inferTypes(typeProvider), TSDataType.TEXT);
-      typeProvider.setType(expressionString, TSDataType.TEXT);
-    }
-    return TSDataType.TEXT;
+    return TSDataType.BOOLEAN;
   }
 
   @Override

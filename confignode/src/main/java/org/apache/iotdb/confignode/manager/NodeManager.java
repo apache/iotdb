@@ -20,13 +20,12 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.client.AsyncConfigNodeToDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
@@ -42,7 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
@@ -50,15 +49,14 @@ public class NodeManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
   private final Manager configManager;
-
   private final NodeInfo nodeInfo;
 
-  private final ReentrantLock registerConfigNodeLock;
+  /** TODO:do some operate after add node or remove node */
+  private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
   public NodeManager(Manager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
-    this.registerConfigNodeLock = new ReentrantLock();
   }
 
   private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
@@ -89,7 +87,7 @@ public class NodeManager {
 
     if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
       // Reset client
-      AsyncConfigNodeToDataNodeClientPool.getInstance()
+      AsyncDataNodeClientPool.getInstance()
           .resetClient(req.getInfo().getLocation().getInternalEndPoint());
 
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
@@ -97,7 +95,7 @@ public class NodeManager {
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
+      req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
     }
@@ -155,120 +153,34 @@ public class NodeManager {
    * @return TConfigNodeRegisterResp with PartitionRegionId and online ConfigNodes
    */
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    // Check system configuration
-    TSStatus status = checkSystemConfig(req);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return new TConfigNodeRegisterResp(status, getOnlineConfigNodes());
-    }
+    TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
 
-    // If there is any error in the following process,
-    // the new ConfigNode must retry and the online ConfigNodes should remain the same
-    TConfigNodeRegisterResp errorResp =
-        new TConfigNodeRegisterResp(
-            new TSStatus(TSStatusCode.NEED_RETRY.getStatusCode()), getOnlineConfigNodes());
-    if (registerConfigNodeLock.tryLock()) {
-      // We use a ReentrantLock here so that the register ConfigNode process is serialized,
-      // and the concurrent register request will be rejected directly.
-      try {
-        // Skip register process if it's done before
-        if (!getOnlineConfigNodes().contains(req.getConfigNodeLocation())) {
-          // Do register
-          RegisterConfigNodeReq registerConfigNodeReq =
-              new RegisterConfigNodeReq(req.getConfigNodeLocation());
-          if (!getConsensusManager().addConfigNodePeer(registerConfigNodeReq)) {
-            LOGGER.error("Error when addPeer: {}", registerConfigNodeReq.getConfigNodeLocation());
-            return errorResp;
-          }
-          if (getConsensusManager().write(registerConfigNodeReq).getStatus().getCode()
-              != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            LOGGER.error(
-                "Error when cache ConfigNode: {}", registerConfigNodeReq.getConfigNodeLocation());
-            return errorResp;
-          }
-        }
+    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-        // Return SUCCESS_STATUS and new configNodeList
-        return new TConfigNodeRegisterResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), getOnlineConfigNodes());
-      } finally {
-        registerConfigNodeLock.unlock();
-      }
+    // Return PartitionRegionId
+    resp.setPartitionRegionId(
+        getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
+
+    // Return online ConfigNodes
+    resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
+    resp.getConfigNodeList().add(req.getConfigNodeLocation());
+
+    return resp;
+  }
+
+  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
+    if (getConsensusManager().addConfigNodePeer(applyConfigNodeReq)) {
+      // Generate new ConfigNode's index
+      applyConfigNodeReq.getConfigNodeLocation().setConfigNodeId(nodeInfo.generateNextNodeId());
+      return getConsensusManager().write(applyConfigNodeReq).getStatus();
     } else {
-      return errorResp;
+      return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
+          .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
     }
   }
 
-  /**
-   * Ensure the system parameters are consistent.
-   *
-   * @return SUCCESS_STATUS when consistent, INCONSISTENT_SYSTEM_CONFIG otherwise.
-   */
-  private TSStatus checkSystemConfig(TConfigNodeRegisterReq req) {
-    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-    TSStatus errorStatus = new TSStatus(TSStatusCode.INCONSISTENT_SYSTEM_CONFIG.getStatusCode());
-
-    if (!req.getPartitionRegionId().equals(conf.getPartitionRegionId())) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the cluster_id " + "are consistent.");
-      return errorStatus;
-    }
-
-    if (!req.getGlobalConfig()
-        .getDataRegionConsensusProtocolClass()
-        .equals(conf.getDataRegionConsensusProtocolClass())) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the data_region_consensus_protocol_class "
-              + "are consistent.");
-      return errorStatus;
-    }
-
-    if (!req.getGlobalConfig()
-        .getSchemaRegionConsensusProtocolClass()
-        .equals(conf.getSchemaRegionConsensusProtocolClass())) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the schema_region_consensus_protocol_class "
-              + "are consistent.");
-      return errorStatus;
-    }
-
-    if (req.getGlobalConfig().getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the series_partition_slot_num are consistent.");
-      return errorStatus;
-    }
-
-    if (!req.getGlobalConfig()
-        .getSeriesPartitionExecutorClass()
-        .equals(conf.getSeriesPartitionExecutorClass())) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the series_partition_executor_class are consistent.");
-      return errorStatus;
-    }
-
-    if (req.getGlobalConfig().getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the time_partition_interval are consistent.");
-      return errorStatus;
-    }
-
-    if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTL()) {
-      errorStatus.setMessage("Reject register, please ensure that the default_ttl are consistent.");
-      return errorStatus;
-    }
-
-    if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the schema_replication_factor are consistent.");
-      return errorStatus;
-    }
-
-    if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
-      errorStatus.setMessage(
-          "Reject register, please ensure that the data_replication_factor are consistent.");
-      return errorStatus;
-    }
-
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public void addMetrics() {
+    nodeInfo.addMetrics();
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
@@ -277,5 +189,67 @@ public class NodeManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  public void registerListener(final ChangeServerListener serverListener) {
+    listeners.add(serverListener);
+  }
+
+  public boolean unregisterListener(final ChangeServerListener serverListener) {
+    return listeners.remove(serverListener);
+  }
+
+  /** TODO: wait data node register, wait */
+  public void waitForDataNodes() {
+    listeners.stream().forEach(serverListener -> serverListener.waiting());
+  }
+
+  private class ServerStartListenerThread extends Thread implements ChangeServerListener {
+    private boolean changed = false;
+
+    ServerStartListenerThread() {
+      setDaemon(true);
+    }
+
+    @Override
+    public void addDataNode(TDataNodeLocation DataNodeInfo) {
+      serverChanged();
+    }
+
+    @Override
+    public void removeDataNode(TDataNodeLocation dataNodeInfo) {
+      serverChanged();
+    }
+
+    private synchronized void serverChanged() {
+      changed = true;
+      this.notify();
+    }
+
+    @Override
+    public void run() {
+      while (!configManager.isStopped()) {}
+    }
+  }
+
+  /** TODO: For listener for add or remove data node */
+  public interface ChangeServerListener {
+
+    /** Started waiting on DataNode to check */
+    default void waiting() {};
+
+    /**
+     * The server has joined the cluster
+     *
+     * @param dataNodeInfo datanode info
+     */
+    void addDataNode(final TDataNodeLocation dataNodeInfo);
+
+    /**
+     * remove data node
+     *
+     * @param dataNodeInfo data node info
+     */
+    void removeDataNode(final TDataNodeLocation dataNodeInfo);
   }
 }

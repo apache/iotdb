@@ -99,9 +99,7 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertTablet(tablet, true);
         } catch (StatementExecutionException e) {
-          Assert.assertEquals(
-              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-              e.getMessage());
+          Assert.assertEquals(313, e.getStatusCode());
         }
         tablet.reset();
       }
@@ -112,9 +110,7 @@ public class IoTDBSessionDisableMemControlIT {
       try {
         session.insertTablet(tablet);
       } catch (StatementExecutionException e) {
-        Assert.assertEquals(
-            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-            e.getMessage());
+        Assert.assertEquals(313, e.getStatusCode());
       }
       tablet.reset();
     }
@@ -178,9 +174,7 @@ public class IoTDBSessionDisableMemControlIT {
         try {
           session.insertAlignedTablet(tablet, true);
         } catch (StatementExecutionException e) {
-          Assert.assertEquals(
-              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-              e.getMessage());
+          Assert.assertEquals(313, e.getStatusCode());
         }
         tablet.reset();
       }
@@ -191,9 +185,7 @@ public class IoTDBSessionDisableMemControlIT {
       try {
         session.insertAlignedTablet(tablet);
       } catch (StatementExecutionException e) {
-        Assert.assertEquals(
-            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-            e.getMessage());
+        Assert.assertEquals(313, e.getStatusCode());
       }
       tablet.reset();
     }

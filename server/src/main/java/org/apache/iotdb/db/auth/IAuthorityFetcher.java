@@ -20,9 +20,8 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.db.client.DataNodeToConfigNodeClient;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -34,9 +33,7 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUserPrivileges(String username, List<String> allPath, int permission);
 
-  SettableFuture<ConfigTaskResult> operatePermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient);
+  SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 
-  SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, DataNodeToConfigNodeClient dataNodeToConfigNodeClient);
+  SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement);
 }
