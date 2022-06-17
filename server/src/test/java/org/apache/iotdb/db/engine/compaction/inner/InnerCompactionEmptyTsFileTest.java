@@ -83,7 +83,11 @@ public class InnerCompactionEmptyTsFileTest extends InnerCompactionTest {
             false,
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
-    Future<CompactionTaskSummary> future = CompactionTaskManager.getInstance().submitTask(task);
+    CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+    while (task.getFuture() == null) {
+      Thread.sleep(10);
+    }
+    Future<CompactionTaskSummary> future = task.getFuture();
     Assert.assertTrue(future.get().isSuccess());
   }
 }

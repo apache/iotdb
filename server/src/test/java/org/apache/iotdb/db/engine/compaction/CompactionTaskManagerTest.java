@@ -106,7 +106,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       for (TsFileResource resource : seqResources) {
         Assert.assertTrue(resource.isCompactionCandidate());
       }
-      manager.submitTaskFromTaskQueue();
+
     } finally {
       seqResources.get(0).readUnlock();
     }
@@ -160,7 +160,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       for (TsFileResource resource : seqResources) {
         Assert.assertTrue(resource.isCompactionCandidate());
       }
-      manager.submitTaskFromTaskQueue();
+
       Thread.sleep(2000);
       for (TsFileResource resource : seqResources) {
         Assert.assertFalse(resource.isCompactionCandidate());
@@ -214,7 +214,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
-    manager.submitTaskFromTaskQueue();
+
     while (manager.getTotalTaskCount() > 0) {
       Thread.sleep(10);
     }
@@ -223,7 +223,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
     try {
       Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
-      manager.submitTaskFromTaskQueue();
+
       Assert.assertEquals(manager.getExecutingTaskCount(), 0);
       seqResources.get(0).readUnlock();
     } finally {
@@ -260,7 +260,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     seqResources.get(0).readLock();
     try {
       manager.addTaskToWaitingQueue(task1);
-      manager.submitTaskFromTaskQueue();
+
       Thread.sleep(5000);
       List<AbstractCompactionTask> runningList = manager.getRunningCompactionTaskList();
       // compaction task should add itself to running list
@@ -305,7 +305,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       Assert.assertTrue(resource.isCompactionCandidate());
     }
 
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     Thread.sleep(50);
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());
@@ -343,7 +342,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       Assert.assertTrue(resource.isCompactionCandidate());
     }
 
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     long waitingTime = 0;
     while (!task.isTaskFinished()) {
       TimeUnit.MILLISECONDS.sleep(200);

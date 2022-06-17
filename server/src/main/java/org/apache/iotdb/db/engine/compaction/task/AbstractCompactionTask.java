@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -47,8 +48,12 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   protected long timeCost = 0L;
   protected volatile boolean ran = false;
   protected volatile boolean finished = false;
+  protected volatile boolean cancel = false;
+  protected volatile boolean success = false;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
+  protected CompactionTaskSummary summary = new CompactionTaskSummary();
+  private Future<CompactionTaskSummary> future;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
@@ -72,6 +77,7 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
     try {
+      summary.start();
       doCompaction();
       isSuccess = true;
     } catch (InterruptedException e) {
@@ -82,10 +88,10 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
     } finally {
       this.currentTaskNum.decrementAndGet();
       timeCost = System.currentTimeMillis() - startTime;
+      summary.finish(success, timeCost);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
-      finished = true;
     }
-    return new CompactionTaskSummary(isSuccess);
+    return summary;
   }
 
   public String getFullStorageGroupName() {
@@ -127,10 +133,34 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   }
 
   public boolean isTaskRan() {
-    return ran;
+    return summary.isRan();
+  }
+
+  public void setCancel(boolean cancel) {
+    this.cancel = cancel;
+  }
+
+  public void cancel() {
+    summary.cancel();
+  }
+
+  public boolean isSuccess() {
+    return summary.isSuccess();
+  }
+
+  public CompactionTaskSummary getSummary() {
+    return summary;
   }
 
   public boolean isTaskFinished() {
-    return finished;
+    return summary.isFinished();
+  }
+
+  public void setFuture(Future<CompactionTaskSummary> future) {
+    this.future = future;
+  }
+
+  public Future<CompactionTaskSummary> getFuture() {
+    return future;
   }
 }

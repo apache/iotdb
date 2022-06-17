@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.IService;
@@ -46,7 +45,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -113,17 +111,6 @@ public class CompactionTaskManager implements IService {
           x ->
               CompactionMetricsRecorder.recordTaskInfo(
                   x, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size()));
-
-      // Periodically do the following: fetch the highest priority thread from the
-      // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
-      // if there is thread space available in the taskExecutionPool, put the compaction task thread
-      // into the taskExecutionPool and perform the compaction.
-      ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-          compactionTaskSubmissionThreadPool,
-          this::submitTaskFromTaskQueue,
-          TASK_SUBMIT_INTERVAL,
-          TASK_SUBMIT_INTERVAL,
-          TimeUnit.MILLISECONDS);
     }
     logger.info("Compaction task manager started.");
   }
@@ -241,34 +228,6 @@ public class CompactionTaskManager implements IService {
         .containsKey(task);
   }
 
-  /**
-   * This method will submit task cached in queue with most priority to execution thread pool if
-   * there is available thread.
-   */
-  public synchronized void submitTaskFromTaskQueue() {
-    try {
-      while (currentTaskNum.get()
-              < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-          && !candidateCompactionTaskQueue.isEmpty()) {
-        AbstractCompactionTask task = candidateCompactionTaskQueue.take();
-
-        // add metrics
-        CompactionMetricsRecorder.recordTaskInfo(
-            task, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size());
-
-        if (task != null && task.checkValidAndSetMerging()) {
-          submitTask(task);
-          CompactionMetricsRecorder.recordTaskInfo(
-              task, CompactionTaskStatus.READY_TO_EXECUTE, currentTaskNum.get());
-        } else {
-          logger.warn("A task {} is not submitted", task);
-        }
-      }
-    } catch (InterruptedException e) {
-      logger.error("Exception occurs while submitting compaction task", e);
-    }
-  }
-
   public RateLimiter getMergeWriteRateLimiter() {
     setWriteMergeRate(
         IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
@@ -306,28 +265,6 @@ public class CompactionTaskManager implements IService {
         task, CompactionTaskStatus.FINISHED, currentTaskNum.get());
   }
 
-  /**
-   * This method will directly submit a task to thread pool if there is available thread.
-   *
-   * @return the future of the task.
-   */
-  public synchronized Future<CompactionTaskSummary> submitTask(
-      AbstractCompactionTask compactionTask) throws RejectedExecutionException {
-    if (taskExecutionPool != null && !taskExecutionPool.isShutdown()) {
-      Future<CompactionTaskSummary> future = taskExecutionPool.submit(compactionTask);
-      storageGroupTasks
-          .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
-          .put(compactionTask, future);
-      return future;
-    }
-    logger.warn(
-        "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
-        taskExecutionPool == null
-            ? "taskExecutionPool is null"
-            : "taskExecutionPool is terminated");
-    return null;
-  }
-
   public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
     if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isShutdown()) {
       return subCompactionTaskExecutionPool.submit(subCompactionTask);
@@ -344,10 +281,10 @@ public class CompactionTaskManager implements IService {
   public synchronized List<AbstractCompactionTask> abortCompaction(String storageGroupName) {
     List<AbstractCompactionTask> compactionTaskOfCurSG = new ArrayList<>();
     if (storageGroupTasks.containsKey(storageGroupName)) {
-      for (Map.Entry<AbstractCompactionTask, Future<CompactionTaskSummary>> taskFutureEntry :
+      for (Map.Entry<AbstractCompactionTask, Future<CompactionTaskSummary>> compactionTaskEntry :
           storageGroupTasks.get(storageGroupName).entrySet()) {
-        taskFutureEntry.getValue().cancel(true);
-        compactionTaskOfCurSG.add(taskFutureEntry.getKey());
+        compactionTaskEntry.getValue().cancel(true);
+        compactionTaskOfCurSG.add(compactionTaskEntry.getKey());
       }
     }
 
@@ -375,15 +312,21 @@ public class CompactionTaskManager implements IService {
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
     List<AbstractCompactionTask> tasks = new ArrayList<>();
-    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskFutureMap :
+    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
         storageGroupTasks.values()) {
-      tasks.addAll(taskFutureMap.keySet());
+      tasks.addAll(taskMap.keySet());
     }
     return tasks;
   }
 
   public long getFinishTaskNum() {
     return taskExecutionPool.getCompletedTaskCount();
+  }
+
+  public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {
+    storageGroupTasks
+        .computeIfAbsent(task.getFullStorageGroupName(), x -> new HashMap<>())
+        .put(task, summary);
   }
 
   @TestOnly

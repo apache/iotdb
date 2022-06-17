@@ -786,7 +786,7 @@ public class DataRegionTest {
               true,
               new ReadChunkCompactionPerformer(dataRegion.getSequenceFileList()),
               new AtomicInteger(0));
-      CompactionTaskManager.getInstance().submitTask(task);
+      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
       StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
       Thread.sleep(500);
