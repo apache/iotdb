@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
@@ -53,7 +55,7 @@ import java.util.concurrent.TimeUnit;
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
  * dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
-public class LoadManager implements Runnable {
+public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
@@ -68,12 +70,31 @@ public class LoadManager implements Runnable {
   private final RegionBalancer regionBalancer;
   private final PartitionBalancer partitionBalancer;
 
+  /**
+   * running state of heartbeat service
+   */
+  private boolean isRunning = false;
+  private final Object isRunningLock = new Object();
+  private int balanceCount = 0;
+
   public LoadManager(Manager configManager) {
     this.configManager = configManager;
     this.heartbeatCacheMap = new ConcurrentHashMap<>();
 
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
+
+    LOGGER.info("Setup Heartbeat Service of LoadManager");
+    // infinite task
+    ScheduledExecutorUtil.unsafelyScheduleWithFixedDelay(
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            LoadManager.class.getSimpleName(), this::loadExceptionHandler
+        ),
+        this::heartbeatLoopBody,
+        0,
+        heartbeatInterval,
+        TimeUnit.MILLISECONDS
+    );
   }
 
   /**
@@ -128,32 +149,65 @@ public class LoadManager implements Runnable {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
-  @Override
-  public void run() {
-    int balanceCount = 0;
-    while (true) {
-      try {
+  /**
+   * start the heartbeat service
+   */
+  public void start() {
+    LOGGER.debug("Start Heartbeat Service of LoadManager");
+    synchronized (isRunningLock) {
+      isRunning = true;
+      // only 1 thread can start the heartbeat service
+      isRunningLock.notify();
+    }
+  }
 
-        if (getConsensusManager().isLeader()) {
-          // Send heartbeat requests to all the online DataNodes
-          pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
-          // TODO: Send heartbeat requests to all the online ConfigNodes
+  /**
+   * stop the heartbeat service
+   */
+  public void stop() {
+    LOGGER.debug("Stop Heartbeat Service of LoadManager");
+    synchronized (isRunningLock) {
+      isRunning = false;
+    }
+  }
 
-          // Do load balancing
-          doLoadBalancing(balanceCount);
-          balanceCount += 1;
-        } else {
-          // Discard all cache when current ConfigNode is not longer the leader
-          heartbeatCacheMap.clear();
-          balanceCount = 0;
+  /**
+   * loop body of the heartbeat thread
+   */
+  private void heartbeatLoopBody() {
+    synchronized (isRunningLock) {
+      if (!isRunning) {
+        // not longer the leader
+        // discard all cache
+        heartbeatCacheMap.clear();
+        balanceCount = 0;
+        try {
+          LOGGER.debug("Wait for becoming the leader");
+          isRunningLock.wait();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
         }
-
-        TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
-      } catch (InterruptedException e) {
-        LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
-        System.exit(-1);
       }
     }
+    if (getConsensusManager().isLeader()) {
+      // Send heartbeat requests to all the online DataNodes
+      pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
+      // TODO: Send heartbeat requests to all the online ConfigNodes
+
+      // Do load balancing
+      doLoadBalancing(balanceCount);
+      balanceCount += 1;
+    }
+  }
+
+  /**
+   * Handler when the heartbeat thread is down
+   * @param t thread
+   * @param e exception
+   */
+  private void loadExceptionHandler(Thread t, Throwable e) {
+    LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
+    System.exit(-1);
   }
 
   private THeartbeatReq genHeartbeatReq() {

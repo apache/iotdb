@@ -143,7 +143,7 @@ public class ConfigManager implements Manager {
     // We are on testing.......
     if (ConfigNodeDescriptor.getInstance().getConf().isEnableHeartbeat()) {
       // Start asking for heartbeat
-      new Thread(this.loadManager).start();
+      this.loadManager.start();
     }
   }
 
