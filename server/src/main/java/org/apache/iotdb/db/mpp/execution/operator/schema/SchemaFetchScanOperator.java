@@ -102,7 +102,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private void fetchSchema() throws MetadataException {
     SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     for (PartialPath path : partialPathList) {
       schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
     }

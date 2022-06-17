@@ -2200,13 +2200,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.BOOLEAN_LITERAL() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     }
-    if (ctx.CLUSTER() != null) {
-      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
-      }
-      flushStatement.setLocal(false);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
+    }
+    if (ctx.LOCAL() != null) {
+      flushStatement.setCluster(false);
     } else {
-      flushStatement.setLocal(true);
+      flushStatement.setCluster(true);
     }
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();

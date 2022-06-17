@@ -61,38 +61,38 @@ public class AggregationDescriptorTest {
   static {
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.SINGLE,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.SUM,
+            AggregationType.SUM.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.LAST_VALUE,
+            AggregationType.LAST_VALUE.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.MAX_VALUE,
+            AggregationType.MAX_VALUE.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.COUNT,
+            AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
 
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.COUNT,
+            AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
@@ -100,7 +100,7 @@ public class AggregationDescriptorTest {
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
@@ -108,7 +108,7 @@ public class AggregationDescriptorTest {
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.COUNT,
+            AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
@@ -116,7 +116,7 @@ public class AggregationDescriptorTest {
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),

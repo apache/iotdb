@@ -17,31 +17,47 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.metadata;
+package org.apache.iotdb.db.mpp.plan.statement.internal;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 // This is only used for auto creation while inserting data
-public class CreateTimeSeriesByDeviceStatement extends Statement {
+public class InternalCreateTimeSeriesStatement extends Statement {
 
   private PartialPath devicePath;
   private List<String> measurements;
-  private List<TSDataType> tsDataTypes;
 
-  public CreateTimeSeriesByDeviceStatement(
-      PartialPath devicePath, List<String> measurements, List<TSDataType> tsDataTypes) {
+  private List<TSDataType> tsDataTypes;
+  private List<TSEncoding> encodings = new ArrayList<>();
+  private List<CompressionType> compressors = new ArrayList<>();
+
+  private boolean isAligned;
+
+  public InternalCreateTimeSeriesStatement(
+      PartialPath devicePath,
+      List<String> measurements,
+      List<TSDataType> tsDataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      boolean isAligned) {
     super();
-    setType(StatementType.CREATE_TIMESERIES_BY_DEVICE);
+    setType(StatementType.INTERNAL_CREATE_TIMESERIES);
     this.devicePath = devicePath;
     this.measurements = measurements;
     this.tsDataTypes = tsDataTypes;
+    this.encodings = encodings;
+    this.compressors = compressors;
+    this.isAligned = isAligned;
   }
 
   public PartialPath getDevicePath() {
@@ -56,6 +72,18 @@ public class CreateTimeSeriesByDeviceStatement extends Statement {
     return tsDataTypes;
   }
 
+  public List<TSEncoding> getEncodings() {
+    return encodings;
+  }
+
+  public List<CompressionType> getCompressors() {
+    return compressors;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
   @Override
   public List<? extends PartialPath> getPaths() {
     return measurements.stream().map(o -> devicePath.concatNode(o)).collect(Collectors.toList());
@@ -63,6 +91,6 @@ public class CreateTimeSeriesByDeviceStatement extends Statement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateTimeseriesByDevice(this, context);
+    return visitor.visitInternalCreateTimeseries(this, context);
   }
 }

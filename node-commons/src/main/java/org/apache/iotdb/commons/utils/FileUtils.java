@@ -36,7 +36,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public class FileUtils {
-  private static Logger logger = LoggerFactory.getLogger(FileUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
 
   private static final int bufferSize = 1024;
 
