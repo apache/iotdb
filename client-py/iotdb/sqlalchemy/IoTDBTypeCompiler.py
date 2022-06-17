@@ -16,11 +16,30 @@
 # under the License.
 #
 
-# Pandas Export
-pandas~=1.3.5
-# Testcontainer
-testcontainers==3.3.0
-numpy~=1.21.4
-# SQLAlchemy Dialect
-sqlalchemy == 1.3.20
-sqlalchemy-utils == 0.36.8
+from sqlalchemy.sql.compiler import GenericTypeCompiler
+
+
+class IoTDBTypeCompiler(GenericTypeCompiler):
+    def visit_FLOAT(self, type_, **kw):
+        return "FLOAT"
+
+    def visit_NUMERIC(self, type_, **kw):
+        return "INT64"
+
+    def visit_DECIMAL(self, type_, **kw):
+        return "DOUBLE"
+
+    def visit_INTEGER(self, type_, **kw):
+        return "INT32"
+
+    def visit_SMALLINT(self, type_, **kw):
+        return "INT32"
+
+    def visit_BIGINT(self, type_, **kw):
+        return "LONG"
+
+    def visit_TIMESTAMP(self, type_, **kw):
+        return "LONG"
+
+    def visit_text(self, type_, **kw):
+        return "TEXT"

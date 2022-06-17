@@ -273,6 +273,11 @@ session.execute_query_statement(sql)
 session.execute_non_query_statement(sql)
 ```
 
+* Execute statement
+
+```python
+session.execute_statement(sql)
+```
 
 ### Schema Template
 #### Create Schema Template
@@ -462,6 +467,96 @@ cursor.executemany(sql,seq_of_parameters)
 cursor.close()
 conn.close()
 ```
+
+### IoTDB SQLAlchemy Dialect (Experimental)
+The SQLAlchemy dialect of IoTDB is written to adapt to Apache Superset.
+This part is still being improved.
+Please do not use it in the production environment!
+#### Mapping of the metadata
+The data model used by SQLAlchemy is a relational data model, which describes the relationships between different entities through tables.
+While the data model of IoTDB is a hierarchical data model, which organizes the data through a tree structure.
+In order to adapt IoTDB to the dialect of SQLAlchemy, the original data model in IoTDB needs to be reorganized.
+Converting the data model of IoTDB into the data model of SQLAlchemy.
+
+The metadata in the IoTDB are：
+
+1. Storage Group
+2. Path
+3. Entity
+4. Measurement
+
+The metadata in the SQLAlchemy are：
+1. Schema
+2. Table
+3. Column
+
+The mapping relationship between them is：
+
+| The metadata in the SQLAlchemy | The metadata in the IoTDB                            |
+| -------------------- | ---------------------------------------------- |
+| Schema               | Storage Group                                  |
+| Table                | Path ( from storage group to entity ) + Entity |
+| Column               | Measurement                                    |
+
+The following figure shows the relationship between the two more intuitively:
+
+![sqlalchemy-to-iotdb](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+
+#### Data type mapping
+| data type in IoTDB | data type in SQLAlchemy |
+|--------------------|-------------------------|
+| BOOLEAN            | Boolean                 |
+| INT32              | Integer                 |
+| INT64              | BigInteger              |
+| FLOAT              | Float                   |
+| DOUBLE             | Float                   |
+| TEXT               | Text                    |
+| LONG               | BigInteger              |
+#### Example
+
++ execute statement
+
+```python
+from sqlalchemy import create_engine
+
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+connect = engine.connect()
+result = connect.execute("SELECT ** FROM root")
+for row in result.fetchall():
+    print(row)
+```
+
++ ORM (now only simple queries are supported)
+
+```python
+from sqlalchemy import create_engine, Column, Float, BigInteger, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+metadata = MetaData(
+    schema='root.factory'
+)
+Base = declarative_base(metadata=metadata)
+
+
+class Device(Base):
+    __tablename__ = "room2.device1"
+    Time = Column(BigInteger, primary_key=True)
+    temperature = Column(Float)
+    status = Column(Float)
+
+
+engine = create_engine("iotdb://root:root@127.0.0.1:6667")
+
+DbSession = sessionmaker(bind=engine)
+session = DbSession()
+
+res = session.query(Device.status).filter(Device.temperature > 1)
+
+for row in res:
+    print(row)
+```
+
 
 ## Developers
 

@@ -16,11 +16,12 @@
 # under the License.
 #
 
-# Pandas Export
-pandas~=1.3.5
-# Testcontainer
-testcontainers==3.3.0
-numpy~=1.21.4
-# SQLAlchemy Dialect
-sqlalchemy == 1.3.20
-sqlalchemy-utils == 0.36.8
+from sqlalchemy.sql.compiler import IdentifierPreparer
+
+
+class IoTDBIdentifierPreparer(IdentifierPreparer):
+    def __init__(self, dialect, **kw):
+        quote = "`"
+        super(IoTDBIdentifierPreparer, self).__init__(
+            dialect, initial_quote=quote, escape_quote=quote, **kw
+        )
