@@ -509,7 +509,8 @@ public class DataRegion {
     // recover and start timed compaction thread
     initCompaction();
 
-    if (config.isMppMode() ? StorageEngineV2.getInstance().isAllSgReady()
+    if (config.isMppMode()
+        ? StorageEngineV2.getInstance().isAllSgReady()
         : StorageEngine.getInstance().isAllSgReady()) {
       logger.info(
           "The data region {}[{}] is created successfully", logicalStorageGroupName, dataRegionId);
