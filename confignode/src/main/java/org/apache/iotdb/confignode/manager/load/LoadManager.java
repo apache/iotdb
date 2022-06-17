@@ -77,25 +77,19 @@ public class LoadManager implements Runnable {
   }
 
   /**
-   * Allocate and create one Region for each StorageGroup. TODO: Use procedure to protect create
-   * Regions process
+   * Allocate and create Regions for each StorageGroup.
    *
-   * @param storageGroups List<StorageGroupName>
+   * @param allotmentMap Map<StorageGroupName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of Region to be allocated
-   * @param regionNum The number of Regions
    */
-  public void initializeRegions(
-      List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
+  public void doRegionCreation(
+      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
     CreateRegionGroupsReq createRegionGroupsReq =
-        regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, regionNum);
-    createRegionsOnDataNodes(createRegionGroupsReq);
+        regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
 
-    getConsensusManager().write(createRegionGroupsReq);
-  }
-
-  private void createRegionsOnDataNodes(CreateRegionGroupsReq createRegionGroupsReq)
-      throws StorageGroupNotExistsException {
+    // TODO: Use procedure to protect the following process
+    // Create Regions on DataNodes
     Map<String, Long> ttlMap = new HashMap<>();
     for (String storageGroup : createRegionGroupsReq.getRegionGroupMap().keySet()) {
       ttlMap.put(
@@ -103,6 +97,8 @@ public class LoadManager implements Runnable {
           getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
     }
     AsyncDataNodeClientPool.getInstance().createRegions(createRegionGroupsReq, ttlMap);
+    // Persist the allocation result
+    getConsensusManager().write(createRegionGroupsReq);
   }
 
   /**

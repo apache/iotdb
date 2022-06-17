@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -25,6 +26,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -157,8 +159,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
-        new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroup name"));
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage("Error StorageGroup name"));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -175,16 +177,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-          path.getFullPath(),
-          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
+            path.getFullPath(),
+            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result.setStatus(
-        new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroup name"));
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage("Error StorageGroup name"));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -292,6 +294,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
+  /**
+   * Adjust the maximum RegionGroup count of each StorageGroup
+   *
+   * @param req AdjustMaxRegionGroupCountReq
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupCountReq req) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      for (Map.Entry<String, Pair<Integer, Integer>> entry :
+          req.getMaxRegionGroupCountMap().entrySet()) {
+        PartialPath path = new PartialPath(entry.getKey());
+        TStorageGroupSchema storageGroupSchema =
+            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+        storageGroupSchema.setMaxSchemaRegionGroupCount(entry.getValue().getLeft());
+        storageGroupSchema.setMaxDataRegionGroupCount(entry.getValue().getRight());
+      }
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
   // ======================================================
   // Leader scheduling interfaces
   // ======================================================
@@ -376,6 +406,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return schemaMap;
+  }
+
+  /**
+   * Only leader use this interface. Get the maxRegionGroupCount of specific StorageGroup.
+   *
+   * @param storageGroup StorageGroupName
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @return maxSchemaRegionGroupCount or maxDataRegionGroupCount
+   */
+  public int getMaxRegionGroupCount(String storageGroup, TConsensusGroupType consensusGroupType) {
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      PartialPath path = new PartialPath(storageGroup);
+      TStorageGroupSchema storageGroupSchema =
+          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+      switch (consensusGroupType) {
+        case SchemaRegion:
+          return storageGroupSchema.getMaxSchemaRegionGroupCount();
+        case DataRegion:
+        default:
+          return storageGroupSchema.getMaxDataRegionGroupCount();
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn("Error StorageGroup name", e);
+      return -1;
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
   }
 
   @Override

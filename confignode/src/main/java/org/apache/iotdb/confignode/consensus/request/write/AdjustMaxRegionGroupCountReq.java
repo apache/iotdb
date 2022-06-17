@@ -26,12 +26,17 @@ public class AdjustMaxRegionGroupCountReq extends ConfigRequest {
     maxRegionGroupCountMap.put(storageGroup, maxRegionGroupCount);
   }
 
+  public Map<String, Pair<Integer, Integer>> getMaxRegionGroupCountMap() {
+    return maxRegionGroupCountMap;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(ConfigRequestType.AdjustMaxRegionGroupCount.ordinal(), stream);
 
     ReadWriteIOUtils.write(maxRegionGroupCountMap.size(), stream);
-    for (Map.Entry<String, Pair<Integer, Integer>> maxRegionGroupCountEntry : maxRegionGroupCountMap.entrySet()) {
+    for (Map.Entry<String, Pair<Integer, Integer>> maxRegionGroupCountEntry :
+        maxRegionGroupCountMap.entrySet()) {
       ReadWriteIOUtils.write(maxRegionGroupCountEntry.getKey(), stream);
       ReadWriteIOUtils.write(maxRegionGroupCountEntry.getValue().getLeft(), stream);
       ReadWriteIOUtils.write(maxRegionGroupCountEntry.getValue().getRight(), stream);
@@ -46,7 +51,8 @@ public class AdjustMaxRegionGroupCountReq extends ConfigRequest {
       String storageGroup = ReadWriteIOUtils.readString(buffer);
       int maxSchemaRegionGroupCount = buffer.getInt();
       int maxDataRegionGroupCount = buffer.getInt();
-      maxRegionGroupCountMap.put(storageGroup, new Pair<>(maxSchemaRegionGroupCount, maxDataRegionGroupCount));
+      maxRegionGroupCountMap.put(
+          storageGroup, new Pair<>(maxSchemaRegionGroupCount, maxDataRegionGroupCount));
     }
   }
 

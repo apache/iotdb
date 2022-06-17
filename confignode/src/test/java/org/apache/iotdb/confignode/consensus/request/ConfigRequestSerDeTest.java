@@ -58,8 +58,8 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -165,7 +165,8 @@ public class ConfigRequestSerDeTest {
       req0.putEntry("root.sg" + i, new Pair<>(i, i));
     }
 
-    AdjustMaxRegionGroupCountReq req1 = (AdjustMaxRegionGroupCountReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    AdjustMaxRegionGroupCountReq req1 =
+        (AdjustMaxRegionGroupCountReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
