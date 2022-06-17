@@ -25,6 +25,10 @@
 
 In previous versions of syntax conventions, we introduced some ambiguity to maintain compatibility. To avoid ambiguity, we have designed new syntax conventions, and this chapter will explain the issues with the old syntax conventions and why we made the change.
 
+### Issues related to identifier
+
+In version 0.13 and earlier, identifiers (including path node names) that are not quoted with backquotes are allowed to be pure numbers(Pure numeric path node names need to be enclosed in backquotes in the `SELECT` clause), and are allowed to contain some special characters. **In version 0.14, identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. **
+
 ### Issues related to node name
 
 In previous versions of syntax conventions, when do you need to add quotation marks to the node name, and the rules for using single and double quotation marks or backquotes are complicated. We have unified usage of quotation marks in the new syntax conventions. For details, please refer to the relevant chapters of this document.
@@ -72,7 +76,23 @@ select `\"a` from root.sg;
 
 In the new syntax convention, special path node names are uniformly referenced with backquotes. When single and double quotes are used in path node names, there is no need to add backslashes to escape, and backquotes need to be double-written. For details, please refer to the relevant chapters of the new syntax conventions.
 
-### Inconsistent handling of string escaping between SQL and Session interfaces
+### Issues related to session API
+
+#### Session API syntax restrictions
+
+In version 0.13, the restrictions on using path nodes in non-SQL interfaces are as follows:
+
+- The node names in path or path prefix as parameter:
+  - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+  - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
+  - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+
+**In version 0.14, restrictions on using path nodes in non-SQL interfaces were enhanced:**
+
+- **The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement, escaping is required here.**
+- **Code example for syntax convention could be found at:** `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+
+#### Inconsistent handling of string escaping between SQL and Session interfaces
 
 In previous releases, there was an inconsistency between the SQL and Session interfaces when using strings. For example, when using SQL to insert Text type data, the string will be unescaped, but not when using the Session interface, which is inconsistent. **In the new syntax convention, we do not unescape the strings. What you store is what will be obtained when querying (for the rules of using single and double quotation marks inside strings, please refer to this document for string literal chapter). **
 

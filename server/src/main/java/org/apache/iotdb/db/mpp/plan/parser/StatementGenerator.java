@@ -358,6 +358,7 @@ public class StatementGenerator {
     for (int compressor : req.compressors) {
       compressors.add(CompressionType.values()[compressor]);
     }
+    statement.setMeasurements(req.measurements);
     statement.setDataTypes(dataTypes);
     statement.setEncodings(encodings);
     statement.setCompressors(compressors);

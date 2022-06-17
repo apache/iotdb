@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -45,7 +47,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -58,7 +59,6 @@ import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateExceptio
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -68,6 +68,7 @@ import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -168,18 +169,19 @@ public class LocalConfigNode {
     }
 
     try {
-      SchemaResourceManager.initSchemaResource();
 
       templateManager.init();
       storageGroupSchemaManager.init();
 
-      Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo = schemaEngine.init();
+      Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo =
+          schemaEngine.initForLocalConfigNode();
       schemaPartitionTable.init(recoveredLocalSchemaRegionInfo);
 
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                "LocalConfigNode-TimedForceMLog-Thread");
+        ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
             timedForceMLogThread,
             this::forceMlog,
             config.getSyncMlogPeriodInMs(),
@@ -207,7 +209,6 @@ public class LocalConfigNode {
     }
 
     try {
-      SchemaResourceManager.clearSchemaResource();
 
       if (timedForceMLogThread != null) {
         timedForceMLogThread.shutdown();
@@ -235,7 +236,6 @@ public class LocalConfigNode {
 
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
-    schemaEngine.forceMlog();
   }
 
   // endregion
@@ -265,6 +265,12 @@ public class LocalConfigNode {
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
+
+    if (config.isMppMode() && !config.isClusterMode()) {
+      deleteDataRegionsInStorageGroup(
+          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup));
+      dataPartitionTable.deleteStorageGroup(storageGroup);
+    }
 
     DeleteTimeSeriesPlan deleteTimeSeriesPlan =
         SchemaSyncManager.getInstance().isEnableSync()
@@ -308,6 +314,12 @@ public class LocalConfigNode {
         throw new MetadataException(
             String.format("Failed to delete storage group folder %s", sgDir.getAbsolutePath()));
       }
+    }
+  }
+
+  private void deleteDataRegionsInStorageGroup(List<DataRegionId> dataRegionIdSet) {
+    for (DataRegionId dataRegionId : dataRegionIdSet) {
+      storageEngine.deleteDataRegion(dataRegionId);
     }
   }
 
@@ -858,7 +870,7 @@ public class LocalConfigNode {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
-      dataPartitionTable.setDataPartitionInfo(storageGroup, path);
+      dataPartitionTable.setDataPartitionInfo(storageGroup);
       dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
@@ -881,7 +893,7 @@ public class LocalConfigNode {
 
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
     patternTree.constructTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     try {
       for (PartialPath path : partialPathList) {
         List<PartialPath> storageGroups = getBelongedStorageGroups(path);
@@ -908,7 +920,7 @@ public class LocalConfigNode {
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getOrCreateSchemaPartition(
       PathPatternTree patternTree) {
-    List<String> devicePaths = patternTree.findAllDevicePaths();
+    List<String> devicePaths = patternTree.getAllDevicePatterns();
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
 
     try {
@@ -1028,15 +1040,16 @@ public class LocalConfigNode {
   // endregion
 
   // author
-  public void operatorPermission(TAuthorizerReq authorizerReq) throws AuthException {
+  public void operatorPermission(AuthorStatement authorStatement) throws AuthException {
     AuthorOperator.AuthorType authorType =
-        AuthorOperator.AuthorType.values()[authorizerReq.authorType];
-    String userName = authorizerReq.getUserName();
-    String roleName = authorizerReq.getRoleName();
-    String password = authorizerReq.getPassword();
-    String newPassword = authorizerReq.getNewPassword();
-    Set<Integer> permissions = authorizerReq.getPermissions();
-    String nodeName = authorizerReq.getNodeName();
+        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
+    String userName = authorStatement.getUserName();
+    String roleName = authorStatement.getRoleName();
+    String password = authorStatement.getPassWord();
+    String newPassword = authorStatement.getNewPassword();
+    Set<Integer> permissions = AuthUtils.strToPermissions(authorStatement.getPrivilegeList());
+    PartialPath partialPath = authorStatement.getNodeName();
+    String nodeName = partialPath == null ? null : partialPath.getFullPath();
     switch (authorType) {
       case UPDATE_USER:
         iAuthorizer.updateUserPassword(userName, newPassword);
@@ -1084,23 +1097,23 @@ public class LocalConfigNode {
     }
   }
 
-  public Map<String, List<String>> queryPermission(TAuthorizerReq authorizerReq)
+  public Map<String, List<String>> queryPermission(AuthorStatement authorStatement)
       throws AuthException {
     AuthorOperator.AuthorType authorType =
-        AuthorOperator.AuthorType.values()[authorizerReq.authorType];
+        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     switch (authorType) {
       case LIST_USER:
         return executeListUser();
       case LIST_ROLE:
         return executeListRole();
       case LIST_USER_PRIVILEGE:
-        return executeListUserPrivileges(authorizerReq);
+        return executeListUserPrivileges(authorStatement);
       case LIST_ROLE_PRIVILEGE:
-        return executeListRolePrivileges(authorizerReq);
+        return executeListRolePrivileges(authorStatement);
       case LIST_USER_ROLES:
-        return executeListUserRoles(authorizerReq);
+        return executeListUserRoles(authorStatement);
       case LIST_ROLE_USERS:
-        return executeListRoleUsers(authorizerReq);
+        return executeListRoleUsers(authorStatement);
       default:
         throw new AuthException("Unsupported operation " + authorType);
     }
@@ -1120,14 +1133,14 @@ public class LocalConfigNode {
     return permissionInfo;
   }
 
-  public Map<String, List<String>> executeListRoleUsers(TAuthorizerReq authorizerReq)
+  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     Role role;
     try {
-      role = iAuthorizer.getRole(authorizerReq.getRoleName());
+      role = iAuthorizer.getRole(authorStatement.getRoleName());
       if (role == null) {
-        throw new AuthException("No such role : " + authorizerReq.getRoleName());
+        throw new AuthException("No such role : " + authorStatement.getRoleName());
       }
     } catch (AuthException e) {
       throw new AuthException(e);
@@ -1136,7 +1149,7 @@ public class LocalConfigNode {
     List<String> userList = iAuthorizer.listAllUsers();
     for (String userN : userList) {
       User userObj = iAuthorizer.getUser(userN);
-      if (userObj != null && userObj.hasRole(authorizerReq.getRoleName())) {
+      if (userObj != null && userObj.hasRole(authorStatement.getRoleName())) {
         roleUsersList.add(userN);
       }
     }
@@ -1144,14 +1157,14 @@ public class LocalConfigNode {
     return permissionInfo;
   }
 
-  public Map<String, List<String>> executeListUserRoles(TAuthorizerReq authorizerReq)
+  public Map<String, List<String>> executeListUserRoles(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     User user;
     try {
-      user = iAuthorizer.getUser(authorizerReq.getUserName());
+      user = iAuthorizer.getUser(authorStatement.getUserName());
       if (user == null) {
-        throw new AuthException("No such user : " + authorizerReq.getUserName());
+        throw new AuthException("No such user : " + authorStatement.getUserName());
       }
     } catch (AuthException e) {
       throw new AuthException(e);
@@ -1165,22 +1178,23 @@ public class LocalConfigNode {
     return permissionInfo;
   }
 
-  public Map<String, List<String>> executeListRolePrivileges(TAuthorizerReq authorizerReq)
+  public Map<String, List<String>> executeListRolePrivileges(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     Role role;
     try {
-      role = iAuthorizer.getRole(authorizerReq.getRoleName());
+      role = iAuthorizer.getRole(authorStatement.getRoleName());
       if (role == null) {
-        throw new AuthException("No such role : " + authorizerReq.getRoleName());
+        throw new AuthException("No such role : " + authorStatement.getRoleName());
       }
     } catch (AuthException e) {
       throw new AuthException(e);
     }
     List<String> rolePrivilegesList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-      if (authorizerReq.getNodeName().equals("")
-          || AuthUtils.pathBelongsTo(authorizerReq.getNodeName(), pathPrivilege.getPath())) {
+      if (authorStatement.getNodeName().getFullPath().equals("")
+          || AuthUtils.pathBelongsTo(
+              authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
         rolePrivilegesList.add(pathPrivilege.toString());
       }
     }
@@ -1189,29 +1203,30 @@ public class LocalConfigNode {
     return permissionInfo;
   }
 
-  public Map<String, List<String>> executeListUserPrivileges(TAuthorizerReq authorizerReq)
+  public Map<String, List<String>> executeListUserPrivileges(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     User user;
     try {
-      user = iAuthorizer.getUser(authorizerReq.getUserName());
+      user = iAuthorizer.getUser(authorStatement.getUserName());
       if (user == null) {
-        throw new AuthException("No such user : " + authorizerReq.getUserName());
+        throw new AuthException("No such user : " + authorStatement.getUserName());
       }
     } catch (AuthException e) {
       throw new AuthException(e);
     }
     List<String> userPrivilegesList = new ArrayList<>();
 
-    if (IoTDBConstant.PATH_ROOT.equals(authorizerReq.getUserName())) {
+    if (IoTDBConstant.PATH_ROOT.equals(authorStatement.getUserName())) {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         userPrivilegesList.add(privilegeType.toString());
       }
     } else {
       List<String> rolePrivileges = new ArrayList<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (authorizerReq.getNodeName().equals("")
-            || AuthUtils.pathBelongsTo(authorizerReq.getNodeName(), pathPrivilege.getPath())) {
+        if (authorStatement.getNodeName().getFullPath().equals("")
+            || AuthUtils.pathBelongsTo(
+                authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
           rolePrivileges.add("");
           userPrivilegesList.add(pathPrivilege.toString());
         }
@@ -1222,8 +1237,9 @@ public class LocalConfigNode {
           continue;
         }
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          if (authorizerReq.getNodeName().equals("")
-              || AuthUtils.pathBelongsTo(authorizerReq.getNodeName(), pathPrivilege.getPath())) {
+          if (authorStatement.getNodeName().getFullPath().equals("")
+              || AuthUtils.pathBelongsTo(
+                  authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
             rolePrivileges.add(roleN);
             userPrivilegesList.add(pathPrivilege.toString());
           }
@@ -1242,5 +1258,9 @@ public class LocalConfigNode {
   public boolean checkUserPrivileges(String username, String path, int permission)
       throws AuthException {
     return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
+
+  public TSStatus executeFlushOperation(TFlushReq tFlushReq) {
+    return storageEngine.operateFlush(tFlushReq);
   }
 }

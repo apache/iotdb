@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -46,7 +46,8 @@ import java.util.concurrent.TimeUnit;
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
 
-  private static final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
 
   private static final int procedureWaitTimeOut = 30;
   private static final int procedureWaitRetryTimeout = 250;
@@ -68,11 +69,11 @@ public class ProcedureManager {
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(configNodeConf.getProcedureCoreWorkerThreadsSize());
+        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsSize());
         executor.startWorkers();
         executor.startCompletedCleaner(
-            configNodeConf.getProcedureCompletedCleanInterval(),
-            configNodeConf.getProcedureCompletedEvictTTL());
+            CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
+            CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
         store.start();
       }
     } else {
@@ -97,7 +98,8 @@ public class ProcedureManager {
     List<TSStatus> procedureStatus = new ArrayList<>();
     boolean isSucceed = getProcedureStatus(this.executor, procIdList, procedureStatus);
     // clear the previously deleted regions
-    getConfigManager().getPartitionManager().clearDeletedRegions();
+    final PartitionManager partitionManager = getConfigManager().getPartitionManager();
+    partitionManager.getRegionCleaner().submit(partitionManager::clearDeletedRegions);
     if (isSucceed) {
       return StatusUtils.OK;
     } else {

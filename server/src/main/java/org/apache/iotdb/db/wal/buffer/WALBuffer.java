@@ -200,7 +200,11 @@ public class WALBuffer extends AbstractWALBuffer {
       return false;
     }
 
-    /** @return true if serialization is successful. */
+    /**
+     * Handle a normal WALEntry.
+     *
+     * @return true if serialization is successful.
+     */
     private boolean handleInfoEntry(WALEntry walEntry) {
       try {
         walEntry.serialize(byteBufferVew);
@@ -228,10 +232,15 @@ public class WALBuffer extends AbstractWALBuffer {
     private boolean handleSignalEntry(SignalWALEntry signalWALEntry) {
       switch (signalWALEntry.getSignalType()) {
         case ROLL_WAL_LOG_WRITER_SIGNAL:
+          logger.debug("Handle roll log writer signal for wal node-{}.", identifier);
           rollWALFileWriterListener = signalWALEntry.getWalFlushListener();
           fsyncWorkingBuffer(currentSearchIndex, fsyncListeners, rollWALFileWriterListener);
           return true;
         case CLOSE_SIGNAL:
+          logger.debug(
+              "Handle close signal for wal node-{}, there are {} entries left.",
+              identifier,
+              walEntries.size());
           boolean dataExists = batchSize > 0;
           if (dataExists) {
             fsyncWorkingBuffer(currentSearchIndex, fsyncListeners, rollWALFileWriterListener);
@@ -413,24 +422,23 @@ public class WALBuffer extends AbstractWALBuffer {
       }
 
       // try to roll log writer
-      try {
-        if (rollWALFileWriterListener != null
-            || (forceFlag
-                && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
+      if (rollWALFileWriterListener != null
+          || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
+        try {
           rollLogWriter(searchIndex);
           if (rollWALFileWriterListener != null) {
             rollWALFileWriterListener.succeed();
           }
+        } catch (IOException e) {
+          logger.error(
+              "Fail to roll wal node-{}'s log writer, change system mode to read-only.",
+              identifier,
+              e);
+          if (rollWALFileWriterListener != null) {
+            rollWALFileWriterListener.fail(e);
+          }
+          config.setReadOnly(true);
         }
-      } catch (IOException e) {
-        logger.error(
-            "Fail to roll wal node-{}'s log writer, change system mode to read-only.",
-            identifier,
-            e);
-        if (rollWALFileWriterListener != null) {
-          rollWALFileWriterListener.fail(e);
-        }
-        config.setReadOnly(true);
       }
     }
   }
@@ -476,7 +484,11 @@ public class WALBuffer extends AbstractWALBuffer {
     // first waiting serialize and sync tasks finished, then release all resources
     if (serializeThread != null) {
       // add close signal WALEntry to notify serializeThread
-      walEntries.add(new SignalWALEntry(SignalWALEntry.SignalType.CLOSE_SIGNAL));
+      try {
+        walEntries.put(new SignalWALEntry(SignalWALEntry.SignalType.CLOSE_SIGNAL));
+      } catch (InterruptedException e) {
+        logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
+      }
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
     }
     if (syncBufferThread != null) {

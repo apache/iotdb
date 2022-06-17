@@ -306,7 +306,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             descriptor -> {
               leafAggDescriptorList.add(
                   new AggregationDescriptor(
-                      descriptor.getAggregationType(),
+                      descriptor.getAggregationFuncName(),
                       AggregationStep.PARTIAL,
                       descriptor.getInputExpressions()));
             });
@@ -320,7 +320,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             descriptor -> {
               rootAggDescriptorList.add(
                   new AggregationDescriptor(
-                      descriptor.getAggregationType(),
+                      descriptor.getAggregationFuncName(),
                       AggregationStep.FINAL,
                       descriptor.getInputExpressions()));
             });
@@ -488,7 +488,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               descriptor -> {
                 rootAggDescriptorList.add(
                     new AggregationDescriptor(
-                        descriptor.getAggregationType(),
+                        descriptor.getAggregationFuncName(),
                         context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
                         descriptor.getInputExpressions()));
               });

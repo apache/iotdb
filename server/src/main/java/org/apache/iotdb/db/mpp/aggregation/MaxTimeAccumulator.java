@@ -58,6 +58,9 @@ public class MaxTimeAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     updateMaxTime(statistics.getEndTime());
   }
 

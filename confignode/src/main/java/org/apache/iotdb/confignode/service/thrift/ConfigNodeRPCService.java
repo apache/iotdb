@@ -24,14 +24,14 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
 
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 

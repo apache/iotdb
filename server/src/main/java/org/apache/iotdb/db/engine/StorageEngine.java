@@ -343,22 +343,14 @@ public class StorageEngine implements IService {
   }
 
   private void timedFlushSeqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushSeqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing sequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushSeqMemTable();
     }
   }
 
   private void timedFlushUnseqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushUnseqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing unsequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushUnseqMemTable();
     }
   }
 
@@ -863,8 +855,7 @@ public class StorageEngine implements IService {
     abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
-    storageGroupManager.deleteStorageGroupSystemFolder(
-        systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.deleteStorageGroupSystemFolder(systemDir);
     storageGroupManager.stopSchedulerPool();
   }
 
@@ -882,7 +873,7 @@ public class StorageEngine implements IService {
       throws LoadFileException, StorageEngineException, MetadataException {
     Set<String> deviceSet = newTsFileResource.getDevices();
     if (deviceSet == null || deviceSet.isEmpty()) {
-      throw new StorageEngineException("Can not get the corresponding storage group.");
+      throw new StorageEngineException("The TsFile is empty, cannot be loaded.");
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);

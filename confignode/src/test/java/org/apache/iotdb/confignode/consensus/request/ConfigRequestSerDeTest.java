@@ -488,7 +488,7 @@ public class ConfigRequestSerDeTest {
     ApplyConfigNodeReq req0 =
         new ApplyConfigNodeReq(
             new TConfigNodeLocation(
-                new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
     ApplyConfigNodeReq req1 =
         (ApplyConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);

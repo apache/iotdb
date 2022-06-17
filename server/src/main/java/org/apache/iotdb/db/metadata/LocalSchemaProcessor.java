@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -308,7 +309,9 @@ public class LocalSchemaProcessor {
     try {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+    } catch (PathAlreadyExistException
+        | AliasAlreadyExistException
+        | MeasurementAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
         logger.debug(
             "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"

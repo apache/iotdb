@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoderFactory;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
@@ -51,6 +51,7 @@ public class ByteArrayColumnEncoderTest {
       }
     }
     BooleanColumn input = new BooleanColumn(positionCount, Optional.of(nullIndicators), values);
+    long expectedRetainedSize = input.getRetainedSizeInBytes();
     ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.BYTE_ARRAY);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -63,11 +64,11 @@ public class ByteArrayColumnEncoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-    BooleanColumnBuilder booleanColumnBuilder = new BooleanColumnBuilder(null, positionCount);
-    encoder.readColumn(booleanColumnBuilder, buffer, positionCount);
-    BooleanColumn output = (BooleanColumn) booleanColumnBuilder.build();
+    BooleanColumn output =
+        (BooleanColumn) encoder.readColumn(buffer, TSDataType.BOOLEAN, positionCount);
     Assert.assertEquals(positionCount, output.getPositionCount());
     Assert.assertTrue(output.mayHaveNull());
+    Assert.assertEquals(expectedRetainedSize, output.getRetainedSizeInBytes());
     for (int i = 0; i < positionCount; i++) {
       Assert.assertEquals(i % 2 == 0, output.isNull(i));
       if (i % 2 != 0) {
