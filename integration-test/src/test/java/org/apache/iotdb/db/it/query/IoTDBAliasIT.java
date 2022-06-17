@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -38,7 +37,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -83,6 +81,10 @@ public class IoTDBAliasIT {
         "INSERT INTO root.sg2.d2(timestamp,s1,s2,s3) values(400, 73.4, 26.3, 83.0)"
       };
 
+  private static final String COLUMN_TIME = "Time";
+  private static final String COLUMN_TIMESERIES = "timeseries";
+  private static final String COLUMN_VALUE = "value";
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
@@ -115,10 +117,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select speed, temperature from root.sg.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select speed, temperature from root.sg.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -150,18 +150,16 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select last speed, temperature from root.sg.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last speed, temperature from root.sg.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(HeaderConstant.COLUMN_TIME)
+              resultSet.getString(COLUMN_TIME)
                   + ","
-                  + resultSet.getString(HeaderConstant.COLUMN_TIMESERIES)
+                  + resultSet.getString(COLUMN_TIMESERIES)
                   + ","
-                  + resultSet.getString(HeaderConstant.COLUMN_VALUE);
+                  + resultSet.getString(COLUMN_VALUE);
           assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -182,10 +180,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select speed, speed, s2 from root.sg.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select speed, speed, s2 from root.sg.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -219,18 +215,16 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select last speed, s1, speed, s2 from root.sg.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last speed, s1, speed, s2 from root.sg.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(HeaderConstant.COLUMN_TIME)
+              resultSet.getString(COLUMN_TIME)
                   + ","
-                  + resultSet.getString(HeaderConstant.COLUMN_TIMESERIES)
+                  + resultSet.getString(COLUMN_TIMESERIES)
                   + ","
-                  + resultSet.getString(HeaderConstant.COLUMN_VALUE);
+                  + resultSet.getString(COLUMN_VALUE);
           assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -248,11 +242,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select count(speed), max_value(temperature) from root.sg.*");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(speed), max_value(temperature) from root.sg.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -290,9 +281,7 @@ public class IoTDBAliasIT {
         Statement statement = connection.createStatement()) {
 
       statement.execute("ALTER timeseries root.sg.d2.s3 UPSERT ALIAS='powerNew'");
-      boolean hasResult = statement.execute("show timeseries root.sg.d2.s3");
-      assertTrue(hasResult);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.d2.s3")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -310,10 +299,7 @@ public class IoTDBAliasIT {
         }
       }
 
-      hasResult = statement.execute("select powerNew from root.sg.d2");
-      assertTrue(hasResult);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select powerNew from root.sg.d2")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -347,11 +333,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select s1 as speed, s2 as temperature from root.sg2.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 as speed, s2 as temperature from root.sg2.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -384,10 +367,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select s1 as speed, s2 from root.sg2.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 as speed, s2 from root.sg2.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -421,7 +402,7 @@ public class IoTDBAliasIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
-      statement.execute("select s1 as speed from root.sg2.*");
+      statement.executeQuery("select s1 as speed from root.sg2.*");
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
@@ -437,10 +418,7 @@ public class IoTDBAliasIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // root.sg.*.s3 matches root.sg.d2.s3 exactly
-      boolean hasResultSet = statement.execute("select s3 as power from root.sg2.*");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("select s3 as power from root.sg2.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -474,11 +452,9 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select count(s1) as s1_num, max_value(s2) as s2_max from root.sg2.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1) as s1_num, max_value(s2) as s2_max from root.sg2.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -508,7 +484,7 @@ public class IoTDBAliasIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
-      statement.execute("select count(s1) as s1_num from root.sg2.*");
+      statement.executeQuery("select count(s1) as s1_num from root.sg2.*");
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
@@ -525,12 +501,9 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1) as 's1_num' from root.sg2.d1 group by ([100,500), 80ms)");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1) as 's1_num' from root.sg2.d1 group by ([100,500), 80ms)")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -567,12 +540,9 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1 as speed, s2 as temperature from root.sg2.d1 align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s1 as speed, s2 as temperature from root.sg2.d1 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -613,11 +583,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select s1 as speed, s2 from root.sg2.* align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 as speed, s2 from root.sg2.* align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -647,7 +614,7 @@ public class IoTDBAliasIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
-      statement.execute("select * as speed from root.sg2.d1 align by device");
+      statement.executeQuery("select * as speed from root.sg2.d1 align by device");
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
@@ -667,11 +634,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select s1 as speed, s1 from root.sg2.d1 align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 as speed, s1 from root.sg2.d1 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -705,12 +669,9 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg2.d2 align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg2.d2 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -741,10 +702,8 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select last s1 as speed, s2 from root.sg2.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last s1 as speed, s2 from root.sg2.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -778,11 +737,9 @@ public class IoTDBAliasIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select last s1 as speed, s1, s2 as temperature from root.sg2.d1");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last s1 as speed, s1, s2 as temperature from root.sg2.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -812,7 +769,7 @@ public class IoTDBAliasIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
-      statement.execute("select last s1 as speed from root.sg2.*");
+      statement.executeQuery("select last s1 as speed from root.sg2.*");
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
@@ -840,9 +797,7 @@ public class IoTDBAliasIT {
 
       for (int index = 0; index < count; index++) {
 
-        boolean hasResult = statement.execute(sqls[index]);
-        assertTrue(hasResult);
-        try (ResultSet resultSet = statement.getResultSet()) {
+        try (ResultSet resultSet = statement.executeQuery(sqls[index])) {
 
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
           StringBuilder header = new StringBuilder();
@@ -867,15 +822,11 @@ public class IoTDBAliasIT {
     String sql = "select s1, s2, sin(s1+s2) as a from root.sg1.d1 ";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
-      boolean hasResult = statement.execute(sql);
-      assertTrue(hasResult);
-      try (ResultSet resultSet = statement.getResultSet()) {
-
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(HeaderConstant.COLUMN_TIME)
+              resultSet.getString(COLUMN_TIME)
                   + ","
                   + resultSet.getString("root.sg1.d1.s1")
                   + ","

@@ -33,7 +33,6 @@ import org.junit.experimental.categories.Category;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -48,13 +47,13 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBResultSetIT {
 
-  private static final List<String> SQLs = Arrays.asList(
+  private static final List<String> SQLs =
+      Arrays.asList(
           "SET STORAGE GROUP TO root.t1",
           "CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
           "CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
           "CREATE TIMESERIES root.t1.wf01.wt01.type WITH DATATYPE=INT32, ENCODING=RLE",
-          "CREATE TIMESERIES root.t1.wf01.wt01.grade WITH DATATYPE=INT64, ENCODING=RLE"
-  );
+          "CREATE TIMESERIES root.t1.wf01.wt01.grade WITH DATATYPE=INT64, ENCODING=RLE");
 
   @BeforeClass
   public static void setUp() throws Exception {
