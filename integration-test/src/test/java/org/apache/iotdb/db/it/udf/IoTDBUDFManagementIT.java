@@ -238,6 +238,7 @@ public class IoTDBUDFManagementIT {
     }
   }
 
+  // TODO remove @Ignore while completely supportting udf in new cluster
   @Ignore
   @Test
   public void testDropBuiltInFunction() throws SQLException { // drop
