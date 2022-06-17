@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
+import org.apache.iotdb.itbase.constant.TestConstant;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -35,11 +34,10 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
+import java.util.Objects;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -150,49 +148,44 @@ public class IoTDBPaginationIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String result = "";
-      Long now_start = 0L;
+      StringBuilder result = new StringBuilder();
+      long now_start = 0L;
       boolean cmp = false;
 
       for (String sql : sqls) {
         //         System.out.println("----" + sql);
         if (cmp) {
-          Assert.assertEquals(sql, result);
+          Assert.assertEquals(sql, result.toString());
           cmp = false;
-        } else if (sql.equals("SHOW TIMESERIES")) {
-          DatabaseMetaData data = connection.getMetaData();
-          result = ((IoTDBDatabaseMetadata) data).getMetadataInJson();
-          cmp = true;
         } else {
           if (sql.contains("NOW()") && now_start == 0L) {
             now_start = System.currentTimeMillis();
           }
 
-          statement.execute(sql);
           if (sql.split(" ")[0].equals("SELECT") | sql.split(" ")[0].equals("select")) {
-            try (ResultSet resultSet = statement.getResultSet()) {
+            try (ResultSet resultSet = statement.executeQuery(sql)) {
               ResultSetMetaData metaData = resultSet.getMetaData();
               int count = metaData.getColumnCount();
               String[] column = new String[count];
               for (int i = 0; i < count; i++) {
                 column[i] = metaData.getColumnName(i + 1);
               }
-              result = "";
+              result = new StringBuilder();
               while (resultSet.next()) {
                 for (int i = 1; i <= count; i++) {
-                  if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
+                  if (now_start > 0L && Objects.equals(column[i - 1], TestConstant.TIMESTAMP_STR)) {
                     String timestr = resultSet.getString(i);
-                    Long tn = Long.valueOf(timestr);
-                    Long now = System.currentTimeMillis();
+                    long tn = Long.parseLong(timestr);
+                    long now = System.currentTimeMillis();
                     if (tn >= now_start && tn <= now) {
                       timestr = "NOW()";
                     }
-                    result += timestr + ',';
+                    result.append(timestr).append(',');
                   } else {
-                    result += resultSet.getString(i) + ',';
+                    result.append(resultSet.getString(i)).append(',');
                   }
                 }
-                result += '\n';
+                result.append('\n');
               }
               cmp = true;
             }
@@ -210,14 +203,13 @@ public class IoTDBPaginationIT {
     final int maxQueryDeduplicatedPathNum =
         ConfigFactory.getConfig().getMaxQueryDeduplicatedPathNum();
     ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(2);
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute("insert into root.sg.d1(time, s1, s2, s3) values(1, 1, 1, 1)");
 
       // fail
-      statement.execute("select ** from root");
+      statement.executeQuery("select ** from root");
       fail();
     } catch (Exception e) {
       assertTrue(
