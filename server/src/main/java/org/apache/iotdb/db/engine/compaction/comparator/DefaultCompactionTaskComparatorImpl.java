@@ -37,9 +37,7 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     if ((((o1 instanceof InnerSpaceCompactionTask) && (o2 instanceof CrossSpaceCompactionTask))
         || ((o2 instanceof InnerSpaceCompactionTask)
             && (o1 instanceof CrossSpaceCompactionTask)))) {
-      if (config.getCompactionPriority() == CompactionPriority.BALANCE) {
-        return 0;
-      } else if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
+      if (config.getCompactionPriority() != CompactionPriority.CROSS_INNER) {
         return o1 instanceof InnerSpaceCompactionTask ? -1 : 1;
       } else {
         return o1 instanceof CrossSpaceCompactionTask ? -1 : 1;
