@@ -135,7 +135,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       CompactionUtils.combineModsInInnerCompaction(
           selectedTsFileResourceList, targetTsFileResource);
 
-      if (Thread.currentThread().isInterrupted()) {
+      if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
         throw new InterruptedException(
             String.format("%s [Compaction] abort", fullStorageGroupName));
       }

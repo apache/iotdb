@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.ReadPointPerform
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.IUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
@@ -80,6 +81,7 @@ public class ReadPointCompactionPerformer
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
   private Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new HashMap<>();
+  private CompactionTaskSummary summary;
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
 
@@ -143,6 +145,11 @@ public class ReadPointCompactionPerformer
   @Override
   public void setTargetFiles(List<TsFileResource> targetFiles) {
     this.targetFiles = targetFiles;
+  }
+
+  @Override
+  public void setSummary(CompactionTaskSummary summary) {
+    this.summary = summary;
   }
 
   private void compactAlignedSeries(
@@ -408,7 +415,7 @@ public class ReadPointCompactionPerformer
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
-    if (Thread.interrupted()) {
+    if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", targetFiles.toString()));

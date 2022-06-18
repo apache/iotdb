@@ -37,9 +37,9 @@ public class CompactionTaskSummary {
   }
 
   public void finish(boolean success, long timeCost) {
-    this.finished = true;
     this.success = success;
     this.timeCost = timeCost;
+    this.finished = true;
   }
 
   public void cancel() {

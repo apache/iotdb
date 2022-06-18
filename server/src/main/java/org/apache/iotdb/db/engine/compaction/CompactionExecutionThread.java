@@ -54,8 +54,9 @@ public class CompactionExecutionThread implements Runnable {
             task, CompactionTaskStatus.POLL_FROM_QUEUE, compactionTaskQueue.size());
         if (task != null && task.checkValidAndSetMerging()) {
           CompactionTaskSummary summary = task.getSummary();
+          CompactionTaskFuture future = new CompactionTaskFuture(summary);
+          CompactionTaskManager.getInstance().recordTask(task, future);
           task.call();
-          CompactionTaskManager.getInstance().recordTask(task, new CompactionTaskFuture(summary));
         }
       } catch (InterruptedException e) {
         log.error("CompactionThread-{} terminates because interruption", threadId);

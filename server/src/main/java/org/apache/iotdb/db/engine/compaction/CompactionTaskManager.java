@@ -45,7 +45,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -73,14 +72,6 @@ public class CompactionTaskManager implements IService {
   private Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
       storageGroupTasks = new HashMap<>();
 
-  // The thread pool that periodically fetches and executes the compaction task from
-  // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
-  // is 1.
-  private ScheduledExecutorService compactionTaskSubmissionThreadPool;
-
-  private final long TASK_SUBMIT_INTERVAL =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionIntervalInMs();
-
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   public static CompactionTaskManager getInstance() {
@@ -91,20 +82,8 @@ public class CompactionTaskManager implements IService {
   public synchronized void start() {
     if (taskExecutionPool == null
         && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
-      this.taskExecutionPool =
-          (WrappedThreadPoolExecutor)
-              IoTDBThreadPoolFactory.newFixedThreadPool(
-                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
-                  ThreadName.COMPACTION_SERVICE.getName());
-      this.subCompactionTaskExecutionPool =
-          (WrappedThreadPoolExecutor)
-              IoTDBThreadPoolFactory.newFixedThreadPool(
-                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                      * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
-                  ThreadName.COMPACTION_SUB_SERVICE.getName());
+      initThreadPool();
       currentTaskNum = new AtomicInteger(0);
-      compactionTaskSubmissionThreadPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       candidateCompactionTaskQueue.regsitPollLastHook(
@@ -115,11 +94,28 @@ public class CompactionTaskManager implements IService {
     logger.info("Compaction task manager started.");
   }
 
+  private void initThreadPool() {
+    int compactionThreadNum =
+        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    this.taskExecutionPool =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                compactionThreadNum, ThreadName.COMPACTION_SERVICE.getName());
+    this.subCompactionTaskExecutionPool =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                    * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+                ThreadName.COMPACTION_SUB_SERVICE.getName());
+    for (int i = 0; i < compactionThreadNum; ++i) {
+      taskExecutionPool.submit(new CompactionExecutionThread(i, candidateCompactionTaskQueue));
+    }
+  }
+
   @Override
   public void stop() {
     if (taskExecutionPool != null) {
       taskExecutionPool.shutdownNow();
-      compactionTaskSubmissionThreadPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -131,7 +127,6 @@ public class CompactionTaskManager implements IService {
   public void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
       awaitTermination(taskExecutionPool, milliseconds);
-      awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
       waitTermination();
       storageGroupTasks.clear();
@@ -142,21 +137,23 @@ public class CompactionTaskManager implements IService {
   public void waitAllCompactionFinish() {
     long sleepingStartTime = 0;
     if (taskExecutionPool != null) {
-      while (taskExecutionPool.getActiveCount() > 0 || taskExecutionPool.getQueue().size() > 0) {
-        // wait
-        try {
-          Thread.sleep(200);
-          sleepingStartTime += 200;
-          if (sleepingStartTime % 10000 == 0) {
-            logger.warn(
-                "Has waiting {} seconds for all compaction task finish", sleepingStartTime / 1000);
+      candidateCompactionTaskQueue.clear();
+      while (true) {
+        int totalSize = 0;
+        for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
+            storageGroupTasks.values()) {
+          totalSize += taskMap.size();
+        }
+        if (totalSize > 0) {
+          try {
+            Thread.sleep(10);
+            candidateCompactionTaskQueue.clear();
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when waiting all task finish", e);
+            break;
           }
-          if (sleepingStartTime >= MAX_WAITING_TIME) {
-            return;
-          }
-        } catch (InterruptedException e) {
-          logger.error("thread interrupted while waiting for compaction to end", e);
-          return;
+        } else {
+          break;
         }
       }
       storageGroupTasks.clear();
@@ -358,21 +355,7 @@ public class CompactionTaskManager implements IService {
           throw new RuntimeException("Failed to shutdown subCompactionTaskExecutionPool");
         }
       }
-      this.taskExecutionPool =
-          (WrappedThreadPoolExecutor)
-              IoTDBThreadPoolFactory.newFixedThreadPool(
-                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
-                  ThreadName.COMPACTION_SERVICE.getName());
-      this.subCompactionTaskExecutionPool =
-          (WrappedThreadPoolExecutor)
-              IoTDBThreadPoolFactory.newFixedThreadPool(
-                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                      * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
-                  ThreadName.COMPACTION_SUB_SERVICE.getName());
-      this.compactionTaskSubmissionThreadPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
-      candidateCompactionTaskQueue.regsitPollLastHook(
-          AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
+      initThreadPool();
       candidateCompactionTaskQueue.clear();
     }
     currentTaskNum = new AtomicInteger(0);
@@ -382,5 +365,16 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public void clearCandidateQueue() {
     candidateCompactionTaskQueue.clear();
+  }
+
+  @TestOnly
+  public synchronized Future<CompactionTaskSummary> getCompactionTaskFutureMayBlock(
+      AbstractCompactionTask task) throws InterruptedException {
+    String storageGroup = task.getFullStorageGroupName();
+    while (!storageGroupTasks.containsKey(storageGroup)
+        || !storageGroupTasks.get(storageGroup).containsKey(task)) {
+      wait(10);
+    }
+    return storageGroupTasks.get(storageGroup).get(task);
   }
 }

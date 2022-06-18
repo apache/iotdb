@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.AlignedSeriesCompaction
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -46,6 +47,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private TsFileResource targetResource;
   private List<TsFileResource> seqFiles;
+  private CompactionTaskSummary summary;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this.seqFiles = sourceFiles;
@@ -96,6 +98,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this.targetResource = targetFiles.get(0);
   }
 
+  @Override
+  public void setSummary(CompactionTaskSummary summary) {
+    this.summary = summary;
+  }
+
   private void compactAlignedSeries(
       String device,
       TsFileResource targetResource,
@@ -112,7 +119,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
-    if (Thread.interrupted()) {
+    if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", targetResource.toString()));

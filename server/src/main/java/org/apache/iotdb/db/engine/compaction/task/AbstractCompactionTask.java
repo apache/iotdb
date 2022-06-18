@@ -49,7 +49,6 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   protected volatile boolean ran = false;
   protected volatile boolean finished = false;
   protected volatile boolean cancel = false;
-  protected volatile boolean success = false;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
   protected CompactionTaskSummary summary = new CompactionTaskSummary();
@@ -88,7 +87,7 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
     } finally {
       this.currentTaskNum.decrementAndGet();
       timeCost = System.currentTimeMillis() - startTime;
-      summary.finish(success, timeCost);
+      summary.finish(isSuccess, timeCost);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
     }
     return summary;
@@ -154,13 +153,5 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
 
   public boolean isTaskFinished() {
     return summary.isFinished();
-  }
-
-  public void setFuture(Future<CompactionTaskSummary> future) {
-    this.future = future;
-  }
-
-  public Future<CompactionTaskSummary> getFuture() {
-    return future;
   }
 }
