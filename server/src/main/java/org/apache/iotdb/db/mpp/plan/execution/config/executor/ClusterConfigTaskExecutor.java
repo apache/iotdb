@@ -108,7 +108,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -130,7 +129,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // build TSBlock
       ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -150,7 +148,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // build TSBlock
       CountStorageGroupTask.buildTSBlock(storageGroupNum, future);
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -177,7 +174,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -202,7 +198,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -222,7 +217,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -250,7 +244,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -271,7 +264,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new StatementExecutionException(tsStatus));
       }
     } catch (IOException | TException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -285,7 +277,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       clusterNodeInfos = client.getAllClusterNodeInfos();
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     // build TSBlock
@@ -322,7 +313,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     // build TSBlock
@@ -344,7 +334,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     // build TSBlock

@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -99,7 +100,11 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   private List<TEndPoint> configNodes;
 
+  private TEndPoint configNode;
+
   private int cursor = 0;
+
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
 
@@ -142,6 +147,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
               // as there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
       transport.open();
+      configNode = endpoint;
     } catch (TTransportException e) {
       throw new TException(e);
     }
@@ -225,6 +231,10 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
       } else {
         configLeader = null;
       }
+      logger.warn(
+          "Failed to connect to ConfigNode {} from DataNode {},because the current node is not leader,try next node",
+          configNode,
+          config.getAddressAndPort());
       return true;
     }
     return false;
