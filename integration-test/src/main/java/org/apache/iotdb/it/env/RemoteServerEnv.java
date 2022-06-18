@@ -104,4 +104,8 @@ public class RemoteServerEnv implements BaseEnv {
     }
     return connection;
   }
+
+  public void setNextTestCaseName(String testCaseName) {
+    // Do nothing
+  }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 
 import com.google.common.collect.ImmutableList;
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.stats.CounterStat;
 
 import static java.util.Objects.requireNonNull;
@@ -34,9 +35,11 @@ public class FragmentInstanceExecution {
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
-  private final IDriver driver;
+  // it will be set to null while this FI is FINISHED
+  private IDriver driver;
 
-  private final ISinkHandle sinkHandle;
+  // it will be set to null while this FI is FINISHED
+  private ISinkHandle sinkHandle;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -102,18 +105,24 @@ public class FragmentInstanceExecution {
     requireNonNull(failedInstances, "failedInstances is null");
     stateMachine.addStateChangeListener(
         newState -> {
-          if (!newState.isDone()) {
-            return;
-          }
+          try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
+            if (!newState.isDone()) {
+              return;
+            }
 
-          // Update failed tasks counter
-          if (newState == FAILED) {
-            failedInstances.update(1);
-          }
+            // Update failed tasks counter
+            if (newState == FAILED) {
+              failedInstances.update(1);
+            }
 
-          driver.close();
-          sinkHandle.abort();
-          scheduler.abortFragmentInstance(instanceId);
+            driver.close();
+            // help for gc
+            driver = null;
+            sinkHandle.abort();
+            // help for gc
+            sinkHandle = null;
+            scheduler.abortFragmentInstance(instanceId);
+          }
         });
   }
 }

@@ -20,10 +20,12 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.exception.UDFException;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.type.Type;
 
 public abstract class UDTFEqualSizeBucketSample implements UDTF {
 
@@ -36,13 +38,13 @@ public abstract class UDTFEqualSizeBucketSample implements UDTF {
     proportion = validator.getParameters().getDoubleOrDefault("proportion", 0.1);
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE)
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             proportion -> (double) proportion > 0 && (double) proportion <= 1,
             "Illegal sample proportion. proportion > 0 and proportion <= 1",
             proportion);
-    dataType = validator.getParameters().getDataType(0);
+    dataType =
+        UDFDataTypeTransformer.transformToTsDataType(validator.getParameters().getDataType(0));
     bucketSize = (int) (1 / proportion);
   }
 }

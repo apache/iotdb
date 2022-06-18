@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -44,12 +44,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
@@ -68,7 +69,7 @@ public class ConsensusManager {
       long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
       try {
         while (!consensusImpl.isLeader(consensusGroupId)) {
-          Thread.sleep(100);
+          TimeUnit.MILLISECONDS.sleep(100);
           long elapsed = System.currentTimeMillis() - startTime;
           if (elapsed > maxWaitTime) {
             return;
@@ -116,6 +117,7 @@ public class ConsensusManager {
               .applyConfigNode(
                   conf.getTargetConfigNode(),
                   new TConfigNodeLocation(
+                      -1,
                       new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                       new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

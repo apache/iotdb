@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 
 import java.io.File;
+import java.util.Objects;
 
 public class SchemaRegionUtils {
 
@@ -61,6 +62,10 @@ public class SchemaRegionUtils {
           String.format(
               "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
     }
+    final File storageGroupDir = schemaRegionDir.getParentFile();
+    if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {
+      storageGroupDir.delete();
+    }
   }
 
   public static void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
@@ -79,7 +84,13 @@ public class SchemaRegionUtils {
     if (dataType != insertDataType) {
       String measurement = plan.getMeasurements()[loc];
       String device = plan.getDevicePath().getFullPath();
-      throw new DataTypeMismatchException(device, measurement, insertDataType, dataType);
+      throw new DataTypeMismatchException(
+          device,
+          measurement,
+          insertDataType,
+          dataType,
+          plan.getMinTime(),
+          plan.getFirstValueOfIndex(loc));
     }
   }
 

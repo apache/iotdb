@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -46,8 +48,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -323,7 +328,7 @@ public class StorageEngineV2 implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         ttlCheckThread,
         this::checkTTL,
         TTL_CHECK_INTERVAL,
@@ -378,26 +383,18 @@ public class StorageEngineV2 implements IService {
   }
 
   private void timedFlushSeqMemTable() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.timedFlushSeqMemTable();
-        }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushSeqMemTable();
       }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing sequence memtables", e);
     }
   }
 
   private void timedFlushUnseqMemTable() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.timedFlushUnseqMemTable();
-        }
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.timedFlushUnseqMemTable();
       }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing unsequence memtables", e);
     }
   }
 
@@ -523,6 +520,40 @@ public class StorageEngineV2 implements IService {
     }
   }
 
+  public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion.getLogicalStorageGroupName().equals(storageGroupPath)) {
+        if (isSeq) {
+          for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
+            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+          }
+        } else {
+          for (TsFileProcessor tsFileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
+            dataRegion.syncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+          }
+        }
+      }
+    }
+  }
+
+  public TSStatus operateFlush(TFlushReq req) {
+    if (req.storageGroups == null) {
+      StorageEngineV2.getInstance().syncCloseAllProcessor();
+      WALManager.getInstance().deleteOutdatedWALFiles();
+    } else {
+      for (String storageGroup : req.storageGroups) {
+        if (req.isSeq == null) {
+          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, true);
+          StorageEngineV2.getInstance().closeStorageGroupProcessor(storageGroup, false);
+        } else {
+          StorageEngineV2.getInstance()
+              .closeStorageGroupProcessor(storageGroup, Boolean.parseBoolean(req.isSeq));
+        }
+      }
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
@@ -577,7 +608,9 @@ public class StorageEngineV2 implements IService {
   public void deleteDataRegion(DataRegionId regionId) {
     DataRegion region = dataRegionMap.remove(regionId);
     if (region != null) {
+      region.abortCompaction();
       region.syncDeleteDataFiles();
+      region.deleteFolder(systemDir);
     }
   }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import org.slf4j.Logger;
@@ -70,32 +71,32 @@ public class SnapshotTaker {
     }
 
     List<Long> timePartitions = dataRegion.getTimePartitions();
-    for (Long timePartition : timePartitions) {
-      List<String> seqDataDirs = getAllDataDirOfOnePartition(true, timePartition);
+    TsFileManager manager = dataRegion.getTsFileManager();
+    manager.readLock();
+    try {
+      for (Long timePartition : timePartitions) {
+        List<String> seqDataDirs = getAllDataDirOfOnePartition(true, timePartition);
 
-      try {
-        createFileSnapshot(seqDataDirs, snapshotDir, true, timePartition);
-      } catch (IOException e) {
-        LOGGER.error("Fail to create snapshot", e);
-        File[] files = snapshotDir.listFiles();
-        if (files != null) {
-          for (File file : files) {
-            if (!file.delete()) {
-              LOGGER.error("Failed to delete link file {} after failing to create snapshot", file);
-            }
-          }
+        try {
+          createFileSnapshot(seqDataDirs, snapshotDir, true, timePartition);
+        } catch (IOException e) {
+          LOGGER.error("Fail to create snapshot", e);
+          cleanUpWhenFail(snapshotDir);
+          return false;
         }
-        return false;
-      }
 
-      List<String> unseqDataDirs = getAllDataDirOfOnePartition(false, timePartition);
+        List<String> unseqDataDirs = getAllDataDirOfOnePartition(false, timePartition);
 
-      try {
-        createFileSnapshot(unseqDataDirs, snapshotDir, false, timePartition);
-      } catch (IOException e) {
-        LOGGER.error("Fail to create snapshot", e);
-        return false;
+        try {
+          createFileSnapshot(unseqDataDirs, snapshotDir, false, timePartition);
+        } catch (IOException e) {
+          LOGGER.error("Fail to create snapshot", e);
+          cleanUpWhenFail(snapshotDir);
+          return false;
+        }
       }
+    } finally {
+      manager.readUnlock();
     }
 
     return true;
@@ -160,6 +161,17 @@ public class SnapshotTaker {
                 + file.getName();
         File linkFile = new File(targetDir, newFileName);
         Files.createLink(linkFile.toPath(), file.toPath());
+      }
+    }
+  }
+
+  private void cleanUpWhenFail(File snapshotDir) {
+    File[] files = snapshotDir.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (!file.delete()) {
+          LOGGER.error("Failed to delete link file {} after failing to create snapshot", file);
+        }
       }
     }
   }

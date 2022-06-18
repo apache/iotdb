@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -143,13 +144,22 @@ public class InternalServiceImpl implements InternalService.Iface {
     ConsensusWriteResponse writeResponse;
 
     PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
+    boolean hasFailedMeasurement = false;
     if (planNode instanceof InsertNode) {
+      InsertNode insertNode = (InsertNode) planNode;
       try {
-        SchemaValidator.validate((InsertNode) planNode);
+        SchemaValidator.validate(insertNode);
       } catch (SemanticException e) {
         response.setAccepted(false);
         response.setMessage(e.getMessage());
         return response;
+      }
+      hasFailedMeasurement = insertNode.hasFailedMeasurements();
+      if (hasFailedMeasurement) {
+        LOGGER.warn(
+            "Fail to insert measurements {} caused by {}",
+            insertNode.getFailedMeasurements(),
+            insertNode.getFailedMessages());
       }
     }
     if (groupId instanceof DataRegionId) {
@@ -160,7 +170,9 @@ public class InternalServiceImpl implements InternalService.Iface {
     // TODO need consider more status
     if (writeResponse.getStatus() != null) {
       response.setAccepted(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
+          !hasFailedMeasurement
+              && TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                  == writeResponse.getStatus().getCode());
       response.setMessage(writeResponse.getStatus().message);
     } else {
       LOGGER.error(
@@ -349,6 +361,11 @@ public class InternalServiceImpl implements InternalService.Iface {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return RpcUtils.getStatus(TSStatusCode.INVALIDATE_PERMISSION_CACHE_ERROR);
+  }
+
+  @Override
+  public TSStatus flush(TFlushReq req) throws TException {
+    return StorageEngineV2.getInstance().operateFlush(req);
   }
 
   @Override

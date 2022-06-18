@@ -55,7 +55,6 @@ public interface ILogWriter extends Closeable {
    * Returns the current size of this file.
    *
    * @return size
-   * @throws IOException if an I/O error occurs
    */
-  long size() throws IOException;
+  long size();
 }

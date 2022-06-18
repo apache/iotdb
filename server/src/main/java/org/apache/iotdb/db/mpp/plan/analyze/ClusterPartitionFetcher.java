@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -107,7 +108,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
-      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, false);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
@@ -131,7 +132,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
-      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, true);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
@@ -460,7 +461,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         for (String devicePath : devicePaths) {
           boolean hit = false;
           for (String storageGroup : storageGroupCache) {
-            if (devicePath.startsWith(storageGroup + ".")) {
+            if (PathUtils.isStartWith(devicePath, storageGroup)) {
               deviceToStorageGroupMap.put(devicePath, storageGroup);
               hit = true;
               break;
@@ -597,14 +598,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         if (!device.contains("*")) {
           String storageGroup = null;
           for (String storageGroupName : storageGroupNames) {
-            if (device.startsWith(storageGroupName + ".")) {
+            if (PathUtils.isStartWith(device, storageGroup)) {
               storageGroup = storageGroupName;
               break;
             }
           }
           if (null == storageGroup) {
-            logger.error(
-                "Failed to get the storage group of {} when update SchemaPartitionCache", device);
+            // device not exist
             continue;
           }
           TSeriesPartitionSlot seriesPartitionSlot =

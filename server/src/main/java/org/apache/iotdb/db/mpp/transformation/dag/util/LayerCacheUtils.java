@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.util;
 
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
@@ -156,7 +157,9 @@ public class LayerCacheUtils {
           target.putBoolean(source.currentTime(), source.currentBoolean());
           break;
         case TEXT:
-          target.putBinary(source.currentTime(), source.currentBinary());
+          target.putBinary(
+              source.currentTime(),
+              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
           break;
         default:
           throw new UnsupportedOperationException(dataType.name());

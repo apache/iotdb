@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
@@ -94,7 +94,7 @@ public class PartitionManager {
 
   /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
   private void setSeriesPartitionExecutor() {
-    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             conf.getSeriesPartitionExecutorClass(), conf.getSeriesPartitionSlotNum());
@@ -446,6 +446,10 @@ public class PartitionManager {
         SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
       }
     }
+  }
+
+  public void addMetrics() {
+    partitionInfo.addMetrics();
   }
 
   /**

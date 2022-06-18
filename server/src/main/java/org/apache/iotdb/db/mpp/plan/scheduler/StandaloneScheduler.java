@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -139,13 +140,32 @@ public class StandaloneScheduler implements IScheduler {
             ConsensusGroupId groupId =
                 ConsensusGroupId.Factory.createFromTConsensusGroupId(
                     fragmentInstance.getRegionReplicaSet().getRegionId());
+            boolean hasFailedMeasurement = false;
             if (planNode instanceof InsertNode) {
-              SchemaValidator.validate((InsertNode) planNode);
+              InsertNode insertNode = (InsertNode) planNode;
+              SchemaValidator.validate(insertNode);
+              hasFailedMeasurement = insertNode.hasFailedMeasurements();
+              if (hasFailedMeasurement) {
+                LOGGER.warn(
+                    "Fail to insert measurements {} caused by {}",
+                    insertNode.getFailedMeasurements(),
+                    insertNode.getFailedMessages());
+              }
             }
             if (groupId instanceof DataRegionId) {
               STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
             } else {
               SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
+            }
+            if (hasFailedMeasurement) {
+              InsertNode node = (InsertNode) planNode;
+              List<Exception> exceptions = node.getFailedExceptions();
+              throw new WriteProcessException(
+                  "failed to insert measurements "
+                      + node.getFailedMeasurements()
+                      + (!exceptions.isEmpty()
+                          ? (" caused by " + exceptions.get(0).getMessage())
+                          : ""));
             }
           }
           stateMachine.transitionToFinished();
@@ -162,6 +182,9 @@ public class StandaloneScheduler implements IScheduler {
     // practice ?
     stateTracker.abort();
     // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
+    for (FragmentInstance fragmentInstance : instances) {
+      FragmentInstanceManager.getInstance().cancelTask(fragmentInstance.getId());
+    }
   }
 
   @Override

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.transformation.api;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.Row;
 
 import java.io.IOException;
 

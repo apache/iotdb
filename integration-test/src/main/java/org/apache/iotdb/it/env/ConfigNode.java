@@ -19,9 +19,10 @@
 package org.apache.iotdb.it.env;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 import static org.junit.Assert.fail;
@@ -30,9 +31,9 @@ public class ConfigNode extends ClusterNodeBase {
 
   private final int consensusPort;
   private final String configPath;
-  private final String targetConfignode;
+  private final String targetConfigNode;
 
-  public ConfigNode(boolean isSeed, String targetConfignode, String testName) {
+  public ConfigNode(boolean isSeed, String targetConfigNode, String testName) {
 
     int[] portList = super.searchAvailablePorts();
     super.setPort(portList[0]);
@@ -83,9 +84,9 @@ public class ConfigNode extends ClusterNodeBase {
             + "iotdb-confignode.properties";
 
     if (isSeed) {
-      this.targetConfignode = getIpAndPortString();
+      this.targetConfigNode = getIpAndPortString();
     } else {
-      this.targetConfignode = targetConfignode;
+      this.targetConfigNode = targetConfigNode;
     }
   }
 
@@ -93,17 +94,23 @@ public class ConfigNode extends ClusterNodeBase {
   public void changeConfig(Properties properties) {
     try {
       Properties configProperties = new Properties();
-      configProperties.load(new FileInputStream(this.configPath));
+      configProperties.load(Files.newInputStream(Paths.get(this.configPath)));
       configProperties.setProperty("rpc_address", super.getIp());
       configProperties.setProperty("rpc_port", String.valueOf(super.getPort()));
       configProperties.setProperty("consensus_port", String.valueOf(this.consensusPort));
-      configProperties.setProperty("target_confignode", this.targetConfignode);
+      configProperties.setProperty("target_confignode", this.targetConfigNode);
       configProperties.setProperty(
           "config_node_consensus_protocol_class",
-          "org.apache.iotdb.consensus.ratis.RatisConsensus");
+          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+      configProperties.setProperty(
+          "schema_region_consensus_protocol_class",
+          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
       configProperties.setProperty(
           "data_region_consensus_protocol_class",
-          "org.apache.iotdb.consensus.ratis.RatisConsensus");
+          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+      configProperties.setProperty("schema_replication_factor", "1");
+      configProperties.setProperty("data_replication_factor", "1");
+      configProperties.setProperty("connection_timeout_ms", "30000");
       if (properties != null && !properties.isEmpty()) {
         configProperties.putAll(properties);
       }

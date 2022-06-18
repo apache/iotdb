@@ -20,17 +20,19 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.commons.udf.api.exception.UDFException;
-import org.apache.iotdb.commons.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 import java.util.Comparator;
@@ -51,13 +53,7 @@ public abstract class UDTFSelectK implements UDTF {
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT)
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.TEXT)
         .validateRequiredAttribute("k")
         .validate(
             k -> 0 < (int) k && (int) k <= 1000,
@@ -69,9 +65,11 @@ public abstract class UDTFSelectK implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException, UDFInputSeriesDataTypeNotValidException {
     k = parameters.getInt("k");
-    dataType = parameters.getDataType(0);
+    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     constructPQ();
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    configurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   protected abstract void constructPQ() throws UDFInputSeriesDataTypeNotValidException;
@@ -99,12 +97,12 @@ public abstract class UDTFSelectK implements UDTF {
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
-            dataType,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT);
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE,
+            Type.TEXT);
     }
   }
 
@@ -164,12 +162,12 @@ public abstract class UDTFSelectK implements UDTF {
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
             0,
-            dataType,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT);
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE,
+            Type.TEXT);
     }
   }
 }
