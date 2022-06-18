@@ -650,7 +650,7 @@ public class ConfigManager implements Manager {
   public DataSet showRegion(GetRegionLocationsReq getRegionsinfoReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getRegionInfos(getRegionsinfoReq);
+      return partitionManager.getRetionLocations(getRegionsinfoReq);
     } else {
       RegionLocationsResp regionResp = new RegionLocationsResp();
       regionResp.setStatus(status);

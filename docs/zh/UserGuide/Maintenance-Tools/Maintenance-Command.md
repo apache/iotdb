@@ -118,7 +118,7 @@ KILL QUERY <queryId>
 
 - 查看集群中各个 Region 被分配到了哪些 DataNode，是否均衡
 
-当前 IoTDB 支持使用如下 SQL 查看Region：
+当前 IoTDB 支持使用如下 SQL 查看 Region：
 
 - `SHOW REGIONS`: 展示所有 Region
 - `SHOW SCHEMA REGIONS`: 展示所有 SchemaRegion 分布
@@ -129,48 +129,48 @@ IoTDB> show regions
 +--------+------------+------+-------------+-----+----------+----------+----+
 |RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
 +--------+------------+------+-------------+-----+----------+----------+----+
-|       5|  DataRegion|    Up|      root.sg|    1|         2| 127.0.0.1|6671|
-|       6|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
 |       3|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       4|  DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
-|       9|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|      10|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       4|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       5|  DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
+|       6|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
 |       7|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|       8|  DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
-|      11|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|      12|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       2|SchemaRegion|    Up|      root.sg|    1|         3| 127.0.0.1|6669|
-|       0|SchemaRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
-|       1|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       8|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       9|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|      11|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|      12|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
 +--------+------------+------+-------------+-----+----------+----------+----+
 Total line number = 13
-It costs 0.015s
+It costs 0.107s
 IoTDB> show schema regions
 +--------+------------+------+-------------+-----+----------+----------+----+
 |RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
 +--------+------------+------+-------------+-----+----------+----------+----+
-|       2|SchemaRegion|    Up|      root.sg|    1|         3| 127.0.0.1|6669|
-|       0|SchemaRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
-|       1|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
 +--------+------------+------+-------------+-----+----------+----------+----+
 Total line number = 3
-It costs 0.008s
+It costs 0.009s
 IoTDB> show data regions
 +--------+----------+------+-------------+-----+----------+----------+----+
 |RegionId|      Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
 +--------+----------+------+-------------+-----+----------+----------+----+
-|       5|DataRegion|    Up|      root.sg|    1|         2| 127.0.0.1|6671|
-|       6|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
 |       3|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       4|DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
-|       9|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|      10|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       4|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       5|DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
+|       6|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
 |       7|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|       8|DataRegion|    Up|      root.sg|    0|         2| 127.0.0.1|6671|
-|      11|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|      12|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       8|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       9|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|      11|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|      12|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
 +--------+----------+------+-------------+-----+----------+----------+----+
 Total line number = 10
-It costs 0.038s
+It costs 0.023s
 ```
 

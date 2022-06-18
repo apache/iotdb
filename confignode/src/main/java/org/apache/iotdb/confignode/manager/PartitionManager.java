@@ -463,7 +463,7 @@ public class PartitionManager {
     return executor.getSeriesPartitionSlot(devicePath);
   }
 
-  public DataSet getRegionInfos(GetRegionLocationsReq req) {
+  public DataSet getRetionLocations(GetRegionLocationsReq req) {
     return getConsensusManager().read(req).getDataset();
   }
 

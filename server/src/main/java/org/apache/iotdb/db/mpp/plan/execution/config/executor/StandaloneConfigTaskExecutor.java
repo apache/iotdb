@@ -223,7 +223,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
         new StatementExecutionException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                "Executing this command in standalone mode is not supported")));
+                "Executing show cluster in standalone mode is not supported")));
     return future;
   }
 
@@ -265,7 +265,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
         new StatementExecutionException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                "Executing this command in standalone mode is not supported")));
+                "Executing show regions in standalone mode is not supported")));
     return future;
   }
 }
