@@ -29,7 +29,8 @@ def test_template_create():
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
 
-        template = Template(name="template_python", share_time=False)
+        measurement_template_name = "template_python"
+        template = Template(name=measurement_template_name, share_time=False)
         m_node_1 = MeasurementNode(
             name="s1",
             data_type=TSDataType.INT64,
@@ -53,7 +54,34 @@ def test_template_create():
         template.add_template(m_node_3)
         session.create_schema_template(template)
 
-        template = Template(name="treeTemplate_python", share_time=True)
+        assert session.show_measurements_in_template(measurement_template_name) == [
+            "s3",
+            "s1",
+            "s2",
+        ]
+        assert session.count_measurements_in_template(measurement_template_name) == 3
+        assert (
+            session.is_measurement_in_template(measurement_template_name, "s1") is True
+        )
+        assert (
+            session.is_path_exist_in_template(measurement_template_name, "s1") is True
+        )
+        assert (
+            session.is_path_exist_in_template(measurement_template_name, "s4") is False
+        )
+
+        session.delete_node_in_template(measurement_template_name, "s1")
+        assert session.show_measurements_in_template(measurement_template_name) == [
+            "s3",
+            "s2",
+        ]
+        assert session.count_measurements_in_template(measurement_template_name) == 2
+        assert (
+            session.is_path_exist_in_template(measurement_template_name, "s1") is False
+        )
+
+        tree_template_name = "treeTemplate_python"
+        template = Template(name=tree_template_name, share_time=True)
         i_node_gps = InternalNode(name="GPS", share_time=False)
         i_node_v = InternalNode(name="vehicle", share_time=True)
         m_node_x = MeasurementNode(
@@ -61,14 +89,106 @@ def test_template_create():
         )
 
         i_node_gps.add_child(m_node_x)
-        i_node_gps.add_child(m_node_x)
         i_node_v.add_child(m_node_x)
         template.add_template(i_node_gps)
         template.add_template(i_node_v)
         template.add_template(m_node_x)
         session.create_schema_template(template)
+        assert session.show_measurements_in_template(tree_template_name) == [
+            "x",
+            "GPS.x",
+            "vehicle.x",
+        ]
+        assert session.count_measurements_in_template(tree_template_name) == 3
 
-        session.drop_schema_template("template_python")
-        session.drop_schema_template("treeTemplate_python")
+        assert session.show_all_templates() == [
+            measurement_template_name,
+            tree_template_name,
+        ]
+        assert session.is_measurement_in_template(tree_template_name, "GPS") is False
+        assert session.is_measurement_in_template(tree_template_name, "GPS.x") is True
 
+        session.drop_schema_template(measurement_template_name)
+        session.drop_schema_template(tree_template_name)
+
+        session.close()
+
+
+def test_add_measurements_template():
+    with IoTDBContainer("iotdb:dev") as db:
+        db: IoTDBContainer
+        session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
+        session.open(False)
+
+        template_name = "add_template_python"
+        template = Template(name=template_name, share_time=False)
+        i_node_v = InternalNode(name="GPS", share_time=False)
+        i_node_gps_x = MeasurementNode(
+            "x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY
+        )
+
+        i_node_v.add_child(i_node_gps_x)
+        template.add_template(i_node_v)
+        session.create_schema_template(template)
+
+        # # append schema template
+        data_types = [TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE]
+        encoding_list = [TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA]
+        compressor_list = [Compressor.SNAPPY, Compressor.SNAPPY, Compressor.LZ4]
+
+        measurements_aligned_path = ["aligned.s1", "aligned.s2", "aligned.s3"]
+        session.add_measurements_in_template(
+            template_name,
+            measurements_aligned_path,
+            data_types,
+            encoding_list,
+            compressor_list,
+            is_aligned=True,
+        )
+        # session.drop_schema_template("add_template_python")
+        measurements_aligned_path = ["unaligned.s1", "unaligned.s2", "unaligned.s3"]
+        session.add_measurements_in_template(
+            template_name,
+            measurements_aligned_path,
+            data_types,
+            encoding_list,
+            compressor_list,
+            is_aligned=False,
+        )
+        measurements_aligned_path = ["s1", "s2", "s3"]
+        session.add_measurements_in_template(
+            template_name,
+            measurements_aligned_path,
+            data_types,
+            encoding_list,
+            compressor_list,
+            is_aligned=False,
+        )
+
+        assert session.count_measurements_in_template(template_name) == 10
+        assert session.is_measurement_in_template(template_name, "GPS") is False
+        assert session.is_path_exist_in_template(template_name, "GPS.x") is True
+        assert session.is_path_exist_in_template(template_name, "x") is False
+
+        session.drop_schema_template(template_name)
+        session.close()
+
+
+def test_set_template():
+    with IoTDBContainer("iotdb:dev") as db:
+        db: IoTDBContainer
+        session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
+        session.open(False)
+
+        template_name = "set_template_python"
+        template = Template(name=template_name, share_time=False)
+        session.create_schema_template(template)
+
+        session.set_schema_template(template_name, "root.python.GPS")
+
+        assert session.show_paths_template_set_on(template_name) == ["root.python.GPS"]
+        assert session.show_paths_template_using_on(template_name) == []
+
+        session.unset_schema_template(template_name, "root.python.GPS")
+        session.drop_schema_template(template_name)
         session.close()

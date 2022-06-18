@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -29,17 +28,14 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
-import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +44,6 @@ import java.io.IOException;
 
 public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
-  private static final int onlineConfigNodeNum = 1;
 
   private final String mbeanName =
       String.format(
@@ -69,7 +64,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private void initConfigManager() {
     // Init ConfigManager
     try {
-      this.configManager = new ConfigManager();
+      configManager = new ConfigManager();
     } catch (IOException e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       try {
@@ -99,6 +94,7 @@ public class ConfigNode implements ConfigNodeMBean {
     JMXService.registerMBean(this, mbeanName);
 
     registerManager.register(MetricsService.getInstance());
+    configManager.addMetrics();
     registerUdfServices();
 
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
@@ -110,37 +106,19 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private void registerUdfServices() throws StartupException {
-    final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
     registerManager.register(
         UDFExecutableManager.setupAndGetInstance(
-            configNodeConf.getTemporaryLibDir(), configNodeConf.getUdfLibDir()));
+            configNodeConfig.getTemporaryLibDir(), configNodeConfig.getUdfLibDir()));
     registerManager.register(
-        UDFClassLoaderManager.setupAndGetInstance(configNodeConf.getUdfLibDir()));
+        UDFClassLoaderManager.setupAndGetInstance(configNodeConfig.getUdfLibDir()));
     registerManager.register(
-        UDFRegistrationService.setupAndGetInstance(configNodeConf.getSystemUdfDir()));
+        UDFRegistrationService.setupAndGetInstance(configNodeConfig.getSystemUdfDir()));
   }
 
   public void active() {
     try {
       setUp();
-      // Check key parameters between ConfigNodes
-      new Thread(
-              () -> {
-                long start = System.currentTimeMillis();
-                long end = start + 20 * 1000;
-                while (System.currentTimeMillis() < end) {
-                  try {
-                    Thread.sleep(10000);
-                    if (!ConfigNodeStartupCheck.getInstance().checkConfigurations()) {
-                      stop();
-                      return;
-                    }
-                  } catch (IOException | InterruptedException e) {
-                    LOGGER.error("Meet error when stop ConfigNode!", e);
-                  }
-                }
-              })
-          .start();
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -179,27 +157,15 @@ public class ConfigNode implements ConfigNodeMBean {
       TConfigNodeLocation removeConfigNodeLocation =
           ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
       if (removeConfigNodeLocation == null) {
-        LOGGER.error("The Current endpoint is not in the Cluster.");
+        LOGGER.error("The ConfigNode not in the Cluster.");
         return;
       }
 
-      removeConfigNode(removeConfigNodeLocation);
+      ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
     } catch (BadNodeUrlException e) {
       LOGGER.warn("No ConfigNodes need to be removed.", e);
     }
     LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
-  }
-
-  private void removeConfigNode(TConfigNodeLocation nodeLocation)
-      throws BadNodeUrlException, IOException {
-    TSStatus status =
-        SyncConfigNodeClientPool.getInstance()
-            .removeConfigNode(
-                ConfigNodeRemoveCheck.getInstance().getConfigNdoeList(), nodeLocation);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.error(status.getMessage());
-      throw new IOException("Remove ConfigNode failed:");
-    }
   }
 
   private static class ConfigNodeHolder {

@@ -36,8 +36,10 @@ import java.util.stream.Collectors;
 
 public class AggregationDescriptor {
 
-  // aggregation function name
+  // aggregation function type
   protected final AggregationType aggregationType;
+  // In case user's input is case-sensitive, we should keep the origin string.
+  protected final String aggregationFuncName;
 
   // indicate the input and output type
   protected AggregationStep step;
@@ -47,30 +49,38 @@ public class AggregationDescriptor {
    * function.
    *
    * <p>example: select sum(s1) from root.sg.d1; expression [root.sg.d1.s1] will be in this field.
+   *
+   * <p>example: select sum(s1) from root.** group by level = 1; expression [root.sg.*.s1] may be in
+   * this field if the data is in different DataRegion</>
    */
   protected List<Expression> inputExpressions;
 
   private String parametersString;
 
   public AggregationDescriptor(
-      AggregationType aggregationType, AggregationStep step, List<Expression> inputExpressions) {
-    this.aggregationType = aggregationType;
+      String aggregationFuncName, AggregationStep step, List<Expression> inputExpressions) {
+    this.aggregationFuncName = aggregationFuncName;
+    this.aggregationType = AggregationType.valueOf(aggregationFuncName.toUpperCase());
     this.step = step;
     this.inputExpressions = inputExpressions;
   }
 
   public AggregationDescriptor(AggregationDescriptor other) {
+    this.aggregationFuncName = other.aggregationFuncName;
     this.aggregationType = other.getAggregationType();
     this.step = other.getStep();
     this.inputExpressions = other.getInputExpressions();
   }
 
+  public String getAggregationFuncName() {
+    return aggregationFuncName;
+  }
+
   public List<String> getOutputColumnNames() {
-    List<AggregationType> outputAggregationTypes =
-        getActualAggregationTypes(step.isOutputPartial());
+    List<String> outputAggregationNames = getActualAggregationNames(step.isOutputPartial());
     List<String> outputColumnNames = new ArrayList<>();
-    for (AggregationType funcName : outputAggregationTypes) {
-      outputColumnNames.add(funcName.toString().toLowerCase() + "(" + getParametersString() + ")");
+    for (String funcName : outputAggregationNames) {
+      outputColumnNames.add(funcName + "(" + getParametersString() + ")");
     }
     return outputColumnNames;
   }
@@ -90,11 +100,10 @@ public class AggregationDescriptor {
   }
 
   public List<String> getInputColumnNames(Expression inputExpression) {
-    List<AggregationType> inputAggregationTypes = getActualAggregationTypes(step.isInputPartial());
+    List<String> inputAggregationNames = getActualAggregationNames(step.isInputPartial());
     List<String> inputColumnNames = new ArrayList<>();
-    for (AggregationType funcName : inputAggregationTypes) {
-      inputColumnNames.add(
-          funcName.toString().toLowerCase() + "(" + inputExpression.getExpressionString() + ")");
+    for (String funcName : inputAggregationNames) {
+      inputColumnNames.add(funcName + "(" + inputExpression.getExpressionString() + ")");
     }
     return inputColumnNames;
   }
@@ -110,29 +119,30 @@ public class AggregationDescriptor {
     return inputColumnNameToExpressionMap;
   }
 
-  protected List<AggregationType> getActualAggregationTypes(boolean isPartial) {
-    List<AggregationType> outputAggregationTypes = new ArrayList<>();
+  /** Keep the lower case of function name for partial result, and origin value for others. */
+  protected List<String> getActualAggregationNames(boolean isPartial) {
+    List<String> outputAggregationNames = new ArrayList<>();
     if (isPartial) {
       switch (aggregationType) {
         case AVG:
-          outputAggregationTypes.add(AggregationType.COUNT);
-          outputAggregationTypes.add(AggregationType.SUM);
+          outputAggregationNames.add(AggregationType.COUNT.name().toLowerCase());
+          outputAggregationNames.add(AggregationType.SUM.name().toLowerCase());
           break;
         case FIRST_VALUE:
-          outputAggregationTypes.add(AggregationType.FIRST_VALUE);
-          outputAggregationTypes.add(AggregationType.MIN_TIME);
+          outputAggregationNames.add(AggregationType.FIRST_VALUE.name().toLowerCase());
+          outputAggregationNames.add(AggregationType.MIN_TIME.name().toLowerCase());
           break;
         case LAST_VALUE:
-          outputAggregationTypes.add(AggregationType.LAST_VALUE);
-          outputAggregationTypes.add(AggregationType.MAX_TIME);
+          outputAggregationNames.add(AggregationType.LAST_VALUE.name().toLowerCase());
+          outputAggregationNames.add(AggregationType.MAX_TIME.name().toLowerCase());
           break;
         default:
-          outputAggregationTypes.add(aggregationType);
+          outputAggregationNames.add(aggregationFuncName);
       }
     } else {
-      outputAggregationTypes.add(aggregationType);
+      outputAggregationNames.add(aggregationFuncName);
     }
-    return outputAggregationTypes;
+    return outputAggregationNames;
   }
 
   /**
@@ -179,12 +189,11 @@ public class AggregationDescriptor {
   }
 
   public AggregationDescriptor deepClone() {
-    return new AggregationDescriptor(
-        this.getAggregationType(), this.getStep(), this.getInputExpressions());
+    return new AggregationDescriptor(this);
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(aggregationType.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(aggregationFuncName, byteBuffer);
     step.serialize(byteBuffer);
     ReadWriteIOUtils.write(inputExpressions.size(), byteBuffer);
     for (Expression expression : inputExpressions) {
@@ -193,7 +202,7 @@ public class AggregationDescriptor {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(aggregationType.ordinal(), stream);
+    ReadWriteIOUtils.write(aggregationFuncName, stream);
     step.serialize(stream);
     ReadWriteIOUtils.write(inputExpressions.size(), stream);
     for (Expression expression : inputExpressions) {
@@ -202,8 +211,7 @@ public class AggregationDescriptor {
   }
 
   public static AggregationDescriptor deserialize(ByteBuffer byteBuffer) {
-    AggregationType aggregationType =
-        AggregationType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    String aggregationFuncName = ReadWriteIOUtils.readString(byteBuffer);
     AggregationStep step = AggregationStep.deserialize(byteBuffer);
     int inputExpressionsSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Expression> inputExpressions = new ArrayList<>(inputExpressionsSize);
@@ -211,7 +219,7 @@ public class AggregationDescriptor {
       inputExpressions.add(Expression.deserialize(byteBuffer));
       inputExpressionsSize--;
     }
-    return new AggregationDescriptor(aggregationType, step, inputExpressions);
+    return new AggregationDescriptor(aggregationFuncName, step, inputExpressions);
   }
 
   @Override
@@ -234,6 +242,6 @@ public class AggregationDescriptor {
   }
 
   public String toString() {
-    return String.format("AggregationDescriptor(%s, %s)", aggregationType, step);
+    return String.format("AggregationDescriptor(%s, %s)", aggregationFuncName, step);
   }
 }

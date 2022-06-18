@@ -133,10 +133,6 @@ public class PartitionInfoTest {
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
     partitionInfo.createDataPartition(createDataPartitionReq);
 
-    partitionInfo.getPreDeletedStorageGroup().add("A");
-    partitionInfo.getPreDeletedStorageGroup().add("B");
-    partitionInfo.getPreDeletedStorageGroup().add("C");
-
     partitionInfo.getDeletedRegionSet().add(dataRegionReplicaSet);
     partitionInfo.getDeletedRegionSet().add(schemaRegionReplicaSet);
 

@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -39,8 +38,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -52,7 +50,7 @@ public class ConfigNodeStartupCheck {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private final File systemPropertiesFile;
   private final Properties systemProperties;
@@ -87,10 +85,11 @@ public class ConfigNodeStartupCheck {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_configNode needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && isContainsRpcConfigNode()) {
+        && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
+            || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
           "target_confignode",
-          conf.getTargetConfigNodeList().get(0).toString(),
+          conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
           conf.getRpcAddress() + ":" + conf.getRpcPort());
     }
 
@@ -164,31 +163,17 @@ public class ConfigNodeStartupCheck {
    * @return True if the target_confignode points to itself
    */
   private boolean isSeedConfigNode() {
-    boolean result = isContainsRpcConfigNode();
-
+    boolean result =
+        conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
+            && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties
-      List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
-      for (TEndPoint endPoint : conf.getTargetConfigNodeList()) {
-        configNodeLocations.add(
-            new TConfigNodeLocation(
-                endPoint, new TEndPoint(endPoint.getIp(), conf.getConsensusPort())));
-      }
-      conf.setConfigNodeList(configNodeLocations);
-    }
-    return result;
-  }
-
-  /**
-   * Check if the SeedConfigNode contains the current ConfigNode.
-   *
-   * @return True if the target_confignode points to itself
-   */
-  private boolean isContainsRpcConfigNode() {
-    boolean result = false;
-    TEndPoint rpcConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
-    if (conf.getTargetConfigNodeList().contains(rpcConfigNode)) {
-      result = true;
+      conf.setConfigNodeList(
+          Collections.singletonList(
+              new TConfigNodeLocation(
+                  0,
+                  new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
+                  new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
     }
     return result;
   }
@@ -198,6 +183,7 @@ public class ConfigNodeStartupCheck {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
+                -1,
                 new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
             conf.getDataRegionConsensusProtocolClass(),
@@ -210,8 +196,7 @@ public class ConfigNodeStartupCheck {
             conf.getDataReplicationFactor());
 
     TConfigNodeRegisterResp resp =
-        SyncConfigNodeClientPool.getInstance()
-            .registerConfigNode(conf.getTargetConfigNodeList(), req);
+        SyncConfigNodeClientPool.getInstance().registerConfigNode(conf.getTargetConfigNode(), req);
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
       conf.setConfigNodeList(resp.getConfigNodeList());
@@ -404,90 +389,6 @@ public class ConfigNodeStartupCheck {
                 dir.getAbsolutePath()));
       }
     }
-  }
-
-  public boolean checkConfigurations() {
-    if (!isContainsRpcConfigNode()) {
-      return true;
-    }
-
-    List<TConfigNodeConfigurationResp> configNodeConfigurations = new ArrayList<>();
-    try {
-      List<TConfigNodeLocation> configNodeLocations =
-          NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
-      for (TConfigNodeLocation nodeLocation : configNodeLocations) {
-        if (nodeLocation
-            .getInternalEndPoint()
-            .getIp()
-            .equals(systemProperties.getProperty("rpc_address"))) {
-          continue;
-        }
-        TConfigNodeConfigurationResp resp =
-            SyncConfigNodeClientPool.getInstance().getConfigNodeConfiguration(nodeLocation);
-        if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          configNodeConfigurations.add(resp);
-        } else {
-          return false;
-        }
-      }
-
-      for (TConfigNodeConfigurationResp resp : configNodeConfigurations) {
-        if (!checkKeyPatameters(resp)) {
-          return false;
-        }
-      }
-    } catch (BadNodeUrlException e) {
-      LOGGER.info("Load system properties file failed.", e);
-    }
-    return true;
-  }
-
-  private boolean checkKeyPatameters(TConfigNodeConfigurationResp resp) throws BadNodeUrlException {
-    // Consensus protocol configuration
-    String configNodeConsensusProtocolClass =
-        systemProperties.getProperty("config_node_consensus_protocol_class");
-    if (!configNodeConsensusProtocolClass.equals(resp.getConfigNodeConsensusProtocolClass())) {
-      return false;
-    }
-
-    String dataRegionConsensusProtocolClass =
-        systemProperties.getProperty("data_region_consensus_protocol_class");
-    if (!dataRegionConsensusProtocolClass.equals(resp.getDataRegionConsensusProtocolClass())) {
-      return false;
-    }
-
-    String schemaRegionConsensusProtocolClass =
-        systemProperties.getProperty("schema_region_consensus_protocol_class");
-    if (!schemaRegionConsensusProtocolClass.equals(resp.getSchemaRegionConsensusProtocolClass())) {
-      return false;
-    }
-
-    // PartitionSlot configuration
-    int seriesPartitionSlotNum =
-        Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
-    if (seriesPartitionSlotNum != resp.getSeriesPartitionSlotNum()) {
-      return false;
-    }
-
-    String seriesPartitionExecutorClass =
-        systemProperties.getProperty("series_partition_executor_class");
-    if (!seriesPartitionExecutorClass.equals(resp.getSeriesPartitionExecutorClass())) {
-      return false;
-    }
-
-    // ConfigNodeList
-    List<TConfigNodeLocation> configNodeLocations =
-        NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
-    if (configNodeLocations.size() != resp.getConfigNodeList().size()) {
-      return false;
-    }
-    for (TConfigNodeLocation nodeLocation : resp.getConfigNodeList()) {
-      if (!configNodeLocations.contains(nodeLocation)) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   private static class ConfigNodeConfCheckHolder {

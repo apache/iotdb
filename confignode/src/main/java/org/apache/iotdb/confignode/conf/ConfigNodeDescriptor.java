@@ -38,13 +38,13 @@ public class ConfigNodeDescriptor {
 
   private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final ConfigNodeConf conf = new ConfigNodeConf();
+  private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
   private ConfigNodeDescriptor() {
     loadProps();
   }
 
-  public ConfigNodeConf getConf() {
+  public ConfigNodeConfig getConf() {
     return conf;
   }
 
@@ -115,9 +115,9 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty("consensus_port", String.valueOf(conf.getConsensusPort()))));
 
-      String targetConfigNodeList = properties.getProperty("target_confignode", null);
-      if (targetConfigNodeList != null) {
-        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(targetConfigNodeList));
+      String targetConfigNode = properties.getProperty("target_confignode", null);
+      if (targetConfigNode != null) {
+        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
       }
 
       conf.setSeriesPartitionSlotNum(

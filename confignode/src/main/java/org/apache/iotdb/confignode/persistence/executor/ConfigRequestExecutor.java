@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
@@ -130,8 +129,6 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListUserRoles((AuthorReq) req);
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
-      case GetConfigNodeConfiguration:
-        return nodeInfo.getConfigNodeConfiguration((GetConfigNodeConfigurationReq) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       default:

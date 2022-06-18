@@ -20,9 +20,8 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
@@ -188,31 +187,22 @@ public interface Manager {
   /**
    * Operate Permission
    *
-   * @param configRequest AuthorPlan
    * @return status
    */
-  TSStatus operatePermission(ConfigRequest configRequest);
+  TSStatus operatePermission(AuthorReq authorReq);
 
   /**
    * Query Permission
    *
-   * @param configRequest AuthorPlan
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(ConfigRequest configRequest);
+  DataSet queryPermission(AuthorReq authorReq);
 
   /** login */
   TPermissionInfoResp login(String username, String password);
 
   /** Check User Privileges */
   TPermissionInfoResp checkUserPrivileges(String username, List<String> paths, int permission);
-
-  /**
-   * Get ConfigNode Configuration
-   *
-   * @return TConfigNodeConfigrationResp
-   */
-  DataSet getConfigNodeConfiguration(GetConfigNodeConfigurationReq req);
 
   /**
    * Register ConfigNode when it is first startup
@@ -238,4 +228,6 @@ public interface Manager {
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  void addMetrics();
 }

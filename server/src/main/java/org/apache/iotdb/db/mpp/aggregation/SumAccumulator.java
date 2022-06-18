@@ -77,6 +77,9 @@ public class SumAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     initResult = true;
     if (statistics instanceof IntegerStatistics) {
       sumValue += statistics.getSumLongValue();

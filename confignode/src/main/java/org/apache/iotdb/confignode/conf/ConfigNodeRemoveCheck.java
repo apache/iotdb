@@ -20,8 +20,11 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +38,7 @@ import java.util.Properties;
 public class ConfigNodeRemoveCheck {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private final File systemPropertiesFile;
   private final Properties systemProperties;
@@ -55,10 +58,10 @@ public class ConfigNodeRemoveCheck {
     try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
       systemProperties.load(inputStream);
       nodeLocation =
-          new TConfigNodeLocation(endPoint, new TEndPoint(endPoint.getIp(), getConsensusPort()));
-      if (getConfigNdoeList().contains(nodeLocation)) {
-        return nodeLocation;
-      }
+          getConfigNodeList().stream()
+              .filter(e -> e.getInternalEndPoint().equals(endPoint))
+              .findFirst()
+              .get();
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.error("Load system properties file failed.", e);
     }
@@ -66,7 +69,17 @@ public class ConfigNodeRemoveCheck {
     return nodeLocation;
   }
 
-  public List<TConfigNodeLocation> getConfigNdoeList() throws BadNodeUrlException {
+  public void removeConfigNode(TConfigNodeLocation nodeLocation)
+      throws BadNodeUrlException, IOException {
+    TSStatus status =
+        SyncConfigNodeClientPool.getInstance().removeConfigNode(getConfigNodeList(), nodeLocation);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.error(status.getMessage());
+      throw new IOException("Remove ConfigNode failed:");
+    }
+  }
+
+  public List<TConfigNodeLocation> getConfigNodeList() throws BadNodeUrlException {
     return NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
   }
 

@@ -58,6 +58,7 @@ import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
+import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
@@ -409,6 +410,7 @@ class RatisConsensus implements IConsensus {
   }
 
   /**
+   * NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader.
    * transferLeader is implemented by 1. modify peer priority 2. ask current leader to step down
    *
    * <p>1. call setConfiguration to upgrade newLeader's priority to 1 and degrade all follower peers
@@ -530,7 +532,26 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    RaftGroup groupInfo = getGroupInfo(raftGroupId);
+
+    if (groupInfo == null || !groupInfo.getPeers().contains(myself)) {
+      return failed(new ConsensusGroupNotExistException(groupId));
+    }
+
+    // TODO tuning snapshot create timeout
+    SnapshotManagementRequest request =
+        SnapshotManagementRequest.newCreate(
+            localFakeId, myself.getId(), raftGroupId, localFakeCallId.incrementAndGet(), 30000);
+
+    RaftClientReply reply;
+    try {
+      reply = server.submitClientRequest(request);
+    } catch (IOException ioException) {
+      return failed(new RatisRequestFailedException(ioException));
+    }
+
+    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {

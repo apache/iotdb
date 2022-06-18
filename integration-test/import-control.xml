@@ -1,4 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE import-control PUBLIC "-//Checkstyle//DTD ImportControl Configuration 1.4//EN" "https://checkstyle.org/dtds/import_control_1_4.dtd">
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE import-control PUBLIC
+  "-//Checkstyle//DTD ImportControl Configuration 1.4//EN"
+  "https://checkstyle.org/dtds/import_control_1_4.dtd">
 
 <!--
     Licensed to the Apache Software Foundation (ASF) under one
@@ -17,13 +19,14 @@
     under the License.
 -->
 <import-control pkg="org.apache.iotdb.db.it">
-    <disallow class="java.sql.DriverManager"/>
-    <disallow class="javax.sql.DataSource"/>
-    <disallow pkg="org.apache.iotdb.jdbc.*"/>
-    <allow pkg="java.util"/>
-    <allow pkg="java.sql"/>
-    <allow pkg="java.io"/>
-    <allow pkg="org\.junit.*" regex="true"/>
-    <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
-    <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
+  <disallow class="java.sql.DriverManager"/>
+  <disallow class="javax.sql.DataSource"/>
+  <disallow pkg="org.apache.iotdb.jdbc.*"/>
+  <allow pkg="java.util"/>
+  <allow pkg="java.sql"/>
+  <allow pkg="java.io"/>
+  <allow pkg="org\.junit.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
 </import-control>

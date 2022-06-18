@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -104,7 +105,7 @@ public class LocalDataPartitionTable {
   }
 
   public List<DataRegionId> getDataRegionIdsByStorageGroup(PartialPath storageGroup) {
-    return new ArrayList<>(table.get(storageGroup));
+    return table.getOrDefault(storageGroup, Collections.emptyList());
   }
 
   public synchronized void setDataPartitionInfo(PartialPath storageGroup) {
@@ -119,7 +120,10 @@ public class LocalDataPartitionTable {
   }
 
   public synchronized List<DataRegionId> deleteStorageGroup(PartialPath storageGroup) {
-    return table.remove(storageGroup);
+    if (table.containsKey(storageGroup)) {
+      return table.remove(storageGroup);
+    }
+    return Collections.emptyList();
   }
 
   // This method may be extended to implement multi dataRegion for one storageGroup

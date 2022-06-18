@@ -25,6 +25,11 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,15 +41,20 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupPartitionTable {
+  private volatile boolean isPredeleted = false;
+  // The name of storage group
+  private String storageGroupName;
 
   // Total number of SeriesPartitionSlots occupied by schema,
   // determines whether a new Region needs to be created
@@ -61,7 +71,8 @@ public class StorageGroupPartitionTable {
   // DataPartition
   private final DataPartitionTable dataPartitionTable;
 
-  public StorageGroupPartitionTable() {
+  public StorageGroupPartitionTable(String storageGroupName) {
+    this.storageGroupName = storageGroupName;
     this.seriesPartitionSlotsCount = new AtomicInteger(0);
 
     this.schemaRegionParticle = new AtomicBoolean(true);
@@ -70,6 +81,66 @@ public class StorageGroupPartitionTable {
 
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
+
+    addMetrics();
+  }
+
+  private void addMetrics() {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.REGION.toString(),
+              MetricLevel.NORMAL,
+              this,
+              o -> o.getRegionCount(TConsensusGroupType.SchemaRegion),
+              Tag.NAME.toString(),
+              storageGroupName,
+              Tag.TYPE.toString(),
+              TConsensusGroupType.SchemaRegion.toString());
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.REGION.toString(),
+              MetricLevel.NORMAL,
+              this,
+              o -> o.getRegionCount(TConsensusGroupType.DataRegion),
+              Tag.NAME.toString(),
+              storageGroupName,
+              Tag.TYPE.toString(),
+              TConsensusGroupType.DataRegion.toString());
+      // TODO slot will be updated in the future
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.SLOT.toString(),
+              MetricLevel.NORMAL,
+              schemaPartitionTable,
+              o -> o.getSchemaPartitionMap().size(),
+              Tag.NAME.toString(),
+              storageGroupName,
+              Tag.TYPE.toString(),
+              "schemaSlotNumber");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.SLOT.toString(),
+              MetricLevel.NORMAL,
+              dataPartitionTable,
+              o -> o.getDataPartitionMap().size(),
+              Tag.NAME.toString(),
+              storageGroupName,
+              Tag.TYPE.toString(),
+              "dataSlotNumber");
+    }
+  }
+
+  public boolean isPredeleted() {
+    return isPredeleted;
+  }
+
+  public void setPredeleted(boolean predeleted) {
+    isPredeleted = predeleted;
   }
 
   /**
@@ -93,6 +164,24 @@ public class StorageGroupPartitionTable {
     return result;
   }
 
+  /**
+   * Get regions currently owned by this StorageGroup
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return The regions currently owned by this StorageGroup
+   */
+  public Set<RegionGroup> getRegion(TConsensusGroupType type) {
+    Set<RegionGroup> regionGroups = new HashSet<>();
+    regionInfoMap
+        .values()
+        .forEach(
+            regionGroup -> {
+              if (regionGroup.getId().getType().equals(type)) {
+                regionGroups.add(regionGroup);
+              }
+            });
+    return regionGroups;
+  }
   /**
    * Get the number of Regions currently owned by this StorageGroup
    *
@@ -274,6 +363,8 @@ public class StorageGroupPartitionTable {
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
+    ReadWriteIOUtils.write(isPredeleted, outputStream);
+    ReadWriteIOUtils.write(storageGroupName, outputStream);
     ReadWriteIOUtils.write(seriesPartitionSlotsCount.get(), outputStream);
 
     ReadWriteIOUtils.write(regionInfoMap.size(), outputStream);
@@ -288,6 +379,8 @@ public class StorageGroupPartitionTable {
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
+    isPredeleted = ReadWriteIOUtils.readBool(inputStream);
+    storageGroupName = ReadWriteIOUtils.readString(inputStream);
     seriesPartitionSlotsCount.set(ReadWriteIOUtils.readInt(inputStream));
 
     int length = ReadWriteIOUtils.readInt(inputStream);
@@ -308,13 +401,14 @@ public class StorageGroupPartitionTable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     StorageGroupPartitionTable that = (StorageGroupPartitionTable) o;
-    return regionInfoMap.equals(that.regionInfoMap)
+    return isPredeleted == that.isPredeleted
+        && regionInfoMap.equals(that.regionInfoMap)
         && schemaPartitionTable.equals(that.schemaPartitionTable)
         && dataPartitionTable.equals(that.dataPartitionTable);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionInfoMap, schemaPartitionTable, dataPartitionTable);
+    return Objects.hash(isPredeleted, regionInfoMap, schemaPartitionTable, dataPartitionTable);
   }
 }

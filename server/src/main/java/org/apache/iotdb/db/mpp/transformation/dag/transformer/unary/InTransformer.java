@@ -88,7 +88,7 @@ public class InTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType getDataType() {
-    return layerPointReaderDataType;
+    return TSDataType.BOOLEAN;
   }
 
   @Override
@@ -97,7 +97,7 @@ public class InTransformer extends UnaryTransformer {
       case INT32:
         int intValue = layerPointReader.currentInt();
         if (satisfy.of(intValue)) {
-          cachedInt = intValue;
+          cachedBoolean = true;
         } else {
           currentNull = true;
         }
@@ -105,7 +105,7 @@ public class InTransformer extends UnaryTransformer {
       case INT64:
         long longValue = layerPointReader.currentLong();
         if (satisfy.of(longValue)) {
-          cachedLong = longValue;
+          cachedBoolean = true;
         } else {
           currentNull = true;
         }
@@ -113,7 +113,7 @@ public class InTransformer extends UnaryTransformer {
       case FLOAT:
         float floatValue = layerPointReader.currentFloat();
         if (satisfy.of(floatValue)) {
-          cachedFloat = floatValue;
+          cachedBoolean = true;
         } else {
           currentNull = true;
         }
@@ -121,7 +121,7 @@ public class InTransformer extends UnaryTransformer {
       case DOUBLE:
         double doubleValue = layerPointReader.currentDouble();
         if (satisfy.of(doubleValue)) {
-          cachedDouble = doubleValue;
+          cachedBoolean = true;
         } else {
           currentNull = true;
         }
@@ -129,7 +129,7 @@ public class InTransformer extends UnaryTransformer {
       case BOOLEAN:
         boolean booleanValue = layerPointReader.currentBoolean();
         if (satisfy.of(booleanValue)) {
-          cachedBoolean = booleanValue;
+          cachedBoolean = true;
         } else {
           currentNull = true;
         }
@@ -137,7 +137,7 @@ public class InTransformer extends UnaryTransformer {
       case TEXT:
         Binary binaryValue = layerPointReader.currentBinary();
         if (satisfy.of(binaryValue.getStringValue())) {
-          cachedBinary = binaryValue;
+          cachedBoolean = true;
         } else {
           currentNull = true;
         }

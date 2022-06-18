@@ -89,9 +89,9 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | Metric                  | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
 | ----------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | queue                   | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="compaction/flush"                                                       | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max   | name="compaction/flush"                                                       | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum   | name="compaction/flush"                                                       | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| cost_task_seconds_count | name="inner_compaction/cross_compaction/flush"                                | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max   | name="inner_compaction/cross_compaction/flush"                                | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
 | data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
 
@@ -103,10 +103,10 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.4. Cache
 
-| Metric    | Tag                                     | level     | Description                                                                   | Sample                      |
-| --------- | --------------------------------------- | --------- | ----------------------------------------------------------------------------- | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache" | important | Cache hit ratio of chunk/timeSeriesMeta/SchemaCache  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
-| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | The cache hit/all counts of StorageGroup/SchemaPartition/DataPartition | cache_total{name="DataPartition",type="all",} 801.0 |
+| Metric      | Tag                                                               | level     | Description                                                                               | Sample                                              |
+| ----------- | ----------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| cache_hit   | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache"               | important | Cache hit ratio of chunk/timeSeriesMeta/SchemaCache  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80                         |
+| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | The cache hit/all counts of StorageGroup/SchemaPartition/DataPartition                    | cache_total{name="DataPartition",type="all",} 801.0 |
 
 
 #### 4.3.5. Business Data
@@ -117,12 +117,18 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.6. Cluster
 
-| Metric                    | Tag                             | level     | Description                                                                                  | Sample                                                                       |
-| ------------------------- | ------------------------------- | --------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}"                   | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                   | important | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
-| cluster_elect_total       | name="{{ip}}",status="fail/win" | important | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| Metric                    | Tag                                                                | level     | Description                                                                                  | Sample                                                                       |
+| ------------------------- | ------------------------------------------------------------------ | --------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| cluster_node_leader_count | name="{{ip}}"                                                      | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}"                                                      | important | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
+| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| config_node               | name="online"                                                      | core      | The number of online confignodes                                                             | config_node{name="online",} 3.0                                              |
+| data_node                 | name="online"                                                      | core      | The number of online datanodes                                                               | data_node{name="online",} 3.0                                                |
+| partition_table           | name="number"                                                      | core      | The number of partition table                                                                | partition_table{name="number",} 2.0                                          |
+| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | The number of schemaRegion/dataRegion of cluster or specific node                            | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in storage group                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in storage group                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ### 4.4. IoTDB PreDefined Metrics Set
 Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics，now support `JVM`, `LOGBACK`, `FILE`, `PROCESS`, `SYSYTEM`.
