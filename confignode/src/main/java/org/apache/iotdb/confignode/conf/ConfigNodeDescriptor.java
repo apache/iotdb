@@ -38,13 +38,13 @@ public class ConfigNodeDescriptor {
 
   private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final ConfigNodeConf conf = new ConfigNodeConf();
+  private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
   private ConfigNodeDescriptor() {
     loadProps();
   }
 
-  public ConfigNodeConf getConf() {
+  public ConfigNodeConfig getConf() {
     return conf;
   }
 
@@ -128,6 +128,10 @@ public class ConfigNodeDescriptor {
       conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
+
+      conf.setConfigNodeConsensusProtocolClass(
+          properties.getProperty(
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
 
       conf.setDataRegionConsensusProtocolClass(
           properties.getProperty(

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.multi;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
@@ -41,7 +42,9 @@ public abstract class UDFQueryTransformer extends Transformer {
   protected UDFQueryTransformer(UDTFExecutor executor) {
     this.executor = executor;
     layerPointReader = executor.getCollector().constructPointReaderUsingTrivialEvictionStrategy();
-    layerPointReaderDataType = executor.getConfigurations().getOutputDataType();
+    layerPointReaderDataType =
+        UDFDataTypeTransformer.transformToTsDataType(
+            executor.getConfigurations().getOutputDataType());
     isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
     terminated = false;
   }

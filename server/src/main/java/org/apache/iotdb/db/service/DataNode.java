@@ -86,7 +86,7 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_JOIN_RETRY = 10;
 
-  private TEndPoint thisNode = new TEndPoint();
+  private final TEndPoint thisNode = new TEndPoint();
 
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -94,8 +94,6 @@ public class DataNode implements DataNodeMBean {
 
   private static final RegisterManager registerManager = new RegisterManager();
   public static ServiceProvider serviceProvider;
-
-  // private IClientManager clientManager;
 
   public static DataNode getInstance() {
     return DataNodeHolder.INSTANCE;
@@ -123,12 +121,12 @@ public class DataNode implements DataNodeMBean {
     try {
       // setup InternalService
       setUpInternalService();
-      // contact with config node to join into the cluster
-      prepareJoinCluster();
+      // register current DataNode to ConfigNode
+      registerInConfigNode();
       // setup DataNode
       active();
       // send message to config node stating that data node is ready
-      joinCluster();
+      activateCurrentDataNode();
       // setup rpc service
       setUpRPCService();
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
@@ -166,7 +164,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   /** register DataNode with ConfigNode */
-  private void prepareJoinCluster() throws StartupException {
+  private void registerInConfigNode() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
     ConfigNodeInfo.getInstance()
@@ -320,7 +318,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   /** send a message to ConfigNode after DataNode is available */
-  private void joinCluster() throws StartupException {
+  private void activateCurrentDataNode() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
     ConfigNodeInfo.getInstance()
@@ -443,8 +441,6 @@ public class DataNode implements DataNodeMBean {
   private void setUncaughtExceptionHandler() {
     Thread.setDefaultUncaughtExceptionHandler(new IoTDBDefaultThreadExceptionHandler());
   }
-
-  private void dataNodeIdChecker() {}
 
   private static class DataNodeHolder {
 
