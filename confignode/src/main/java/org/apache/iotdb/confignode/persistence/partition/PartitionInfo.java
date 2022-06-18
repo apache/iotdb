@@ -425,7 +425,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get region information */
-  public DataSet getRegionInfos(GetRegionLocationsReq regionsInfoReq) {
+  public DataSet getRegionLocations(GetRegionLocationsReq regionsInfoReq) {
     RegionLocationsResp regionResp = new RegionLocationsResp();
     List<TRegionLocation> regionLocationList = new ArrayList<>();
     if (storageGroupPartitionTables.isEmpty()) {

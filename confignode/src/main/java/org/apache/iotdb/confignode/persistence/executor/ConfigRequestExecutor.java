@@ -132,7 +132,7 @@ public class ConfigRequestExecutor {
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionLocations:
-        return partitionInfo.getRegionInfos((GetRegionLocationsReq) req);
+        return partitionInfo.getRegionLocations((GetRegionLocationsReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
