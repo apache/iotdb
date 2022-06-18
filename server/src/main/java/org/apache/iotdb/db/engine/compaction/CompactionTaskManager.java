@@ -39,10 +39,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -70,7 +70,7 @@ public class CompactionTaskManager implements IService {
   // <fullStorageGroupName,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
   private Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
-      storageGroupTasks = new HashMap<>();
+      storageGroupTasks = new ConcurrentHashMap<>();
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
@@ -221,7 +221,7 @@ public class CompactionTaskManager implements IService {
   private boolean isTaskRunning(AbstractCompactionTask task) {
     String storageGroupName = task.getFullStorageGroupName();
     return storageGroupTasks
-        .computeIfAbsent(storageGroupName, x -> new HashMap<>())
+        .computeIfAbsent(storageGroupName, x -> new ConcurrentHashMap<>())
         .containsKey(task);
   }
 
@@ -300,7 +300,12 @@ public class CompactionTaskManager implements IService {
   }
 
   public int getExecutingTaskCount() {
-    return taskExecutionPool.getActiveCount() + taskExecutionPool.getQueue().size();
+    int taskCnt = 0;
+    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
+        storageGroupTasks.values()) {
+      taskCnt += taskMap.size();
+    }
+    return taskCnt;
   }
 
   public int getTotalTaskCount() {
@@ -322,7 +327,7 @@ public class CompactionTaskManager implements IService {
 
   public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {
     storageGroupTasks
-        .computeIfAbsent(task.getFullStorageGroupName(), x -> new HashMap<>())
+        .computeIfAbsent(task.getFullStorageGroupName(), x -> new ConcurrentHashMap<>())
         .put(task, summary);
   }
 

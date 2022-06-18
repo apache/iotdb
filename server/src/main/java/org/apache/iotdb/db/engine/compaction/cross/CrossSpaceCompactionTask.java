@@ -128,6 +128,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
+        performer.setSummary(summary);
         performer.perform();
 
         CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
