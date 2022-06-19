@@ -1552,12 +1552,12 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "coordinator_read_executor_size",
-                Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
+                Integer.toString(conf.getCoordinatorReadExecutorSize()))));
     conf.setCoordinatorWriteExecutorSize(
         Integer.parseInt(
             properties.getProperty(
                 "coordinator_write_executor_size",
-                Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
+                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
   }
 
   private void loadCQProps(Properties properties) {

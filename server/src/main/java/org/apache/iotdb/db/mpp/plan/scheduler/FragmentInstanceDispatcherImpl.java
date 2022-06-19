@@ -90,7 +90,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (type == QueryType.READ) {
       return dispatchRead(instances);
     } else {
-      return dispatchWriteSync(instances);
+      return dispatchWrite(instances);
     }
   }
 
