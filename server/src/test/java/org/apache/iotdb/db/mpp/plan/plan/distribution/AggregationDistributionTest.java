@@ -216,7 +216,7 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Collections.singletonList(
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
@@ -253,7 +253,7 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT)),
             Collections.singletonList(
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
@@ -312,7 +312,7 @@ public class AggregationDistributionTest {
             Collections.singletonList(slidingWindowAggregationNode),
             Collections.singletonList(
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
@@ -386,12 +386,12 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT)),
             Arrays.asList(
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
@@ -443,14 +443,14 @@ public class AggregationDistributionTest {
                 genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
             Arrays.asList(
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
@@ -515,14 +515,14 @@ public class AggregationDistributionTest {
             Collections.singletonList(slidingWindowAggregationNode),
             Arrays.asList(
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new GroupByLevelDescriptor(
-                    AggregationType.COUNT,
+                    AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
@@ -649,7 +649,9 @@ public class AggregationDistributionTest {
             .map(
                 path ->
                     new AggregationDescriptor(
-                        type, step, Collections.singletonList(new TimeSeriesOperand(path))))
+                        type.name().toLowerCase(),
+                        step,
+                        Collections.singletonList(new TimeSeriesOperand(path))))
             .collect(Collectors.toList()),
         groupByTimeParameter,
         OrderBy.TIMESTAMP_ASC);
@@ -660,7 +662,7 @@ public class AggregationDistributionTest {
     List<AggregationDescriptor> descriptors = new ArrayList<>();
     descriptors.add(
         new AggregationDescriptor(
-            type,
+            type.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath(path)))));
 

@@ -76,7 +76,12 @@ public class PublishHandlerTest {
 
     // connect
     MqttConnectPayload mqttConnectPayload =
-        new MqttConnectPayload(null, null, "test", "root", "root");
+        new MqttConnectPayload(
+            null,
+            null,
+            "test".getBytes(StandardCharsets.UTF_8),
+            "root",
+            "root".getBytes(StandardCharsets.UTF_8));
     MqttConnectMessage mqttConnectMessage = new MqttConnectMessage(null, null, mqttConnectPayload);
     InterceptConnectMessage interceptConnectMessage =
         new InterceptConnectMessage(mqttConnectMessage);

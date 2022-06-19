@@ -102,35 +102,38 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
-    ExecutionResult executionResult =
-        coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
-    // TODO: (xingtanzjr) throw exception
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          String.format(
-              "cannot fetch schema, status is: %s, msg is: %s",
-              executionResult.status.getCode(), executionResult.status.getMessage()));
-    }
-    try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
-      SchemaTree result = new SchemaTree();
-      while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-        // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-        // So we don't need to clean up it manually
-        Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-        if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-          break;
-        }
-        Binary binary;
-        SchemaTree fetchedSchemaTree;
-        Column column = tsBlock.get().getColumn(0);
-        for (int i = 0; i < column.getPositionCount(); i++) {
-          binary = column.getBinary(i);
-          fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
-          result.mergeSchemaTree(fetchedSchemaTree);
-        }
+    try {
+      ExecutionResult executionResult =
+          coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
+      // TODO: (xingtanzjr) throw exception
+      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            String.format(
+                "cannot fetch schema, status is: %s, msg is: %s",
+                executionResult.status.getCode(), executionResult.status.getMessage()));
       }
+      try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
+        SchemaTree result = new SchemaTree();
+        while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
+          // So we don't need to clean up it manually
+          Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+            break;
+          }
+          Binary binary;
+          SchemaTree fetchedSchemaTree;
+          Column column = tsBlock.get().getColumn(0);
+          for (int i = 0; i < column.getPositionCount(); i++) {
+            binary = column.getBinary(i);
+            fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+            result.mergeSchemaTree(fetchedSchemaTree);
+          }
+        }
+        return result;
+      }
+    } finally {
       coordinator.removeQueryExecution(queryId);
-      return result;
     }
   }
 
@@ -142,8 +145,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     Pair<List<String>, List<TSDataType>> missingMeasurements =
         checkMissingMeasurements(schemaTree, devicePath, measurements, tsDataTypes);
 
-    PathPatternTree patternTree =
-        new PathPatternTree(devicePath, missingMeasurements.left.toArray(new String[0]));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (String measurement : missingMeasurements.left) {
+      patternTree.appendFullPath(devicePath, measurement);
+    }
 
     if (patternTree.isEmpty()) {
       return schemaTree;
@@ -188,14 +193,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < devicePathList.size(); i++) {
       schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
-      patternTree.appendPaths(
-          devicePathList.get(i),
+      List<String> missingMeasurements =
           checkMissingMeasurements(
                   schemaTree,
                   devicePathList.get(i),
                   measurementsList.get(i),
                   tsDataTypesList.get(i))
-              .left);
+              .left;
+      for (String measurement : missingMeasurements) {
+        patternTree.appendFullPath(devicePathList.get(i), measurement);
+      }
     }
 
     if (patternTree.isEmpty()) {
