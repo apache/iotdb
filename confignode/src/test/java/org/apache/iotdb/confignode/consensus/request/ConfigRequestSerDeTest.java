@@ -42,7 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
@@ -187,7 +187,7 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
-    CreateRegionsReq req0 = new CreateRegionsReq();
+    CreateRegionGroupsReq req0 = new CreateRegionGroupsReq();
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
@@ -198,8 +198,8 @@ public class ConfigRequestSerDeTest {
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     req0.addRegion("root.sg1", schemaRegionSet);
 
-    CreateRegionsReq req1 =
-        (CreateRegionsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    CreateRegionGroupsReq req1 =
+        (CreateRegionGroupsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 

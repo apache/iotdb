@@ -30,7 +30,7 @@ public enum ConfigRequestType {
   PreDeleteStorageGroup,
   GetStorageGroup,
   CountStorageGroup,
-  CreateRegions,
+  CreateRegionGroups,
   DeleteRegions,
   GetSchemaPartition,
   CreateSchemaPartition,

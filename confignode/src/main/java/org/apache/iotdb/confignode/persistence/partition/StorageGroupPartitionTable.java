@@ -64,8 +64,8 @@ public class StorageGroupPartitionTable {
   private final AtomicBoolean schemaRegionParticle;
   private final AtomicBoolean dataRegionParticle;
 
-  // Region
-  private final Map<TConsensusGroupId, RegionGroup> regionInfoMap;
+  // RegionGroup
+  private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
   // SchemaPartition
   private final SchemaPartitionTable schemaPartitionTable;
   // DataPartition
@@ -77,7 +77,7 @@ public class StorageGroupPartitionTable {
 
     this.schemaRegionParticle = new AtomicBoolean(true);
     this.dataRegionParticle = new AtomicBoolean(true);
-    this.regionInfoMap = new ConcurrentHashMap<>();
+    this.regionGroupMap = new ConcurrentHashMap<>();
 
     this.schemaPartitionTable = new SchemaPartitionTable();
     this.dataPartitionTable = new DataPartitionTable();
@@ -144,20 +144,20 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Cache allocation result of new Regions
+   * Cache allocation result of new RegionGroups
    *
    * @param replicaSets List<TRegionReplicaSet>
    */
-  public void createRegions(List<TRegionReplicaSet> replicaSets) {
+  public void createRegionGroups(List<TRegionReplicaSet> replicaSets) {
     replicaSets.forEach(
-        replicaSet -> regionInfoMap.put(replicaSet.getRegionId(), new RegionGroup(replicaSet)));
+        replicaSet -> regionGroupMap.put(replicaSet.getRegionId(), new RegionGroup(replicaSet)));
   }
 
   /** @return All Regions' RegionReplicaSet within one StorageGroup */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
 
-    for (RegionGroup regionGroup : regionInfoMap.values()) {
+    for (RegionGroup regionGroup : regionGroupMap.values()) {
       result.add(regionGroup.getReplicaSet());
     }
 
@@ -172,7 +172,7 @@ public class StorageGroupPartitionTable {
    */
   public Set<RegionGroup> getRegion(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
-    regionInfoMap
+    regionGroupMap
         .values()
         .forEach(
             regionGroup -> {
@@ -190,7 +190,7 @@ public class StorageGroupPartitionTable {
    */
   public int getRegionCount(TConsensusGroupType type) {
     AtomicInteger result = new AtomicInteger(0);
-    regionInfoMap
+    regionGroupMap
         .values()
         .forEach(
             regionGroup -> {
@@ -237,7 +237,7 @@ public class StorageGroupPartitionTable {
         .forEach(
             (seriesPartitionSlot, consensusGroupId) ->
                 schemaPartition.put(
-                    seriesPartitionSlot, regionInfoMap.get(consensusGroupId).getReplicaSet()));
+                    seriesPartitionSlot, regionGroupMap.get(consensusGroupId).getReplicaSet()));
     return result;
   }
 
@@ -272,7 +272,7 @@ public class StorageGroupPartitionTable {
                                 dataPartition
                                     .get(seriesPartitionSlot)
                                     .get(timePartitionSlot)
-                                    .add(regionInfoMap.get(consensusGroupId).getReplicaSet()));
+                                    .add(regionGroupMap.get(consensusGroupId).getReplicaSet()));
                       }));
             }));
     return result;
@@ -293,7 +293,7 @@ public class StorageGroupPartitionTable {
     deltaMap.forEach(
         ((consensusGroupId, delta) -> {
           total.getAndAdd(delta.get());
-          regionInfoMap.get(consensusGroupId).addCounter(delta.get());
+          regionGroupMap.get(consensusGroupId).addCounter(delta.get());
         }));
     seriesPartitionSlotsCount.getAndAdd(total.get());
   }
@@ -313,7 +313,7 @@ public class StorageGroupPartitionTable {
     deltaMap.forEach(
         ((consensusGroupId, delta) -> {
           total.getAndAdd(delta.get());
-          regionInfoMap.get(consensusGroupId).addCounter(delta.get());
+          regionGroupMap.get(consensusGroupId).addCounter(delta.get());
         }));
   }
 
@@ -350,7 +350,7 @@ public class StorageGroupPartitionTable {
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(TConsensusGroupType type) {
     List<Pair<Long, TConsensusGroupId>> result = new Vector<>();
 
-    regionInfoMap.forEach(
+    regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
           if (consensusGroupId.getType().equals(type)) {
             result.add(new Pair<>(regionGroup.getCounter(), consensusGroupId));
@@ -367,8 +367,8 @@ public class StorageGroupPartitionTable {
     ReadWriteIOUtils.write(storageGroupName, outputStream);
     ReadWriteIOUtils.write(seriesPartitionSlotsCount.get(), outputStream);
 
-    ReadWriteIOUtils.write(regionInfoMap.size(), outputStream);
-    for (Map.Entry<TConsensusGroupId, RegionGroup> regionInfoEntry : regionInfoMap.entrySet()) {
+    ReadWriteIOUtils.write(regionGroupMap.size(), outputStream);
+    for (Map.Entry<TConsensusGroupId, RegionGroup> regionInfoEntry : regionGroupMap.entrySet()) {
       regionInfoEntry.getKey().write(protocol);
       regionInfoEntry.getValue().serialize(outputStream, protocol);
     }
@@ -389,7 +389,7 @@ public class StorageGroupPartitionTable {
       consensusGroupId.read(protocol);
       RegionGroup regionGroup = new RegionGroup();
       regionGroup.deserialize(inputStream, protocol);
-      regionInfoMap.put(consensusGroupId, regionGroup);
+      regionGroupMap.put(consensusGroupId, regionGroup);
     }
 
     schemaPartitionTable.deserialize(inputStream, protocol);
@@ -402,13 +402,13 @@ public class StorageGroupPartitionTable {
     if (o == null || getClass() != o.getClass()) return false;
     StorageGroupPartitionTable that = (StorageGroupPartitionTable) o;
     return isPredeleted == that.isPredeleted
-        && regionInfoMap.equals(that.regionInfoMap)
+        && regionGroupMap.equals(that.regionGroupMap)
         && schemaPartitionTable.equals(that.schemaPartitionTable)
         && dataPartitionTable.equals(that.dataPartitionTable);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(isPredeleted, regionInfoMap, schemaPartitionTable, dataPartitionTable);
+    return Objects.hash(isPredeleted, regionGroupMap, schemaPartitionTable, dataPartitionTable);
   }
 }

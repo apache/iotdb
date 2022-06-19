@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
@@ -166,19 +166,19 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely cache allocation result of new Regions
+   * Thread-safely cache allocation result of new RegionGroups
    *
    * @param req CreateRegionsReq
    * @return SUCCESS_STATUS
    */
-  public TSStatus createRegions(CreateRegionsReq req) {
+  public TSStatus createRegionGroups(CreateRegionGroupsReq req) {
     TSStatus result;
     AtomicInteger maxRegionId = new AtomicInteger(Integer.MIN_VALUE);
 
     req.getRegionMap()
         .forEach(
             (storageGroup, regionReplicaSets) -> {
-              storageGroupPartitionTables.get(storageGroup).createRegions(regionReplicaSets);
+              storageGroupPartitionTables.get(storageGroup).createRegionGroups(regionReplicaSets);
               regionReplicaSets.forEach(
                   regionReplicaSet ->
                       maxRegionId.set(

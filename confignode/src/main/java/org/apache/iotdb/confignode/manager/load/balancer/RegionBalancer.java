@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -56,10 +56,10 @@ public class RegionBalancer {
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
    * @throws StorageGroupNotExistsException When some StorageGroups don't exist
    */
-  public CreateRegionsReq genRegionsAllocationPlan(
+  public CreateRegionGroupsReq genRegionsAllocationPlan(
       List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    CreateRegionsReq createRegionsReq = new CreateRegionsReq();
+    CreateRegionGroupsReq createRegionGroupsReq = new CreateRegionGroupsReq();
     IRegionAllocator regionAllocator = genRegionAllocator();
 
     List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
@@ -88,13 +88,13 @@ public class RegionBalancer {
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
-        createRegionsReq.addRegion(storageGroup, newRegion);
+        createRegionGroupsReq.addRegion(storageGroup, newRegion);
 
         allocatedRegions.add(newRegion);
       }
     }
 
-    return createRegionsReq;
+    return createRegionGroupsReq;
   }
 
   private IRegionAllocator genRegionAllocator() {

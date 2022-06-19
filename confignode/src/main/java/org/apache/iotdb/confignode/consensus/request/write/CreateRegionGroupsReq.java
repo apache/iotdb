@@ -35,13 +35,13 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 /** Create regions for specific StorageGroups */
-public class CreateRegionsReq extends ConfigRequest {
+public class CreateRegionGroupsReq extends ConfigRequest {
 
   // Map<StorageGroupName, List<TRegionReplicaSet>>
   private final Map<String, List<TRegionReplicaSet>> regionMap;
 
-  public CreateRegionsReq() {
-    super(ConfigRequestType.CreateRegions);
+  public CreateRegionGroupsReq() {
+    super(ConfigRequestType.CreateRegionGroups);
     this.regionMap = new TreeMap<>();
   }
 
@@ -57,7 +57,7 @@ public class CreateRegionsReq extends ConfigRequest {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigRequestType.CreateRegions.ordinal());
+    stream.writeInt(ConfigRequestType.CreateRegionGroups.ordinal());
 
     stream.writeInt(regionMap.size());
     for (Entry<String, List<TRegionReplicaSet>> entry : regionMap.entrySet()) {
@@ -91,7 +91,7 @@ public class CreateRegionsReq extends ConfigRequest {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    CreateRegionsReq that = (CreateRegionsReq) o;
+    CreateRegionGroupsReq that = (CreateRegionGroupsReq) o;
     return regionMap.equals(that.regionMap);
   }
 
