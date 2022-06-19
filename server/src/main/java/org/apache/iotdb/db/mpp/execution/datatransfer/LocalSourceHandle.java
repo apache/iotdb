@@ -128,9 +128,9 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   @Override
-  public synchronized void abort() {
-    logger.info("Source handle is being aborted.");
+  public void abort() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      logger.info("Source handle is being aborted.");
       synchronized (queue) {
         synchronized (this) {
           if (aborted) {
@@ -141,8 +141,8 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
+      logger.info("Source handle is aborted");
     }
-    logger.info("Source handle is aborted");
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {
