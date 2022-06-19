@@ -43,7 +43,58 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-    return null;
+    String device1 = "root.sg.d1";
+    String device2 = "root.sg.d22";
+    String device3 = "root.sg.d333";
+
+    SchemaPartition schemaPartition =
+        new SchemaPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+
+    Map<TSeriesPartitionSlot, TRegionReplicaSet> regionMap = new HashMap<>();
+    TRegionReplicaSet region1 =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000))));
+    regionMap.put(new TSeriesPartitionSlot(device1.length()), region1);
+
+    TRegionReplicaSet region2 =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(31)
+                    .setExternalEndPoint(new TEndPoint("192.0.3.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(32)
+                    .setExternalEndPoint(new TEndPoint("192.0.3.2", 9000))));
+    regionMap.put(new TSeriesPartitionSlot(device2.length()), region2);
+
+    TRegionReplicaSet region3 =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 3),
+            Arrays.asList(
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000))));
+    regionMap.put(new TSeriesPartitionSlot(device3.length()), region3);
+
+    schemaPartitionMap.put("root.sg", regionMap);
+
+    schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
+
+    return schemaPartition;
   }
 
   @Override
