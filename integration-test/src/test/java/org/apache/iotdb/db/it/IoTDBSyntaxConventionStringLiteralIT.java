@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
+import org.apache.iotdb.itbase.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -36,7 +38,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -478,12 +479,12 @@ public class IoTDBSyntaxConventionStringLiteralIT {
             stringBuilder.append(resultSet.getString(i)).append(",");
           }
           String result = stringBuilder.toString();
-          if (result.contains(FUNCTION_TYPE_NATIVE)) {
+          if (result.contains(TestConstant.FUNCTION_TYPE_NATIVE)) {
             continue;
           }
           ++count;
         }
-        Assert.assertEquals(1 + BuiltinTimeSeriesGeneratingFunction.values().length, count);
+        Assert.assertEquals(1 + BuiltinTimeSeriesGeneratingFunctionEnum.values().length, count);
       }
       statement.execute("drop function udf");
 
@@ -511,7 +512,9 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
   }
 
+  // todo: remove ignore when udf is ready
   @Test
+  @Ignore
   public void testUDFAttribute() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -669,7 +672,9 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
   }
 
+  // remove ignore when supporting sync in new cluster
   @Test
+  @Ignore
   public void testPipeSinkAttribute() {
     String errorMsg =
         "401: Error occurred while parsing SQL to physical plan: "

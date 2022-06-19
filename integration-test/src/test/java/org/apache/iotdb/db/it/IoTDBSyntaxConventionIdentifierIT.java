@@ -572,109 +572,110 @@ public class IoTDBSyntaxConventionIdentifierIT {
     }
   }
 
-  @Test
-  public void testTriggerNameIllegal() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try {
-        statement.execute(
-            "create trigger trigger` before insert on root.sg1.d1  "
-                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create trigger `trigger`` before insert on root.sg1.d1  "
-                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create trigger 111 before insert on root.sg1.d1  "
-                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create trigger 'tri' before insert on root.sg1.d1  "
-                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create trigger \"tri\" before insert on root.sg1.d1  "
-                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
-  public void testContinuousQueryNameIllegal() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try {
-        statement.execute(
-            "CREATE CONTINUOUS QUERY `cq1 "
-                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-                + "GROUP BY time(1s) END");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "CREATE CONTINUOUS QUERY 111 "
-                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-                + "GROUP BY time(1s) END");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "CREATE CONTINUOUS QUERY ``cq1` "
-                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-                + "GROUP BY time(1s) END");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "CREATE CONTINUOUS QUERY 'cq1' "
-                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-                + "GROUP BY time(1s) END");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "CREATE CONTINUOUS QUERY \"cq1\" "
-                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-                + "GROUP BY time(1s) END");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
+  // todo: add these back when support trigger and cq in new cluster
+  //  @Test
+  //  public void testTriggerNameIllegal() {
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      try {
+  //        statement.execute(
+  //            "create trigger trigger` before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger `trigger`` before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger 111 before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger 'tri' before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger \"tri\" before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
+  //
+  //  @Test
+  //  public void testContinuousQueryNameIllegal() {
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY `cq1 "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY 111 "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY ``cq1` "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY 'cq1' "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY \"cq1\" "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
 
   @Test
   public void testTemplateName() {
@@ -947,43 +948,44 @@ public class IoTDBSyntaxConventionIdentifierIT {
     }
   }
 
-  @Test
-  public void testPipeSinkNameIllegal() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try {
-        statement.execute("CREATE PIPESINK test` AS IoTDB (`ip` = '127.0.0.1')");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute("CREATE PIPESINK ``test` AS IoTDB (`ip` = '127.0.0.1')");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute("CREATE PIPESINK test.1 AS IoTDB (`ip` = '127.0.0.1')");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute("CREATE PIPESINK 12345 AS IoTDB (`ip` = '127.0.0.1')");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute("CREATE PIPESINK a!@cb AS IoTDB (`ip` = '127.0.0.1')");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
+  // todo: add these back when support sync
+  //  @Test
+  //  public void testPipeSinkNameIllegal() {
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      try {
+  //        statement.execute("CREATE PIPESINK test` AS IoTDB (`ip` = '127.0.0.1')");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute("CREATE PIPESINK ``test` AS IoTDB (`ip` = '127.0.0.1')");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute("CREATE PIPESINK test.1 AS IoTDB (`ip` = '127.0.0.1')");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute("CREATE PIPESINK 12345 AS IoTDB (`ip` = '127.0.0.1')");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute("CREATE PIPESINK a!@cb AS IoTDB (`ip` = '127.0.0.1')");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
 }
