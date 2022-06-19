@@ -20,6 +20,7 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -28,6 +29,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,6 +44,7 @@ import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 

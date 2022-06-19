@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
@@ -121,6 +122,11 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowFunctions(
       ShowFunctionsStatement showFunctionsStatement, TaskContext context) {
     return new ShowFunctionsTask();
+  }
+
+  @Override
+  public IConfigTask visitShowRegion(ShowRegionStatement showRegionStatement, TaskContext context) {
+    return new ShowRegionTask(showRegionStatement);
   }
 
   public static class TaskContext {}

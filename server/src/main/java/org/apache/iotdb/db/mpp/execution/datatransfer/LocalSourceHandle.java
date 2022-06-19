@@ -26,11 +26,16 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.createFullIdFrom;
 
 public class LocalSourceHandle implements ISourceHandle {
+
+  private static final Logger logger = LoggerFactory.getLogger(LocalSourceHandle.class);
+
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final TFragmentInstanceId localFragmentInstanceId;
   private final String localPlanNodeId;
@@ -81,7 +86,7 @@ public class LocalSourceHandle implements ISourceHandle {
         throw new IllegalStateException("Source handle is blocked.");
       }
       TsBlock tsBlock;
-      synchronized (this) {
+      synchronized (queue) {
         tsBlock = queue.remove();
       }
       checkAndInvokeOnFinished();
@@ -91,16 +96,20 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public boolean isFinished() {
-    return queue.hasNoMoreTsBlocks() && queue.isEmpty();
+    synchronized (queue) {
+      return queue.hasNoMoreTsBlocks() && queue.isEmpty();
+    }
   }
 
   public void checkAndInvokeOnFinished() {
-    if (isFinished()) {
-      // Putting synchronized here rather than marking in method is to avoid deadlock.
-      // There are two locks need to invoke this method. One is lock of SharedTsBlockQueue,
-      // the other is lock of LocalSourceHandle.
-      synchronized (this) {
-        sourceHandleListener.onFinished(this);
+    synchronized (queue) {
+      if (isFinished()) {
+        // Putting synchronized here rather than marking in method is to avoid deadlock.
+        // There are two locks need to invoke this method. One is lock of SharedTsBlockQueue,
+        // the other is lock of LocalSourceHandle.
+        synchronized (this) {
+          sourceHandleListener.onFinished(this);
+        }
       }
     }
   }
@@ -120,14 +129,20 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public synchronized void abort() {
+    logger.info("Source handle is being aborted.");
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (aborted) {
-        return;
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted) {
+            return;
+          }
+          queue.destroy();
+          aborted = true;
+          sourceHandleListener.onAborted(this);
+        }
       }
-      queue.destroy();
-      aborted = true;
-      sourceHandleListener.onAborted(this);
     }
+    logger.info("Source handle is aborted");
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {

@@ -153,6 +153,10 @@ CREATE
     : C R E A T E
     ;
 
+DATA
+    : D A T A
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -416,6 +420,10 @@ READONLY
 
 REGEXP
     : R E G E X P
+    ;
+
+REGIONS
+    : R E G I O N S
     ;
 
 REMOVE

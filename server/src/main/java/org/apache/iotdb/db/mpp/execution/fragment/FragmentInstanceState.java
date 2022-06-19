@@ -44,7 +44,9 @@ public enum FragmentInstanceState {
   /** Instance was aborted due to a failure in the query. The failure was not in this instance. */
   ABORTED(true, true),
   /** Instance execution failed. */
-  FAILED(true, true);
+  FAILED(true, true),
+  /** Instance is not found. */
+  NO_SUCH_INSTANCE(false, false);
 
   public static final Set<FragmentInstanceState> TERMINAL_INSTANCE_STATES =
       Stream.of(FragmentInstanceState.values())
