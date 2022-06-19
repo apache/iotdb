@@ -58,6 +58,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
+
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private static final Logger logger =
@@ -88,7 +90,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (type == QueryType.READ) {
       return dispatchRead(instances);
     } else {
-      return dispatchWrite(instances);
+      return dispatchWriteSync(instances);
     }
   }
 
@@ -132,6 +134,23 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
     resultFuture.set(new FragInstanceDispatchResult(true));
     return resultFuture;
+  }
+
+  private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
+    boolean result = true;
+    try {
+      for (FragmentInstance instance : instances) {
+
+        if (!dispatchOneInstance(instance)) {
+          result = false;
+          break;
+        }
+      }
+      return immediateFuture(new FragInstanceDispatchResult(result));
+    } catch (FragmentInstanceDispatchException e) {
+      logger.error("cannot dispatch FI for write operation", e);
+      return immediateFuture(new FragInstanceDispatchResult(false));
+    }
   }
 
   private boolean dispatchOneInstance(FragmentInstance instance)
