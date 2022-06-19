@@ -158,6 +158,9 @@ public class MemMTreeStore implements IMTreeStore {
     localMemoryUsage.set(0);
   }
 
+  @Override
+  public void createSnapshot() {}
+
   private void requestMemory(int size) {
     memoryStatistics.requestMemory(size);
     localMemoryUsage.getAndUpdate(v -> v += size);

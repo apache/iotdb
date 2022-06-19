@@ -57,11 +57,13 @@ public class MetadataConstant {
   public static final byte STORAGE_GROUP_MNODE_TYPE = 1;
   public static final byte MEASUREMENT_MNODE_TYPE = 2;
   public static final byte ENTITY_MNODE_TYPE = 3;
+  public static final byte STORAGE_GROUP_ENTITY_MNODE_TYPE = 4;
 
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
   public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
   public static final String MEASUREMENT_MNODE_TYPE_NAME = "MeasurementMNode";
   public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
+  public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
 
   public static String getMNodeTypeName(byte type) {
     switch (type) {
@@ -73,6 +75,8 @@ public class MetadataConstant {
         return MEASUREMENT_MNODE_TYPE_NAME;
       case ENTITY_MNODE_TYPE:
         return ENTITY_MNODE_TYPE_NAME;
+      case STORAGE_GROUP_ENTITY_MNODE_TYPE:
+        return STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME;
       default:
         throw new RuntimeException("Undefined MNode type " + type);
     }

@@ -58,4 +58,6 @@ public interface IMTreeStore {
   void unPinPath(IMNode node);
 
   void clear();
+
+  void createSnapshot();
 }

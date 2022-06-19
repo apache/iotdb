@@ -380,6 +380,11 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  @Override
+  public void createSnapshot() {
+    // todo implement snapshot for schema file mode
+  }
+
   private void ensureMemoryStatus() {
     if (memManager.isExceedFlushThreshold()) {
       if (!hasReleaseTask) {
