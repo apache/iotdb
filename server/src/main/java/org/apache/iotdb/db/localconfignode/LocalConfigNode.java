@@ -893,7 +893,7 @@ public class LocalConfigNode {
 
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
     patternTree.constructTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     try {
       for (PartialPath path : partialPathList) {
         List<PartialPath> storageGroups = getBelongedStorageGroups(path);
@@ -920,7 +920,7 @@ public class LocalConfigNode {
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getOrCreateSchemaPartition(
       PathPatternTree patternTree) {
-    List<String> devicePaths = patternTree.findAllDevicePaths();
+    List<String> devicePaths = patternTree.getAllDevicePatterns();
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
 
     try {

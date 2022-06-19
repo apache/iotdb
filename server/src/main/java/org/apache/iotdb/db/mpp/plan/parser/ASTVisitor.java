@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -95,6 +96,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -2200,13 +2202,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.BOOLEAN_LITERAL() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     }
-    if (ctx.CLUSTER() != null) {
-      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
-      }
-      flushStatement.setLocal(false);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
+    }
+    if (ctx.LOCAL() != null) {
+      flushStatement.setCluster(false);
     } else {
-      flushStatement.setLocal(true);
+      flushStatement.setCluster(true);
     }
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
@@ -2216,5 +2218,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     flushStatement.setStorageGroups(storageGroups);
     return flushStatement;
+  }
+
+  // show region
+
+  @Override
+  public Statement visitShowRegion(IoTDBSqlParser.ShowRegionContext ctx) {
+    ShowRegionStatement showRegionStatement = new ShowRegionStatement();
+    // TODO: Maybe add a show partition region in the future
+    if (ctx.DATA() != null) {
+      showRegionStatement.setRegionType(TConsensusGroupType.DataRegion);
+    } else if (ctx.SCHEMA() != null) {
+      showRegionStatement.setRegionType(TConsensusGroupType.SchemaRegion);
+    } else {
+      showRegionStatement.setRegionType(null);
+    }
+    return showRegionStatement;
   }
 }

@@ -24,7 +24,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import io.netty.buffer.ByteBuf;
 
@@ -53,20 +52,20 @@ public class JSONPayloadFormatter implements PayloadFormatter {
       return null;
     }
     String txt = payload.toString(StandardCharsets.UTF_8);
-    try {
-      JsonObject jsonObject = GSON.fromJson(txt, JsonObject.class);
-
+    JsonElement jsonElement = GSON.fromJson(txt, JsonElement.class);
+    if (jsonElement.isJsonObject()) {
+      JsonObject jsonObject = jsonElement.getAsJsonObject();
       if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
         return formatJson(jsonObject);
       }
       if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
         return formatBatchJson(jsonObject);
       }
-    } catch (JsonSyntaxException e) {
-      JsonArray jsonArray = GSON.fromJson(txt, JsonArray.class);
+    } else if (jsonElement.isJsonArray()) {
+      JsonArray jsonArray = jsonElement.getAsJsonArray();
       List<Message> messages = new ArrayList<>();
-      for (JsonElement jsonElement : jsonArray) {
-        JsonObject jsonObject = jsonElement.getAsJsonObject();
+      for (JsonElement element : jsonArray) {
+        JsonObject jsonObject = element.getAsJsonObject();
         if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
           messages.addAll(formatJson(jsonObject));
         }

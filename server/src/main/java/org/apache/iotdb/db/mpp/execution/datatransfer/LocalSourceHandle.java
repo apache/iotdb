@@ -26,16 +26,11 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.createFullIdFrom;
 
 public class LocalSourceHandle implements ISourceHandle {
-
-  private static final Logger logger = LoggerFactory.getLogger(LocalSourceHandle.class);
-
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final TFragmentInstanceId localFragmentInstanceId;
   private final String localPlanNodeId;
@@ -55,6 +50,7 @@ public class LocalSourceHandle implements ISourceHandle {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.queue = Validate.notNull(queue);
+    this.queue.setSourceHandle(this);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
     this.threadName =
         createFullIdFrom(localFragmentInstanceId, localPlanNodeId + "." + "SourceHandle");
@@ -88,9 +84,7 @@ public class LocalSourceHandle implements ISourceHandle {
       synchronized (this) {
         tsBlock = queue.remove();
       }
-      if (isFinished()) {
-        sourceHandleListener.onFinished(this);
-      }
+      checkAndInvokeOnFinished();
       return tsBlock;
     }
   }
@@ -98,6 +92,17 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public boolean isFinished() {
     return queue.hasNoMoreTsBlocks() && queue.isEmpty();
+  }
+
+  public void checkAndInvokeOnFinished() {
+    if (isFinished()) {
+      // Putting synchronized here rather than marking in method is to avoid deadlock.
+      // There are two locks need to invoke this method. One is lock of SharedTsBlockQueue,
+      // the other is lock of LocalSourceHandle.
+      synchronized (this) {
+        sourceHandleListener.onFinished(this);
+      }
+    }
   }
 
   @Override

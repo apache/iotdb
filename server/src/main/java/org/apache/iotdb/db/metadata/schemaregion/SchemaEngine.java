@@ -330,6 +330,10 @@ public class SchemaEngine {
   public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    if (schemaRegion == null) {
+      logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
+      return;
+    }
     schemaRegion.deleteSchemaRegion();
     schemaRegionMap.remove(schemaRegionId);
 
@@ -347,7 +351,9 @@ public class SchemaEngine {
             });
     // remove the empty sg dir
     if (regionDirList == null || regionDirList.length == 0) {
-      FileUtils.deleteDirectory(sgDir);
+      if (sgDir.exists()) {
+        FileUtils.deleteDirectory(sgDir);
+      }
       sharedPrefixTree.deleteStorageGroup(new PartialPath(schemaRegion.getStorageGroupFullPath()));
     }
   }

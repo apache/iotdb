@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -167,6 +168,11 @@ public class InsertMultiTabletsPlan extends InsertPlan implements BatchPlan {
       }
     }
     return maxTime;
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
   }
 
   public int getTabletsSize() {

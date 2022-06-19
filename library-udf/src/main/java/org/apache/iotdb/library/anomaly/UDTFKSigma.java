@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.CircularQueue;
 import org.apache.iotdb.library.util.LongCircularQueue;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
@@ -47,8 +49,7 @@ public class UDTFKSigma implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE)
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
             "Window size should be larger than 0.",
@@ -66,7 +67,7 @@ public class UDTFKSigma implements UDTF {
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(udfParameters.getDataType(0));
     this.multipleK = udfParameters.getDoubleOrDefault("k", 3);
-    this.dataType = udfParameters.getDataType(0);
+    this.dataType = UDFDataTypeTransformer.transformToTsDataType(udfParameters.getDataType(0));
     this.windowSize = udfParameters.getIntOrDefault("window", 10000);
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);

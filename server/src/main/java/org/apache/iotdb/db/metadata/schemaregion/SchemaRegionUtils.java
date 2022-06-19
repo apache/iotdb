@@ -84,7 +84,13 @@ public class SchemaRegionUtils {
     if (dataType != insertDataType) {
       String measurement = plan.getMeasurements()[loc];
       String device = plan.getDevicePath().getFullPath();
-      throw new DataTypeMismatchException(device, measurement, insertDataType, dataType);
+      throw new DataTypeMismatchException(
+          device,
+          measurement,
+          insertDataType,
+          dataType,
+          plan.getMinTime(),
+          plan.getFirstValueOfIndex(loc));
     }
   }
 
