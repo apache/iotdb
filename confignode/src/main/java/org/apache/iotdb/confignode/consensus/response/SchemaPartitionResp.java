@@ -62,8 +62,9 @@ public class SchemaPartitionResp implements DataSet {
     return allPartitionsExist;
   }
 
-  public void convertToRpcSchemaPartitionResp(
-      TSchemaPartitionResp resp, Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
+  public TSchemaPartitionResp convertToRpcSchemaPartitionResp(
+      Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
+    TSchemaPartitionResp resp = new TSchemaPartitionResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -87,15 +88,7 @@ public class SchemaPartitionResp implements DataSet {
 
       resp.setSchemaRegionMap(schemaPartitionMap);
     }
-  }
 
-  @Override
-  public String toString() {
-    return "SchemaPartitionResp{"
-        + "status="
-        + status
-        + ", schemaPartition="
-        + schemaPartition
-        + '}';
+    return resp;
   }
 }

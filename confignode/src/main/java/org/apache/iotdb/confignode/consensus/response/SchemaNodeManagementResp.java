@@ -37,7 +37,7 @@ public class SchemaNodeManagementResp implements DataSet {
   private TSStatus status;
 
   // Map<StorageGroup, SchemaPartitionTable>
-  // TODO: Replace this map whit new SchemaPartition
+  // TODO: Replace this map with new SchemaPartition
   private Map<String, SchemaPartitionTable> schemaPartition;
 
   private Set<String> matchedNode;
@@ -62,8 +62,9 @@ public class SchemaNodeManagementResp implements DataSet {
     this.matchedNode = matchedNode;
   }
 
-  public void convertToRpcSchemaNodeManagementPartitionResp(
-      TSchemaNodeManagementResp resp, Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
+  public TSchemaNodeManagementResp convertToRpcSchemaNodeManagementPartitionResp(
+      Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
+    TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setMatchedNode(matchedNode);
@@ -88,5 +89,7 @@ public class SchemaNodeManagementResp implements DataSet {
 
       resp.setSchemaRegionMap(schemaPartitionMap);
     }
+
+    return resp;
   }
 }

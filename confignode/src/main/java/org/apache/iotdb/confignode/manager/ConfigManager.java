@@ -340,8 +340,8 @@ public class ConfigManager implements Manager {
 
       SchemaPartitionResp resp =
           (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionReq);
-      TSchemaPartitionResp result = new TSchemaPartitionResp();
-      resp.convertToRpcSchemaPartitionResp(result, getLoadManager().genRealTimeRoutingPolicy());
+      TSchemaPartitionResp result =
+          resp.convertToRpcSchemaPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
@@ -383,8 +383,8 @@ public class ConfigManager implements Manager {
       SchemaPartitionResp resp =
           (SchemaPartitionResp)
               partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionReq);
-      TSchemaPartitionResp result = new TSchemaPartitionResp();
-      resp.convertToRpcSchemaPartitionResp(result, getLoadManager().genRealTimeRoutingPolicy());
+      TSchemaPartitionResp result =
+          resp.convertToRpcSchemaPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
@@ -410,9 +410,9 @@ public class ConfigManager implements Manager {
       SchemaNodeManagementResp resp =
           (SchemaNodeManagementResp)
               partitionManager.getNodePathsPartition(getNodePathsPartitionReq);
-      TSchemaNodeManagementResp result = new TSchemaNodeManagementResp();
-      resp.convertToRpcSchemaNodeManagementPartitionResp(
-          result, getLoadManager().genRealTimeRoutingPolicy());
+      TSchemaNodeManagementResp result =
+          resp.convertToRpcSchemaNodeManagementPartitionResp(
+              getLoadManager().genRealTimeRoutingPolicy());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
@@ -434,8 +434,8 @@ public class ConfigManager implements Manager {
       DataPartitionResp resp =
           (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionReq);
 
-      TDataPartitionResp result = new TDataPartitionResp();
-      resp.convertToRpcDataPartitionResp(result, getLoadManager().genRealTimeRoutingPolicy());
+      TDataPartitionResp result =
+          resp.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
@@ -458,8 +458,8 @@ public class ConfigManager implements Manager {
           (DataPartitionResp)
               partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
-      TDataPartitionResp result = new TDataPartitionResp();
-      resp.convertToRpcDataPartitionResp(result, getLoadManager().genRealTimeRoutingPolicy());
+      TDataPartitionResp result =
+          resp.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(

@@ -61,13 +61,9 @@ public class DataPartitionResp implements DataSet {
     return allPartitionsExist;
   }
 
-  /**
-   * Convert DataPartitionDataSet to TDataPartitionResp
-   *
-   * @param resp TDataPartitionResp
-   */
-  public void convertToRpcDataPartitionResp(
-      TDataPartitionResp resp, Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
+  public TDataPartitionResp convertToTDataPartitionResp(
+      Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
+    TDataPartitionResp resp = new TDataPartitionResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -107,5 +103,7 @@ public class DataPartitionResp implements DataSet {
 
       resp.setDataPartitionMap(dataPartitionMap);
     }
+
+    return resp;
   }
 }
