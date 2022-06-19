@@ -79,7 +79,9 @@ public class LayerCacheUtils {
           target.putBoolean(source.currentTime(), source.currentBoolean());
           break;
         case TEXT:
-          target.putBinary(source.currentTime(), source.currentBinary());
+          target.putBinary(
+              source.currentTime(),
+              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
           break;
         default:
           throw new UnsupportedOperationException(dataType.name());
