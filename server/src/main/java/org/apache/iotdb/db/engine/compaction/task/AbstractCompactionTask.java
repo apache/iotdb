@@ -49,16 +49,19 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   protected volatile boolean finished = false;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
+  protected long serialId;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      AtomicInteger currentTaskNum) {
+      AtomicInteger currentTaskNum,
+      long serialId) {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
+    this.serialId = serialId;
   }
 
   public abstract void setSourceFilesToCompactionCandidate();
@@ -132,5 +135,9 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
 
   public boolean isTaskFinished() {
     return finished;
+  }
+
+  public long getSerialId() {
+    return serialId;
   }
 }

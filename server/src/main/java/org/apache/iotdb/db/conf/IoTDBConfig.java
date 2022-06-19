@@ -2920,4 +2920,8 @@ public class IoTDBConfig {
   public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
+
+  public TEndPoint getAddressAndPort() {
+    return new TEndPoint(rpcAddress, rpcPort);
+  }
 }

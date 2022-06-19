@@ -111,3 +111,66 @@ KILL QUERY <queryId>
 |      |         |           |
 
 其中 statement 最大显示长度为 64 字符。对于超过 64 字符的查询语句，将截取部分进行显示。
+
+## 集群 Region 分布监控工具
+
+集群中以 Region 作为数据复制和数据管理的单元，Region 的状态和分布对于系统运维和测试有很大帮助，如以下场景：
+
+- 查看集群中各个 Region 被分配到了哪些 DataNode，是否均衡
+
+当前 IoTDB 支持使用如下 SQL 查看 Region：
+
+- `SHOW REGIONS`: 展示所有 Region
+- `SHOW SCHEMA REGIONS`: 展示所有 SchemaRegion 分布
+- `SHOW DATA REGIONS`: 展示所有 DataRegion 分布
+
+```sql
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+----------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+------------+------+-------------+-----+----------+----------+----+
+|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
+|       3|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       4|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       5|  DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
+|       6|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       7|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       8|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       9|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|      11|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|      12|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+----------+----+
+Total line number = 13
+It costs 0.107s
+IoTDB> show schema regions
++--------+------------+------+-------------+-----+----------+----------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+------------+------+-------------+-----+----------+----------+----+
+|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
++--------+------------+------+-------------+-----+----------+----------+----+
+Total line number = 3
+It costs 0.009s
+IoTDB> show data regions
++--------+----------+------+-------------+-----+----------+----------+----+
+|RegionId|      Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+----------+------+-------------+-----+----------+----------+----+
+|       3|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       4|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       5|DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
+|       6|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       7|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       8|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       9|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|      11|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|      12|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
++--------+----------+------+-------------+-----+----------+----------+----+
+Total line number = 10
+It costs 0.023s
+```
+

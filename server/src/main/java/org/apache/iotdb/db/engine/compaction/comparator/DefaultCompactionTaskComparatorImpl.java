@@ -37,9 +37,7 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     if ((((o1 instanceof InnerSpaceCompactionTask) && (o2 instanceof CrossSpaceCompactionTask))
         || ((o2 instanceof InnerSpaceCompactionTask)
             && (o1 instanceof CrossSpaceCompactionTask)))) {
-      if (config.getCompactionPriority() == CompactionPriority.BALANCE) {
-        return 0;
-      } else if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
+      if (config.getCompactionPriority() != CompactionPriority.CROSS_INNER) {
         return o1 instanceof InnerSpaceCompactionTask ? -1 : 1;
       } else {
         return o1 instanceof CrossSpaceCompactionTask ? -1 : 1;
@@ -86,6 +84,12 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
       return selectedFilesOfO2.size() - selectedFilesOfO1.size();
     }
 
+    // if the serial id of the tasks are different
+    // we prefer task with small serial id
+    if (o1.getSerialId() != o2.getSerialId()) {
+      return o1.getSerialId() > o2.getSerialId() ? 1 : -1;
+    }
+
     // if the size of selected files are different
     // we prefer to execute task with smaller file size
     // because small files can be compacted quickly
@@ -103,6 +107,13 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
       // because this type of tasks consume fewer memory during execution
       return o1.getSelectedSequenceFiles().size() - o2.getSelectedSequenceFiles().size();
     }
+
+    // if the serial id of the tasks are different
+    // we prefer task with small serial id
+    if (o1.getSerialId() != o2.getSerialId()) {
+      return o1.getSerialId() > o2.getSerialId() ? 1 : -1;
+    }
+
     // we prefer the task with more unsequence files
     // because this type of tasks reduce more unsequence files
     return o2.getSelectedUnsequenceFiles().size() - o1.getSelectedUnsequenceFiles().size();
