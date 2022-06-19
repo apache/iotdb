@@ -113,6 +113,9 @@ public class Coordinator {
 
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+      if (sql != null) {
+        LOGGER.info("start executing sql: {}", sql);
+      }
       IQueryExecution execution =
           createQueryExecution(
               statement,

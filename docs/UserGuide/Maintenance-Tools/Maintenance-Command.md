@@ -114,3 +114,68 @@ To get the executing `queryId`，you can use the `show query processlist` comman
 |      |         |           |
 
 The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.
+
+
+
+## Monitoring tool for cluster Region distribution
+
+A cluster uses a Region as a unit for data replication and data management . The Region status and distribution is helpful for system operation and maintenance testing , as shown in the following scenario ：
+
+-  Check which Datanodes are allocated to each Region in the cluster and whether the balance is correct.
+
+Currently, IoTDB supports Region query using the following SQL：
+
+- `SHOW REGIONS`: Show all Region
+- `SHOW SCHEMA REGIONS`: Show all SchemaRegion distribution
+- `SHOW DATA REGIONS`: Show all DataRegion distribution
+
+```sql
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+----------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+------------+------+-------------+-----+----------+----------+----+
+|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
+|       3|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       4|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       5|  DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
+|       6|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       7|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       8|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       9|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|      11|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|      12|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+----------+----+
+Total line number = 13
+It costs 0.107s
+IoTDB> show schema regions
++--------+------------+------+-------------+-----+----------+----------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+------------+------+-------------+-----+----------+----------+----+
+|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
++--------+------------+------+-------------+-----+----------+----------+----+
+Total line number = 3
+It costs 0.009s
+IoTDB> show data regions
++--------+----------+------+-------------+-----+----------+----------+----+
+|RegionId|      Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
++--------+----------+------+-------------+-----+----------+----------+----+
+|       3|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       4|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|       5|DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
+|       6|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       7|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|       8|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|       9|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
+|      10|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
+|      11|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
+|      12|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
++--------+----------+------+-------------+-----+----------+----------+----+
+Total line number = 10
+It costs 0.023s
+```
+

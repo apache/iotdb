@@ -30,12 +30,13 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -94,7 +95,7 @@ public class PartitionManager {
 
   /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
   private void setSeriesPartitionExecutor() {
-    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             conf.getSeriesPartitionExecutorClass(), conf.getSeriesPartitionSlotNum());
@@ -460,6 +461,10 @@ public class PartitionManager {
    */
   public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
     return executor.getSeriesPartitionSlot(devicePath);
+  }
+
+  public DataSet getRetionLocations(GetRegionLocationsReq req) {
+    return getConsensusManager().read(req).getDataset();
   }
 
   public ScheduledExecutorService getRegionCleaner() {

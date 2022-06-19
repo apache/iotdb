@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.access.RowIterator;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
 import java.io.IOException;
 

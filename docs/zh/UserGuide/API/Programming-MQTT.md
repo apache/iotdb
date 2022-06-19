@@ -36,7 +36,7 @@ IoTDB 服务器包括内置的 MQTT 服务，该服务允许远程设备将消�
 内置的 MQTT 服务提供了通过 MQTT 直接连接到 IoTDB 的能力。 它侦听来自 MQTT 客户端的发布消息，然后立即将数据写入存储。
 MQTT 主题与 IoTDB 时间序列相对应。
 消息有效载荷可以由 Java SPI 加载的`PayloadFormatter`格式化为事件，默认实现为`JSONPayloadFormatter` 
-   默认的`json`格式化程序支持两种 json 格式，以下是 MQTT 消息有效负载示例：
+   默认的`json`格式化程序支持两种 json 格式以及由他们组成的json数组，以下是 MQTT 消息有效负载示例：
 
 ```json
  {
@@ -48,13 +48,14 @@ MQTT 主题与 IoTDB 时间序列相对应。
 ```
 或者
 ```json
-{
+ {
       "device":"root.sg.d1",
       "timestamps":[1586076045524,1586076065526],
       "measurements":["s1","s2"],
       "values":[[0.530635,0.530635], [0.530655,0.530695]]
-  }
+ }
 ```
+或者以上两者的JSON数组形式。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 

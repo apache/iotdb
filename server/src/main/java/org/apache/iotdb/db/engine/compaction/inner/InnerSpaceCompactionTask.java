@@ -66,12 +66,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       ICompactionPerformer performer,
-      AtomicInteger currentTaskNum) {
+      AtomicInteger currentTaskNum,
+      long serialId) {
     super(
         tsFileManager.getStorageGroupName() + "-" + tsFileManager.getDataRegion(),
         timePartition,
         tsFileManager,
-        currentTaskNum);
+        currentTaskNum,
+        serialId);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;
