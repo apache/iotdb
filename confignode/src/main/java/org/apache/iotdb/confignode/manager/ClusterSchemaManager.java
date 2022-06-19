@@ -93,6 +93,8 @@ public class ClusterSchemaManager {
   }
 
   public TSStatus deleteStorageGroup(DeleteStorageGroupReq deleteStorageGroupReq) {
+    // Adjust the maximum RegionGroup number of each StorageGroup
+    adjustMaxRegionGroupCount();
     return getConsensusManager().write(deleteStorageGroupReq).getStatus();
   }
 
@@ -142,30 +144,50 @@ public class ClusterSchemaManager {
    * maxDataRegionGroupCount of each StorageGroup bases on existing cluster resources
    */
   public void adjustMaxRegionGroupCount() {
-    int dataNodeNum = getNodeManager().getOnlineDataNodeCount();
-    int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
+    // Get all StorageGroupSchemas
     Map<String, TStorageGroupSchema> storageGroupSchemaMap =
         getMatchedStorageGroupSchemasByName(getStorageGroupNames());
+    int dataNodeNum = getNodeManager().getOnlineDataNodeCount();
+    int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
 
     AdjustMaxRegionGroupCountReq adjustMaxRegionGroupCountReq = new AdjustMaxRegionGroupCountReq();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
-      // Adjust maxSchemaRegionGroupCount.
-      // All StorageGroups share the DataNodes equally.
-      int maxSchemaRegionGroupCount =
-          Math.max(
-              1, dataNodeNum / (storageGroupNum * storageGroupSchema.getSchemaReplicationFactor()));
-      // Adjust maxDataRegionGroupCount.
-      // All StorageGroups divide one-third of the total cpu cores equally.
-      int maxDataRegionGroupCount =
-          Math.max(
-              2,
-              totalCpuCoreNum
-                  / (3 * storageGroupNum * storageGroupSchema.getDataReplicationFactor()));
+      try {
+        // Adjust maxSchemaRegionGroupCount.
+        // All StorageGroups share the DataNodes equally.
+        // Allocated SchemaRegionGroups are not shrunk.
+        int allocatedSchemaRegionGroupCount =
+            getPartitionManager()
+                .getRegionCount(storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
+        int maxSchemaRegionGroupCount =
+            Math.max(
+                1,
+                Math.max(
+                    dataNodeNum
+                        / (storageGroupNum * storageGroupSchema.getSchemaReplicationFactor()),
+                    allocatedSchemaRegionGroupCount));
 
-      adjustMaxRegionGroupCountReq.putEntry(
-          storageGroupSchema.getName(),
-          new Pair<>(maxSchemaRegionGroupCount, maxDataRegionGroupCount));
+        // Adjust maxDataRegionGroupCount.
+        // All StorageGroups divide one-third of the total cpu cores equally.
+        // Allocated DataRegionGroups are not shrunk.
+        int allocatedDataRegionGroupCount =
+            getPartitionManager()
+                .getRegionCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
+        int maxDataRegionGroupCount =
+            Math.max(
+                2,
+                Math.max(
+                    totalCpuCoreNum
+                        / (3 * storageGroupNum * storageGroupSchema.getDataReplicationFactor()),
+                    allocatedDataRegionGroupCount));
+
+        adjustMaxRegionGroupCountReq.putEntry(
+            storageGroupSchema.getName(),
+            new Pair<>(maxSchemaRegionGroupCount, maxDataRegionGroupCount));
+      } catch (StorageGroupNotExistsException e) {
+        LOGGER.warn("Adjust maxRegionGroupCount failed because StorageGroup doesn't exist", e);
+      }
     }
     getConsensusManager().write(adjustMaxRegionGroupCountReq);
   }
@@ -219,6 +241,10 @@ public class ClusterSchemaManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
   }
 
   private ConsensusManager getConsensusManager() {

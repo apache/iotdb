@@ -159,9 +159,6 @@ public class PartitionInfo implements SnapshotProcessor {
     String storageGroupName = req.getSchema().getName();
     storageGroupPartitionTables.put(
         storageGroupName, new StorageGroupPartitionTable(storageGroupName));
-
-    LOGGER.info("Successfully set StorageGroup: {}", req.getSchema());
-
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

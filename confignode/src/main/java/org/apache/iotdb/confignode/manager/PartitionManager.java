@@ -341,11 +341,14 @@ public class PartitionManager {
       float maxSlotCount = ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum();
 
       // Need extension
-      if (slotCount / regionCount > maxSlotCount / maxRegionCount) {
+      if (regionCount < maxRegionCount && slotCount / regionCount > maxSlotCount / maxRegionCount) {
         // The delta is equal to the smallest integer solution that satisfies the inequality:
         // slotCount / (regionCount + delta) < maxSlotCount / maxRegionCount
         int delta =
-            Math.max(1, (int) Math.ceil(slotCount * maxRegionCount / maxSlotCount - regionCount));
+            Math.min(
+                (int) (maxRegionCount - regionCount),
+                Math.max(
+                    1, (int) Math.ceil(slotCount * maxRegionCount / maxSlotCount - regionCount)));
         filledStorageGroupMap.put(storageGroup, delta);
       }
     }
