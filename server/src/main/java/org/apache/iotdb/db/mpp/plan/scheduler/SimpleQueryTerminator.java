@@ -69,7 +69,6 @@ public class SimpleQueryTerminator implements IQueryTerminator {
     return executor.submit(
         () -> {
           for (TEndPoint endPoint : relatedHost) {
-            // TODO (jackie tien) change the port
             try (SyncDataNodeInternalServiceClient client =
                 internalServiceClientManager.borrowClient(endPoint)) {
               client.cancelQuery(
