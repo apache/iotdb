@@ -110,7 +110,7 @@ public static void tearDown() throws Exception {
 
 IT of Apache IoTDB should be implemented as black-box testing. Please name the method as "functionality"+"Test", e.g., "<font color=green>selectWithAlias</font><font color=red>Test</font>". The interaction should be implemented through JDBC or Session API. 
 
-1、With JDBC
+1 With JDBC
 
 When using the JDBC interface, it is recommended that the connection be established in a try statement. Connections established in this way do not need to be closed in the tearDown method explicitly. Connections need to be established through the factory class, i.e., ```EnvFactory.getEnv().getConnection()```. It is not necessary to specify the IP address or port number. The sample code is shown below.
 
@@ -152,11 +152,11 @@ public void exampleTest() throws Exception {
 }
 ```
 
-2、With Session API
+2 With Session API
 
 Currently, it is not recommended to implement IT with Session API. 
 
-3、Annotations of Environment for the Test Methods
+3 Annotations of Environment for the Test Methods
 
 For test methods, developers can also specify a test environment with the annotation before the method. It is important to note that a case with additional test environment annotations will be tested not only in the specified environment, but also in the environment of the IT class to which the use case belongs. The sample code is as follows.
 
@@ -222,7 +222,7 @@ public class IoTDBAlignedSeriesQueryIT {
 
 ### Commands for starting IT 
 
-1、Execute IT in the cluster environment
+1 Execute IT in the cluster environment
 
 ```shell script
 mvn clean verify \
@@ -237,7 +237,7 @@ mvn clean verify \
   -Dmetrics.test.skip=true \
   -pl integration-test -am -PClusterIT
 ```
-2、Execute IT in the local standalone environment
+2 Execute IT in the local standalone environment
 
 ```shell script
 mvn clean verify \
@@ -251,7 +251,7 @@ mvn clean verify \
   -pl integration-test -am
 ```
 
-3、Execute IT in the remote environment
+3 Execute IT in the remote environment
 
 ```shell script
 mvn clean verify -pl integration-test -am -PRemoteIT \
@@ -261,11 +261,11 @@ mvn clean verify -pl integration-test -am -PRemoteIT \
 
 ## Q&A
 ### Ways to check the log after the CI failure
-1、click *Details* of the corresponding test
+1 click *Details* of the corresponding test
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/details.png">
 
-2、check and download the error log
+2 check and download the error log
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/download1.png">
 
