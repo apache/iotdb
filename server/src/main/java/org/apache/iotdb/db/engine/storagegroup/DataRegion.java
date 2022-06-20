@@ -306,7 +306,8 @@ public class DataRegion {
     }
 
     // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)
+    if (config.isMppMode()
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)
         && !StorageEngineV2.getInstance().isAllSgReady()) {
       logger.debug(
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
