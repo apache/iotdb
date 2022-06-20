@@ -78,6 +78,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -146,10 +147,15 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   public static MTreeBelowSGMemoryImpl loadFromSnapshot(
-      File snapshotDir, IStorageGroupMNode storageGroupMNode, int schemaRegionId)
+      File snapshotDir,
+      IStorageGroupMNode storageGroupMNode,
+      int schemaRegionId,
+      Consumer<IMeasurementMNode> measurementProcess)
       throws IOException {
     return new MTreeBelowSGMemoryImpl(
-        MemMTreeStore.loadFromSnapshot(snapshotDir), storageGroupMNode, schemaRegionId);
+        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess),
+        storageGroupMNode,
+        schemaRegionId);
   }
 
   // endregion

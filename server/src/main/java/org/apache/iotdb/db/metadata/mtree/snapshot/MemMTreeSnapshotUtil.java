@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
@@ -46,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.INTERNAL_MNODE_TYPE;
@@ -97,21 +99,22 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  public static IMNode loadSnapshot(File snapshotDir) throws IOException {
+  public static IMNode loadSnapshot(
+      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
     File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.MTREE_SNAPSHOT);
     try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(snapshot))) {
-      return deserializeFrom(inputStream);
+      return deserializeFrom(inputStream, measurementProcess);
     }
   }
 
   private static void serializeTo(MemMTreeStore store, OutputStream outputStream)
       throws IOException {
     ReadWriteIOUtils.write(VERSION, outputStream);
-    dfsSerialize(store.getRoot(), store, outputStream);
+    inorderSerialize(store.getRoot(), store, outputStream);
   }
 
-  private static void dfsSerialize(IMNode root, MemMTreeStore store, OutputStream outputStream)
+  private static void inorderSerialize(IMNode root, MemMTreeStore store, OutputStream outputStream)
       throws IOException {
     MNodeSerializer serializer = new MNodeSerializer();
     if (!root.accept(serializer, outputStream)) {
@@ -138,35 +141,38 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  private static IMNode deserializeFrom(InputStream inputStream) throws IOException {
+  private static IMNode deserializeFrom(
+      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
     byte version = ReadWriteIOUtils.readByte(inputStream);
-    return dfsDeserialize(inputStream);
+    return inorderDeserialize(inputStream, measurementProcess);
   }
 
-  private static IMNode dfsDeserialize(InputStream inputStream) throws IOException {
+  private static IMNode inorderDeserialize(
+      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
     MNodeDeserializer deserializer = new MNodeDeserializer();
     Deque<IMNode> ancestors = new ArrayDeque<>();
     Deque<Integer> restChildrenNum = new ArrayDeque<>();
-    int childrenNum = deserializeMNode(ancestors, deserializer, inputStream);
+    deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream, measurementProcess);
+    int childrenNum;
     IMNode root = ancestors.peek();
-    restChildrenNum.push(childrenNum);
     while (!ancestors.isEmpty()) {
       childrenNum = restChildrenNum.pop();
       if (childrenNum == 0) {
         ancestors.pop();
       } else {
         restChildrenNum.push(childrenNum - 1);
-        childrenNum = deserializeMNode(ancestors, deserializer, inputStream);
-        if (childrenNum > 0) {
-          restChildrenNum.push(childrenNum);
-        }
+        deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream, measurementProcess);
       }
     }
     return root;
   }
 
-  private static int deserializeMNode(
-      Deque<IMNode> ancestors, MNodeDeserializer deserializer, InputStream inputStream)
+  private static void deserializeMNode(
+      Deque<IMNode> ancestors,
+      Deque<Integer> restChildrenNum,
+      MNodeDeserializer deserializer,
+      InputStream inputStream,
+      Consumer<IMeasurementMNode> measurementProcess)
       throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
     IMNode node;
@@ -191,6 +197,7 @@ public class MemMTreeSnapshotUtil {
       case MEASUREMENT_MNODE_TYPE:
         childrenNum = 0;
         node = deserializer.deserializeMeasurementMNode(inputStream);
+        measurementProcess.accept(node.getAsMeasurementMNode());
         break;
       default:
         throw new IOException("Unrecognized MNode type " + type);
@@ -200,9 +207,11 @@ public class MemMTreeSnapshotUtil {
       node.setParent(ancestors.peek());
       ancestors.peek().addChild(node);
     }
-    ancestors.push(node);
 
-    return childrenNum;
+    if (childrenNum > 0) {
+      ancestors.push(node);
+      restChildrenNum.push(childrenNum);
+    }
   }
 
   private static class MNodeSerializer extends MNodeVisitor<Boolean, OutputStream> {
@@ -279,7 +288,7 @@ public class MemMTreeSnapshotUtil {
         throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
-      ReadWriteIOUtils.write(node.getSchemaTemplate().hashCode(), outputStream);
+      ReadWriteIOUtils.write(-1, outputStream); // todo template id
       ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
     }
   }
@@ -331,7 +340,7 @@ public class MemMTreeSnapshotUtil {
 
     private void deserializeInternalBasicInfo(InternalMNode node, InputStream inputStream)
         throws IOException {
-      int templateHashCode = ReadWriteIOUtils.readInt(inputStream);
+      int templateId = ReadWriteIOUtils.readInt(inputStream);
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
     }
   }

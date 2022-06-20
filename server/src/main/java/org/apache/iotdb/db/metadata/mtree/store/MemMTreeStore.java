@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
@@ -170,8 +171,9 @@ public class MemMTreeStore implements IMTreeStore {
     return MemMTreeSnapshotUtil.createSnapshot(snapshotDir, this);
   }
 
-  public static MemMTreeStore loadFromSnapshot(File snapshotDir) throws IOException {
-    return new MemMTreeStore(MemMTreeSnapshotUtil.loadSnapshot(snapshotDir));
+  public static MemMTreeStore loadFromSnapshot(
+      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
+    return new MemMTreeStore(MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess));
   }
 
   private void requestMemory(int size) {

@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -49,22 +52,44 @@ public class SchemaRegionTest {
   SchemaEngine schemaEngine = SchemaEngine.getInstance();
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  boolean isMppMode;
+  boolean isClusterMode;
+  String schemaRegionConsensusProtocolClass;
+
   @Before
   public void setUp() {
+    isMppMode = config.isMppMode();
+    isClusterMode = config.isClusterMode();
+    schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+
+    config.setMppMode(true);
+    config.setClusterMode(true);
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    config.setMppMode(isMppMode);
+    config.setClusterMode(isClusterMode);
+    config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
   }
 
   @Test
-  public void testSnapshot() throws Exception {
+  public void testRatisModeSnapshot() throws Exception {
     PartialPath storageGroup = new PartialPath("root.sg");
     SchemaRegionId schemaRegionId = new SchemaRegionId(0);
     schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
     ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+
+    File mLogFile =
+        SystemFileFactory.INSTANCE.getFile(
+            schemaRegion.getStorageGroupFullPath()
+                + File.separator
+                + schemaRegion.getSchemaRegionId().getId(),
+            MetadataConstant.METADATA_LOG);
+    Assert.assertFalse(mLogFile.exists());
 
     Map<String, String> tags = new HashMap<>();
     tags.put("tag-key", "tag-value");
@@ -81,6 +106,7 @@ public class SchemaRegionTest {
         -1);
 
     File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    snapshotDir.mkdir();
     schemaRegion.createSnapshot(snapshotDir);
 
     schemaRegion.loadSnapshot(snapshotDir);

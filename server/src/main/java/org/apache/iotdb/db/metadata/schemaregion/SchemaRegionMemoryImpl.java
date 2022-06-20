@@ -438,45 +438,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
+  // currently, this method is only used for cluster-ratis mode
   @Override
   public synchronized boolean createSnapshot(File snapshotDir) {
-    File mLogSnapshotTmp =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT_TMP);
-    File mLogSnapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
+    boolean isSuccess = mtree.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
 
-    try {
-      logWriter.copyTo(mLogSnapshotTmp);
-      if (mLogSnapshot.exists() && !mLogSnapshot.delete()) {
-        logger.error(
-            "Failed to delete old snapshot file {} while creating snapshot for schemaRegion {}.",
-            mLogSnapshot.getName(),
-            schemaRegionId);
-        return false;
-      }
-
-      if (!mLogSnapshotTmp.renameTo(mLogSnapshot)) {
-        logger.error(
-            "Failed to rename {} to {} while creating snapshot for schemaRegion {}.",
-            mLogSnapshotTmp.getName(),
-            mLogSnapshot.getName(),
-            schemaRegionId);
-        mLogSnapshot.delete();
-        return false;
-      }
-
-      return tagManager.createSnapshot(snapshotDir);
-    } catch (IOException e) {
-      logger.error(
-          "Failed to create snapshot for schemaRegion {} due to {}",
-          schemaRegionId,
-          e.getMessage(),
-          e);
-      mLogSnapshot.delete();
-      return false;
-    } finally {
-      mLogSnapshotTmp.delete();
-    }
+    return isSuccess;
   }
 
   // currently, this method is only used for cluster-ratis mode
@@ -492,7 +460,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
-              latestSnapshotRootDir, storageGroupMNode, schemaRegionId.getId());
+              latestSnapshotRootDir,
+              storageGroupMNode,
+              schemaRegionId.getId(),
+              measurementMNode -> {
+                try {
+                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
+                } catch (IOException e) {
+                  logger.error(
+                      "Failed to recover tagIndex for {} in schemaRegion {}.",
+                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+                      schemaRegionId);
+                }
+              });
 
       isRecovering = false;
       initialized = true;

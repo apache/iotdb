@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
@@ -250,5 +251,11 @@ public abstract class RMNode implements IMNode {
   public void setChildren(IMNodeContainer children) {
     throw new UnsupportedOperationException("Temporarily unsupported");
   }
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    throw new UnsupportedOperationException("RMNode doesn't support this method");
+  }
+
   // end
 }
