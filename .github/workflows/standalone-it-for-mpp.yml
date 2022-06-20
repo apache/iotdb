@@ -1,4 +1,4 @@
-name: New Cluster IT
+name: New Standalone IT
 
 on:
   push:
@@ -22,7 +22,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  ClusterIT:
+  unix:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -64,12 +64,14 @@ jobs:
         run: |
           mvn clean verify \
           -DskipUTs \
+          -DintegrationTest.forkCount=2 \
           -pl integration-test \
-          -am -PClusterIT
+          -am -PLocalStandaloneOnMppIT
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v3
         with:
-          name: cluster-log-java${{ matrix.java }}-${{ runner.os }}
+          name: standalone-log-java${{ matrix.java }}-${{ runner.os }}
           path: integration-test/target/cluster-logs
           retention-days: 1
+

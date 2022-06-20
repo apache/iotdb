@@ -23,13 +23,13 @@ import org.apache.commons.lang3.SystemUtils;
 import java.io.File;
 import java.util.Properties;
 
-public class ConfigNode extends ClusterNodeBase {
+public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   private final int consensusPort;
   private final String targetConfigNode;
   private final int[] portList;
 
-  public ConfigNode(boolean isSeed, String targetConfigNode, String testName) {
+  public ConfigNodeWrapper(boolean isSeed, String targetConfigNode, String testName) {
     super(testName);
 
     portList = super.searchAvailablePorts();
