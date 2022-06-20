@@ -49,6 +49,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -70,10 +72,15 @@ public class LoadManager {
   private final RegionBalancer regionBalancer;
   private final PartitionBalancer partitionBalancer;
 
-  /** running state of heartbeat service */
-  private boolean isRunning = false;
+  /** heartbeat executor service */
+  private final ScheduledExecutorService heartBeatExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          LoadManager.class.getSimpleName(), this::loadExceptionHandler);
 
-  private final Object isRunningMonitor = new Object();
+  /** monitor for heartbeat state change */
+  private final Object heartbeatMonitor = new Object();
+
+  private Future<?> currentHeartbeatFuture;
   private int balanceCount = 0;
 
   public LoadManager(Manager configManager) {
@@ -84,14 +91,6 @@ public class LoadManager {
     this.partitionBalancer = new PartitionBalancer(configManager);
 
     LOGGER.info("Setup Heartbeat Service of LoadManager");
-    // infinite task
-    ScheduledExecutorUtil.unsafelyScheduleWithFixedDelay(
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            LoadManager.class.getSimpleName(), this::loadExceptionHandler),
-        this::heartbeatLoopBody,
-        0,
-        heartbeatInterval,
-        TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -146,39 +145,44 @@ public class LoadManager {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
-  /** start the heartbeat service */
+  /** Start the heartbeat service */
   public void start() {
     LOGGER.debug("Start Heartbeat Service of LoadManager");
-    synchronized (isRunningMonitor) {
-      isRunning = true;
-      // only 1 thread can start the heartbeat service
-      isRunningMonitor.notifyAll();
+    synchronized (heartbeatMonitor) {
+      if (currentHeartbeatFuture == null) {
+        currentHeartbeatFuture =
+            ScheduledExecutorUtil.unsafelyScheduleWithFixedDelay(
+                heartBeatExecutor,
+                this::heartbeatLoopBody,
+                0,
+                heartbeatInterval,
+                TimeUnit.MILLISECONDS);
+      }
     }
   }
 
-  /** stop the heartbeat service */
+  /** Stop the heartbeat service */
   public void stop() {
     LOGGER.debug("Stop Heartbeat Service of LoadManager");
-    synchronized (isRunningMonitor) {
-      isRunning = false;
+    synchronized (heartbeatMonitor) {
+      if (currentHeartbeatFuture != null) {
+        currentHeartbeatFuture.cancel(false);
+        currentHeartbeatFuture = null;
+      }
     }
+  }
+
+  /**
+   * Running state of heartbeat service
+   *
+   * @return true if heartbeat service is running, false otherwise
+   */
+  public boolean isHeartbeatRunning() {
+    return currentHeartbeatFuture != null;
   }
 
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
-    synchronized (isRunningMonitor) {
-      // avoid spurious wakeup
-      while (!isRunning) {
-        // not longer the leader, discard all cache
-        heartbeatCacheMap.clear();
-        balanceCount = 0;
-        try {
-          isRunningMonitor.wait();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
     if (getConsensusManager().isLeader()) {
       // Send heartbeat requests to all the online DataNodes
       pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));

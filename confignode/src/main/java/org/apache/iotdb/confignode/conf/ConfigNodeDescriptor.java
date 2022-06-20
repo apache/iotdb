@@ -210,11 +210,6 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
-      conf.setEnableHeartbeat(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_heartbeat", String.valueOf(conf.isEnableHeartbeat()))));
-
       // commons
       commonDescriptor.loadCommonProps(properties);
       commonDescriptor.initCommonConfigDir(conf.getSystemDir());

@@ -139,12 +139,6 @@ public class ConfigManager implements Manager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
     this.consensusManager = new ConsensusManager(stateMachine);
-
-    // We are on testing.......
-    if (ConfigNodeDescriptor.getInstance().getConf().isEnableHeartbeat()) {
-      // Start asking for heartbeat
-      this.loadManager.start();
-    }
   }
 
   public void close() throws IOException {
