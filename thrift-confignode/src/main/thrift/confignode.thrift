@@ -119,6 +119,7 @@ struct TSchemaPartitionResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+  3: optional map<string, map<common.TSeriesPartitionSlot, common.TConsensusGroupId>> newSchemaRegionMap
 }
 
 // Node Management
@@ -145,6 +146,7 @@ struct TDataPartitionResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
+  3: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> newDataPartitionMap
 }
 
 // Authorize
@@ -317,6 +319,8 @@ service ConfigIService {
   /* Show Region */
 
   TShowRegionResp showRegion(TShowRegionReq req)
+
+  common.TRegionCache getRegionCache()
 
 }
 

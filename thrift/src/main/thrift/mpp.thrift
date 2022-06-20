@@ -236,6 +236,14 @@ service InternalService {
   **/
   common.THeartbeatResp getHeartBeat(common.THeartbeatReq req)
 
+
+  /**
+  * ConfigNode will update DataNode region cache
+  *
+  * @param ConfigNode will send timestamp and regionReplicaMap in regionCache
+  **/
+  common.TSStatus updateRegionCache(common.TRegionCache regionCache)
+
   /**
    * Config node will create a function on a list of data nodes.
    *
