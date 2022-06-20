@@ -82,7 +82,8 @@ public class InnerCompactionEmptyTsFileTest extends InnerCompactionTest {
             unseqResources.subList(0, 3),
             false,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     Future<CompactionTaskSummary> future = CompactionTaskManager.getInstance().submitTask(task);
     Assert.assertTrue(future.get().isSuccess());
   }

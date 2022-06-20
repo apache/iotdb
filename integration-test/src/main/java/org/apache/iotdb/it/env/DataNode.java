@@ -18,104 +18,86 @@
  */
 package org.apache.iotdb.it.env;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Properties;
+import org.apache.commons.lang3.SystemUtils;
 
-import static org.junit.Assert.fail;
+import java.io.File;
+import java.util.Properties;
 
 public class DataNode extends ClusterNodeBase {
 
   private final String targetConfigNode;
-  private final String configPath;
 
   private final int dataBlockManagerPort;
   private final int internalPort;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
+  private final int[] portList;
 
   public DataNode(String targetConfigNode, String testName) {
-
+    super(testName);
     this.targetConfigNode = targetConfigNode;
-
-    int[] portList = super.searchAvailablePorts();
-    super.setPort(portList[0]);
+    portList = super.searchAvailablePorts();
     this.dataBlockManagerPort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
-
-    super.setId("node" + this.getPort());
-
-    String nodePath =
-        System.getProperty("user.dir") + File.separator + "target" + File.separator + super.getId();
-    super.setNodePath(nodePath);
-
-    String logPath =
-        System.getProperty("user.dir")
-            + File.separator
-            + "target"
-            + File.separator
-            + "cluster-logs"
-            + File.separator
-            + testName
-            + File.separator
-            + "Data"
-            + super.getId()
-            + ".log";
-    super.setLogPath(logPath);
-
-    String scriptPath =
-        super.getNodePath()
-            + File.separator
-            + "template-node"
-            + File.separator
-            + "datanode"
-            + File.separator
-            + "sbin"
-            + File.separator
-            + "start-datanode"
-            + ".sh";
-    super.setScriptPath(scriptPath);
-
-    this.configPath =
-        super.getNodePath()
-            + File.separator
-            + "template-node"
-            + File.separator
-            + "datanode"
-            + File.separator
-            + "conf"
-            + File.separator
-            + "iotdb-engine.properties";
   }
 
   @Override
-  public void changeConfig(Properties properties) {
-    try {
-      Properties configProperties = new Properties();
-      configProperties.load(Files.newInputStream(Paths.get(this.configPath)));
-      configProperties.setProperty("rpc_address", super.getIp());
-      configProperties.setProperty("internal_ip", "127.0.0.1");
-      configProperties.setProperty("rpc_port", String.valueOf(super.getPort()));
-      configProperties.setProperty(
-          "data_block_manager_port", String.valueOf(this.dataBlockManagerPort));
-      configProperties.setProperty("internal_port", String.valueOf(this.internalPort));
-      configProperties.setProperty(
-          "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
-      configProperties.setProperty(
-          "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
-      configProperties.setProperty("connection_timeout_ms", "30000");
-      configProperties.setProperty("config_nodes", this.targetConfigNode);
-      if (properties != null && !properties.isEmpty()) {
-        configProperties.putAll(properties);
-      }
-      configProperties.store(new FileWriter(this.configPath), null);
-    } catch (IOException ex) {
-      fail("Change the config of data node failed. " + ex);
+  protected void updateConfig(Properties properties) {
+    properties.setProperty("rpc_address", super.getIp());
+    properties.setProperty("internal_ip", "127.0.0.1");
+    properties.setProperty("rpc_port", String.valueOf(getPort()));
+    properties.setProperty("data_block_manager_port", String.valueOf(this.dataBlockManagerPort));
+    properties.setProperty("internal_port", String.valueOf(this.internalPort));
+    properties.setProperty(
+        "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
+    properties.setProperty(
+        "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
+    properties.setProperty("connection_timeout_ms", "30000");
+    properties.setProperty("config_nodes", this.targetConfigNode);
+  }
+
+  @Override
+  protected String getConfigPath() {
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-engine.properties");
+  }
+
+  @Override
+  protected String getStartScriptPath() {
+    String scriptName = "start-datanode.sh";
+    if (SystemUtils.IS_OS_WINDOWS) {
+      scriptName = "start-datanode.bat";
     }
+    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
+  }
+
+  @Override
+  protected String getStopScriptPath() {
+    String scriptName = "stop-datanode.sh";
+    if (SystemUtils.IS_OS_WINDOWS) {
+      scriptName = "stop-datanode.bat";
+    }
+    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
+  }
+
+  @Override
+  protected String getLogPath() {
+    return System.getProperty("user.dir")
+        + File.separator
+        + "target"
+        + File.separator
+        + "cluster-logs"
+        + File.separator
+        + testName
+        + File.separator
+        + "Data"
+        + super.getId()
+        + ".log";
+  }
+
+  @Override
+  public int getPort() {
+    return portList[0];
   }
 }
