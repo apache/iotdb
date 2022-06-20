@@ -224,7 +224,7 @@ public class StorageEngineV2 implements IService {
     asyncRecover(recoveryThreadPool, futures);
 
     // wait until wal is recovered
-    if (!config.isMppMode()
+    if (!config.isClusterMode()
         || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
       try {
         WALRecoverManager.getInstance().recover();

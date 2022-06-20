@@ -283,7 +283,7 @@ public class DataNode implements DataNodeMBean {
     JMXService.registerMBean(getInstance(), mbeanName);
 
     // close wal when using ratis consensus
-    if (config.isMppMode()
+    if (config.isClusterMode()
         && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
       config.setWalMode(WALMode.DISABLE);
     }
