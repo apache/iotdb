@@ -302,7 +302,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
           schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
         }
       }
-    } catch (MetadataException e) {
+    } catch (Exception e) {
       throw new RuntimeException("cannot auto create schema ", e);
     }
   }

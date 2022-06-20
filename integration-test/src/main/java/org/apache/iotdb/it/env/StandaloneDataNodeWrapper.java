@@ -18,6 +18,31 @@
  */
 package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.itbase.env.BaseConfig;
+import org.apache.commons.lang3.SystemUtils;
 
-public class RemoteEnvConfig implements BaseConfig {}
+import java.io.File;
+
+public class StandaloneDataNodeWrapper extends DataNodeWrapper {
+
+  public StandaloneDataNodeWrapper(String targetConfigNode, String testName) {
+    super(targetConfigNode, testName);
+  }
+
+  @Override
+  protected String getStartScriptPath() {
+    String scriptName = "start-new-server.sh";
+    if (SystemUtils.IS_OS_WINDOWS) {
+      scriptName = "start-new-server.bat";
+    }
+    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
+  }
+
+  @Override
+  protected String getStopScriptPath() {
+    String scriptName = "stop-server.sh";
+    if (SystemUtils.IS_OS_WINDOWS) {
+      scriptName = "stop-server.bat";
+    }
+    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
+  }
+}
