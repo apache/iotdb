@@ -30,9 +30,7 @@ def test_simple_query():
 
         session.execute_non_query_statement("set storage group to root.device")
         # Write data
-        res = -1
-        while res == -1:
-            res = session.insert_str_record("root.device", 123, "pressure", "15.0")
+        session.insert_str_record("root.device", 123, "pressure", "15.0")
 
         # Read
         session_data_set = session.execute_query_statement("SELECT ** FROM root")

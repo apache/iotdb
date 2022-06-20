@@ -68,6 +68,7 @@ def test_simple_query():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
+        session.execute_non_query_statement("set storage group to root.wt1")
 
         create_ts(session)
 
@@ -183,6 +184,7 @@ def test_multi_fetch():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
+        session.execute_non_query_statement("set storage group to root.wt1")
 
         create_ts(session)
 
