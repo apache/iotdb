@@ -40,7 +40,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -1372,19 +1374,25 @@ public class DataRegion {
    *
    * @return True if flush task is submitted successfully
    */
-  public boolean submitAFlushTask(long timeRangeId, boolean sequence) {
+  public boolean submitAFlushTask(long timeRangeId, boolean sequence, IMemTable memTable) {
     writeLock("submitAFlushTask");
     try {
+      if (memTable.getFlushStatus() != FlushStatus.WORKING) {
+        return false;
+      }
+
       TsFileProcessor tsFileProcessor;
       if (sequence) {
         tsFileProcessor = workSequenceTsFileProcessors.get(timeRangeId);
       } else {
         tsFileProcessor = workUnsequenceTsFileProcessors.get(timeRangeId);
       }
-      if (tsFileProcessor != null) {
+      boolean shouldSubmit =
+          tsFileProcessor != null && tsFileProcessor.getWorkMemTable() == memTable;
+      if (shouldSubmit) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
-      return tsFileProcessor != null;
+      return shouldSubmit;
     } finally {
       writeUnlock();
     }
