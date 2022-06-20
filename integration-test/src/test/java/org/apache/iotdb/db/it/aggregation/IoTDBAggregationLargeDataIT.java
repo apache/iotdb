@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -870,7 +869,6 @@ public class IoTDBAggregationLargeDataIT {
   private static String[] stringValue = new String[] {"A", "B", "C", "D", "E"};
 
   public static void insertSQL() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -903,7 +901,7 @@ public class IoTDBAggregationLargeDataIT {
         statement.execute(sql);
       }
 
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
 
       // insert large amount of data
       for (int time = 3700; time < 4000; time++) {

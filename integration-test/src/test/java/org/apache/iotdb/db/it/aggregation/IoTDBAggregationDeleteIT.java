@@ -46,7 +46,7 @@ public class IoTDBAggregationDeleteIT {
         "INSERT INTO root.turbine.d1(timestamp,s1) values(3,3)",
         "INSERT INTO root.turbine.d1(timestamp,s1) values(4,4)",
         "INSERT INTO root.turbine.d1(timestamp,s1) values(5,5)",
-        ConfigFactory.getConfig().getFlushCommand(),
+        "flush",
         "delete from root.turbine.d1.s1 where time < 3"
       };
   private long prevPartitionInterval;

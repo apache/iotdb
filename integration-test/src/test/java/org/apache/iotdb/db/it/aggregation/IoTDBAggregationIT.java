@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.aggregation;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -58,7 +57,7 @@ public class IoTDBAggregationIT {
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
 
-  private static String[] creationSqls =
+  private static final String[] creationSqls =
       new String[] {
         "SET STORAGE GROUP TO root.vehicle.d0",
         "SET STORAGE GROUP TO root.vehicle.d1",
@@ -68,7 +67,7 @@ public class IoTDBAggregationIT {
         "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
       };
-  private static String[] dataSet2 =
+  private static final String[] dataSet2 =
       new String[] {
         "SET STORAGE GROUP TO root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -85,19 +84,19 @@ public class IoTDBAggregationIT {
         "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
             + "values(5, 5.5, false, 55)"
       };
-  private static String[] dataSet3 =
+  private static final String[] dataSet3 =
       new String[] {
         "SET STORAGE GROUP TO root.sg",
         "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
         "insert into root.sg.d1(timestamp,s1) values(5,5)",
         "insert into root.sg.d1(timestamp,s1) values(12,12)",
-        ConfigFactory.getConfig().getFlushCommand(),
+        "flush",
         "insert into root.sg.d1(timestamp,s1) values(15,15)",
         "insert into root.sg.d1(timestamp,s1) values(25,25)",
-        ConfigFactory.getConfig().getFlushCommand(),
+        "flush",
         "insert into root.sg.d1(timestamp,s1) values(1,111)",
         "insert into root.sg.d1(timestamp,s1) values(20,200)",
-        ConfigFactory.getConfig().getFlushCommand(),
+        "flush",
       };
   private final String d0s0 = "root.vehicle.d0.s0";
   private final String d0s1 = "root.vehicle.d0.s1";
@@ -914,7 +913,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       // statement.executeBatch();
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
 
       for (int i = 7500; i < 8500; i++) {
         statement.execute(
@@ -926,7 +925,7 @@ public class IoTDBAggregationIT {
         // "false"));
       }
       // statement.executeBatch();
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
         //        statement.addBatch(
@@ -938,7 +937,7 @@ public class IoTDBAggregationIT {
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       // statement.executeBatch();
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       for (int i = 3000; i < 6500; i++) {
         //        statement.addBatch(
         //            String.format(
