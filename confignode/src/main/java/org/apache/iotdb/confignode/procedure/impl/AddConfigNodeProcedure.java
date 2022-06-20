@@ -62,7 +62,6 @@ public class AddConfigNodeProcedure
     try {
       switch (state) {
         case ADD_CONFIG_NODE_PREPARE:
-          // TODO: lock related ClusterSchemaInfo, PartitionInfo and Regions
           setNextState(AddConfigNodeState.ADD_CONSENSUS_GROUP);
           break;
         case ADD_CONSENSUS_GROUP:
@@ -77,10 +76,10 @@ public class AddConfigNodeProcedure
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Delete storage group failed " + state));
+        setFailure(new ProcedureException("Add Config Node failed " + state));
       } else {
         LOG.error(
-            "Retriable error trying to delete storage group {}, state {}",
+            "Retriable error trying to add config node {}, state {}",
             tConfigNodeLocation,
             state,
             e);
@@ -143,7 +142,7 @@ public class AddConfigNodeProcedure
     try {
       tConfigNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize DeleteStorageGroupProcedure", e);
+      LOG.error("Error in deserialize AddConfigNodeProcedure", e);
     }
   }
 
