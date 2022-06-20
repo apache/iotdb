@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -105,7 +106,11 @@ public class SchemaEngine {
 
     Map<PartialPath, List<SchemaRegionId>> schemaRegionInfo = initSchemaRegion();
 
-    if (config.getSyncMlogPeriodInMs() != 0) {
+    if (!(config.isClusterMode()
+            && config
+                .getSchemaRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RatisConsensus))
+        && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               "SchemaEngine-TimedForceMLog-Thread");
