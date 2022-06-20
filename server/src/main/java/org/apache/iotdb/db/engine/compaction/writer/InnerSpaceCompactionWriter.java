@@ -85,6 +85,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void checkFileSizeAndMayOpenANewFile() throws IOException {
-    throw new RuntimeException("Does not support checkFileSizeAndMayOpenANewFile method.");
+    // In inner space compaction, size of target file is controlled in the process of selecting
+    // source files, so here we do nothing.
   }
 }

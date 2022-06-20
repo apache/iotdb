@@ -99,11 +99,11 @@ public class TsFileNameGenerator {
     return new File(path, tsFileName.toFileName());
   }
 
-  public static File increaseFileVersion(File tsFile){
-    String path=tsFile.getParent();
-    TsFileName tsFileName=TsFileName.parse(tsFile.getName());
-    tsFileName.setVersion(tsFileName.getVersion()+100000);
-    return new File(path,tsFileName.toFileName());
+  public static File increaseFileVersion(File tsFile) {
+    String path = tsFile.getParent();
+    TsFileName tsFileName = TsFileName.parse(tsFile.getName());
+    tsFileName.setVersion(tsFileName.getVersion() + 100000);
+    return new File(path, tsFileName.toFileName());
   }
 
   /**

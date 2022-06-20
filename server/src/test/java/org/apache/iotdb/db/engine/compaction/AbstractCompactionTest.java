@@ -64,7 +64,8 @@ public class AbstractCompactionTest {
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
   private static final int oldPagePointSize =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-  private static final long oldTargetCompactionFileSize=IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+  private static final long oldTargetCompactionFileSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -261,7 +262,9 @@ public class AbstractCompactionTest {
     unseqResources.clear();
     IoTDB.configManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
-    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oldTargetCompactionFileSize);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(oldTargetCompactionFileSize);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
     EnvironmentUtils.cleanEnv();
