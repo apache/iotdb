@@ -62,7 +62,11 @@ public enum TSDataType {
     return getTsDataType(type);
   }
 
-  private static TSDataType getTsDataType(byte type) {
+  public byte getType() {
+    return type;
+  }
+
+  public static TSDataType getTsDataType(byte type) {
     switch (type) {
       case 0:
         return TSDataType.BOOLEAN;

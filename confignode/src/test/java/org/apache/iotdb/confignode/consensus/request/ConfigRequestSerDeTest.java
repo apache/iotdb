@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -48,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -482,6 +484,17 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void removeConfigNodeReqTest() throws IOException {
+    RemoveConfigNodeReq req0 =
+        new RemoveConfigNodeReq(
+            new TConfigNodeLocation(
+                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+    RemoveConfigNodeReq req1 =
+        (RemoveConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void updateProcedureTest() throws IOException {
     DeleteStorageGroupProcedure procedure = new DeleteStorageGroupProcedure();
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
@@ -516,5 +529,15 @@ public class ConfigRequestSerDeTest {
     DeleteProcedureReq req1 =
         (DeleteProcedureReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void GetRegionLocaltionsReqTest() throws IOException {
+    GetRegionLocationsReq req0 = new GetRegionLocationsReq();
+    req0.setRegionType(TConsensusGroupType.DataRegion);
+    GetRegionLocationsReq req1 =
+        (GetRegionLocationsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0.getType(), req1.getType());
+    Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
   }
 }

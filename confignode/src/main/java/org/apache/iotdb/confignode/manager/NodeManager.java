@@ -197,10 +197,11 @@ public class NodeManager {
         // Check ConfigNode numbers
         if (getOnlineConfigNodes().size() <= 1) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-              .setMessage("Remove ConfigNode failed only one ConfigNode in current Cluster.");
+              .setMessage(
+                  "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
         }
 
-        // Check whether OnlineConfigNode contain the remove COnfigNode
+        // Check whether the onlineConfigNode contain the ConfigNode to be removed.
         if (!getOnlineConfigNodes().contains(removeConfigNodeReq.getConfigNodeLocation())) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
@@ -208,13 +209,12 @@ public class NodeManager {
         }
 
         // Check whether the remove ConfigNode is leader
-        ConsensusGroupId groupId = getConsensusManager().getConsensusGroupId();
-        Peer leader = getConsensusManager().getLeader(groupId);
+        Peer leader = getConsensusManager().getLeader(getOnlineConfigNodes());
         if (leader
             .getEndpoint()
             .equals(removeConfigNodeReq.getConfigNodeLocation().getInternalEndPoint())) {
           // transfer leader
-          return transferLeader(removeConfigNodeReq, groupId);
+          return transferLeader(removeConfigNodeReq, getConsensusManager().getConsensusGroupId());
         }
 
         // Execute removePeer

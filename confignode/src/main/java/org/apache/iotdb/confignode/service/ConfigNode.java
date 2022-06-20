@@ -52,8 +52,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private final RegisterManager registerManager = new RegisterManager();
 
-  private static ConfigNodeRPCService configNodeRPCService;
-  private static ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
+  private ConfigNodeRPCService configNodeRPCService;
+  private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
   private ConfigManager configManager;
 

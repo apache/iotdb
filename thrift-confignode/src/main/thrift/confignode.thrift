@@ -229,6 +229,16 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// show regions
+struct TShowRegionReq {
+  1: optional common.TConsensusGroupType consensusGroupType;
+}
+
+struct TShowRegionResp {
+  1: required common.TSStatus status
+  2: optional list<common.TRegionLocation> regionInfoList;
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -307,6 +317,10 @@ service ConfigIService {
   /* Flush */
 
   common.TSStatus flush(common.TFlushReq req)
+
+  /* Show Region */
+
+  TShowRegionResp showRegion(TShowRegionReq req)
 
 }
 

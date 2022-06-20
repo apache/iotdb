@@ -127,7 +127,8 @@ public class CompactionScheduler {
                   task,
                   sequence,
                   performer,
-                  CompactionTaskManager.currentTaskNum));
+                  CompactionTaskManager.currentTaskNum,
+                  tsFileManager.getNextCompactionTaskId()));
     }
   }
 
@@ -160,7 +161,8 @@ public class CompactionScheduler {
                       .getConfig()
                       .getCrossCompactionPerformer()
                       .createInstance(),
-                  CompactionTaskManager.currentTaskNum));
+                  CompactionTaskManager.currentTaskNum,
+                  tsFileManager.getNextCompactionTaskId()));
     }
   }
 }

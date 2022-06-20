@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -49,10 +50,8 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
@@ -85,6 +84,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -270,12 +271,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    SchemaPartitionResp schemaResp =
-        (SchemaPartitionResp) configManager.getSchemaPartition(patternTree);
-
-    TSchemaPartitionResp resp = new TSchemaPartitionResp();
-    schemaResp.convertToRpcSchemaPartitionResp(resp);
-    return resp;
+    return configManager.getSchemaPartition(patternTree);
   }
 
   @Override
@@ -283,12 +279,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    SchemaPartitionResp dataResp =
-        (SchemaPartitionResp) configManager.getOrCreateSchemaPartition(patternTree);
-
-    TSchemaPartitionResp resp = new TSchemaPartitionResp();
-    dataResp.convertToRpcSchemaPartitionResp(resp);
-    return resp;
+    return configManager.getOrCreateSchemaPartition(patternTree);
   }
 
   @Override
@@ -297,36 +288,21 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
-    SchemaNodeManagementResp schemaNodeManagementResp;
-    schemaNodeManagementResp =
-        (SchemaNodeManagementResp) configManager.getNodePathsPartition(partialPath, req.getLevel());
-    TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
-    schemaNodeManagementResp.convertToRpcSchemaNodeManagementPartitionResp(resp);
-    return resp;
+    return configManager.getNodePathsPartition(partialPath, req.getLevel());
   }
 
   @Override
   public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
     GetDataPartitionReq getDataPartitionReq = new GetDataPartitionReq();
     getDataPartitionReq.convertFromRpcTDataPartitionReq(req);
-    DataPartitionResp dataResp =
-        (DataPartitionResp) configManager.getDataPartition(getDataPartitionReq);
-
-    TDataPartitionResp resp = new TDataPartitionResp();
-    dataResp.convertToRpcDataPartitionResp(resp);
-    return resp;
+    return configManager.getDataPartition(getDataPartitionReq);
   }
 
   @Override
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
     GetOrCreateDataPartitionReq getOrCreateDataPartitionReq = new GetOrCreateDataPartitionReq();
     getOrCreateDataPartitionReq.convertFromRpcTDataPartitionReq(req);
-    DataPartitionResp dataResp =
-        (DataPartitionResp) configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
-
-    TDataPartitionResp resp = new TDataPartitionResp();
-    dataResp.convertToRpcDataPartitionResp(resp);
-    return resp;
+    return configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
   }
 
   @Override
@@ -504,6 +480,17 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       }
     }
     return tsStatus;
+  }
+
+  @Override
+  public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
+    GetRegionLocationsReq getRegionsinfoReq =
+        new GetRegionLocationsReq(showRegionReq.getConsensusGroupType());
+    RegionLocationsResp dataSet = (RegionLocationsResp) configManager.showRegion(getRegionsinfoReq);
+    TShowRegionResp showRegionResp = new TShowRegionResp();
+    showRegionResp.setStatus(dataSet.getStatus());
+    showRegionResp.setRegionInfoList(dataSet.getRegionInfosList());
+    return showRegionResp;
   }
 
   public void handleClientExit() {}

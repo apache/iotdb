@@ -176,14 +176,15 @@ public class ConsensusManager {
     return consensusImpl.isLeader(consensusGroupId);
   }
 
-  public Peer getLeader(ConsensusGroupId groupId) {
-    Peer leader = consensusImpl.getLeader(groupId);
+  public Peer getLeader(List<TConfigNodeLocation> onlineConfigNodes) {
+    Peer leader = consensusImpl.getLeader(consensusGroupId);
+
     TConfigNodeLocation nodeLocation =
-        conf.getConfigNodeList().stream()
+        onlineConfigNodes.stream()
             .filter(e -> e.getConsensusEndPoint().equals(leader.getEndpoint()))
             .findFirst()
             .get();
-    return new Peer(groupId, nodeLocation.getInternalEndPoint());
+    return new Peer(consensusGroupId, nodeLocation.getInternalEndPoint());
   }
 
   public ConsensusGroupId getConsensusGroupId() {

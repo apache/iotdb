@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.confignode.manager.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -35,8 +37,10 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.Manager;
 import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IHeartbeatStatistic;
 
@@ -67,6 +71,7 @@ public class LoadManager implements Runnable {
   // Balancers
   private final RegionBalancer regionBalancer;
   private final PartitionBalancer partitionBalancer;
+  private final RouteBalancer routeBalancer;
 
   public LoadManager(Manager configManager) {
     this.configManager = configManager;
@@ -74,6 +79,7 @@ public class LoadManager implements Runnable {
 
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
+    this.routeBalancer = new RouteBalancer(configManager);
   }
 
   /**
@@ -128,10 +134,35 @@ public class LoadManager implements Runnable {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
+  /**
+   * Generate an optimal real-time read/write requests routing policy.
+   *
+   * @return Map<TConsensusGroupId, TRegionReplicaSet>, The routing policy of read/write requests
+   *     for each Region is based on the order in the TRegionReplicaSet. The replica with higher
+   *     sorting result have higher priority.
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> genRealTimeRoutingPolicy() {
+    return routeBalancer.genRealTimeRoutingPolicy(getPartitionManager().getAllReplicaSets());
+  }
+
+  /**
+   * Get the loadScore of each DataNode
+   *
+   * @return Map<DataNodeId, loadScore>
+   */
+  public Map<Integer, Float> getAllLoadScores() {
+    Map<Integer, Float> result = new ConcurrentHashMap<>();
+
+    heartbeatCacheMap.forEach(
+        (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
+
+    return result;
+  }
+
   @Override
   public void run() {
     int balanceCount = 0;
-    while (!configManager.isStopped()) {
+    while (true) {
       try {
 
         if (getConsensusManager().isLeader()) {
@@ -199,5 +230,9 @@ public class LoadManager implements Runnable {
 
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
   }
 }
