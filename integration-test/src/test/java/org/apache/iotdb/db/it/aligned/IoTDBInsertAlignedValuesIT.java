@@ -190,7 +190,7 @@ public class IoTDBInsertAlignedValuesIT {
         assertFalse(resultSet.next());
       }
 
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));

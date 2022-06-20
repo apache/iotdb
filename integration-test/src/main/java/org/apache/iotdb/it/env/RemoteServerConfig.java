@@ -16,27 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.it.env;
 
-import java.util.Properties;
+import org.apache.iotdb.itbase.env.BaseConfig;
 
-public interface BaseNode {
-
-  void createDir();
-
-  void destroyDir();
-
-  void changeConfig(Properties properties);
-
-  void start();
-
-  void stop();
-
-  void waitingToShutDown();
-
-  String getIp();
-
-  int getPort();
-
-  String getIpAndPortString();
-}
+public class RemoteServerConfig implements BaseConfig {}
