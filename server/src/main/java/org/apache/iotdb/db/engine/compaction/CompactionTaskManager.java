@@ -108,7 +108,7 @@ public class CompactionTaskManager implements IService {
                     * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_SERVICE.getName());
     for (int i = 0; i < compactionThreadNum; ++i) {
-      taskExecutionPool.submit(new CompactionExecutionThread(i, candidateCompactionTaskQueue));
+      taskExecutionPool.submit(new CompactionWorker(i, candidateCompactionTaskQueue));
     }
   }
 
@@ -376,9 +376,10 @@ public class CompactionTaskManager implements IService {
   public synchronized Future<CompactionTaskSummary> getCompactionTaskFutureMayBlock(
       AbstractCompactionTask task) throws InterruptedException {
     String storageGroup = task.getFullStorageGroupName();
+    logger.error("try to get future for {}", storageGroup);
     while (!storageGroupTasks.containsKey(storageGroup)
         || !storageGroupTasks.get(storageGroup).containsKey(task)) {
-      wait(10);
+      wait(1);
     }
     return storageGroupTasks.get(storageGroup).get(task);
   }

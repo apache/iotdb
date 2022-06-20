@@ -88,6 +88,7 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
       this.currentTaskNum.decrementAndGet();
       timeCost = System.currentTimeMillis() - startTime;
       summary.finish(isSuccess, timeCost);
+      LOGGER.error("{} finish", this);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
     }
     return summary;

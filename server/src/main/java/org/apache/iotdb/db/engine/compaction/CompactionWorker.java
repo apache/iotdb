@@ -33,12 +33,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class CompactionExecutionThread implements Runnable {
+public class CompactionWorker implements Runnable {
   private static final Logger log = LoggerFactory.getLogger("COMPACTION");
-  private int threadId;
+  private final int threadId;
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue;
 
-  public CompactionExecutionThread(
+  public CompactionWorker(
       int threadId, FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue) {
     this.threadId = threadId;
     this.compactionTaskQueue = compactionTaskQueue;
@@ -56,6 +56,7 @@ public class CompactionExecutionThread implements Runnable {
           CompactionTaskSummary summary = task.getSummary();
           CompactionTaskFuture future = new CompactionTaskFuture(summary);
           CompactionTaskManager.getInstance().recordTask(task, future);
+          log.error("start to execute {}", task);
           task.call();
         }
       } catch (InterruptedException e) {
