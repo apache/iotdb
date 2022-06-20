@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.itbase.env.BaseNode;
+import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
@@ -41,8 +41,8 @@ import java.util.stream.IntStream;
 
 import static org.junit.Assert.fail;
 
-public abstract class ClusterNodeBase implements BaseNode {
-  private static final Logger logger = LoggerFactory.getLogger(ClusterNodeBase.class);
+public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractNodeWrapper.class);
   private final String templateNodePath =
       System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
   private final File NULL_FILE =
@@ -51,7 +51,7 @@ public abstract class ClusterNodeBase implements BaseNode {
   private Process instance;
   protected final String testName;
 
-  public ClusterNodeBase(String testName) {
+  public AbstractNodeWrapper(String testName) {
     this.testName = testName;
   }
 
