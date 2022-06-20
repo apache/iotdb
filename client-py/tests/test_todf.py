@@ -16,10 +16,9 @@
 # under the License.
 #
 
-import random
-
 import numpy as np
 import pandas as pd
+import random
 from pandas.testing import assert_frame_equal
 
 from iotdb.IoTDBContainer import IoTDBContainer
@@ -210,6 +209,8 @@ def test_multi_fetch():
         session_data_set = session.execute_query_statement("SELECT ** FROM root")
         session_data_set.set_fetch_size(100)
         df_output = session_data_set.todf()
+        print(df_output)
+        print(df_input.columns.tolist())
         df_output = df_output[df_input.columns.tolist()]
 
         session.close()
