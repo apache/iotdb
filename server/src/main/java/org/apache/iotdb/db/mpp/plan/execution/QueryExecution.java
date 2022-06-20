@@ -349,9 +349,14 @@ public class QueryExecution implements IQueryExecution {
       // Although we monitor the state to transition to RUNNING, the future will return if any
       // Terminated state is triggered
       try {
+        if (stateMachine.getState() == QueryState.FINISHED) {
+          return getExecutionResult(QueryState.FINISHED);
+        }
         SettableFuture<QueryState> future = SettableFuture.create();
+        final long addStart = System.nanoTime();
         stateMachine.addStateChangeListener(
             state -> {
+              StepTracker.trace("stateQueue", addStart, System.nanoTime());
               if (state == QueryState.RUNNING || state.isDone()) {
                 future.set(state);
               }

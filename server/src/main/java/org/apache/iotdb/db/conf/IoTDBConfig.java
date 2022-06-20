@@ -928,10 +928,10 @@ public class IoTDBConfig {
   private int triggerForwardMQTTPoolSize = 4;
 
   /** ThreadPool size for read operation in coordinator */
-  private int coordinatorReadExecutorSize = 100;
+  private int coordinatorReadExecutorSize = 50;
 
   /** ThreadPool size for write operation in coordinator */
-  private int coordinatorWriteExecutorSize = 100;
+  private int coordinatorWriteExecutorSize = 50;
 
   IoTDBConfig() {}
 

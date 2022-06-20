@@ -27,16 +27,18 @@ import java.util.Map;
 
 class Metric {
   private static final Logger logger = LoggerFactory.getLogger(Metric.class);
+  private static final int PRINT_RATE = 100;
+
   public String stepName;
   public long invokeCount;
   public long totalTime;
-  public long last100Time;
+  public long lastCycleTime;
 
   public Metric(String stepName) {
     this.stepName = stepName;
     this.invokeCount = 0;
     this.totalTime = 0;
-    this.last100Time = 0;
+    this.lastCycleTime = 0;
   }
 
   public void trace(long startTime, long endTime) {
@@ -45,17 +47,18 @@ class Metric {
   }
 
   public void tryPrint() {
-    if (invokeCount % 100 == 0) {
+    if (invokeCount % PRINT_RATE == 0) {
       logger.info(
           String.format(
-              "step metrics [%d]-[%s] - Total: %d, SUM: %.2fms, AVG: %fms, Last100AVG: %fms",
+              "step metrics [%d]-[%s] - Total: %d, SUM: %.2fms, AVG: %fms, Last%dAVG: %fms",
               Thread.currentThread().getId(),
               stepName,
               invokeCount,
               totalTime * 1.0 / 1000000,
               totalTime * 1.0 / 1000000 / invokeCount,
-              (totalTime * 1.0 - last100Time) / 1000000 / 100));
-      last100Time = totalTime;
+              PRINT_RATE,
+              (totalTime * 1.0 - lastCycleTime) / 1000000 / PRINT_RATE));
+      lastCycleTime = totalTime;
     }
   }
 }

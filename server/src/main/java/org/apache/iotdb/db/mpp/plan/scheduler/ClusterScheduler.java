@@ -57,8 +57,8 @@ public class ClusterScheduler implements IScheduler {
   private final List<FragmentInstance> instances;
 
   private final IFragInstanceDispatcher dispatcher;
-  private final IFragInstanceStateTracker stateTracker;
-  private final IQueryTerminator queryTerminator;
+  private IFragInstanceStateTracker stateTracker;
+  private IQueryTerminator queryTerminator;
 
   public ClusterScheduler(
       MPPQueryContext queryContext,
@@ -75,12 +75,18 @@ public class ClusterScheduler implements IScheduler {
     this.dispatcher =
         new FragmentInstanceDispatcherImpl(
             queryType, executor, writeOperationExecutor, internalServiceClientManager);
-    this.stateTracker =
-        new FixedRateFragInsStateTracker(
-            stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
-    this.queryTerminator =
-        new SimpleQueryTerminator(
-            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
+    if (queryType == QueryType.READ) {
+      this.stateTracker =
+          new FixedRateFragInsStateTracker(
+              stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+      this.queryTerminator =
+          new SimpleQueryTerminator(
+              executor,
+              scheduledExecutor,
+              queryContext.getQueryId(),
+              instances,
+              internalServiceClientManager);
+    }
   }
 
   @Override
@@ -132,9 +138,13 @@ public class ClusterScheduler implements IScheduler {
     // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
     // practice ?
     dispatcher.abort();
-    stateTracker.abort();
+    if (stateTracker != null) {
+      stateTracker.abort();
+    }
     // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
-    queryTerminator.terminate();
+    if (queryTerminator != null) {
+      queryTerminator.terminate();
+    }
   }
 
   @Override

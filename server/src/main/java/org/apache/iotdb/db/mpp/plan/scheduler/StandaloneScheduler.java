@@ -91,7 +91,11 @@ public class StandaloneScheduler implements IScheduler {
             stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
     this.queryTerminator =
         new SimpleQueryTerminator(
-            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
+            executor,
+            scheduledExecutor,
+            queryContext.getQueryId(),
+            instances,
+            internalServiceClientManager);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
