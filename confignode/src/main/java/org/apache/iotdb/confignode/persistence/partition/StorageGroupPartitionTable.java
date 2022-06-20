@@ -256,30 +256,19 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Thread-safely get SchemaPartition within the specific StorageGroup TODO: Remove mapping process
+   * Thread-safely get SchemaPartition within the specific StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots
    * @param schemaPartition Where the results are stored
    * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
   public boolean getSchemaPartition(
-      List<TSeriesPartitionSlot> partitionSlots,
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaPartition) {
-    // Get RegionIds
-    SchemaPartitionTable regionIds = new SchemaPartitionTable();
-    boolean result = schemaPartitionTable.getSchemaPartition(partitionSlots, regionIds);
-    // Map to RegionReplicaSets
-    regionIds
-        .getSchemaPartitionMap()
-        .forEach(
-            (seriesPartitionSlot, consensusGroupId) ->
-                schemaPartition.put(
-                    seriesPartitionSlot, regionInfoMap.get(consensusGroupId).getReplicaSet()));
-    return result;
+      List<TSeriesPartitionSlot> partitionSlots, SchemaPartitionTable schemaPartition) {
+    return schemaPartitionTable.getSchemaPartition(partitionSlots, schemaPartition);
   }
 
   /**
-   * Thread-safely get DataPartition within the specific StorageGroup TODO: Remove mapping process
+   * Thread-safely get DataPartition within the specific StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartition Where the results are stored
@@ -287,32 +276,8 @@ public class StorageGroupPartitionTable {
    */
   public boolean getDataPartition(
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dataPartition) {
-    // Get RegionIds
-    DataPartitionTable regionIds = new DataPartitionTable();
-    boolean result = dataPartitionTable.getDataPartition(partitionSlots, regionIds);
-    // Map to RegionReplicaSets
-    regionIds
-        .getDataPartitionMap()
-        .forEach(
-            ((seriesPartitionSlot, seriesPartition) -> {
-              dataPartition.put(seriesPartitionSlot, new ConcurrentHashMap<>());
-              seriesPartition
-                  .getSeriesPartitionMap()
-                  .forEach(
-                      ((timePartitionSlot, consensusGroupIds) -> {
-                        dataPartition
-                            .get(seriesPartitionSlot)
-                            .put(timePartitionSlot, new Vector<>());
-                        consensusGroupIds.forEach(
-                            consensusGroupId ->
-                                dataPartition
-                                    .get(seriesPartitionSlot)
-                                    .get(timePartitionSlot)
-                                    .add(regionInfoMap.get(consensusGroupId).getReplicaSet()));
-                      }));
-            }));
-    return result;
+      DataPartitionTable dataPartition) {
+    return dataPartitionTable.getDataPartition(partitionSlots, dataPartition);
   }
 
   /**
