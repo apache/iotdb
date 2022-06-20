@@ -64,18 +64,16 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
     SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
+    List<PartialPath> pathPatterns = patternTree.getAllPathPatterns();
     try {
-      for (PartialPath path : partialPathList) {
-        List<PartialPath> storageGroups = localConfigNode.getBelongedStorageGroups(path);
+      for (PartialPath pathPattern : pathPatterns) {
+        List<PartialPath> storageGroups = localConfigNode.getBelongedStorageGroups(pathPattern);
         for (PartialPath storageGroupPath : storageGroups) {
-          String storageGroup = storageGroupPath.getFullPath();
-          storageGroupSet.add(storageGroup);
+          storageGroupSet.add(storageGroupPath.getFullPath());
           SchemaRegionId schemaRegionId =
               localConfigNode.getBelongedSchemaRegionId(storageGroupPath);
           ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-          schemaTree.appendMeasurementPaths(
-              schemaRegion.getMeasurementPaths(storageGroupPath, true));
+          schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(pathPattern, false));
         }
       }
     } catch (MetadataException e) {
@@ -88,26 +86,6 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
     return fetchSchema(patternTree);
-  }
-
-  private SchemaTree fetchSchemaForWrite(PathPatternTree patternTree) {
-    patternTree.constructTree();
-    Set<String> storageGroupSet = new HashSet<>();
-    SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
-    try {
-      for (PartialPath path : partialPathList) {
-        String storageGroup = localConfigNode.getBelongedStorageGroup(path).getFullPath();
-        storageGroupSet.add(storageGroup);
-        SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(path);
-        ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-        schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
-      }
-    } catch (MetadataException e) {
-      throw new RuntimeException(e);
-    }
-    schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
-    return schemaTree;
   }
 
   @Override
@@ -127,12 +105,12 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+      fetchedSchemaTree = fetchSchema(patternTree);
       schemaTree.mergeSchemaTree(fetchedSchemaTree);
       return schemaTree;
     }
 
-    fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+    fetchedSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
     SchemaTree missingSchemaTree =
@@ -165,12 +143,12 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+      fetchedSchemaTree = fetchSchema(patternTree);
       schemaTree.mergeSchemaTree(fetchedSchemaTree);
       return schemaTree;
     }
 
-    fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+    fetchedSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
     SchemaTree missingSchemaTree;
