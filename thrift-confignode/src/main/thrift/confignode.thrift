@@ -252,6 +252,7 @@ service ConfigIService {
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
   /* Show Cluster */
+
   TClusterNodeInfos getAllClusterNodeInfos()
 
   /* StorageGroup */
@@ -273,6 +274,12 @@ service ConfigIService {
   TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
 
   TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
+
+  /* Region */
+
+  TShowRegionResp showRegion(TShowRegionReq req)
+
+  common.TRegionCache getRegionCache()
 
   /* Schema */
 
@@ -315,12 +322,5 @@ service ConfigIService {
   /* Flush */
 
   common.TSStatus flush(common.TFlushReq req)
-
-  /* Show Region */
-
-  TShowRegionResp showRegion(TShowRegionReq req)
-
-  common.TRegionCache getRegionCache()
-
 }
 

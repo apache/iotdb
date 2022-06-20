@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -37,7 +38,10 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -152,37 +156,45 @@ public interface Manager {
   /**
    * Get SchemaPartition
    *
-   * @return SchemaPartitionDataSet
+   * @return TSchemaPartitionResp
    */
-  DataSet getSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionResp getSchemaPartition(PathPatternTree patternTree);
+
+  /**
+   * Get latest RegionCache
+   *
+   * @return Map<TConsensusGroupId, TRegionReplicaSet>
+   */
+  TRegionCache getRegionCache();
 
   /**
    * Get or create SchemaPartition
    *
-   * @return SchemaPartitionDataSet
+   * @return TSchemaPartitionResp
    */
-  DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionResp getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
    * create SchemaNodeManagementPartition for child paths node management
    *
-   * @return SchemaNodeManagementPartitionDataSet
+   * @return TSchemaNodeManagementResp
    */
-  DataSet getNodePathsPartition(PartialPath partialPath, Integer level);
+  TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level);
 
   /**
    * Get DataPartition
    *
-   * @return DataPartitionDataSet
+   * @return TDataPartitionResp
    */
-  DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq);
+  TDataPartitionResp getDataPartition(GetDataPartitionReq getDataPartitionReq);
 
   /**
    * Get or create DataPartition
    *
-   * @return DataPartitionDataSet
+   * @return TDataPartitionResp
    */
-  DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
+  TDataPartitionResp getOrCreateDataPartition(
+      GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
 
   /**
    * Operate Permission
