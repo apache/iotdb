@@ -184,8 +184,10 @@ public abstract class Driver implements IDriver {
       if (!blocked.isDone()) {
         return blocked;
       }
+      LOGGER.info("root.hasNext()={}", root.hasNext());
       if (root.hasNext()) {
         TsBlock tsBlock = root.next();
+        LOGGER.info("got a TsBlock {}", tsBlock);
         if (tsBlock != null && !tsBlock.isEmpty()) {
           sinkHandle.send(Collections.singletonList(tsBlock));
         }

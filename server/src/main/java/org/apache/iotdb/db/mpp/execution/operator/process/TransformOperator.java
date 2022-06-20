@@ -74,7 +74,6 @@ public class TransformOperator implements ProcessOperator {
   protected List<TSDataType> outputDataTypes;
 
   protected TimeSelector timeHeap;
-  protected boolean isFirstIteration;
   protected boolean[] shouldIterateReadersToNextValid;
 
   public TransformOperator(
@@ -96,7 +95,6 @@ public class TransformOperator implements ProcessOperator {
     initTransformers(inputLocations, outputExpressions, typeProvider);
 
     timeHeap = new TimeSelector(transformers.length << 1, true);
-    isFirstIteration = true;
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
   }
@@ -175,16 +173,13 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public final boolean hasNext() {
-    if (isFirstIteration) {
-      try {
-        if (iterateAllColumnsToNextValid() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
-          return true;
-        }
-      } catch (Exception e) {
-        LOGGER.error("TransformOperator#hasNext()", e);
-        throw new RuntimeException(e);
+    try {
+      if (iterateAllColumnsToNextValid() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+        return true;
       }
-      isFirstIteration = false;
+    } catch (Exception e) {
+      LOGGER.error("TransformOperator#hasNext()", e);
+      throw new RuntimeException(e);
     }
 
     return !timeHeap.isEmpty();
@@ -192,9 +187,6 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    if (isFirstIteration) {
-      return null;
-    }
 
     try {
       YieldableState yieldableState = iterateAllColumnsToNextValid();
@@ -324,6 +316,10 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
+    LOGGER.info(
+        "inputOperator.isFinished() = {}, timeHeap.isEmpty() = {}",
+        inputOperator.isFinished(),
+        timeHeap.isEmpty());
     return inputOperator.isFinished() && timeHeap.isEmpty();
   }
 

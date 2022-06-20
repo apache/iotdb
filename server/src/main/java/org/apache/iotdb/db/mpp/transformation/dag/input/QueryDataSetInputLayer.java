@@ -35,10 +35,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.List;
 
 public class QueryDataSetInputLayer {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueryDataSetInputLayer.class);
 
   private IUDFInputDataSet queryDataSet;
   private TSDataType[] dataTypes;
@@ -172,6 +177,7 @@ public class QueryDataSetInputLayer {
       YieldableState yieldableState;
       while (YieldableState.YIELDABLE.equals(
           yieldableState = queryDataSet.canYieldNextRowInObjects())) {
+        LOGGER.info("yieldableState={}", yieldableState);
         Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
         rowRecordList.put(rowRecordCandidate);
         if (rowRecordCandidate[columnIndex] != null

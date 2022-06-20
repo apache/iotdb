@@ -98,9 +98,6 @@ public class FilterOperator extends TransformOperator {
 
   @Override
   public TsBlock next() {
-    if (isFirstIteration) {
-      return null;
-    }
 
     try {
       YieldableState yieldableState = iterateAllColumnsToNextValid();
