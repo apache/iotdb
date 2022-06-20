@@ -218,6 +218,10 @@ public class TSServiceImpl implements TSIService.Iface {
     public TSExecuteStatementResp call() throws Exception {
       String username = SESSION_MANAGER.getUsername(sessionId);
       plan.setLoginUserName(username);
+      TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
+      if (status != null) {
+        return new TSExecuteStatementResp(status);
+      }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Query: {}", sessionId, statement);
