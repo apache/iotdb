@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -158,6 +159,13 @@ public interface Manager {
    * @return TSchemaPartitionResp
    */
   TSchemaPartitionResp getSchemaPartition(PathPatternTree patternTree);
+
+  /**
+   * Get latest RegionCache
+   *
+   * @return Map<TConsensusGroupId, TRegionReplicaSet>
+   */
+  TRegionCache getRegionCache();
 
   /**
    * Get or create SchemaPartition

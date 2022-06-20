@@ -87,6 +87,11 @@ struct TRegionLocation {
   7: optional string status;
 }
 
+struct TRegionCache {
+  1: required i64 timestamp
+  2: required map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap
+}
+
 struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
 }
