@@ -86,7 +86,7 @@ public class ClusterScheduler implements IScheduler {
   @Override
   public void start() {
     stateMachine.transitionToDispatching();
-    logger.info("transit to DISPATCHING");
+    //    logger.info("transit to DISPATCHING");
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
@@ -116,7 +116,7 @@ public class ClusterScheduler implements IScheduler {
     // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
     // QueryState to Running
     stateMachine.transitionToRunning();
-    logger.info("transit to RUNNING");
+    //    logger.info("transit to RUNNING");
     instances.forEach(
         instance -> {
           stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);

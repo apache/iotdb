@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
 import org.apache.iotdb.db.mpp.execution.datatransfer.ISourceHandle;
+import org.apache.iotdb.db.mpp.plan.StepTracker;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -46,7 +47,6 @@ import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
@@ -113,6 +113,8 @@ public class QueryExecution implements IQueryExecution {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
+  private long queryExecutionStartTime;
+
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
@@ -122,12 +124,15 @@ public class QueryExecution implements IQueryExecution {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+    this.queryExecutionStartTime = System.nanoTime();
     this.executor = executor;
     this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
     this.planOptimizers = new ArrayList<>();
+    long startTime = System.nanoTime();
     this.analysis = analyze(statement, context, partitionFetcher, schemaFetcher);
+    StepTracker.trace("analyze", startTime, System.nanoTime());
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
@@ -189,52 +194,59 @@ public class QueryExecution implements IQueryExecution {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     // initialize the variable `analysis`
-    logger.info("start to analyze query");
+    //    logger.info("start to analyze query");
     return new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
   }
 
   private void schedule() {
-    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
-    this.scheduler =
-        config.isClusterMode()
-            ? new ClusterScheduler(
-                context,
-                stateMachine,
-                distributedPlan.getInstances(),
-                context.getQueryType(),
-                executor,
-                writeOperationExecutor,
-                scheduledExecutor,
-                internalServiceClientManager)
-            : new StandaloneScheduler(
-                context,
-                stateMachine,
-                distributedPlan.getInstances(),
-                context.getQueryType(),
-                executor,
-                scheduledExecutor,
-                internalServiceClientManager);
-    this.scheduler.start();
+    long startTime = System.nanoTime();
+    try {
+      // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+      this.scheduler =
+          config.isClusterMode()
+              ? new ClusterScheduler(
+                  context,
+                  stateMachine,
+                  distributedPlan.getInstances(),
+                  context.getQueryType(),
+                  executor,
+                  writeOperationExecutor,
+                  scheduledExecutor,
+                  internalServiceClientManager)
+              : new StandaloneScheduler(
+                  context,
+                  stateMachine,
+                  distributedPlan.getInstances(),
+                  context.getQueryType(),
+                  executor,
+                  scheduledExecutor,
+                  internalServiceClientManager);
+      this.scheduler.start();
+    } finally {
+      StepTracker.trace("dispatch", startTime, System.nanoTime());
+    }
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    logger.info("do logical plan...");
-    LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
-    this.logicalPlan = planner.plan(this.analysis);
-    logger.info(
-        "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+    long startTime = System.nanoTime();
+    try {
+      LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
+      this.logicalPlan = planner.plan(this.analysis);
+    } finally {
+      StepTracker.trace("doLogicalPlan", startTime, System.nanoTime());
+    }
   }
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
-    logger.info("do distribution plan...");
-    DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
-    this.distributedPlan = planner.planFragments();
-    logger.info(
-        "distribution plan done. Fragment instance count is {}, details is: \n {}",
-        distributedPlan.getInstances().size(),
-        printFragmentInstances(distributedPlan.getInstances()));
+    long startTime = System.nanoTime();
+    try {
+      DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
+      this.distributedPlan = planner.planFragments();
+    } finally {
+      StepTracker.trace("doDistributionPlan", startTime, System.nanoTime());
+    }
   }
 
   private String printFragmentInstances(List<FragmentInstance> instances) {
@@ -332,28 +344,36 @@ public class QueryExecution implements IQueryExecution {
    * @return ExecutionStatus. Contains the QueryId and the TSStatus.
    */
   public ExecutionResult getStatus() {
-    // Although we monitor the state to transition to RUNNING, the future will return if any
-    // Terminated state is triggered
-    SettableFuture<QueryState> future = SettableFuture.create();
-    stateMachine.addStateChangeListener(
-        state -> {
-          if (state == QueryState.RUNNING || state.isDone()) {
-            future.set(state);
-          }
-        });
-
+    long startTime = System.nanoTime();
     try {
-      QueryState state = future.get();
-      // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
-      return getExecutionResult(state);
-    } catch (InterruptedException | ExecutionException e) {
-      // TODO: (xingtanzjr) use more accurate error handling
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
+      // Although we monitor the state to transition to RUNNING, the future will return if any
+      // Terminated state is triggered
+      try {
+        SettableFuture<QueryState> future = SettableFuture.create();
+        stateMachine.addStateChangeListener(
+            state -> {
+              if (state == QueryState.RUNNING || state.isDone()) {
+                future.set(state);
+              }
+            });
+        long startTimeGet = System.nanoTime();
+        QueryState state = future.get();
+        StepTracker.trace("get()", startTimeGet, System.nanoTime());
+        // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
+        return getExecutionResult(state);
+      } catch (InterruptedException | ExecutionException e) {
+        // TODO: (xingtanzjr) use more accurate error handling
+        if (e instanceof InterruptedException) {
+          Thread.currentThread().interrupt();
+        }
+        return new ExecutionResult(
+            context.getQueryId(),
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()));
       }
-      return new ExecutionResult(
-          context.getQueryId(),
-          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()));
+    } finally {
+      StepTracker.trace("getStatus", startTime, System.nanoTime());
+      StepTracker.trace("QueryExecutionLifeCycle", this.queryExecutionStartTime, System.nanoTime());
     }
   }
 
