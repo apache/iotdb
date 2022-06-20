@@ -264,6 +264,10 @@ public class TransformOperator implements ProcessOperator {
       LayerPointReader reader, ColumnBuilder writer, long currentTime, int readerIndex)
       throws QueryProcessException, IOException {
     final YieldableState yieldableState = reader.yield();
+    if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+      writer.appendNull();
+      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    }
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;
     }
