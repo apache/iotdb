@@ -241,6 +241,12 @@ struct TShowRegionResp {
   2: optional list<common.TRegionLocation> regionInfoList;
 }
 
+// get region cache
+struct TRegionCacheResp {
+  1: required common.TSStatus status
+  2: optional common.TRegionCache regionCache
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -279,7 +285,9 @@ service ConfigIService {
 
   TShowRegionResp showRegion(TShowRegionReq req)
 
-  common.TRegionCache getRegionCache()
+  /* Get Region Cache */
+
+  TRegionCacheResp getRegionCache()
 
   /* Schema */
 

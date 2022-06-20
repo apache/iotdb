@@ -22,7 +22,6 @@ package org.apache.iotdb.db.client;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
@@ -51,6 +50,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionCacheResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -399,11 +399,6 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
-  public TRegionCache getRegionCache() throws TException {
-    throw new TException(MSG_UNSUPPORTED_INTERFACE);
-  }
-
-  @Override
   public TSStatus setTTL(TSetTTLReq setTTLReq) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -662,6 +657,22 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
         TShowRegionResp showRegionResp = client.showRegion(req);
         if (!updateConfigNodeLeader(showRegionResp.getStatus())) {
           return showRegionResp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TRegionCacheResp getRegionCache() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TRegionCacheResp regionCacheResp = client.getRegionCache();
+        if (!updateConfigNodeLeader(regionCacheResp.getStatus())) {
+          return regionCacheResp;
         }
       } catch (TException e) {
         configLeader = null;

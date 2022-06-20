@@ -113,8 +113,3 @@ struct TFlushReq{
    2: optional list<string> storageGroups
    3: optional i32 dataNodeId
 }
-
-struct TRegionCache {
-    1: required i64 timestamp
-    2: required map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap
-}
