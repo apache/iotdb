@@ -1387,6 +1387,7 @@ public class DataRegion {
       } else {
         tsFileProcessor = workUnsequenceTsFileProcessors.get(timeRangeId);
       }
+      // only submit when tsFileProcessor exists and memTables are same
       boolean shouldSubmit =
           tsFileProcessor != null && tsFileProcessor.getWorkMemTable() == memTable;
       if (shouldSubmit) {
