@@ -27,7 +27,9 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.slf4j.Logger;
@@ -112,6 +114,33 @@ public class AddConfigNodeProcedure
         return true;
     }
     return false;
+  }
+
+  @Override
+  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    if (configNodeProcedureEnv.getAddConfigNodeLock().tryLock()) {
+      LOG.info("{} acquire lock.", getProcId());
+      return ProcedureLockState.LOCK_ACQUIRED;
+    }
+    SimpleProcedureScheduler simpleProcedureScheduler =
+        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
+    simpleProcedureScheduler.addWaiting(this);
+    LOG.info("{} wait for lock.", getProcId());
+    return ProcedureLockState.LOCK_EVENT_WAIT;
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    LOG.info("{} release lock.", getProcId());
+    configNodeProcedureEnv.getAddConfigNodeLock().unlock();
+    SimpleProcedureScheduler simpleProcedureScheduler =
+        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
+    simpleProcedureScheduler.releaseWaiting();
+  }
+
+  @Override
+  protected boolean holdLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    return configNodeProcedureEnv.getAddConfigNodeLock().isHeldByCurrentThread();
   }
 
   @Override
