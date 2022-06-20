@@ -40,7 +40,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
@@ -48,7 +47,8 @@ import static org.junit.Assert.fail;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = LoggerFactory.getLogger(AbstractEnv.class);
-  private final int NODE_START_TIMEOUT = 10;
+  private final int NODE_START_TIMEOUT = 100;
+  private final int PROBE_TIMEOUT = 2;
   protected List<ConfigNodeWrapper> configNodeWrapperList;
   protected List<DataNodeWrapper> dataNodeWrapperList;
   private final Random rand = new Random();
@@ -159,53 +159,34 @@ public abstract class AbstractEnv implements BaseEnv {
     return "IT";
   }
 
-  public void testWorking() throws InterruptedException {
+  public void testWorking() {
     List<String> endpoints =
         dataNodeWrapperList.stream()
-            .map(AbstractNodeWrapper::getIpAndPortString)
+            .map(DataNodeWrapper::getIpAndPortString)
             .collect(Collectors.toList());
-    boolean[] success = new boolean[dataNodeWrapperList.size()];
-    Exception[] exceptions = new Exception[dataNodeWrapperList.size()];
-    final int probeTimeout = 5;
-    AtomicInteger successCount = new AtomicInteger(0);
-    for (int counter = 0; counter < 30; counter++) {
-      RequestDelegate<Void> testDelegate = new ParallelRequestDelegate<>(endpoints, probeTimeout);
-      for (int i = 0; i < dataNodeWrapperList.size(); i++) {
-        final int idx = i;
-        final String dataNodeEndpoint = dataNodeWrapperList.get(i).getIpAndPortString();
-        testDelegate.addRequest(
-            () -> {
-              if (!success[idx]) {
-                try (Connection ignored = getConnection(dataNodeEndpoint, probeTimeout)) {
-                  success[idx] = true;
-                  successCount.incrementAndGet();
-                } catch (Exception e) {
-                  exceptions[idx] = e;
-                  logger.debug("Open connection of {} failed", dataNodeEndpoint, e);
-                }
+    RequestDelegate<Void> testDelegate =
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+    for (DataNodeWrapper dataNode : dataNodeWrapperList) {
+      final String dataNodeEndpoint = dataNode.getIpAndPortString();
+      testDelegate.addRequest(
+          () -> {
+            Exception lastException = null;
+            for (int i = 0; i < 30; i++) {
+              try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT)) {
+                return null;
+              } catch (Exception e) {
+                lastException = e;
+                TimeUnit.SECONDS.sleep(1L);
               }
-              return null;
-            });
-      }
-      try {
-        testDelegate.requestAll();
-      } catch (SQLException e) {
-        // It will never be thrown as it has already caught in the request.
-      }
-      if (successCount.get() == dataNodeWrapperList.size()) {
-        logger.info("The whole cluster is ready.");
-        return;
-      }
-      TimeUnit.SECONDS.sleep(1);
+            }
+            throw lastException;
+          });
     }
-    // The cluster is not ready after 30 times to try
-    for (int i = 0; i < dataNodeWrapperList.size(); i++) {
-      if (!success[i] && exceptions[i] != null) {
-        logger.error(
-            "Connect to {} failed", dataNodeWrapperList.get(i).getIpAndPortString(), exceptions[i]);
-      }
+    try {
+      testDelegate.requestAll();
+    } catch (Exception e) {
+      fail("After 30 times retry, the cluster can't work!");
     }
-    fail("After 30 times retry, the cluster can't work!");
   }
 
   @Override
