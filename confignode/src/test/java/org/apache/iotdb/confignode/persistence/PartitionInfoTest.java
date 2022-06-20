@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
@@ -100,7 +100,7 @@ public class PartitionInfoTest {
     partitionInfo.setStorageGroup(new SetStorageGroupReq(new TStorageGroupSchema("root.test")));
 
     // Create a SchemaRegion
-    CreateRegionGroupsReq createRegionGroupsReq = new CreateRegionGroupsReq();
+    CreateRegionsReq createRegionGroupsReq = new CreateRegionsReq();
     TRegionReplicaSet schemaRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.SchemaPartition.getFlag(),
@@ -110,7 +110,7 @@ public class PartitionInfoTest {
     partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a DataRegion
-    createRegionGroupsReq = new CreateRegionGroupsReq();
+    createRegionGroupsReq = new CreateRegionsReq();
     TRegionReplicaSet dataRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.DataPartition.getFlag(),
