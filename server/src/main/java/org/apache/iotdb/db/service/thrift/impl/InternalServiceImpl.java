@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -334,6 +335,12 @@ public class InternalServiceImpl implements InternalService.Iface {
       }
     }
     return resp;
+  }
+
+  @Override
+  public TSStatus updateRegionCache(TRegionCache regionCache) throws TException {
+    ClusterPartitionFetcher.getInstance().updateRegionCache(regionCache);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   private long getMemory(String gaugeName) {

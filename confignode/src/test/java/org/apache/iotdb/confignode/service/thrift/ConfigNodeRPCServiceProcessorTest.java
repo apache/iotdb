@@ -388,7 +388,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertEquals(
         TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(),
         schemaPartitionResp.getStatus().getCode());
-    Assert.assertNull(schemaPartitionResp.getSchemaRegionMap());
+    Assert.assertNull(schemaPartitionResp.getNewSchemaRegionMap());
 
     // register DataNodes
     registerDataNodes();

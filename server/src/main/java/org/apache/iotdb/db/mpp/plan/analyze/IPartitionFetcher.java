@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -49,6 +50,8 @@ public interface IPartitionFetcher {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
+
+  void updateRegionCache(TRegionCache regionCache);
 
   void invalidAllCache();
 }

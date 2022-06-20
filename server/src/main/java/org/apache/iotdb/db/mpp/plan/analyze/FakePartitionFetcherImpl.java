@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -213,6 +214,9 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
     return null;
   }
+
+  @Override
+  public void updateRegionCache(TRegionCache regionCache) {}
 
   @Override
   public void invalidAllCache() {}

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -128,6 +129,9 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
   }
+
+  @Override
+  public void updateRegionCache(TRegionCache regionCache) {}
 
   @Override
   public void invalidAllCache() {}

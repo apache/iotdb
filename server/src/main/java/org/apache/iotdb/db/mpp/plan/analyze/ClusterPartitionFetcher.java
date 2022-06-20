@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -52,8 +53,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -68,7 +67,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
-  private static final Logger logger = LoggerFactory.getLogger(ClusterPartitionFetcher.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
 
@@ -249,6 +247,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
+  }
+
+  @Override
+  public void updateRegionCache(TRegionCache regionCache) {
+    partitionCache.updateRegionCache(regionCache);
   }
 
   @Override
