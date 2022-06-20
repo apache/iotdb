@@ -159,8 +159,8 @@ public class PartitionInfoTest {
             testFlag.SchemaPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-    createRegionsReq.addRegion("root.test", schemaRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionsReq.addRegionGroup("root.test", schemaRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionsReq);
 
     // Create a DataRegion
     createRegionsReq = new CreateRegionsReq();
@@ -169,8 +169,8 @@ public class PartitionInfoTest {
             testFlag.DataPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-    createRegionsReq.addRegion("root.test", dataRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionsReq.addRegionGroup("root.test", dataRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionsReq);
 
     GetRegionLocationsReq regionReq = new GetRegionLocationsReq();
     regionReq.setRegionType(null);
