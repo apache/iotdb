@@ -34,10 +34,11 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.apache.iotdb.db.it.query.TestUtils.assertResultSetEqual;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -82,9 +83,7 @@ public class IoTDBAliasIT {
         "INSERT INTO root.sg2.d2(timestamp,s1,s2,s3) values(400, 73.4, 26.3, 83.0)"
       };
 
-  private static final String COLUMN_TIME = "Time";
-  private static final String COLUMN_TIMESERIES = "timeseries";
-  private static final String COLUMN_VALUE = "value";
+  private static final String LAST_QUERY_HEADER = "Time,timeseries,value,dataType,";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -112,214 +111,68 @@ public class IoTDBAliasIT {
   // ---------------------------------- Use timeseries alias ---------------------------------
 
   @Test
-  public void selectWithAliasTest() {
+  public void rawDataQueryAliasTest() {
+    String expectedHeader = "Time,root.sg.d1.speed,root.sg.d1.temperature,";
     String[] retArray =
         new String[] {"100,10.1,20.7,", "200,15.2,22.9,", "300,30.3,25.1,", "400,50.4,28.3,"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select speed, temperature from root.sg.d1")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,root.sg.d1.speed,root.sg.d1.temperature,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Ignore
-  @Test
-  public void lastSelectWithAliasTest() {
-    String[] retArray =
-        new String[] {"400,root.sg.d1.speed,50.4", "400,root.sg.d1.temperature,28.3"};
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select last speed, temperature from root.sg.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(COLUMN_TIME)
-                  + ","
-                  + resultSet.getString(COLUMN_TIMESERIES)
-                  + ","
-                  + resultSet.getString(COLUMN_VALUE);
-          assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest("select speed, temperature from root.sg.d1", expectedHeader, retArray);
   }
 
   @Test
-  public void selectDuplicatedPathsWithAliasTest() {
+  public void rawDataQueryWithDuplicatedColumnsAliasTest() {
+    String expectedHeader = "Time,root.sg.d1.speed,root.sg.d1.speed,root.sg.d1.s2,";
     String[] retArray =
         new String[] {
           "100,10.1,10.1,20.7,", "200,15.2,15.2,22.9,", "300,30.3,30.3,25.1,", "400,50.4,50.4,28.3,"
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select speed, speed, s2 from root.sg.d1")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,root.sg.d1.speed,root.sg.d1.speed,root.sg.d1.s2,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(4, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest("select speed, speed, s2 from root.sg.d1", expectedHeader, retArray);
   }
 
-  @Ignore
   @Test
-  public void lastSelectDuplicatedPathsWithAliasTest() {
+  @Ignore // TODO: remove @Ignore after support alias in last query
+  public void lastQueryAliasTest() {
+    String[] retArray =
+        new String[] {"400,root.sg.d1.speed,50.4", "400,root.sg.d1.temperature,28.3"};
+
+    resultSetEqualTest(
+        "select last speed, temperature from root.sg.d1", LAST_QUERY_HEADER, retArray);
+  }
+
+  @Test
+  @Ignore // TODO: remove @Ignore after support alias in last query
+  public void lastQueryWithDuplicatedColumnsAliasTest() {
     String[] retArray =
         new String[] {
           "400,root.sg.d1.speed,50.4", "400,root.sg.d1.s1,50.4", "400,root.sg.d1.s2,28.3"
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select last speed, s1, speed, s2 from root.sg.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(COLUMN_TIME)
-                  + ","
-                  + resultSet.getString(COLUMN_TIMESERIES)
-                  + ","
-                  + resultSet.getString(COLUMN_VALUE);
-          assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select last speed, s1, speed, s2 from root.sg.d1", LAST_QUERY_HEADER, retArray);
   }
 
   @Test
-  public void selectAggregationWithAliasTest() {
+  public void aggregationQueryAliasTest() {
+    String expectedHeader =
+        "count(root.sg.d1.speed),count(root.sg.d2.speed),max_value(root.sg.d1.temperature),"
+            + "max_value(root.sg.d2.temperature),";
     String[] retArray = new String[] {"4,4,28.3,26.3,"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select count(speed), max_value(temperature) from root.sg.*")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals(
-            "count(root.sg.d1.speed),count(root.sg.d2.speed),"
-                + "max_value(root.sg.d1.temperature),max_value(root.sg.d2.temperature),",
-            header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select count(speed), max_value(temperature) from root.sg.*", expectedHeader, retArray);
   }
 
   @Test
-  public void AlterAliasTest() {
-    String ret = "root.sg.d2.s3,powerNew,root.sg,FLOAT,RLE,SNAPPY";
-
+  public void alterAliasTest() {
     String[] retArray = {"100,80.0,", "200,81.0,", "300,82.0,", "400,83.0,"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
       statement.execute("ALTER timeseries root.sg.d2.s3 UPSERT ALIAS='powerNew'");
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.d2.s3")) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString("timeseries")
-                  + ","
-                  + resultSet.getString("alias")
-                  + ","
-                  + resultSet.getString("storage group")
-                  + ","
-                  + resultSet.getString("dataType")
-                  + ","
-                  + resultSet.getString("encoding")
-                  + ","
-                  + resultSet.getString("compression");
-          assertEquals(ret, ans);
-        }
-      }
 
       try (ResultSet resultSet = statement.executeQuery("select powerNew from root.sg.d2")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,root.sg.d2.powerNew,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
+        assertResultSetEqual(resultSet, "Time,root.sg.d2.powerNew,", retArray);
       }
     } catch (Exception e) {
       fail(e.getMessage());
@@ -331,216 +184,78 @@ public class IoTDBAliasIT {
 
   @Test
   public void selectWithAsTest() {
+    String expectedHeader = "Time,speed,temperature,";
     String[] retArray =
         new String[] {"100,10.1,20.7,", "200,15.2,22.9,", "300,30.3,25.1,", "400,50.4,28.3,"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select s1 as speed, s2 as temperature from root.sg2.d1")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,speed,temperature,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select s1 as speed, s2 as temperature from root.sg2.d1", expectedHeader, retArray);
   }
 
-  /** Test some time series use alias while others stay unchanged. */
   @Test
   public void selectWithAsMixedTest() {
+    String expectedHeader = "Time,speed,root.sg2.d1.s2,";
     String[] retArray =
         new String[] {"100,10.1,20.7,", "200,15.2,22.9,", "300,30.3,25.1,", "400,50.4,28.3,"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select s1 as speed, s2 from root.sg2.d1")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,speed,root.sg2.d1.s2,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest("select s1 as speed, s2 from root.sg2.d1", expectedHeader, retArray);
   }
 
-  /**
-   * When one alias is used but wildcard is corresponding to multi time series, it should throw one
-   * exception.
-   */
   @Test
   public void selectWithAsFailTest() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
-      statement.executeQuery("select s1 as speed from root.sg2.*");
-      fail();
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getCause().getCause().getMessage(),
-          e.getCause()
-              .getCause()
-              .getMessage()
-              .contains("alias 'speed' can only be matched with one time series"));
-    }
+    assertTestFail(
+        "select s1 as speed from root.sg2.*",
+        "alias 'speed' can only be matched with one time series");
   }
 
-  /** When wild is exactly corresponding to one time series, the result will be correct. */
   @Test
   public void selectWithAsSingleTest() {
+    String expectedHeader = "Time,power,";
     String[] retArray = new String[] {"100,80.0,", "200,81.0,", "300,82.0,", "400,83.0,"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // root.sg.*.s3 matches root.sg.d2.s3 exactly
-      try (ResultSet resultSet = statement.executeQuery("select s3 as power from root.sg2.*")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,power,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    // root.sg.*.s3 matches root.sg.d2.s3 exactly
+    resultSetEqualTest("select s3 as power from root.sg2.*", expectedHeader, retArray);
   }
 
   @Test
   public void aggregationWithAsTest() {
+    String expectedHeader = "s1_num,s2_max,";
     String[] retArray =
         new String[] {
           "4,28.3,",
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select count(s1) as s1_num, max_value(s2) as s2_max from root.sg2.d1")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("s1_num,s2_max,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select count(s1) as s1_num, max_value(s2) as s2_max from root.sg2.d1",
+        expectedHeader,
+        retArray);
   }
 
   @Test
   public void aggregationWithAsFailTest() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
-      statement.executeQuery("select count(s1) as s1_num from root.sg2.*");
-      fail();
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getCause().getCause().getMessage(),
-          e.getCause()
-              .getCause()
-              .getMessage()
-              .contains("alias 's1_num' can only be matched with one time series"));
-    }
+    // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
+    assertTestFail(
+        "select count(s1) as s1_num from root.sg2.*",
+        "alias 's1_num' can only be matched with one time series");
   }
 
   @Test
   public void groupByWithAsTest() {
+    String expectedHeader = "Time,s1_num,";
     String[] retArray =
         new String[] {
           "100,1,", "180,1,", "260,1,", "340,1,", "420,0,",
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select count(s1) as 's1_num' from root.sg2.d1 group by ([100,500), 80ms)")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,s1_num,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select count(s1) as 's1_num' from root.sg2.d1 group by ([100,500), 80ms)",
+        expectedHeader,
+        retArray);
   }
 
   @Test
   public void alignByDeviceWithAsTest() {
+    String expectedHeader = "Time,Device,speed,temperature,";
     String[] retArray =
         new String[] {
           "100,root.sg2.d1,10.1,20.7,",
@@ -549,37 +264,15 @@ public class IoTDBAliasIT {
           "400,root.sg2.d1,50.4,28.3,"
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select s1 as speed, s2 as temperature from root.sg2.d1 align by device")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,Device,speed,temperature,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select s1 as speed, s2 as temperature from root.sg2.d1 align by device",
+        expectedHeader,
+        retArray);
   }
 
   @Test
   public void alignByDeviceWithAsMixedTest() {
+    String expectedHeader = "Time,Device,speed,s2,";
     String[] retArray =
         new String[] {
           "100,root.sg2.d2,11.1,20.2,",
@@ -592,53 +285,21 @@ public class IoTDBAliasIT {
           "400,root.sg2.d1,50.4,28.3,"
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select s1 as speed, s2 from root.sg2.* align by device")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,Device,speed,s2,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select s1 as speed, s2 from root.sg2.* align by device", expectedHeader, retArray);
   }
 
   @Test
   public void alignByDeviceWithAsFailTest() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
-      statement.executeQuery("select * as speed from root.sg2.d1 align by device");
-      fail();
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getCause().getCause().getMessage(),
-          e.getCause()
-              .getCause()
-              .getMessage()
-              .contains("alias 'speed' can only be matched with one time series"));
-    }
+    // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
+    assertTestFail(
+        "select * as speed from root.sg2.d1 align by device",
+        "alias 'speed' can only be matched with one time series");
   }
 
   @Test
   public void alignByDeviceWithAsDuplicatedTest() {
+    String expectedHeader = "Time,Device,speed,s1,";
     String[] retArray =
         new String[] {
           "100,root.sg2.d1,10.1,10.1,",
@@ -647,133 +308,105 @@ public class IoTDBAliasIT {
           "400,root.sg2.d1,50.4,50.4,"
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select s1 as speed, s1 from root.sg2.d1 align by device")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,Device,speed,speed,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select s1 as speed, s1 from root.sg2.d1 align by device", expectedHeader, retArray);
   }
 
   @Test
   public void alignByDeviceWithAsAggregationTest() {
+    String expectedHeader = "Device,s1_num,count(s2),s3_num,";
     String[] retArray =
         new String[] {
           "root.sg2.d2,4,4,4,",
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg2.d2 align by device")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Device,s1_num,count(s2),s3_num,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest(
+        "select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg2.d2 align by device",
+        expectedHeader,
+        retArray);
   }
 
-  @Ignore
   @Test
+  @Ignore // TODO: remove @Ignore after support alias in last query
   public void lastWithAsTest() {
     String[] retArray = new String[] {"400,speed,50.4,FLOAT,", "400,root.sg2.d1.s2,28.3,FLOAT,"};
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery("select last s1 as speed, s2 from root.sg2.d1")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,timeseries,value,dataType,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    resultSetEqualTest("select last s1 as speed, s2 from root.sg2.d1", LAST_QUERY_HEADER, retArray);
   }
 
-  @Ignore
   @Test
+  @Ignore // TODO: remove @Ignore after support alias in last query
   public void lastWithAsDuplicatedTest() {
     String[] retArray =
         new String[] {
           "400,speed,50.4,FLOAT,", "400,root.sg2.d1.s1,50.4,FLOAT,", "400,temperature,28.3,FLOAT,"
         };
 
+    resultSetEqualTest(
+        "select last s1 as speed, s1, s2 as temperature from root.sg2.d1",
+        LAST_QUERY_HEADER,
+        retArray);
+  }
+
+  @Test
+  @Ignore // TODO: remove @Ignore after support alias in last query
+  public void lastWithAsFailTest() {
+    // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
+    assertTestFail(
+        "select last s1 as speed from root.sg2.*",
+        "alias 'speed' can only be matched with one time series");
+  }
+
+  @Test
+  @Ignore // TODO: remove @Ignore after support UDF
+  public void UDFAliasTest() {
+    List<String> sqls =
+        Arrays.asList(
+            "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1 WHERE time >= 1509466140000",
+            "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1",
+            "select -s1, -s1, sin(cos(tan(s1))) as a, sin(cos(tan(s1))), cos(s2), top_k(s1 + s1, 'k'='1') as b, cos(s2) from root.sg1.d1");
+    List<String> expectHeaders =
+        Arrays.asList(
+            "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
+            "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
+            "Time,-root.sg1.d1.s1,-root.sg1.d1.s1,a,sin(cos(tan(root.sg1.d1.s1))),cos(root.sg1.d1.s2),b,cos(root.sg1.d1.s2),");
+    List<String[]> retArrays =
+        Arrays.asList(
+            new String[] {},
+            new String[] {
+              "0,1,0.013387802193205699,0.5403023058681398,-2.0,",
+              "1,2,-0.5449592372801408,-0.4161468365471424,null,",
+              "2,3,0.8359477452180156,-0.9899924966004454,null,"
+            },
+            new String[] {
+              "0,1,1,0.013387802193205699,0.013387802193205699,0.5403023058681398,-2.0,0.5403023058681398,",
+              "1,2,2,-0.5449592372801408,-0.5449592372801408,-0.4161468365471424,null,-0.4161468365471424,",
+              "2,3,3,0.8359477452180156,0.8359477452180156,-0.9899924966004454,null,-0.9899924966004454,"
+            });
+
+    for (int i = 0; i < sqls.size(); i++) {
+      resultSetEqualTest(sqls.get(i), expectHeaders.get(i), retArrays.get(i));
+    }
+  }
+
+  @Test
+  @Ignore // TODO: remove @Ignore after support UDF
+  public void UDFAliasResultTest() {
+    String expectHeader = "Time,root.sg1.d1.s1,root.sg1.d1.s2,a,";
+    String[] retArray = {
+      "0,-1,1,0.0", "1,-2,2,0.0", "2,-3,3,0.0",
+    };
+
+    resultSetEqualTest("select s1, s2, sin(s1+s2) as a from root.sg1.d1", expectHeader, retArray);
+  }
+
+  // --------------------------------------- Utilities ---------------------------------------
+
+  public void resultSetEqualTest(String sql, String expectedHeader, String[] expectedRetArray) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select last s1 as speed, s1, s2 as temperature from root.sg2.d1")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,timeseries,value,dataType,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetArray);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -781,83 +414,13 @@ public class IoTDBAliasIT {
     }
   }
 
-  @Ignore
-  @Test
-  public void lastWithAsFailTest() {
+  public void assertTestFail(String sql, String errMsg) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
-      statement.executeQuery("select last s1 as speed from root.sg2.*");
+      statement.executeQuery(sql);
       fail();
     } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage().contains("alias 'speed' can only be matched with one time series"));
-    }
-  }
-
-  @Test
-  @Ignore
-  public void UDFAliasTest() {
-
-    String[] expect = {
-      "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
-      "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
-      "Time,-root.sg1.d1.s1,-root.sg1.d1.s1,a,sin(cos(tan(root.sg1.d1.s1))),cos(root.sg1.d1.s2),b,cos(root.sg1.d1.s2),"
-    };
-    String[] sqls = {
-      "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1 WHERE time >= 1509466140000",
-      "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1",
-      "select -s1, -s1, sin(cos(tan(s1))) as a, sin(cos(tan(s1))), cos(s2), top_k(s1 + s1, 'k'='1') as b, cos(s2) from root.sg1.d1"
-    };
-    int count = 2;
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      for (int index = 0; index < count; index++) {
-
-        try (ResultSet resultSet = statement.executeQuery(sqls[index])) {
-
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          StringBuilder header = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            header.append(resultSetMetaData.getColumnName(i)).append(",");
-          }
-          Assert.assertEquals(expect[index], header.toString());
-        }
-      }
-
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  @Ignore
-  public void UDFAliasResultTest() {
-
-    String[] expect = {
-      "0,-1,1,0.0", "1,-2,2,0.0", "2,-3,3,0.0",
-    };
-    String sql = "select s1, s2, sin(s1+s2) as a from root.sg1.d1 ";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(COLUMN_TIME)
-                  + ","
-                  + resultSet.getString("root.sg1.d1.s1")
-                  + ","
-                  + resultSet.getString("root.sg1.d1.s2")
-                  + ","
-                  + resultSet.getString("a");
-          assertEquals(expect[cnt++], ans);
-        }
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
   }
 }
