@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,9 +76,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private void fetchStateAndUpdate() {
     for (FragmentInstance instance : instances) {
-      try {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         FragmentInstanceState state = fetchState(instance);
-        logger.info("Instance {}'s State is {}", instance.getId(), state);
+        logger.info("State is {}", state);
 
         if (state != null) {
           stateMachine.updateFragInstanceState(instance.getId(), state);
