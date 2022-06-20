@@ -48,7 +48,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
       try {
         results.add(resultFutures.get(i).get(taskTimeoutSeconds, TimeUnit.SECONDS));
       } catch (Exception e) {
-        for (int j = i + 1; j < getEndpoints().size(); j++) {
+        for (int j = i; j < getEndpoints().size(); j++) {
           resultFutures.get(j).cancel(true);
         }
         throw new SQLException(

@@ -18,70 +18,22 @@
  */
 package org.apache.iotdb.it.env;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Properties;
+import org.apache.commons.lang3.SystemUtils;
 
-import static org.junit.Assert.fail;
+import java.io.File;
+import java.util.Properties;
 
 public class ConfigNode extends ClusterNodeBase {
 
   private final int consensusPort;
-  private final String configPath;
   private final String targetConfigNode;
+  private final int[] portList;
 
   public ConfigNode(boolean isSeed, String targetConfigNode, String testName) {
+    super(testName);
 
-    int[] portList = super.searchAvailablePorts();
-    super.setPort(portList[0]);
+    portList = super.searchAvailablePorts();
     this.consensusPort = portList[1];
-
-    super.setId("node" + this.getPort());
-
-    String nodePath =
-        System.getProperty("user.dir") + File.separator + "target" + File.separator + super.getId();
-    super.setNodePath(nodePath);
-
-    String logPath =
-        System.getProperty("user.dir")
-            + File.separator
-            + "target"
-            + File.separator
-            + "cluster-logs"
-            + File.separator
-            + testName
-            + File.separator
-            + "Config"
-            + super.getId()
-            + ".log";
-    super.setLogPath(logPath);
-
-    String scriptPath =
-        super.getNodePath()
-            + File.separator
-            + "template-node"
-            + File.separator
-            + "confignode"
-            + File.separator
-            + "sbin"
-            + File.separator
-            + "start-confignode"
-            + ".sh";
-    super.setScriptPath(scriptPath);
-
-    this.configPath =
-        super.getNodePath()
-            + File.separator
-            + "template-node"
-            + File.separator
-            + "confignode"
-            + File.separator
-            + "conf"
-            + File.separator
-            + "iotdb-confignode.properties";
 
     if (isSeed) {
       this.targetConfigNode = getIpAndPortString();
@@ -91,32 +43,74 @@ public class ConfigNode extends ClusterNodeBase {
   }
 
   @Override
-  public void changeConfig(Properties properties) {
-    try {
-      Properties configProperties = new Properties();
-      configProperties.load(Files.newInputStream(Paths.get(this.configPath)));
-      configProperties.setProperty("rpc_address", super.getIp());
-      configProperties.setProperty("rpc_port", String.valueOf(super.getPort()));
-      configProperties.setProperty("consensus_port", String.valueOf(this.consensusPort));
-      configProperties.setProperty("target_confignode", this.targetConfigNode);
-      configProperties.setProperty(
-          "config_node_consensus_protocol_class",
-          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
-      configProperties.setProperty(
-          "schema_region_consensus_protocol_class",
-          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
-      configProperties.setProperty(
-          "data_region_consensus_protocol_class",
-          "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
-      configProperties.setProperty("schema_replication_factor", "1");
-      configProperties.setProperty("data_replication_factor", "1");
-      configProperties.setProperty("connection_timeout_ms", "30000");
-      if (properties != null && !properties.isEmpty()) {
-        configProperties.putAll(properties);
-      }
-      configProperties.store(new FileWriter(this.configPath), null);
-    } catch (IOException ex) {
-      fail("Change the config of config node failed. " + ex);
+  protected void updateConfig(Properties properties) {
+    properties.setProperty("rpc_address", super.getIp());
+    properties.setProperty("rpc_port", String.valueOf(getPort()));
+    properties.setProperty("consensus_port", String.valueOf(this.consensusPort));
+    properties.setProperty("target_confignode", this.targetConfigNode);
+    properties.setProperty(
+        "config_node_consensus_protocol_class",
+        "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+    properties.setProperty(
+        "schema_region_consensus_protocol_class",
+        "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+    properties.setProperty(
+        "data_region_consensus_protocol_class",
+        "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
+    properties.setProperty("schema_replication_factor", "1");
+    properties.setProperty("data_replication_factor", "1");
+    properties.setProperty("connection_timeout_ms", "30000");
+  }
+
+  @Override
+  protected String getConfigPath() {
+    return workDirFilePath("confignode" + File.separator + "conf", "iotdb-confignode.properties");
+  }
+
+  @Override
+  protected String getStartScriptPath() {
+    String scriptName = "start-confignode.sh";
+    if (SystemUtils.IS_OS_WINDOWS) {
+      scriptName = "start-confignode.bat";
     }
+    return workDirFilePath("confignode" + File.separator + "sbin", scriptName);
+  }
+
+  @Override
+  protected String getStopScriptPath() {
+    String scriptName = "stop-confignode.sh";
+    if (SystemUtils.IS_OS_WINDOWS) {
+      scriptName = "stop-confignode.bat";
+    }
+    return workDirFilePath("confignode" + File.separator + "sbin", scriptName);
+  }
+
+  @Override
+  protected String getLogPath() {
+    return System.getProperty("user.dir")
+        + File.separator
+        + "target"
+        + File.separator
+        + "cluster-logs"
+        + File.separator
+        + testName
+        + File.separator
+        + "Config"
+        + super.getId()
+        + ".log";
+  }
+
+  @Override
+  protected String getNodePath() {
+    return System.getProperty("user.dir")
+        + File.separator
+        + "target"
+        + File.separator
+        + super.getId();
+  }
+
+  @Override
+  public int getPort() {
+    return portList[0];
   }
 }
