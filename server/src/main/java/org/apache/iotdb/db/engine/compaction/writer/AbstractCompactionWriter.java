@@ -151,7 +151,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  protected boolean checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
+  protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
     if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
       flushChunkToFileWriter(fileWriter, subTaskId);
@@ -162,9 +162,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
           ProcessChunkType.DESERIALIZE_CHUNK,
           this.isAlign,
           chunkWriters[subTaskId].estimateMaxSeriesMemSize());
-      return true;
     }
-    return false;
   }
 
   protected boolean checkChunkSize(int subTaskId) {

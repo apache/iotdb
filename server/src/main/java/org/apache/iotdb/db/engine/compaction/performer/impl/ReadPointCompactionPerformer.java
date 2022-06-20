@@ -54,7 +54,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -116,6 +120,7 @@ public class ReadPointCompactionPerformer
               device, deviceIterator, compactionWriter, queryContext, queryDataSource);
         }
       }
+
       compactionWriter.endFile();
       updateDeviceStartTimeAndEndTime(targetFiles, compactionWriter);
       updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
@@ -241,6 +246,8 @@ public class ReadPointCompactionPerformer
           .getTsFile()
           .getName()
           .equals(targetFileWriters.get(fileWriterIndex).getFile().getName())) {
+        // Only update the last target file of each seq file, because the others have been updated
+        // before opening a new target file.
         compactionWriter.updateDeviceStartTimeAndEndTime(
             resource, targetFileWriters.get(fileWriterIndex++));
       }

@@ -107,10 +107,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     writeDataPoint(timestamp, value, subTaskId);
-    if (checkChunkSizeAndMayOpenANewChunk(
-        fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId)) {
-      // checkFileSizeAndMayOpenANewFile(subTaskId);
-    }
+    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
   }
@@ -160,24 +157,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
         // later than any seq files. Then write these data into the last target file.
         return;
       }
-    }
-  }
-
-  private void checkFileSizeAndMayOpenANewFile2(int subTaskId) throws IOException {
-    int fileIndex = seqFileIndexArray[subTaskId];
-    long estimateFileSize = fileWriterList.get(fileIndex).getIOWriterOut().getPosition();
-    if (estimateFileSize >= targetFileSizeThreshold) {
-      // end current target file
-      fileWriterList.get(fileIndex).endFile();
-      // add new target file resource
-      TsFileResource newTargetResource =
-          new TsFileResource(
-              TsFileNameGenerator.increaseFileVersion(targetResources.get(fileIndex).getTsFile()));
-      targetResources.add(fileIndex + 1, newTargetResource);
-      // replace target fileIOWriter
-      fileWriterList.remove(fileIndex);
-      fileWriterList.add(fileIndex, new TsFileIOWriter(newTargetResource.getTsFile()));
-      isEmptyFile[subTaskId] = true;
     }
   }
 
