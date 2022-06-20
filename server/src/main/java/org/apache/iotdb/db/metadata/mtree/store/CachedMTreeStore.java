@@ -40,6 +40,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
@@ -381,8 +382,9 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public void createSnapshot() {
+  public boolean createSnapshot(File snapshotDir) {
     // todo implement snapshot for schema file mode
+    return false;
   }
 
   private void ensureMemoryStatus() {

@@ -85,7 +85,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.apache.commons.io.FileUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -480,35 +479,39 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  // currently, this method is only used for cluster-ratis mode
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    File mLogSnapshot =
-        SystemFileFactory.INSTANCE.getFile(
-            latestSnapshotRootDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
-    File tagSnapshot =
-        SystemFileFactory.INSTANCE.getFile(
-            latestSnapshotRootDir, MetadataConstant.TAG_LOG_SNAPSHOT);
-
     clear();
 
-    File mLog =
-        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
-    File tagFile =
-        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.TAG_LOG);
-    mLog.delete();
-    tagFile.delete();
-
     try {
-      FileUtils.copyFile(mLogSnapshot, mLog);
-      FileUtils.copyFile(tagSnapshot, tagFile);
+      usingMLog = false;
 
-      init();
-    } catch (IOException | MetadataException e) {
+      isRecovering = true;
+
+      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      mtree =
+          MTreeBelowSGMemoryImpl.loadFromSnapshot(
+              latestSnapshotRootDir, storageGroupMNode, schemaRegionId.getId());
+
+      isRecovering = false;
+      initialized = true;
+    } catch (IOException e) {
       logger.error(
-          "Failed to load snapshot for schemaRegion {}  ue to {}",
+          "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
           schemaRegionId,
           e.getMessage(),
           e);
+      try {
+        initialized = false;
+        isRecovering = true;
+        init();
+      } catch (MetadataException metadataException) {
+        logger.error(
+            "Error occurred during initializing schemaRegion {}",
+            schemaRegionId,
+            metadataException);
+      }
     }
   }
 
