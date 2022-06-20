@@ -30,8 +30,8 @@ public interface BaseConfig {
     throw new UnsupportedOperationException("Method getEngineProperties not implement");
   }
 
-  default Properties getClusterProperties() throws UnsupportedOperationException {
-    throw new UnsupportedOperationException("Method getClusterProperties not implement");
+  default Properties getConfignodeProperties() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("Method getConfignodeProperties not implement");
   }
 
   default BaseConfig setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
@@ -152,9 +152,5 @@ public interface BaseConfig {
 
   default int getPrimitiveArraySize() {
     return 32;
-  }
-
-  default String getFlushCommand() {
-    return "flush";
   }
 }

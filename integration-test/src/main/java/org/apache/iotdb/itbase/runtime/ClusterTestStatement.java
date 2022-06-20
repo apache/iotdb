@@ -29,7 +29,7 @@ import java.util.List;
 /** The implementation of {@link ClusterTestStatement} in cluster test. */
 public class ClusterTestStatement implements Statement {
 
-  private static final int DEFAULT_QUERY_TIMEOUT = 10;
+  private static final int DEFAULT_QUERY_TIMEOUT = 60;
   private final Statement writeStatement;
   private final String writEndpoint;
   private final List<Statement> readStatements = new ArrayList<>();
