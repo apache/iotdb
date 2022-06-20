@@ -296,11 +296,11 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 
 |权限名称|说明|
 |:---|:---|
-|SET\_STORAGE\_GROUP|创建存储组。包含设置存储组的权限。路径相关|
-|DELETE\_STORAGE\_GROUP|删除存储组。路径相关|
-|CREATE\_TIMESERIES|创建时间序列。路径相关|
-|INSERT\_TIMESERIES|插入数据。路径相关|
-|READ\_TIMESERIES|查询数据。路径相关|
+|SET\_STORAGE\_GROUP|[创建存储组](../Operate-Metadata/Storage-Group.md)。包含设置存储组的权限。路径相关<br />Eg: set storage group to root.ln|
+|DELETE\_STORAGE\_GROUP|删除存储组。路径相关<br />Eg: `delete storage group root.ln`|
+|CREATE\_TIMESERIES|创建时间序列。路径相关<br />Eg1: create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN<br />Eg2: create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)|
+|INSERT\_TIMESERIES|插入数据。路径相关<br />Eg: insert into root.ln.wf02(timestamp,status) values(1,true)|
+|READ\_TIMESERIES|查询数据。路径相关<br />Eg1: show storage group <br />Eg2: show child paths root.ln, show child nodes root.ln<br />Eg3: show devices<br />Eg4: show timeseries root.**<br />Eg5: show schema templates|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|
 |DELETE\_STORAGE\_GROUP|删除存储组。路径相关|
 |CREATE\_USER|创建用户。路径无关|
