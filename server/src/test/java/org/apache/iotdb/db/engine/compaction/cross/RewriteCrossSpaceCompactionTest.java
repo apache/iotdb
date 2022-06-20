@@ -72,6 +72,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(20480);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
@@ -212,8 +213,6 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       }
     }
 
-    List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     TsFileManager tsFileManager =
         new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
     tsFileManager.addAll(seqResources, true);
@@ -227,6 +226,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
     task.call();
+    Assert.assertEquals(7, tsFileManager.getTsFileList(true).size());
 
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
@@ -458,6 +458,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
     task.call();
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getModFile().exists());
@@ -638,6 +639,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertEquals(2, resource.getModFile().getModifications().size());
     }
     task.call();
+    Assert.assertEquals(7, vsgp.getTsFileManager().getTsFileList(true).size());
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());
@@ -756,6 +758,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertEquals(3, resource.getModFile().getModifications().size());
     }
     task.call();
+    Assert.assertEquals(7, vsgp.getTsFileManager().getTsFileList(true).size());
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());
@@ -770,6 +773,176 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertTrue(seqResource.getModFile().exists());
       Assert.assertEquals(12, seqResource.getModFile().getModifications().size());
       Assert.assertFalse(seqResource.getCompactionModFile().exists());
+    }
+  }
+
+  /**
+   * Total 4 seq files and 4 unseq files, each file has different aligned timeseries.
+   *
+   * <p>Seq files<br>
+   * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
+   * is 0 ~ 299 and 350 ~ 649.<br>
+   * third and forth file has d0 ~ d3 and s0 ~ S4,time range is 700 ~ 999 and 1050 ~ 1349, value
+   * range is 700 ~ 999 and 1050 ~ 1349.<br>
+   *
+   * <p>UnSeq files<br>
+   * first, second and third file has d0 ~ d2 and s0 ~ s3, time range is 20 ~ 219, 250 ~ 449 and 480
+   * ~ 679, value range is 10020 ~ 10219, 10250 ~ 10449 and 10480 ~ 10679.<br>
+   * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
+   * 20450 ~ 20549 and 20550 ~ 20649.
+   */
+  @Test
+  public void testAlignedCrossSpaceCompactionWithDifferentTimeseriesAndSplitLargeFiles()
+      throws Exception {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, true);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, true, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, true, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, true, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
+
+    for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
+        i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
+        i++) {
+      for (int j = 0; j < 5; j++) {
+        List<IMeasurementSchema> schemas = new ArrayList<>();
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
+        AlignedPath path =
+            new AlignedPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                Collections.singletonList("s" + j),
+                schemas);
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == TsFileGeneratorUtils.getAlignDeviceOffset()
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(
+                  batchData.currentTime() + 20000,
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            } else if ((i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(
+                  batchData.currentTime() + 10000,
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            } else {
+              assertEquals(
+                  batchData.currentTime(),
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == TsFileGeneratorUtils.getAlignDeviceOffset()) {
+          assertEquals(800, count);
+        } else if ((i == TsFileGeneratorUtils.getAlignDeviceOffset() + 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+
+    TsFileManager tsFileManager =
+        new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new ReadPointCompactionPerformer(),
+            new AtomicInteger(0));
+    task.call();
+
+    Assert.assertEquals(7, tsFileManager.getTsFileList(true).size());
+
+    for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
+        i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
+        i++) {
+      for (int j = 0; j < 5; j++) {
+        List<IMeasurementSchema> schemas = new ArrayList<>();
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
+        AlignedPath path =
+            new AlignedPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                Collections.singletonList("s" + j),
+                schemas);
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                tsFileManager.getTsFileList(true),
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == TsFileGeneratorUtils.getAlignDeviceOffset()
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(
+                  batchData.currentTime() + 20000,
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            } else if ((i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(
+                  batchData.currentTime() + 10000,
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            } else {
+              assertEquals(
+                  batchData.currentTime(),
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == TsFileGeneratorUtils.getAlignDeviceOffset()) {
+          assertEquals(800, count);
+        } else if ((i == TsFileGeneratorUtils.getAlignDeviceOffset() + 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
     }
   }
 
