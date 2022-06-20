@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -353,6 +354,14 @@ public class ConfigManager implements Manager {
     } else {
       return new TSchemaPartitionResp().setStatus(status);
     }
+  }
+
+  @Override
+  public TRegionCache getRegionCache() {
+    TRegionCache result = new TRegionCache();
+    result.setTimestamp(System.currentTimeMillis());
+    result.setRegionReplicaMap(loadManager.genRealTimeRoutingPolicy());
+    return result;
   }
 
   @Override

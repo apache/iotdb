@@ -22,6 +22,7 @@ package org.apache.iotdb.db.client;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionCache;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
@@ -86,6 +87,8 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
+
+  private static final String MSG_UNSUPPORTED_INTERFACE = "DataNode doesn't support this interface";
 
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check server it";
@@ -396,6 +399,11 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
+  public TRegionCache getRegionCache() throws TException {
+    throw new TException(MSG_UNSUPPORTED_INTERFACE);
+  }
+
+  @Override
   public TSStatus setTTL(TSetTTLReq setTTLReq) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -607,34 +615,12 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TConfigNodeRegisterResp resp = client.registerConfigNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_UNSUPPORTED_INTERFACE);
   }
 
   @Override
   public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.applyConfigNode(configNodeLocation);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_UNSUPPORTED_INTERFACE);
   }
 
   @Override
