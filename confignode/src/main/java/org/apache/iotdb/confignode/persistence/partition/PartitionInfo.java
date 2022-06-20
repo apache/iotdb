@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -31,6 +32,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -39,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
@@ -48,6 +51,7 @@ import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -65,6 +69,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -419,6 +424,25 @@ public class PartitionInfo implements SnapshotProcessor {
     return schemaNodeManagementResp;
   }
 
+  /** Get region information */
+  public DataSet getRegionLocations(GetRegionLocationsReq regionsInfoReq) {
+    RegionLocationsResp regionResp = new RegionLocationsResp();
+    List<TRegionLocation> regionLocationList = new ArrayList<>();
+    if (storageGroupPartitionTables.isEmpty()) {
+      regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      return regionResp;
+    }
+    storageGroupPartitionTables.forEach(
+        (storageGroup, storageGroupPartitionTable) -> {
+          storageGroupPartitionTable.getRegionInfos(regionsInfoReq, regionLocationList);
+        });
+    regionLocationList.sort(
+        Comparator.comparingInt(regionId -> regionId.getConsensusGroupId().getId()));
+    regionResp.setRegionInfosList(regionLocationList);
+    regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return regionResp;
+  }
+
   // ======================================================
   // Leader scheduling interfaces
   // ======================================================
@@ -595,6 +619,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return result;
   }
 
+  @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
