@@ -177,10 +177,10 @@ public class DataBlockManager implements IDataBlockManager {
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
                 .isAborted()) {
-          throw new TException(
-              "Target fragment instance not found. Fragment instance ID: "
-                  + e.getTargetFragmentInstanceId()
-                  + ".");
+          logger.warn(
+              "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
+              e.getTargetFragmentInstanceId());
+          return;
         }
         SourceHandle sourceHandle =
             (SourceHandle)
@@ -265,9 +265,9 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     private void removeFromDataBlockManager(ISinkHandle sinkHandle) {
-      logger.info("{} release resources of finished sink handle", sinkHandle);
+      logger.info("release resources of finished sink handle");
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
-        logger.info("{} resources already been released", sinkHandle);
+        logger.info("resources already been released");
       }
       sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
     }
@@ -275,7 +275,7 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public void onFailure(ISinkHandle sinkHandle, Throwable t) {
       // TODO: (xingtanzjr) should we remove the sinkHandle from DataBlockManager ?
-      logger.error("Sink handle {} failed due to {}", sinkHandle, t);
+      logger.error("Sink handle failed due to", t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }

@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -34,7 +34,7 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class ConfigNodeClientPoolFactory {
 
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private ConfigNodeClientPoolFactory() {}
 

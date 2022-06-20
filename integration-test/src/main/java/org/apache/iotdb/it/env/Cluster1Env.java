@@ -27,12 +27,12 @@ public class Cluster1Env extends ClusterEnvBase {
   @Override
   public void initBeforeClass() throws InterruptedException {
     logger.debug("=======start init class=======");
-    super.initEnvironment(3, 3);
+    super.initEnvironment(1, 3);
   }
 
   @Override
   public void initBeforeTest() throws InterruptedException {
     logger.debug("=======start init test=======");
-    super.initEnvironment(3, 3);
+    super.initEnvironment(1, 3);
   }
 }

@@ -509,8 +509,17 @@ public class DataRegion {
     // recover and start timed compaction thread
     initCompaction();
 
-    logger.info(
-        "The data region {}[{}] is recovered successfully", logicalStorageGroupName, dataRegionId);
+    if (config.isMppMode()
+        ? StorageEngineV2.getInstance().isAllSgReady()
+        : StorageEngine.getInstance().isAllSgReady()) {
+      logger.info(
+          "The data region {}[{}] is created successfully", logicalStorageGroupName, dataRegionId);
+    } else {
+      logger.info(
+          "The data region {}[{}] is recovered successfully",
+          logicalStorageGroupName,
+          dataRegionId);
+    }
   }
 
   private void initCompaction() {

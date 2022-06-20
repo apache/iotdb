@@ -52,6 +52,7 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -89,6 +90,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,7 +106,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
-  private final double loadBalanceThreshold = 0.1;
+  private static final double loadBalanceThreshold = 0.1;
 
   public InternalServiceImpl() {
     super();
@@ -187,41 +189,48 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req) {
-    FragmentInstanceInfo info =
-        FragmentInstanceManager.getInstance()
-            .getInstanceInfo(FragmentInstanceId.fromThrift(req.fragmentInstanceId));
-    return new TFragmentInstanceStateResp(info.getState().toString());
-  }
-
-  @Override
-  public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
-    List<FragmentInstanceId> taskIds =
-        req.getFragmentInstanceIds().stream()
-            .map(FragmentInstanceId::fromThrift)
-            .collect(Collectors.toList());
-    for (FragmentInstanceId taskId : taskIds) {
-      FragmentInstanceManager.getInstance().cancelTask(taskId);
+    FragmentInstanceId instanceId = FragmentInstanceId.fromThrift(req.fragmentInstanceId);
+    try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
+      FragmentInstanceInfo info = FragmentInstanceManager.getInstance().getInstanceInfo(instanceId);
+      return info != null
+          ? new TFragmentInstanceStateResp(info.getState().toString())
+          : new TFragmentInstanceStateResp(FragmentInstanceState.NO_SUCH_INSTANCE.toString());
     }
-    return new TCancelResp(true);
   }
 
   @Override
-  public TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req) throws TException {
+  public TCancelResp cancelQuery(TCancelQueryReq req) {
+    try (SetThreadName threadName = new SetThreadName(req.getQueryId())) {
+      LOGGER.info("start cancelling query.");
+      List<FragmentInstanceId> taskIds =
+          req.getFragmentInstanceIds().stream()
+              .map(FragmentInstanceId::fromThrift)
+              .collect(Collectors.toList());
+      for (FragmentInstanceId taskId : taskIds) {
+        FragmentInstanceManager.getInstance().cancelTask(taskId);
+      }
+      LOGGER.info("finish cancelling query.");
+      return new TCancelResp(true);
+    }
+  }
+
+  @Override
+  public TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req) {
     throw new NotImplementedException();
   }
 
   @Override
-  public TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req) throws TException {
+  public TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req) {
     throw new NotImplementedException();
   }
 
   @Override
-  public TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req) throws TException {
+  public TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public TSStatus createSchemaRegion(TCreateSchemaRegionReq req) throws TException {
+  public TSStatus createSchemaRegion(TCreateSchemaRegionReq req) {
     TSStatus tsStatus;
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
@@ -260,7 +269,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus createDataRegion(TCreateDataRegionReq req) throws TException {
+  public TSStatus createDataRegion(TCreateDataRegionReq req) {
     TSStatus tsStatus;
     try {
       TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
@@ -292,19 +301,19 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus invalidatePartitionCache(TInvalidateCacheReq req) throws TException {
+  public TSStatus invalidatePartitionCache(TInvalidateCacheReq req) {
     ClusterPartitionFetcher.getInstance().invalidAllCache();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) throws TException {
+  public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
     DataNodeSchemaCache.getInstance().cleanUp();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
-  public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
+  public THeartbeatResp getHeartBeat(THeartbeatReq req) {
     THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp());
     Random whetherToGetMetric = new Random();
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
@@ -356,7 +365,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) throws TException {
+  public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) {
     if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
@@ -369,7 +378,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) throws TException {
+  public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) {
     ConsensusGroupId consensusGroupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     if (consensusGroupId instanceof DataRegionId) {
@@ -400,7 +409,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TMigrateRegionResp migrateRegion(TMigrateRegionReq req) throws TException {
+  public TMigrateRegionResp migrateRegion(TMigrateRegionReq req) {
     TRegionReplicaSet regionReplicaSet = req.migrateRegion;
     TSStatus tsStatus;
     ConsensusGenericResponse consensusGenericResponse;
