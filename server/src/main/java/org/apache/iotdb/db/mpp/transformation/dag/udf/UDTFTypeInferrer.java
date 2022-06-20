@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +47,6 @@ public class UDTFTypeInferrer {
 
   public TSDataType inferOutputType(
       List<String> childExpressions,
-      List<PartialPath> maybeTimeSeriesPaths,
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
     try {
@@ -55,7 +54,9 @@ public class UDTFTypeInferrer {
 
       UDFParameters parameters =
           new UDFParameters(
-              childExpressions, maybeTimeSeriesPaths, childExpressionDataTypes, attributes);
+              childExpressions,
+              UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+              attributes);
       udtf.validate(new UDFParameterValidator(parameters));
 
       // use ZoneId.systemDefault() because UDF's data type is ZoneId independent
@@ -64,7 +65,7 @@ public class UDTFTypeInferrer {
 
       udtf.beforeDestroy();
 
-      return configurations.getOutputDataType();
+      return UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType());
     } catch (Exception e) {
       LOGGER.warn("Error occurred during inferring UDF data type", e);
       throw new SemanticException(

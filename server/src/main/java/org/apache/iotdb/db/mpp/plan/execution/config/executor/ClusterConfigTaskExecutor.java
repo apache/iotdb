@@ -31,6 +31,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -40,12 +42,14 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -104,7 +108,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -126,7 +129,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // build TSBlock
       ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -146,7 +148,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // build TSBlock
       CountStorageGroupTask.buildTSBlock(storageGroupNum, future);
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -173,7 +174,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -198,7 +198,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -218,7 +217,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -246,7 +244,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -267,7 +264,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new StatementExecutionException(tsStatus));
       }
     } catch (IOException | TException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -281,7 +277,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       clusterNodeInfos = client.getAllClusterNodeInfos();
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     // build TSBlock
@@ -318,11 +313,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     // build TSBlock
     ShowTTLTask.buildTSBlock(storageGroupToTTL, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowRegionResp showRegionResp = new TShowRegionResp();
+    TShowRegionReq showRegionReq = new TShowRegionReq();
+    showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      showRegionResp = client.showRegion(showRegionReq);
+      if (showRegionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new StatementExecutionException(showRegionResp.getStatus()));
+        return future;
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    // build TSBlock
+    ShowRegionTask.buildTSBlock(showRegionResp, future);
     return future;
   }
 }

@@ -31,8 +31,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_STATUS_RUNNING;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_CONFIG_NODE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
@@ -68,14 +66,13 @@ public class ShowClusterTask implements IConfigTask {
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showClusterHeader.getRespDataTypes());
 
-    AtomicInteger configNodeId = new AtomicInteger();
     clusterNodeInfos
         .getConfigNodeList()
         .forEach(
             e ->
                 buildTsBlock(
                     builder,
-                    configNodeId.getAndIncrement(),
+                    e.getConfigNodeId(),
                     NODE_TYPE_CONFIG_NODE,
                     NODE_STATUS_RUNNING,
                     e.getInternalEndPoint().getIp(),

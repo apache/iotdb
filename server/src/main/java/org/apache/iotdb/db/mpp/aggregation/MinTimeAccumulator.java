@@ -59,6 +59,9 @@ public class MinTimeAccumulator implements Accumulator {
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     updateMinTime(statistics.getStartTime());
   }
 

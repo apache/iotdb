@@ -65,7 +65,6 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
 
   protected FragmentInstanceState fetchState(FragmentInstance instance)
       throws TException, IOException {
-    // TODO: (jackie tien) change the port
     TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {

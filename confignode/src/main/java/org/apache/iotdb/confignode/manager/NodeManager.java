@@ -95,7 +95,7 @@ public class NodeManager {
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
+      req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
     }
@@ -170,11 +170,17 @@ public class NodeManager {
 
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     if (getConsensusManager().addConfigNodePeer(applyConfigNodeReq)) {
+      // Generate new ConfigNode's index
+      applyConfigNodeReq.getConfigNodeLocation().setConfigNodeId(nodeInfo.generateNextNodeId());
       return getConsensusManager().write(applyConfigNodeReq).getStatus();
     } else {
       return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
     }
+  }
+
+  public void addMetrics() {
+    nodeInfo.addMetrics();
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {

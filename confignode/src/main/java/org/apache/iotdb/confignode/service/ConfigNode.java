@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -82,6 +82,7 @@ public class ConfigNode implements ConfigNodeMBean {
     JMXService.registerMBean(this, mbeanName);
 
     registerManager.register(MetricsService.getInstance());
+    configManager.addMetrics();
     registerUdfServices();
 
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
@@ -93,14 +94,14 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private void registerUdfServices() throws StartupException {
-    final ConfigNodeConf configNodeConf = ConfigNodeDescriptor.getInstance().getConf();
+    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
     registerManager.register(
         UDFExecutableManager.setupAndGetInstance(
-            configNodeConf.getTemporaryLibDir(), configNodeConf.getUdfLibDir()));
+            configNodeConfig.getTemporaryLibDir(), configNodeConfig.getUdfLibDir()));
     registerManager.register(
-        UDFClassLoaderManager.setupAndGetInstance(configNodeConf.getUdfLibDir()));
+        UDFClassLoaderManager.setupAndGetInstance(configNodeConfig.getUdfLibDir()));
     registerManager.register(
-        UDFRegistrationService.setupAndGetInstance(configNodeConf.getSystemUdfDir()));
+        UDFRegistrationService.setupAndGetInstance(configNodeConfig.getSystemUdfDir()));
   }
 
   public void active() {
