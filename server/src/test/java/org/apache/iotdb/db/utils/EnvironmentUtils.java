@@ -49,6 +49,7 @@ import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
@@ -139,6 +140,7 @@ public class EnvironmentUtils {
 
     // clean wal manager
     WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
 
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
@@ -339,6 +341,7 @@ public class EnvironmentUtils {
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
     reactiveDaemon();
   }
 

@@ -134,7 +134,7 @@ public class WALRecoverManager {
           // continue
         }
       }
-      clear();
+      stop();
     }
     logger.info("Successfully recover all wal nodes.");
   }
@@ -160,13 +160,18 @@ public class WALRecoverManager {
     this.allDataRegionScannedLatch = allDataRegionScannedLatch;
   }
 
-  @TestOnly
-  public void clear() {
+  public void stop() {
     absolutePath2RecoverPerformer.clear();
     if (recoverThreadPool != null) {
       recoverThreadPool.shutdown();
       recoverThreadPool = null;
     }
+  }
+
+  @TestOnly
+  public void clear() {
+    stop();
+    hasStarted = false;
   }
 
   public static WALRecoverManager getInstance() {

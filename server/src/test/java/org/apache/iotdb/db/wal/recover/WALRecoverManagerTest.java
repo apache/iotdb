@@ -157,6 +157,7 @@ public class WALRecoverManagerTest {
   @Test
   public void testNormalProcedure() throws Exception {
     prepareCheckpointAndWALFileForNormal();
+    WALRecoverManager.getInstance().clear();
     recoverAndCheck();
   }
 
@@ -214,6 +215,7 @@ public class WALRecoverManagerTest {
   @Test
   public void testMemTableSnapshot() throws Exception {
     prepareCheckpointAndWALFileForSnapshot();
+    WALRecoverManager.getInstance().clear();
     recoverAndCheck();
   }
 
