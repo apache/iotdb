@@ -910,7 +910,10 @@ class Session(object):
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
         )
         resp = self.__client.executeQueryStatement(request)
-        print("Session Resp:", resp.columns)
+        print("Session Resp Columns:", resp.columns)
+        print("Session Resp data type list:", resp.dataTypeList)
+        print("Session Resp column name index map:", resp.columnNameIndexMap)
+        print("Session Resp query id:", resp.queryId)
         return SessionDataSet(
             sql,
             resp.columns,
