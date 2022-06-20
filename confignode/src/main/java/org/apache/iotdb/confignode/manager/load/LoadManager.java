@@ -79,8 +79,7 @@ public class LoadManager {
 
   /** heartbeat executor service */
   private final ScheduledExecutorService heartBeatExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          LoadManager.class.getSimpleName(), this::loadExceptionHandler);
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
 
   /** monitor for heartbeat state change */
   private final Object heartbeatMonitor = new Object();
@@ -174,41 +173,13 @@ public class LoadManager {
     return result;
   }
 
-  @Override
-  public void run() {
-    int balanceCount = 0;
-    while (true) {
-      try {
-
-        if (getConsensusManager().isLeader()) {
-          // Send heartbeat requests to all the online DataNodes
-          pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
-          // TODO: Send heartbeat requests to all the online ConfigNodes
-
-          // Do load balancing
-          doLoadBalancing(balanceCount);
-          balanceCount += 1;
-        } else {
-          // Discard all cache when current ConfigNode is not longer the leader
-          heartbeatCacheMap.clear();
-          balanceCount = 0;
-        }
-
-        TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
-      } catch (InterruptedException e) {
-        LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
-        System.exit(-1);
-      }
-    }
-  }
-
   /** Start the heartbeat service */
   public void start() {
     LOGGER.debug("Start Heartbeat Service of LoadManager");
     synchronized (heartbeatMonitor) {
       if (currentHeartbeatFuture == null) {
         currentHeartbeatFuture =
-            ScheduledExecutorUtil.unsafelyScheduleWithFixedDelay(
+            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
                 heartBeatExecutor,
                 this::heartbeatLoopBody,
                 0,
@@ -229,15 +200,6 @@ public class LoadManager {
     }
   }
 
-  /**
-   * Running state of heartbeat service
-   *
-   * @return true if heartbeat service is running, false otherwise
-   */
-  public boolean isHeartbeatRunning() {
-    return currentHeartbeatFuture != null;
-  }
-
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
     if (getConsensusManager().isLeader()) {
@@ -249,17 +211,6 @@ public class LoadManager {
       doLoadBalancing(balanceCount);
       balanceCount += 1;
     }
-  }
-
-  /**
-   * Handler when the heartbeat thread is down
-   *
-   * @param t thread
-   * @param e exception
-   */
-  private void loadExceptionHandler(Thread t, Throwable e) {
-    LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
-    System.exit(-1);
   }
 
   private THeartbeatReq genHeartbeatReq() {
