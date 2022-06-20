@@ -56,7 +56,7 @@ public class ConfigNodeConfig {
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNodeGroup consensus protocol */
-  private final String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /** DataNode data region consensus protocol */
   private String dataRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
@@ -317,6 +317,10 @@ public class ConfigNodeConfig {
 
   public String getConfigNodeConsensusProtocolClass() {
     return configNodeConsensusProtocolClass;
+  }
+
+  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
+    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
   }
 
   public String getDataRegionConsensusProtocolClass() {

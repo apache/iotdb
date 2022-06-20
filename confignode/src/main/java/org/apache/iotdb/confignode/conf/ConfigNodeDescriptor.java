@@ -129,6 +129,10 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
+      conf.setConfigNodeConsensusProtocolClass(
+          properties.getProperty(
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+
       conf.setDataRegionConsensusProtocolClass(
           properties.getProperty(
               "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
