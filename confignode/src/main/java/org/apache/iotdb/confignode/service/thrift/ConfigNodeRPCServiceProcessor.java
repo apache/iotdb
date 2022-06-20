@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -406,19 +405,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
             "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
       }
     }
-
-    List<TDataNodeInfo> onlineDataNodes =
-        configManager.getNodeManager().getOnlineDataNodes(req.dataNodeId);
-    TSStatus tsStatus = new TSStatus();
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
-      tsStatus =
-          SyncDataNodeClientPool.getInstance()
-              .flush(dataNodeInfo.getLocation().getInternalEndPoint(), req);
-      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return tsStatus;
-      }
-    }
-    return tsStatus;
+    return configManager.flush(req);
   }
 
   @Override
