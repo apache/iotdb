@@ -142,7 +142,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 @SuppressWarnings("java:S1135") // ignore todos
 public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionMemoryImpl.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -441,8 +441,29 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // currently, this method is only used for cluster-ratis mode
   @Override
   public synchronized boolean createSnapshot(File snapshotDir) {
-    boolean isSuccess = mtree.createSnapshot(snapshotDir);
+    logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
+    boolean isSuccess = true;
+    long startTime = System.currentTimeMillis();
+
+    long mtreeSnapshotStartTime = System.currentTimeMillis();
+    isSuccess = isSuccess && mtree.createSnapshot(snapshotDir);
+    logger.info(
+        "MTree snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - mtreeSnapshotStartTime);
+
+    long tagSnapshotStartTime = System.currentTimeMillis();
     isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
+    logger.info(
+        "Tag snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - tagSnapshotStartTime);
+
+    logger.info(
+        "Snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - startTime);
+    logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
 
     return isSuccess;
   }
@@ -452,18 +473,31 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void loadSnapshot(File latestSnapshotRootDir) {
     clear();
 
+    logger.info("Start loading snapshot of schemaRegion {}", schemaRegionId);
+    long startTime = System.currentTimeMillis();
+
     try {
       usingMLog = false;
 
       isRecovering = true;
 
+      long tagSnapshotStartTime = System.currentTimeMillis();
       tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      logger.info(
+          "Tag snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - tagSnapshotStartTime);
+
+      long mtreeSnapshotStartTime = System.currentTimeMillis();
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
               storageGroupMNode,
               schemaRegionId.getId(),
               measurementMNode -> {
+                if (measurementMNode.getOffset() == -1) {
+                  return;
+                }
                 try {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
                 } catch (IOException e) {
@@ -473,9 +507,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               });
+      logger.info(
+          "MTree snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - mtreeSnapshotStartTime);
 
       isRecovering = false;
       initialized = true;
+
+      logger.info(
+          "Snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - startTime);
+      logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
     } catch (IOException e) {
       logger.error(
           "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
