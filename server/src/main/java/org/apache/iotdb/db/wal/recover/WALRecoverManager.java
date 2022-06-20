@@ -46,6 +46,8 @@ public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  /** true when the recover procedure has started */
+  private volatile boolean hasStarted = false;
   /** start recovery after all virtual storage groups have submitted unsealed zero-level TsFiles */
   private volatile CountDownLatch allDataRegionScannedLatch;
   /** threads to recover wal nodes */
@@ -77,6 +79,7 @@ public class WALRecoverManager {
       // which means walRecoverManger.addRecoverPerformer method won't be call anymore
       try {
         allDataRegionScannedLatch.await();
+        hasStarted = true;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
@@ -137,7 +140,11 @@ public class WALRecoverManager {
   }
 
   public WALRecoverListener addRecoverPerformer(UnsealedTsFileRecoverPerformer recoverPerformer) {
-    absolutePath2RecoverPerformer.put(recoverPerformer.getTsFileAbsolutePath(), recoverPerformer);
+    if (hasStarted) {
+      logger.error("Cannot recover tsfile from wal because wal recovery has already started");
+    } else {
+      absolutePath2RecoverPerformer.put(recoverPerformer.getTsFileAbsolutePath(), recoverPerformer);
+    }
     return recoverPerformer.getRecoverListener();
   }
 

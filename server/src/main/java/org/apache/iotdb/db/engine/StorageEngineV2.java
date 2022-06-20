@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
@@ -223,10 +224,12 @@ public class StorageEngineV2 implements IService {
     asyncRecover(recoveryThreadPool, futures);
 
     // wait until wal is recovered
-    try {
-      WALRecoverManager.getInstance().recover();
-    } catch (WALException e) {
-      logger.error("Fail to recover wal.", e);
+    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      try {
+        WALRecoverManager.getInstance().recover();
+      } catch (WALException e) {
+        logger.error("Fail to recover wal.", e);
+      }
     }
 
     // operations after all virtual storage groups are recovered

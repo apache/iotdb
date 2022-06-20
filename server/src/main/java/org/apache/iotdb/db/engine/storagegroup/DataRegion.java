@@ -304,8 +304,17 @@ public class DataRegion {
     } else {
       lastFlushTimeManager = new LastFlushTimeManager();
     }
-    // recover tsfiles
-    recover();
+
+    // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)
+        && !StorageEngineV2.getInstance().isAllSgReady()) {
+      logger.debug(
+          "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
+          logicalStorageGroupName,
+          dataRegionId);
+    } else {
+      recover();
+    }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
@@ -538,7 +547,7 @@ public class DataRegion {
         TimeUnit.MILLISECONDS);
   }
 
-  private void recoverCompaction() throws Exception {
+  private void recoverCompaction() {
     CompactionRecoverManager compactionRecoverManager =
         new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, dataRegionId);
     compactionRecoverManager.recoverInnerSpaceCompaction(true);

@@ -157,7 +157,7 @@ public class IoTDBConfig {
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
-  private WALMode walMode = WALMode.ASYNC;
+  private volatile WALMode walMode = WALMode.ASYNC;
 
   /** WAL directories */
   private String[] walDirs = {

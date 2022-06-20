@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -62,6 +63,7 @@ import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -75,6 +77,7 @@ import java.util.List;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final String mbeanName =
       String.format(
@@ -105,7 +108,6 @@ public class DataNode implements DataNodeMBean {
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBStartCheck.getInstance().checkConfig();
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // TODO: check configuration for data node
 
     // if client ip is the default address, set it same with internal ip
@@ -172,8 +174,6 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       logger.info("start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
         // Set DataNodeLocation
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(config.getDataNodeId());
@@ -281,6 +281,11 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+
+    // close wal when using ratis consensus
+    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      config.setWalMode(WALMode.DISABLE);
+    }
     registerManager.register(WALManager.getInstance());
 
     // in mpp mode we need to start some other services
@@ -326,8 +331,6 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
         // Set DataNodeLocation
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(config.getDataNodeId());
