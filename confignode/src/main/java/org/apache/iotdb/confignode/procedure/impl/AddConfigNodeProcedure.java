@@ -131,7 +131,7 @@ public class AddConfigNodeProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE.ordinal());
+    stream.writeInt(ProcedureFactory.ProcedureType.ADD_CONFIG_NODE_PROCEDURE.ordinal());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
   }
