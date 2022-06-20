@@ -144,6 +144,7 @@ public class IoTDBAliasIT {
     }
   }
 
+  @Ignore
   @Test
   public void lastSelectWithAliasTest() {
     String[] retArray =
@@ -207,6 +208,7 @@ public class IoTDBAliasIT {
     }
   }
 
+  @Ignore
   @Test
   public void lastSelectDuplicatedPathsWithAliasTest() {
     String[] retArray =
@@ -407,7 +409,11 @@ public class IoTDBAliasIT {
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
-          e.getMessage().contains("alias 'speed' can only be matched with one time series"));
+          e.getCause().getCause().getMessage(),
+          e.getCause()
+              .getCause()
+              .getMessage()
+              .contains("alias 'speed' can only be matched with one time series"));
     }
   }
 
@@ -489,7 +495,11 @@ public class IoTDBAliasIT {
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
-          e.getMessage().contains("alias 's1_num' can only be matched with one time series"));
+          e.getCause().getCause().getMessage(),
+          e.getCause()
+              .getCause()
+              .getMessage()
+              .contains("alias 's1_num' can only be matched with one time series"));
     }
   }
 
@@ -572,14 +582,14 @@ public class IoTDBAliasIT {
   public void alignByDeviceWithAsMixedTest() {
     String[] retArray =
         new String[] {
-          "100,root.sg2.d1,10.1,20.7,",
-          "200,root.sg2.d1,15.2,22.9,",
-          "300,root.sg2.d1,30.3,25.1,",
-          "400,root.sg2.d1,50.4,28.3,",
           "100,root.sg2.d2,11.1,20.2,",
           "200,root.sg2.d2,20.2,21.8,",
           "300,root.sg2.d2,45.3,23.4,",
-          "400,root.sg2.d2,73.4,26.3,"
+          "400,root.sg2.d2,73.4,26.3,",
+          "100,root.sg2.d1,10.1,20.7,",
+          "200,root.sg2.d1,15.2,22.9,",
+          "300,root.sg2.d1,30.3,25.1,",
+          "400,root.sg2.d1,50.4,28.3,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -619,7 +629,11 @@ public class IoTDBAliasIT {
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
-          e.getMessage().contains("alias speed can only be matched with one time series"));
+          e.getCause().getCause().getMessage(),
+          e.getCause()
+              .getCause()
+              .getMessage()
+              .contains("alias 'speed' can only be matched with one time series"));
     }
   }
 
@@ -697,6 +711,7 @@ public class IoTDBAliasIT {
     }
   }
 
+  @Ignore
   @Test
   public void lastWithAsTest() {
     String[] retArray = new String[] {"400,speed,50.4,FLOAT,", "400,root.sg2.d1.s2,28.3,FLOAT,"};
@@ -729,6 +744,7 @@ public class IoTDBAliasIT {
     }
   }
 
+  @Ignore
   @Test
   public void lastWithAsDuplicatedTest() {
     String[] retArray =
@@ -765,6 +781,7 @@ public class IoTDBAliasIT {
     }
   }
 
+  @Ignore
   @Test
   public void lastWithAsFailTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
