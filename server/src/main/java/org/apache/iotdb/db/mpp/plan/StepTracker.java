@@ -27,7 +27,7 @@ import java.util.Map;
 
 class Metric {
   private static final Logger logger = LoggerFactory.getLogger(Metric.class);
-  private static final int PRINT_RATE = 100;
+  private static final int PRINT_RATE = 1000;
 
   public String stepName;
   public long invokeCount;
