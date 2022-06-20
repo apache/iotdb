@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.confignode.procedure.env;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -33,14 +37,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
+  private final ReentrantLock addConfigNodeLock = new ReentrantLock();
+
   private final ConfigManager configManager;
+
+  private final ProcedureScheduler scheduler;
 
   private static boolean skipForTest = false;
 
@@ -54,8 +64,9 @@ public class ConfigNodeProcedureEnv {
     ConfigNodeProcedureEnv.invalidCacheResult = result;
   }
 
-  public ConfigNodeProcedureEnv(ConfigManager configManager) {
+  public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
+    this.scheduler = scheduler;
   }
 
   public ConfigManager getConfigManager() {
@@ -121,5 +132,25 @@ public class ConfigNodeProcedureEnv {
   public boolean verifySucceed(TSStatus... status) {
     return Arrays.stream(status)
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) {
+    List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
+    configNodeLocations.addAll(configManager.getNodeManager().getOnlineConfigNodes());
+    configNodeLocations.add(tConfigNodeLocation);
+    SyncConfigNodeClientPool.getInstance()
+        .addConsensusGroup(tConfigNodeLocation.getInternalEndPoint(), configNodeLocations);
+  }
+
+  public void addPeer(TConfigNodeLocation tConfigNodeLocation) {
+    configManager.getNodeManager().applyConfigNode(new ApplyConfigNodeReq(tConfigNodeLocation));
+  }
+
+  public ReentrantLock getAddConfigNodeLock() {
+    return addConfigNodeLock;
+  }
+
+  public ProcedureScheduler getScheduler() {
+    return scheduler;
   }
 }

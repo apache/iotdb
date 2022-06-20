@@ -195,13 +195,24 @@ public class ConfigNodeStartupCheck {
             conf.getSchemaReplicationFactor(),
             conf.getDataReplicationFactor());
 
-    TConfigNodeRegisterResp resp =
-        SyncConfigNodeClientPool.getInstance().registerConfigNode(conf.getTargetConfigNode(), req);
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
-      conf.setConfigNodeList(resp.getConfigNodeList());
-    } else {
-      throw new StartupException("Register ConfigNode failed!");
+    TEndPoint targetConfigNode = conf.getTargetConfigNode();
+    while (true) {
+      TConfigNodeRegisterResp resp =
+          SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+        LOGGER.info("ConfigNode registered successfully.");
+        break;
+      } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        targetConfigNode = resp.getStatus().getRedirectNode();
+        LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
+      }
+
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        throw new StartupException("Register ConfigNode failed!");
+      }
     }
   }
 

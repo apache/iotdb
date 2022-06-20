@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -31,6 +32,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
@@ -68,17 +70,21 @@ public class SyncConfigNodeClientPool {
                 .setMessage("All retry failed."));
   }
 
-  public TSStatus applyConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
+  public TSStatus addConsensusGroup(
+      TEndPoint endPoint, List<TConfigNodeLocation> configNodeLocation) {
     // TODO: Unified retry logic
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
-        return client.applyConfigNode(configNodeLocation);
+        TConfigNodeRegisterResp registerResp = new TConfigNodeRegisterResp();
+        registerResp.setConfigNodeList(configNodeLocation);
+        registerResp.setStatus(StatusUtils.OK);
+        return client.addConsensusGroup(registerResp);
       } catch (Exception e) {
         LOGGER.warn("Apply ConfigNode failed, retrying...", e);
         doRetryWait();
       }
     }
-    LOGGER.error("Apply ConfigNode failed");
+    LOGGER.error("Add ConsensusGroup failed");
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed.");
   }
