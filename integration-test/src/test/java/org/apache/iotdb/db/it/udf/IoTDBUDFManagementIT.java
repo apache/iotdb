@@ -23,6 +23,8 @@ import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.apache.iotdb.itbase.constant.BuiltinAggregationFunctionEnum;
+import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
