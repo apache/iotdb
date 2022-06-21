@@ -117,20 +117,24 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
     return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
-  private boolean calcFromTsBlock(TsBlock inputTsBlock, TimeRange timeRange) {
+  private boolean calcFromTsBlock(TsBlock intputTsBlock, TimeRange timeRange) {
     // check if the batchData does not contain points in current interval
-    if (inputTsBlock != null && satisfied(inputTsBlock, timeRange, ascending)) {
+    if (intputTsBlock != null && satisfied(intputTsBlock, timeRange, ascending)) {
       // skip points that cannot be calculated
-      inputTsBlock = skipOutOfTimeRangePoints(inputTsBlock, timeRange, ascending);
+      if ((ascending && intputTsBlock.getStartTime() < timeRange.getMin())
+          || (!ascending && intputTsBlock.getStartTime() > timeRange.getMax())) {
+        intputTsBlock = skipOutOfTimeRangePoints(intputTsBlock, timeRange, ascending);
+      }
+
       for (SlidingWindowAggregator aggregator : aggregators) {
-        aggregator.processTsBlock(inputTsBlock);
+        aggregator.processTsBlock(intputTsBlock);
       }
     }
     // The result is calculated from the cache
-    return inputTsBlock != null
+    return intputTsBlock != null
         && (ascending
-            ? inputTsBlock.getEndTime() > timeRange.getMax()
-            : inputTsBlock.getEndTime() < timeRange.getMin());
+            ? intputTsBlock.getEndTime() > timeRange.getMax()
+            : intputTsBlock.getEndTime() < timeRange.getMin());
   }
 
   @Override

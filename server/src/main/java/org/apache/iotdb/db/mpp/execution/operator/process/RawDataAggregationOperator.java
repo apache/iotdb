@@ -146,7 +146,10 @@ public class RawDataAggregationOperator implements ProcessOperator {
     // check if the batchData does not contain points in current interval
     if (preCachedData != null && satisfied(preCachedData, curTimeRange, ascending)) {
       // skip points that cannot be calculated
-      preCachedData = skipOutOfTimeRangePoints(preCachedData, curTimeRange, ascending);
+      if ((ascending && preCachedData.getStartTime() < curTimeRange.getMin())
+          || (!ascending && preCachedData.getStartTime() > curTimeRange.getMax())) {
+        preCachedData = skipOutOfTimeRangePoints(preCachedData, curTimeRange, ascending);
+      }
 
       for (Aggregator aggregator : aggregators) {
         // current agg method has been calculated
