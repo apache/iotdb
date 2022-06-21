@@ -532,6 +532,9 @@ class RatisConsensus implements IConsensus {
       logger.warn("fetch division info for group " + groupId + " failed due to: ", e);
       return null;
     }
+    if (leaderId == null) {
+      return null;
+    }
     TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(leaderId);
     return new Peer(groupId, leaderEndpoint);
   }
