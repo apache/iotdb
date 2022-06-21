@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -39,13 +38,16 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.it.query.TestUtils.assertResultSetEqual;
+import static org.apache.iotdb.db.it.query.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.query.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.query.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAliasIT {
 
-  private static final String[] sqls =
+  private static final String[] SQLs =
       new String[] {
         "SET STORAGE GROUP TO root.sg",
         "CREATE TIMESERIES root.sg.d1.s1(speed) WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -88,24 +90,12 @@ public class IoTDBAliasIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
-    insertData();
+    prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
-  }
-
-  private static void insertData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      for (String sql : sqls) {
-        statement.execute(sql);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
   }
 
   // ---------------------------------- Use timeseries alias ---------------------------------
@@ -183,7 +173,16 @@ public class IoTDBAliasIT {
   // ---------------------------------------- Use AS -----------------------------------------
 
   @Test
-  public void selectWithAsTest() {
+  public void rawDataQueryAsTest1() {
+    String expectedHeader = "Time,power,";
+    String[] retArray = new String[] {"100,80.0,", "200,81.0,", "300,82.0,", "400,83.0,"};
+
+    // root.sg.*.s3 matches root.sg.d2.s3 exactly
+    resultSetEqualTest("select s3 as power from root.sg2.*", expectedHeader, retArray);
+  }
+
+  @Test
+  public void rawDataQueryAsTest2() {
     String expectedHeader = "Time,speed,temperature,";
     String[] retArray =
         new String[] {"100,10.1,20.7,", "200,15.2,22.9,", "300,30.3,25.1,", "400,50.4,28.3,"};
@@ -193,7 +192,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void selectWithAsMixedTest() {
+  public void rawDataQueryAsTest3() {
     String expectedHeader = "Time,speed,root.sg2.d1.s2,";
     String[] retArray =
         new String[] {"100,10.1,20.7,", "200,15.2,22.9,", "300,30.3,25.1,", "400,50.4,28.3,"};
@@ -202,23 +201,14 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void selectWithAsFailTest() {
+  public void rawDataQueryAsFailTest() {
     assertTestFail(
         "select s1 as speed from root.sg2.*",
         "alias 'speed' can only be matched with one time series");
   }
 
   @Test
-  public void selectWithAsSingleTest() {
-    String expectedHeader = "Time,power,";
-    String[] retArray = new String[] {"100,80.0,", "200,81.0,", "300,82.0,", "400,83.0,"};
-
-    // root.sg.*.s3 matches root.sg.d2.s3 exactly
-    resultSetEqualTest("select s3 as power from root.sg2.*", expectedHeader, retArray);
-  }
-
-  @Test
-  public void aggregationWithAsTest() {
+  public void aggregationQueryAsTest() {
     String expectedHeader = "s1_num,s2_max,";
     String[] retArray =
         new String[] {
@@ -232,7 +222,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void aggregationWithAsFailTest() {
+  public void aggregationQueryAsFailTest() {
     // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
     assertTestFail(
         "select count(s1) as s1_num from root.sg2.*",
@@ -240,7 +230,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void groupByWithAsTest() {
+  public void groupByQueryAsTest() {
     String expectedHeader = "Time,s1_num,";
     String[] retArray =
         new String[] {
@@ -254,7 +244,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void alignByDeviceWithAsTest() {
+  public void alignByDeviceQueryAsTest1() {
     String expectedHeader = "Time,Device,speed,temperature,";
     String[] retArray =
         new String[] {
@@ -271,7 +261,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void alignByDeviceWithAsMixedTest() {
+  public void alignByDeviceQueryAsTest2() {
     String expectedHeader = "Time,Device,speed,s2,";
     String[] retArray =
         new String[] {
@@ -290,15 +280,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void alignByDeviceWithAsFailTest() {
-    // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
-    assertTestFail(
-        "select * as speed from root.sg2.d1 align by device",
-        "alias 'speed' can only be matched with one time series");
-  }
-
-  @Test
-  public void alignByDeviceWithAsDuplicatedTest() {
+  public void alignByDeviceQueryAsTest3() {
     String expectedHeader = "Time,Device,speed,s1,";
     String[] retArray =
         new String[] {
@@ -313,12 +295,9 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  public void alignByDeviceWithAsAggregationTest() {
+  public void alignByDeviceQueryAsTest4() {
     String expectedHeader = "Device,s1_num,count(s2),s3_num,";
-    String[] retArray =
-        new String[] {
-          "root.sg2.d2,4,4,4,",
-        };
+    String[] retArray = new String[] {"root.sg2.d2,4,4,4,"};
 
     resultSetEqualTest(
         "select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg2.d2 align by device",
@@ -327,8 +306,16 @@ public class IoTDBAliasIT {
   }
 
   @Test
+  public void alignByDeviceQueryAsFailTest() {
+    // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
+    assertTestFail(
+        "select * as speed from root.sg2.d1 align by device",
+        "alias 'speed' can only be matched with one time series");
+  }
+
+  @Test
   @Ignore // TODO: remove @Ignore after support alias in last query
-  public void lastWithAsTest() {
+  public void lastQueryAsTest() {
     String[] retArray = new String[] {"400,speed,50.4,FLOAT,", "400,root.sg2.d1.s2,28.3,FLOAT,"};
 
     resultSetEqualTest("select last s1 as speed, s2 from root.sg2.d1", LAST_QUERY_HEADER, retArray);
@@ -336,7 +323,7 @@ public class IoTDBAliasIT {
 
   @Test
   @Ignore // TODO: remove @Ignore after support alias in last query
-  public void lastWithAsDuplicatedTest() {
+  public void lastQueryAsTest2() {
     String[] retArray =
         new String[] {
           "400,speed,50.4,FLOAT,", "400,root.sg2.d1.s1,50.4,FLOAT,", "400,temperature,28.3,FLOAT,"
@@ -350,7 +337,7 @@ public class IoTDBAliasIT {
 
   @Test
   @Ignore // TODO: remove @Ignore after support alias in last query
-  public void lastWithAsFailTest() {
+  public void lastQueryAsFailTest() {
     // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
     assertTestFail(
         "select last s1 as speed from root.sg2.*",
@@ -359,17 +346,19 @@ public class IoTDBAliasIT {
 
   @Test
   @Ignore // TODO: remove @Ignore after support UDF
-  public void UDFAliasTest() {
+  public void UDFQueryAsTest() {
     List<String> sqls =
         Arrays.asList(
             "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1 WHERE time >= 1509466140000",
             "select -s1, sin(cos(tan(s1))) as a, cos(s2), top_k(s1 + s1, 'k'='1') as b from root.sg1.d1",
-            "select -s1, -s1, sin(cos(tan(s1))) as a, sin(cos(tan(s1))), cos(s2), top_k(s1 + s1, 'k'='1') as b, cos(s2) from root.sg1.d1");
+            "select -s1, -s1, sin(cos(tan(s1))) as a, sin(cos(tan(s1))), cos(s2), top_k(s1 + s1, 'k'='1') as b, cos(s2) from root.sg1.d1",
+            "select s1, s2, sin(s1+s2) as a from root.sg1.d1");
     List<String> expectHeaders =
         Arrays.asList(
             "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
             "Time,-root.sg1.d1.s1,a,cos(root.sg1.d1.s2),b,",
-            "Time,-root.sg1.d1.s1,-root.sg1.d1.s1,a,sin(cos(tan(root.sg1.d1.s1))),cos(root.sg1.d1.s2),b,cos(root.sg1.d1.s2),");
+            "Time,-root.sg1.d1.s1,-root.sg1.d1.s1,a,sin(cos(tan(root.sg1.d1.s1))),cos(root.sg1.d1.s2),b,cos(root.sg1.d1.s2),",
+            "Time,root.sg1.d1.s1,root.sg1.d1.s2,a,");
     List<String[]> retArrays =
         Arrays.asList(
             new String[] {},
@@ -382,45 +371,13 @@ public class IoTDBAliasIT {
               "0,1,1,0.013387802193205699,0.013387802193205699,0.5403023058681398,-2.0,0.5403023058681398,",
               "1,2,2,-0.5449592372801408,-0.5449592372801408,-0.4161468365471424,null,-0.4161468365471424,",
               "2,3,3,0.8359477452180156,0.8359477452180156,-0.9899924966004454,null,-0.9899924966004454,"
+            },
+            new String[] {
+              "0,-1,1,0.0", "1,-2,2,0.0", "2,-3,3,0.0",
             });
 
     for (int i = 0; i < sqls.size(); i++) {
       resultSetEqualTest(sqls.get(i), expectHeaders.get(i), retArrays.get(i));
-    }
-  }
-
-  @Test
-  @Ignore // TODO: remove @Ignore after support UDF
-  public void UDFAliasResultTest() {
-    String expectHeader = "Time,root.sg1.d1.s1,root.sg1.d1.s2,a,";
-    String[] retArray = {
-      "0,-1,1,0.0", "1,-2,2,0.0", "2,-3,3,0.0",
-    };
-
-    resultSetEqualTest("select s1, s2, sin(s1+s2) as a from root.sg1.d1", expectHeader, retArray);
-  }
-
-  // --------------------------------------- Utilities ---------------------------------------
-
-  public void resultSetEqualTest(String sql, String expectedHeader, String[] expectedRetArray) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetArray);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  public void assertTestFail(String sql, String errMsg) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail();
-    } catch (Exception e) {
-      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
   }
 }

@@ -24,29 +24,25 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.itbase.constant.TestConstant;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
-import java.util.Objects;
+import java.util.Arrays;
+import java.util.List;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.apache.iotdb.db.it.query.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.query.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.query.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBPaginationIT {
 
-  private static final String[] insertSqls =
+  private static final String[] SQLs =
       new String[] {
         "SET STORAGE GROUP TO root.vehicle",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -82,141 +78,80 @@ public class IoTDBPaginationIT {
         "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
         "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
         "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
-        "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
+        "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)"
       };
+
+  private static int maxQueryDeduplicatedPathNum;
 
   @BeforeClass
   public static void setUp() throws InterruptedException {
+    maxQueryDeduplicatedPathNum = ConfigFactory.getConfig().getMaxQueryDeduplicatedPathNum();
+    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(2);
     EnvFactory.getEnv().initBeforeClass();
+    prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
-  }
-
-  private static void insertData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : insertSqls) {
-        statement.execute(sql);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
   }
 
   @Test
-  public void Test() throws ClassNotFoundException {
-    insertData();
-    SelectTest();
-  }
-
-  public void SelectTest() {
-    String[] sqlS = {
-      "SELECT s1 FROM root.vehicle.d0 WHERE time<200 limit 3",
-      "1,1101,\n" + "2,40000,\n" + "50,50000,\n",
-      "SELECT s0 FROM root.vehicle.d0 WHERE s1 > 190 limit 3",
-      "1,101,\n" + "2,10000,\n" + "50,10000,\n",
-      "SELECT s1,s2 FROM root.vehicle.d0 where s1>190 or s2<10.0 limit 3 offset 2",
-      "3,null,3.33,\n" + "4,null,4.44,\n" + "50,50000,null,\n",
-      "select * from root.vehicle.d0 slimit 1",
-      "1,101,\n"
-          + "2,10000,\n"
-          + "50,10000,\n"
-          + "100,99,\n"
-          + "101,99,\n"
-          + "102,80,\n"
-          + "103,99,\n"
-          + "104,90,\n"
-          + "105,99,\n"
-          + "106,99,\n"
-          + "1000,22222,\n",
-      "select * from root.vehicle.d0 slimit 1 soffset 2",
-      "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n" + "102,10.0,\n" + "105,11.11,\n" + "1000,1000.11,\n",
-      "select d0 from root.vehicle slimit 1 soffset 2",
-      "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n" + "102,10.0,\n" + "105,11.11,\n" + "1000,1000.11,\n",
-      "select * from root.vehicle.d0 where s1>190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2 ",
-      "3,3.33,\n" + "4,4.44,\n" + "105,11.11,\n"
-    };
-    executeSQL(sqlS);
-  }
-
-  private void executeSQL(String[] sqls) {
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      StringBuilder result = new StringBuilder();
-      long now_start = 0L;
-      boolean cmp = false;
-
-      for (String sql : sqls) {
-        //         System.out.println("----" + sql);
-        if (cmp) {
-          Assert.assertEquals(sql, result.toString());
-          cmp = false;
-        } else {
-          if (sql.contains("NOW()") && now_start == 0L) {
-            now_start = System.currentTimeMillis();
-          }
-
-          if (sql.split(" ")[0].equals("SELECT") | sql.split(" ")[0].equals("select")) {
-            try (ResultSet resultSet = statement.executeQuery(sql)) {
-              ResultSetMetaData metaData = resultSet.getMetaData();
-              int count = metaData.getColumnCount();
-              String[] column = new String[count];
-              for (int i = 0; i < count; i++) {
-                column[i] = metaData.getColumnName(i + 1);
-              }
-              result = new StringBuilder();
-              while (resultSet.next()) {
-                for (int i = 1; i <= count; i++) {
-                  if (now_start > 0L && Objects.equals(column[i - 1], TestConstant.TIMESTAMP_STR)) {
-                    String timestr = resultSet.getString(i);
-                    long tn = Long.parseLong(timestr);
-                    long now = System.currentTimeMillis();
-                    if (tn >= now_start && tn <= now) {
-                      timestr = "NOW()";
-                    }
-                    result.append(timestr).append(',');
-                  } else {
-                    result.append(resultSet.getString(i)).append(',');
-                  }
-                }
-                result.append('\n');
-              }
-              cmp = true;
+  public void rawDataQueryTest() {
+    // TODO: remove comments after support value filter
+    List<String> querySQLs =
+        Arrays.asList(
+            "SELECT s1 FROM root.vehicle.d0 WHERE time<200 limit 3",
+            // "SELECT s0 FROM root.vehicle.d0 WHERE s1 > 190 limit 3",
+            // "SELECT s1,s2 FROM root.vehicle.d0 WHERE s1 > 190 or s2 < 10.0 limit 3 offset 2",
+            "SELECT * FROM root.vehicle.d0 slimit 1",
+            "SELECT * FROM root.vehicle.d0 slimit 1 soffset 2"
+            // "SELECT * FROM root.vehicle.d0 WHERE s1 > 190 or s2 < 10.0 limit 3 offset 1 slimit 1
+            // soffset 2"
+            );
+    List<String> expectHeaders =
+        Arrays.asList(
+            "Time,root.vehicle.d0.s1,",
+            // "Time,root.vehicle.d0.s0,",
+            // "Time,root.vehicle.d0.s1,root.vehicle.d0.s2,",
+            "Time,root.vehicle.d0.s0,",
+            "Time,root.vehicle.d0.s2,"
+            // "Time,root.vehicle.d0.s2,"
+            );
+    List<String[]> retArrays =
+        Arrays.asList(
+            new String[] {"1,1101,", "2,40000,", "50,50000,"},
+            // new String[] {"1,101,", "2,10000,", "50,10000,"},
+            // new String[] {"3,null,3.33,", "4,null,4.44,", "50,50000,null,"},
+            new String[] {
+              "1,101,",
+              "2,10000,",
+              "50,10000,",
+              "100,99,",
+              "101,99,",
+              "102,80,",
+              "103,99,",
+              "104,90,",
+              "105,99,",
+              "106,99,",
+              "1000,22222,"
+            },
+            new String[] {
+              "2,2.22,", "3,3.33,", "4,4.44,", "102,10.0,", "105,11.11,", "1000,1000.11,"
             }
-          }
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
+            // new String[] {"3,3.33,", "4,4.44,", "105,11.11,"}
+            );
+
+    for (int i = 0; i < querySQLs.size(); i++) {
+      resultSetEqualTest(querySQLs.get(0), expectHeaders.get(0), retArrays.get(0));
     }
   }
 
-  /** Test path num over limit, there is supposed to throw pathNumOverLimitException. */
   @Test
   public void pathNumOverLimitTest() {
-    final int maxQueryDeduplicatedPathNum =
-        ConfigFactory.getConfig().getMaxQueryDeduplicatedPathNum();
-    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(2);
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      statement.execute("insert into root.sg.d1(time, s1, s2, s3) values(1, 1, 1, 1)");
-
-      // fail
-      statement.executeQuery("select ** from root");
-      fail();
-    } catch (Exception e) {
-      assertTrue(
-          e.getMessage()
-              .contains(
-                  "Too many paths in one query! Currently allowed max deduplicated path number is 2."));
-    }
-    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
+    assertTestFail(
+        "select * from root.vehicle.d0",
+        "Too many paths in one query! Currently allowed max deduplicated path number is 2.");
   }
 }

@@ -19,13 +19,55 @@
 
 package org.apache.iotdb.db.it.query;
 
+import org.apache.iotdb.it.env.EnvFactory;
+
+import org.junit.Assert;
+
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TestUtils {
+
+  public static void prepareData(String[] SQLs) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String sql : SQLs) {
+        statement.execute(sql);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void resultSetEqualTest(
+      String sql, String expectedHeader, String[] expectedRetArray) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetArray);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void assertTestFail(String sql, String errMsg) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
 
   public static void assertResultSetEqual(
       ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray)
