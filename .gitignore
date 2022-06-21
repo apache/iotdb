@@ -114,3 +114,6 @@ node3/
 antlr/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+
+# git hooks
+tools/git-hooks/config.sh
