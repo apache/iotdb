@@ -134,6 +134,11 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Execute remotely on the new node
+   *
+   * @param tConfigNodeLocation new config node location
+   */
   public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) {
     List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
     configNodeLocations.addAll(configManager.getNodeManager().getOnlineConfigNodes());
@@ -142,6 +147,11 @@ public class ConfigNodeProcedureEnv {
         .addConsensusGroup(tConfigNodeLocation.getInternalEndPoint(), configNodeLocations);
   }
 
+  /**
+   * When current node is leader, execute it.
+   *
+   * @param tConfigNodeLocation new config node location
+   */
   public void addPeer(TConfigNodeLocation tConfigNodeLocation) {
     configManager.getNodeManager().applyConfigNode(new ApplyConfigNodeReq(tConfigNodeLocation));
   }

@@ -84,6 +84,11 @@ public class ConsensusManager {
     addConsensusGroup(conf.getConfigNodeList());
   }
 
+  /**
+   * execute in new node
+   *
+   * @param configNodeLocations all config node
+   */
   public void addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
     if (configNodeLocations.size() == 0) {
       return;

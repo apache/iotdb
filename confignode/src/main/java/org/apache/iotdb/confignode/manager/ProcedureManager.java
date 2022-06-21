@@ -109,6 +109,11 @@ public class ProcedureManager {
     }
   }
 
+  /**
+   * generate a procedure, and execute by one by one
+   *
+   * @param req new config node
+   */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation());

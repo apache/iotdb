@@ -39,6 +39,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+/** add config node procedure */
 public class AddConfigNodeProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AddConfigNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(AddConfigNodeProcedure.class);
@@ -99,8 +100,7 @@ public class AddConfigNodeProcedure
     switch (state) {
       case ADD_CONSENSUS_GROUP:
       case ADD_PEER:
-        LOG.info("Rollback preDeleted:{}", tConfigNodeLocation);
-
+        LOG.info("Rollback remove peer:{}", tConfigNodeLocation);
         // TODO: if remove consensus group and remove peer
         break;
     }

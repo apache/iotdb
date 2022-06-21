@@ -568,7 +568,6 @@ public class ConfigManager implements Manager {
       if (errorResp1 != null) return errorResp1;
 
       procedureManager.addConfigNode(req);
-
       return nodeManager.registerConfigNode(req);
     }
 
