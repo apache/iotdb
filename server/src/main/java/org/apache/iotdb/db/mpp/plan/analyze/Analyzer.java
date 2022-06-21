@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -102,6 +103,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -1381,12 +1384,33 @@ public class Analyzer {
 
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           schemaPartition.getSchemaPartitionMap();
-      for (String storageGroup : schemaPartitionMap.keySet()) {
-        sgNameToQueryParamsMap.put(
-            storageGroup,
-            schemaPartitionMap.get(storageGroup).keySet().stream()
-                .map(DataPartitionQueryParam::new)
-                .collect(Collectors.toList()));
+
+      // todo keep the behaviour consistency of cluster and standalone,
+      // the behaviour of standalone fetcher and LocalConfigNode is not consistent with that of
+      // cluster mode's
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        for (String storageGroup : schemaPartitionMap.keySet()) {
+          sgNameToQueryParamsMap.put(
+              storageGroup,
+              schemaPartitionMap.get(storageGroup).keySet().stream()
+                  .map(DataPartitionQueryParam::new)
+                  .collect(Collectors.toList()));
+        }
+      } else {
+        // the StandalonePartitionFetcher and LocalConfigNode now doesn't support partition fetch
+        // via slotId
+        schemaTree
+            .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
+            .forEach(
+                deviceSchemaInfo -> {
+                  PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+                  DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+                  queryParam.setDevicePath(devicePath.getFullPath());
+                  sgNameToQueryParamsMap
+                      .computeIfAbsent(
+                          schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+                      .add(queryParam);
+                });
       }
 
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
