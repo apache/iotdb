@@ -357,18 +357,15 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 - 导入数据，需要赋予`READ_TIMESERIES`，`INSERT_TIMESERIES`两种权限。
 
 ```
-./import-csv.bat -h 127.0.0.1 -p 6667 -u renyuhua -pw root -f dump0.csv
+Eg: IoTDB > ./import-csv.bat -h 127.0.0.1 -p 6667 -u renyuhua -pw root -f dump0.csv
 ```
 
 - 查询写回(SELECT_INTO)
-  - 所有 `select` 子句中源序列的 `READ_TIMESERIES` 权限
-  - 所有 `into` 子句中目标序列 `INSERT_TIMESERIES` 权限
+  - 需要所有 `select` 子句中源序列的 `READ_TIMESERIES` 权限
+  - 需要所有 `into` 子句中目标序列 `INSERT_TIMESERIES` 权限
 
 ```
-select s1, s1 
-into t1, t2 
-from root.sg.d1
-limit 5 offset 1000
+Eg: IoTDB > select s1, s1 into t1, t2 from root.sg.d1 limit 5 offset 1000
 ```
 
 ### 用户名限制
@@ -393,20 +390,20 @@ IoTDB 规定角色名的字符长度不小于 4，其中角色名不能包含空
 
 ### 非root用户限制进行的操作
 
-目前以下IoTDB支持的sql语句只有root用户可以进行操作，且没有对应的权限可以赋予新用户。
+目前以下IoTDB支持的sql语句只有`root`用户可以进行操作，且没有对应的权限可以赋予新用户。
 
 ###### TTL
 
 - 设置ttl
 
 ```
-set ttl to root.ln 3600
+Eg: IoTDB > set ttl to root.ln 3600
 ```
 
 - 取消ttl
 
 ```
-unset ttl to root.ln
+Eg: IoTDB > unset ttl to root.ln
 ```
 
 ###### 元数据模板
@@ -414,72 +411,102 @@ unset ttl to root.ln
 - 创建元数据模板
 
 ```
-create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+Eg: IoTDB > create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 - 挂载元数据模板
 
 ```
-set schema template t1 to root.sg1.d1
+Eg: IoTDB > set schema template t1 to root.sg1.d1
 ```
 
 - 卸载元数据模板
 
 ```
-unset schema template t1 from root.sg1.d1
+Eg: IoTDB > unset schema template t1 from root.sg1.d1
 ```
 
 - 删除元数据模板
 
 ```
-drop schema template t1
+Eg: IoTDB > drop schema template t1
 ```
 
 ###### 标签点管理
 
-- 标签点管理（标签和属性值的更新修改等）
+- 重命名标签或属性
 
-```
+```text
 ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
 ```
 
-###### Tsfile管理
+- 重新设置标签或属性的值
+
+```text
+ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
+```
+
+- 删除已经存在的标签或属性
+
+```text
+ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+```
+
+- 添加新的标签
+
+```text
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+```
+
+- 添加新的属性
+
+```text
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+
+- 更新插入别名，标签和属性
+
+```text
+ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+```
+
+###### TsFile管理
 
 - 加载TsFile
 
 ```
-load '/Users/Desktop/data/1575028885956-101-0.tsfile'
+Eg: IoTDB > load '/Users/Desktop/data/1575028885956-101-0.tsfile'
 ```
 
-- 删除tsfile文件
+- 删除TsFile文件
 
 ```
-remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'
+Eg: IoTDB > remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'
 ```
 
-- 卸载tsfile文件到指定目录
+- 卸载TsFile文件到指定目录
 
 ```
-unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'
+Eg: IoTDB > unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'
 ```
 
 ###### 统计
 
-- 统计存储组、节点数、设备、时间序列
+- 统计存储组/节点数/设备/时间序列
 
 ```
-count storage group
-count nodes root.** LEVEL=2
-count devices root.ln.**
-count timeseries root.**
+Eg: IoTDB > count storage group
+Eg: IoTDB > count nodes root.** LEVEL=2
+Eg: IoTDB > count devices root.ln.**
+Eg: IoTDB > count timeseries root.**
 ```
 
-###### 删除时间分区
+###### 删除时间分区（实验性功能）
 
-- 删除时间分区
+- 删除时间分区（实验性功能）
 
 ```
-DELETE PARTITION root.ln 0,1,2
+Eg: IoTDB > DELETE PARTITION root.ln 0,1,2
 ```
 
 ###### 连续查询
@@ -487,7 +514,7 @@ DELETE PARTITION root.ln 0,1,2
 - 连续查询(CQ)
 
 ```
-CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.* GROUP BY time(10s) END
+Eg: IoTDB > CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.* GROUP BY time(10s) END
 ```
 
 ###### 运维命令
@@ -495,48 +522,50 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 - FLUSH
 
 ```
-flush
+Eg: IoTDB > flush
 ```
 
 - MERGE
 
 ```
-MERGE
-FULL MERGE
+Eg: IoTDB > MERGE
+Eg: IoTDB > FULL MERGE
 ```
 
 - CLEAR CACHE
 
 ```sql
-CLEAR CACHE
+Eg: IoTDB > CLEAR CACHE
 ```
 
 - SET STSTEM TO READONLY / WRITABLE
 
 ```
-SET STSTEM TO READONLY / WRITABLE
+Eg: IoTDB > SET STSTEM TO READONLY / WRITABLE
 ```
 
 - SCHEMA SNAPSHOT
 
 ```sql
-CREATE SNAPSHOT FOR SCHEMA
+Eg: IoTDB > CREATE SNAPSHOT FOR SCHEMA
 ```
 
 - 查询终止
 
 ```
-KILL QUERY 1
+Eg: IoTDB > KILL QUERY 1
 ```
+
+###### 水印工具
 
 - 为新用户施加水印
 
 ```
-grant watermark_embedding to Alice
+Eg: IoTDB > grant watermark_embedding to Alice
 ```
 
 - 撤销水印
 
 ```
-revoke watermark_embedding from Alice
+Eg: IoTDB > revoke watermark_embedding from Alice
 ```
