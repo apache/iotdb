@@ -66,7 +66,7 @@ public class ConstantInputReader implements LayerPointReader {
         cachedDouble = (double) value;
         break;
       case TEXT:
-        cachedBinary = new Binary((String) value);
+        cachedBinary = (Binary) value;
         break;
       case BOOLEAN:
         cachedBoolean = (boolean) value;

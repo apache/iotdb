@@ -21,10 +21,12 @@ package org.apache.iotdb.confignode.client;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
+import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -261,6 +263,22 @@ public class AsyncDataNodeClientPool {
       clientManager.borrowClient(endPoint).dropFunction(request, handler);
     } catch (Exception e) {
       LOGGER.error("Failed to asking DataNode to create function: {}", endPoint, e);
+    }
+  }
+
+  /**
+   * Flush on specific DataNode
+   *
+   * @param endPoint The specific DataNode
+   */
+  public void flush(TEndPoint endPoint, TFlushReq flushReq, FlushHandler handler) {
+    for (int retry = 0; retry < 3; retry++) {
+      try {
+        clientManager.borrowClient(endPoint).flush(flushReq, handler);
+        return;
+      } catch (Exception e) {
+        LOGGER.error("Failed to asking DataNode to flush: {}", endPoint, e);
+      }
     }
   }
 

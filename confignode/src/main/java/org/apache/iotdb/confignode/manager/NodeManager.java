@@ -21,8 +21,10 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -40,8 +42,11 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 
 /** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
@@ -251,5 +256,27 @@ public class NodeManager {
      * @param dataNodeInfo data node info
      */
     void removeDataNode(final TDataNodeLocation dataNodeInfo);
+  }
+
+  public List<TSStatus> flush(TFlushReq req) {
+    List<TDataNodeInfo> onlineDataNodes =
+        configManager.getNodeManager().getOnlineDataNodes(req.dataNodeId);
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(onlineDataNodes.size()));
+    CountDownLatch countDownLatch = new CountDownLatch(onlineDataNodes.size());
+    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+      AsyncDataNodeClientPool.getInstance()
+          .flush(
+              dataNodeInfo.getLocation().getInternalEndPoint(),
+              req,
+              new FlushHandler(dataNodeInfo.getLocation(), countDownLatch, dataNodeResponseStatus));
+    }
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.error("NodeManager was interrupted during flushing on data nodes", e);
+    }
+    return dataNodeResponseStatus;
   }
 }
