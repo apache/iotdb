@@ -38,13 +38,18 @@ public class CountAccumulator implements Accumulator {
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
-      long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
-      }
-      if (!column[1].isNull(i)) {
-        countValue++;
+    Column valueColumn = column[1];
+    if (!valueColumn.mayHaveNull() && timeRange.contains(timeRange.getMin(), timeRange.getMax())) {
+      countValue += timeColumn.getPositionCount();
+    } else {
+      for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+        long curTime = timeColumn.getLong(i);
+        if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+          break;
+        }
+        if (!valueColumn.isNull(i)) {
+          countValue++;
+        }
       }
     }
   }
