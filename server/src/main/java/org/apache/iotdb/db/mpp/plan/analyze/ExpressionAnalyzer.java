@@ -43,7 +43,9 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -190,7 +192,7 @@ public class ExpressionAnalyzer {
       } else {
         for (PartialPath prefixPath : prefixPaths) {
           PartialPath concatPath = prefixPath.concatPath(rawPath);
-          patternTree.appendPath(concatPath);
+          patternTree.appendPathPattern(concatPath);
           actualPaths.add(concatPath);
         }
       }
@@ -230,12 +232,12 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
       if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
-        patternTree.appendPath(rawPath);
+        patternTree.appendPathPattern(rawPath);
         return;
       }
       for (PartialPath prefixPath : prefixPaths) {
         PartialPath concatPath = prefixPath.concatPath(rawPath);
-        patternTree.appendPath(concatPath);
+        patternTree.appendPathPattern(concatPath);
       }
     } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
       // do nothing
@@ -597,6 +599,8 @@ public class ExpressionAnalyzer {
             false);
       }
       return new Pair<>(null, true);
+    } else if (predicate instanceof LikeExpression || predicate instanceof RegularExpression) {
+      return new Pair<>(null, true);
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());
@@ -727,13 +731,17 @@ public class ExpressionAnalyzer {
               (UnaryExpression) expression, Collections.singletonList(childExpression))
           .get(0);
     } else if (expression instanceof FunctionExpression) {
+      FunctionExpression functionExpression = (FunctionExpression) expression;
       List<Expression> childExpressions = new ArrayList<>();
       for (Expression suffixExpression : expression.getExpressions()) {
         childExpressions.add(removeAliasFromExpression(suffixExpression));
       }
-      return reconstructFunctionExpressions(
-              (FunctionExpression) expression, Collections.singletonList(childExpressions))
-          .get(0);
+      // Reconstruct the function name to lower case to finish the calculation afterwards while the
+      // origin name will be only as output name
+      return new FunctionExpression(
+          functionExpression.getFunctionName().toLowerCase(),
+          functionExpression.getFunctionAttributes(),
+          childExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
       MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
       if (rawPath.isMeasurementAliasExists()) {

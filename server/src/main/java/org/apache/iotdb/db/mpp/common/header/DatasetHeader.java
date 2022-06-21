@@ -64,6 +64,12 @@ public class DatasetHeader {
   }
 
   public List<String> getRespColumns() {
+    return columnHeaders.stream()
+        .map(ColumnHeader::getColumnNameWithAlias)
+        .collect(Collectors.toList());
+  }
+
+  public List<String> getColumnNameWithoutAlias() {
     return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
@@ -89,7 +95,17 @@ public class DatasetHeader {
   }
 
   public Map<String, Integer> getColumnNameIndexMap() {
-    return columnToTsBlockIndexMap;
+    if (columnToTsBlockIndexMap == null || columnToTsBlockIndexMap.isEmpty()) {
+      return columnToTsBlockIndexMap;
+    }
+
+    Map<String, Integer> columnNameIndexMap = new HashMap<>();
+    for (ColumnHeader columnHeader : columnHeaders) {
+      columnNameIndexMap.put(
+          columnHeader.getColumnNameWithAlias(),
+          columnToTsBlockIndexMap.get(columnHeader.getColumnName()));
+    }
+    return columnNameIndexMap;
   }
 
   public int getOutputValueColumnCount() {

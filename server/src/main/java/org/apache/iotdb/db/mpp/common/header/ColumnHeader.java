@@ -43,10 +43,14 @@ public class ColumnHeader {
     this.alias = null;
   }
 
-  public String getColumnName() {
+  public String getColumnNameWithAlias() {
     if (alias != null) {
       return alias;
     }
+    return columnName;
+  }
+
+  public String getColumnName() {
     return columnName;
   }
 

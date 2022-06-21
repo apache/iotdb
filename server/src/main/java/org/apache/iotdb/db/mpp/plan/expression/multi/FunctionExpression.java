@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -50,6 +49,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -265,7 +265,6 @@ public class FunctionExpression extends Expression {
             new UDTFTypeInferrer(functionName)
                 .inferOutputType(
                     expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-                    getPaths(),
                     expressions.stream()
                         .map(f -> typeProvider.getType(f.toString()))
                         .collect(Collectors.toList()),
@@ -400,7 +399,6 @@ public class FunctionExpression extends Expression {
         queryId,
         memoryAssigner.assign(),
         expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        getPaths(),
         expressions.stream()
             .map(f -> typeProvider.getType(f.toString()))
             .collect(Collectors.toList()),
@@ -514,7 +512,6 @@ public class FunctionExpression extends Expression {
         queryId,
         memoryAssigner.assign(),
         expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        getPaths(),
         expressions.stream().map(expressionDataTypeMap::get).collect(Collectors.toList()),
         functionAttributes);
 

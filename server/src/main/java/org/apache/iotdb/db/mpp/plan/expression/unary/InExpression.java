@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.plan.expression.unary;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.InTransformer;
@@ -67,22 +70,31 @@ public class InExpression extends UnaryExpression {
   public TSDataType inferTypes(TypeProvider typeProvider) {
     final String expressionString = toString();
     if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      typeProvider.setType(expressionString, expression.inferTypes(typeProvider));
+      expression.inferTypes(typeProvider);
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
     }
-    return typeProvider.getType(expressionString);
+    return TSDataType.BOOLEAN;
   }
 
   @Override
   protected String getExpressionStringInternal() {
-    StringBuilder valuesStringBuilder = new StringBuilder();
+    StringBuilder stringBuilder = new StringBuilder();
+    if (expression instanceof FunctionExpression
+        || expression instanceof ConstantOperand
+        || expression instanceof TimeSeriesOperand) {
+      stringBuilder.append(expression).append(" IN (");
+    } else {
+      stringBuilder.append('(').append(expression).append(')').append(" IN (");
+    }
     Iterator<String> iterator = values.iterator();
     if (iterator.hasNext()) {
-      valuesStringBuilder.append(iterator.next());
+      stringBuilder.append(iterator.next());
     }
     while (iterator.hasNext()) {
-      valuesStringBuilder.append(", ").append(iterator.next());
+      stringBuilder.append(',').append(iterator.next());
     }
-    return expression + " IN (" + valuesStringBuilder + ")";
+    stringBuilder.append(')');
+    return stringBuilder.toString();
   }
 
   @Override

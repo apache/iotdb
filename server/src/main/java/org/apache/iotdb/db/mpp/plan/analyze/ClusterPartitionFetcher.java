@@ -108,7 +108,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
-      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, false);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
@@ -132,7 +132,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       patternTree.constructTree();
-      List<String> devicePaths = patternTree.findAllDevicePaths();
+      List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, true);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
@@ -604,8 +604,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             }
           }
           if (null == storageGroup) {
-            logger.error(
-                "Failed to get the storage group of {} when update SchemaPartitionCache", device);
+            // device not exist
             continue;
           }
           TSeriesPartitionSlot seriesPartitionSlot =

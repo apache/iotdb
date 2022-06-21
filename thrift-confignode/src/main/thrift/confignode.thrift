@@ -29,6 +29,11 @@ struct TDataNodeRegisterReq {
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
+struct TDataNodeActiveReq {
+  1: required common.TDataNodeLocation location
+  2: required i32 dataNodeId
+}
+
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -224,11 +229,23 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// show regions
+struct TShowRegionReq {
+  1: optional common.TConsensusGroupType consensusGroupType;
+}
+
+struct TShowRegionResp {
+  1: required common.TSStatus status
+  2: optional list<common.TRegionLocation> regionInfoList;
+}
+
 service ConfigIService {
 
   /* DataNode */
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
+
+  common.TSStatus activeDataNode(TDataNodeActiveReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
@@ -296,6 +313,10 @@ service ConfigIService {
   /* Flush */
 
   common.TSStatus flush(common.TFlushReq req)
+
+  /* Show Region */
+
+  TShowRegionResp showRegion(TShowRegionReq req)
 
 }
 

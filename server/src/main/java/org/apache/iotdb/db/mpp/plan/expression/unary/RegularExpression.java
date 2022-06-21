@@ -83,9 +83,9 @@ public class RegularExpression extends UnaryExpression {
     if (!typeProvider.containsTypeInfoOf(expressionString)) {
       checkInputExpressionDataType(
           expression.toString(), expression.inferTypes(typeProvider), TSDataType.TEXT);
-      typeProvider.setType(expressionString, TSDataType.TEXT);
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
     }
-    return TSDataType.TEXT;
+    return TSDataType.BOOLEAN;
   }
 
   @Override

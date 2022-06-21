@@ -313,4 +313,14 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
   }
+
+  @Override
+  public long getMinTime() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
+  }
 }

@@ -359,6 +359,46 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public long getMinTime() {
+    return times[0];
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    Object value;
+    switch (dataTypes[index]) {
+      case INT32:
+        int[] intValues = (int[]) columns[index];
+        value = intValues[0];
+        break;
+      case INT64:
+        long[] longValues = (long[]) columns[index];
+        value = longValues[0];
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) columns[index];
+        value = floatValues[0];
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) columns[index];
+        value = doubleValues[0];
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) columns[index];
+        value = boolValues[0];
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) columns[index];
+        value = binaryValues[0];
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(DATATYPE_UNSUPPORTED, dataTypes[index]));
+    }
+    return value;
+  }
+
+  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_TABLET.serialize(byteBuffer);
     subSerialize(byteBuffer);

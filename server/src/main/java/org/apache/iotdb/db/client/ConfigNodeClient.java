@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -58,7 +59,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -96,7 +100,11 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   private List<TEndPoint> configNodes;
 
+  private TEndPoint configNode;
+
   private int cursor = 0;
+
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
 
@@ -139,6 +147,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
               // as there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
       transport.open();
+      configNode = endpoint;
     } catch (TTransportException e) {
       throw new TException(e);
     }
@@ -222,6 +231,10 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
       } else {
         configLeader = null;
       }
+      logger.warn(
+          "Failed to connect to ConfigNode {} from DataNode {},because the current node is not leader,try next node",
+          configNode,
+          config.getAddressAndPort());
       return true;
     }
     return false;
@@ -243,6 +256,22 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
         }
         configNodes = newConfigNodes;
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.activeDataNode(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
       } catch (TException e) {
         configLeader = null;
       }
@@ -631,6 +660,22 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
         TSStatus status = client.flush(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowRegionResp showRegion(TShowRegionReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowRegionResp showRegionResp = client.showRegion(req);
+        if (!updateConfigNodeLeader(showRegionResp.getStatus())) {
+          return showRegionResp;
         }
       } catch (TException e) {
         configLeader = null;

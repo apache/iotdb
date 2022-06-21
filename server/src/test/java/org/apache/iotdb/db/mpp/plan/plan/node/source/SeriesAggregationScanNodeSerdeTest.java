@@ -51,7 +51,7 @@ public class SeriesAggregationScanNodeSerdeTest {
     List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.MAX_TIME,
+            AggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
     GroupByTimeParameter groupByTimeParameter =

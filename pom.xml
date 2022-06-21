@@ -120,6 +120,7 @@
         <module>external-pipe-api</module>
         <module>library-udf</module>
         <module>schema-engine-rocksdb</module>
+        <module>udf-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>

@@ -124,11 +124,11 @@ public class LikeExpression extends UnaryExpression {
   public TSDataType inferTypes(TypeProvider typeProvider) throws SemanticException {
     final String expressionString = toString();
     if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      Expression.checkInputExpressionDataType(
+      checkInputExpressionDataType(
           expression.toString(), expression.inferTypes(typeProvider), TSDataType.TEXT);
-      typeProvider.setType(expressionString, TSDataType.TEXT);
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
     }
-    return TSDataType.TEXT;
+    return TSDataType.BOOLEAN;
   }
 
   @Override
