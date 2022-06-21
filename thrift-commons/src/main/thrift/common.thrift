@@ -20,6 +20,8 @@
 namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
 
+cpp_include "<unordered_map>"
+
 struct TEndPoint {
   1: required string ip
   2: required i32 port
@@ -94,7 +96,7 @@ struct TDataNodeInfo {
 }
 
 struct TTest {
- 1: map<TConsensusGroupId, bool> test;
+ 1: map cpp_type "std::unordered_map<TConsensusGroupId, bool>" <TConsensusGroupId, bool> test;
 }
 
 struct TFlushReq {
