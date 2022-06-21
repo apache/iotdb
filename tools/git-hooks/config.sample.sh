@@ -23,9 +23,13 @@
 export IOTDB_GIT_HOOKS=1
 # maven path
 export IOTDB_MAVEN_PATH="mvn"
+# git path
+export IOTDB_GIT_PATH="git"
+# smart select the changed java module, 0 - off, 1 - on
+export IOTDB_SMART_JAVA_MODULES=1
 # auto spotless:apply, 0 - off, 1 - on
 export IOTDB_SPOTLESS_APPLY=0
 # maven validate, 0 - off, 1 - on
 export IOTDB_VALIDATE=1
-# 0 - discard all, 1 - logs on errors, 2 - stdout, 3 - stdout & logs on error
+# 0 - discard all, 1 - logs on errors, 2 - stdout, 3 - stdout & logs on errors
 export IOTDB_VERBOSE=2

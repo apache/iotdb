@@ -62,6 +62,24 @@ main() {
         exit 0
     fi
 
+    # get all changed module path
+    changed_files=$($IOTDB_GIT_PATH diff --name-only --cached)
+    changed_java_modules=""
+    smart_args=""
+    for line in $changed_files; do
+        mod=$(echo "$line" | cut -d '/' -f 1)
+        if [ -f "$mod/pom.xml" ]; then
+            changed_java_modules="${changed_java_modules}${mod},"
+        fi
+    done
+    if [ "$IOTDB_SMART_JAVA_MODULES" -ne 0 ]; then
+        # prepare the smart module selection args
+        echo "$PROMPT Changed java module: $changed_java_modules"
+        if [ -n "$changed_java_modules" ]; then
+            smart_args="-pl $changed_java_modules"
+        fi
+    fi
+
     # change log level
     if [ "$IOTDB_VERBOSE" -eq 1 ]; then
         LOG_OUT_PATH="$(mktemp --suff .log)"
@@ -74,7 +92,11 @@ main() {
     # spotless:apply
     if [ "$IOTDB_SPOTLESS_APPLY" -ne 0 ]; then
         echo "$PROMPT Apply spotless:apply..."
-        exec_with_log "$IOTDB_MAVEN_PATH spotless:apply"
+        if [ "$IOTDB_SMART_JAVA_MODULES" -eq 0 ] || [ -n "$smart_args" ]; then
+            exec_with_log "$IOTDB_MAVEN_PATH $smart_args spotless:apply"
+        else
+            echo "$PROMPT No changed module for spotless:apply."
+        fi
         if [ "$?" -ne 0 ]; then
             on_error "spotless:apply failed."
         fi
@@ -83,7 +105,11 @@ main() {
     # maven validate
     if [ "$IOTDB_VALIDATE" -ne 0 ]; then
         echo "$PROMPT Validating..."
-        exec_with_log "$IOTDB_MAVEN_PATH validate"
+        if [ "$IOTDB_SMART_JAVA_MODULES" -eq 0 ] || [ -n "$smart_args" ]; then
+            exec_with_log "$IOTDB_MAVEN_PATH $smart_args validate"
+        else
+            echo "$PROMPT No changed module for validating."
+        fi
         if [ "$?" -ne 0 ]; then
             on_error "maven validate failed."
         fi
