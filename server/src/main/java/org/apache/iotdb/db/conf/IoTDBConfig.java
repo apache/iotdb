@@ -2926,7 +2926,7 @@ public class IoTDBConfig {
   public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
-
+  
   public int getCoordinatorReadExecutorSize() {
     return coordinatorReadExecutorSize;
   }
@@ -2941,5 +2941,9 @@ public class IoTDBConfig {
 
   public void setCoordinatorWriteExecutorSize(int coordinatorWriteExecutorSize) {
     this.coordinatorWriteExecutorSize = coordinatorWriteExecutorSize;
+  }
+
+  public TEndPoint getAddressAndPort() {
+    return new TEndPoint(rpcAddress, rpcPort);
   }
 }

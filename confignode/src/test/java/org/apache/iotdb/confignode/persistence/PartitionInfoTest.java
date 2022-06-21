@@ -29,10 +29,12 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
@@ -58,7 +60,7 @@ public class PartitionInfoTest {
   private static PartitionInfo partitionInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
-  enum testFlag {
+  public enum testFlag {
     DataPartition(20),
     SchemaPartition(30);
 
@@ -141,6 +143,70 @@ public class PartitionInfoTest {
     PartitionInfo partitionInfo1 = new PartitionInfo();
     partitionInfo1.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(partitionInfo, partitionInfo1);
+  }
+
+  @Test
+  public void testShowRegion() {
+    partitionInfo.generateNextRegionGroupId();
+
+    // Set StorageGroup
+    partitionInfo.setStorageGroup(new SetStorageGroupReq(new TStorageGroupSchema("root.test")));
+
+    // Create a SchemaRegion
+    CreateRegionsReq createRegionsReq = new CreateRegionsReq();
+    TRegionReplicaSet schemaRegionReplicaSet =
+        generateTRegionReplicaSet(
+            testFlag.SchemaPartition.getFlag(),
+            generateTConsensusGroupId(
+                testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
+    createRegionsReq.addRegion("root.test", schemaRegionReplicaSet);
+    partitionInfo.createRegions(createRegionsReq);
+
+    // Create a DataRegion
+    createRegionsReq = new CreateRegionsReq();
+    TRegionReplicaSet dataRegionReplicaSet =
+        generateTRegionReplicaSet(
+            testFlag.DataPartition.getFlag(),
+            generateTConsensusGroupId(
+                testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
+    createRegionsReq.addRegion("root.test", dataRegionReplicaSet);
+    partitionInfo.createRegions(createRegionsReq);
+
+    GetRegionLocationsReq regionReq = new GetRegionLocationsReq();
+    regionReq.setRegionType(null);
+    RegionLocationsResp regionLocations1 =
+        (RegionLocationsResp) partitionInfo.getRegionLocations(regionReq);
+    Assert.assertEquals(regionLocations1.getRegionInfosList().size(), 10);
+    regionLocations1
+        .getRegionInfosList()
+        .forEach(
+            (regionLocation) -> {
+              Assert.assertEquals(regionLocation.getRpcAddresss(), "127.0.0.1");
+            });
+
+    regionReq.setRegionType(TConsensusGroupType.SchemaRegion);
+    RegionLocationsResp regionLocations2 =
+        (RegionLocationsResp) partitionInfo.getRegionLocations(regionReq);
+    Assert.assertEquals(regionLocations2.getRegionInfosList().size(), 5);
+    regionLocations2
+        .getRegionInfosList()
+        .forEach(
+            (regionLocation) -> {
+              Assert.assertEquals(
+                  regionLocation.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion);
+            });
+
+    regionReq.setRegionType(TConsensusGroupType.DataRegion);
+    RegionLocationsResp regionLocations3 =
+        (RegionLocationsResp) partitionInfo.getRegionLocations(regionReq);
+    Assert.assertEquals(regionLocations3.getRegionInfosList().size(), 5);
+    regionLocations3
+        .getRegionInfosList()
+        .forEach(
+            (regionLocation) -> {
+              Assert.assertEquals(
+                  regionLocation.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion);
+            });
   }
 
   private TRegionReplicaSet generateTRegionReplicaSet(

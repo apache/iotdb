@@ -29,11 +29,13 @@ import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
 
+/** This is not thread safe class, the caller should ensure multi-threads safety. */
+@NotThreadSafe
 public class SharedTsBlockQueue {
 
   private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
@@ -41,22 +43,16 @@ public class SharedTsBlockQueue {
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
 
-  @GuardedBy("this")
   private boolean noMoreTsBlocks = false;
 
-  @GuardedBy("this")
   private long bufferRetainedSizeInBytes = 0L;
 
-  @GuardedBy("this")
   private final Queue<TsBlock> queue = new LinkedList<>();
 
-  @GuardedBy("this")
   private SettableFuture<Void> blocked = SettableFuture.create();
 
-  @GuardedBy("this")
   private ListenableFuture<Void> blockedOnMemory;
 
-  @GuardedBy("this")
   private boolean destroyed = false;
 
   private LocalSourceHandle sourceHandle;
@@ -70,7 +66,7 @@ public class SharedTsBlockQueue {
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
   }
 
-  public synchronized boolean hasNoMoreTsBlocks() {
+  public boolean hasNoMoreTsBlocks() {
     return noMoreTsBlocks;
   }
 
@@ -82,7 +78,7 @@ public class SharedTsBlockQueue {
     return blocked;
   }
 
-  public synchronized boolean isEmpty() {
+  public boolean isEmpty() {
     return queue.isEmpty();
   }
 
@@ -95,7 +91,8 @@ public class SharedTsBlockQueue {
   }
 
   /** Notify no more tsblocks will be added to the queue. */
-  public synchronized void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
+  public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
+    logger.info("SharedTsBlockQueue receive no more TsBlocks signal.");
     if (destroyed) {
       throw new IllegalStateException("queue has been destroyed");
     }
@@ -112,7 +109,7 @@ public class SharedTsBlockQueue {
    * Remove a tsblock from the head of the queue and return. Should be invoked only when the future
    * returned by {@link #isBlocked()} completes.
    */
-  public synchronized TsBlock remove() {
+  public TsBlock remove() {
     if (destroyed) {
       throw new IllegalStateException("queue has been destroyed");
     }
@@ -136,7 +133,7 @@ public class SharedTsBlockQueue {
    * Add tsblocks to the queue. Except the first invocation, this method should be invoked only when
    * the returned future of last invocation completes.
    */
-  public synchronized ListenableFuture<Void> add(TsBlock tsBlock) {
+  public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (destroyed) {
       throw new IllegalStateException("queue has been destroyed");
     }
@@ -156,7 +153,7 @@ public class SharedTsBlockQueue {
   }
 
   /** Destroy the queue and cancel the future. */
-  public synchronized void destroy() {
+  public void destroy() {
     if (destroyed) {
       return;
     }

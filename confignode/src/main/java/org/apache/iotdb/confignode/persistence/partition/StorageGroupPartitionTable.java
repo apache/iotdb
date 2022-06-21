@@ -20,11 +20,14 @@ package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -219,30 +222,19 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Thread-safely get SchemaPartition within the specific StorageGroup TODO: Remove mapping process
+   * Thread-safely get SchemaPartition within the specific StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots
    * @param schemaPartition Where the results are stored
    * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
   public boolean getSchemaPartition(
-      List<TSeriesPartitionSlot> partitionSlots,
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaPartition) {
-    // Get RegionIds
-    SchemaPartitionTable regionIds = new SchemaPartitionTable();
-    boolean result = schemaPartitionTable.getSchemaPartition(partitionSlots, regionIds);
-    // Map to RegionReplicaSets
-    regionIds
-        .getSchemaPartitionMap()
-        .forEach(
-            (seriesPartitionSlot, consensusGroupId) ->
-                schemaPartition.put(
-                    seriesPartitionSlot, regionInfoMap.get(consensusGroupId).getReplicaSet()));
-    return result;
+      List<TSeriesPartitionSlot> partitionSlots, SchemaPartitionTable schemaPartition) {
+    return schemaPartitionTable.getSchemaPartition(partitionSlots, schemaPartition);
   }
 
   /**
-   * Thread-safely get DataPartition within the specific StorageGroup TODO: Remove mapping process
+   * Thread-safely get DataPartition within the specific StorageGroup
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartition Where the results are stored
@@ -250,32 +242,8 @@ public class StorageGroupPartitionTable {
    */
   public boolean getDataPartition(
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dataPartition) {
-    // Get RegionIds
-    DataPartitionTable regionIds = new DataPartitionTable();
-    boolean result = dataPartitionTable.getDataPartition(partitionSlots, regionIds);
-    // Map to RegionReplicaSets
-    regionIds
-        .getDataPartitionMap()
-        .forEach(
-            ((seriesPartitionSlot, seriesPartition) -> {
-              dataPartition.put(seriesPartitionSlot, new ConcurrentHashMap<>());
-              seriesPartition
-                  .getSeriesPartitionMap()
-                  .forEach(
-                      ((timePartitionSlot, consensusGroupIds) -> {
-                        dataPartition
-                            .get(seriesPartitionSlot)
-                            .put(timePartitionSlot, new Vector<>());
-                        consensusGroupIds.forEach(
-                            consensusGroupId ->
-                                dataPartition
-                                    .get(seriesPartitionSlot)
-                                    .get(timePartitionSlot)
-                                    .add(regionInfoMap.get(consensusGroupId).getReplicaSet()));
-                      }));
-            }));
-    return result;
+      DataPartitionTable dataPartition) {
+    return dataPartitionTable.getDataPartition(partitionSlots, dataPartition);
   }
 
   /**
@@ -359,6 +327,42 @@ public class StorageGroupPartitionTable {
 
     result.sort(Comparator.comparingLong(Pair::getLeft));
     return result;
+  }
+
+  public void getRegionInfos(
+      GetRegionLocationsReq regionsInfoReq, List<TRegionLocation> regionLocationList) {
+    regionInfoMap.forEach(
+        (consensusGroupId, regionGroup) -> {
+          TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
+          if (regionsInfoReq.getRegionType() == null) {
+            buildTRegionsInfo(regionLocationList, replicaSet, regionGroup);
+          } else if (regionsInfoReq.getRegionType().ordinal()
+              == replicaSet.getRegionId().getType().ordinal()) {
+            buildTRegionsInfo(regionLocationList, replicaSet, regionGroup);
+          }
+        });
+  }
+
+  private void buildTRegionsInfo(
+      List<TRegionLocation> regionLocationList,
+      TRegionReplicaSet replicaSet,
+      RegionGroup regionGroup) {
+    replicaSet
+        .getDataNodeLocations()
+        .forEach(
+            (dataNodeLocation) -> {
+              TRegionLocation tRegionInfos = new TRegionLocation();
+              tRegionInfos.setConsensusGroupId(replicaSet.getRegionId());
+              tRegionInfos.setStorageGroup(storageGroupName);
+              long slots = regionGroup.getCounter();
+              tRegionInfos.setSlots((int) slots);
+              tRegionInfos.setDataNodeId(dataNodeLocation.getDataNodeId());
+              tRegionInfos.setRpcAddresss(dataNodeLocation.getExternalEndPoint().getIp());
+              tRegionInfos.setRpcPort(dataNodeLocation.getExternalEndPoint().getPort());
+              // TODO: Wait for data migration. And then add the state
+              tRegionInfos.setStatus(RegionStatus.Up.getStatus());
+              regionLocationList.add(tRegionInfos);
+            });
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
