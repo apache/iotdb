@@ -21,11 +21,7 @@ package org.apache.iotdb.confignode.client;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-<<<<<<< HEAD
-=======
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
->>>>>>> 8fbbc1ea50 (change SyncDataNodeClientPool to AsyncDataNodeClientPool)
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
