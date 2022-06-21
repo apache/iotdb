@@ -50,6 +50,7 @@ def test_tablet_insertion():
         tablet_ = Tablet(
             "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
+        session.execute_non_query_statement("set storage group to root.sg_test_01")
         session.insert_tablet(tablet_)
         columns = []
         for measurement in measurements_:
@@ -92,6 +93,7 @@ def test_nullable_tablet_insertion():
         tablet_ = Tablet(
             "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
+        session.execute_non_query_statement("set storage group to root.sg_test_01")
         session.insert_tablet(tablet_)
         columns = []
         for measurement in measurements_:
