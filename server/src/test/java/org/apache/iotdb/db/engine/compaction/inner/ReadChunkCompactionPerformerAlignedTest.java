@@ -24,7 +24,9 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TestUtilsForAlignedSeries;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -133,7 +135,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    new ReadChunkCompactionPerformer(resources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(resources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -201,7 +205,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    new ReadChunkCompactionPerformer(resources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(resources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -263,7 +269,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    new ReadChunkCompactionPerformer(resources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(resources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -328,7 +336,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    new ReadChunkCompactionPerformer(resources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(resources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -391,7 +401,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    new ReadChunkCompactionPerformer(resources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(resources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -456,7 +468,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    new ReadChunkCompactionPerformer(resources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(resources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -522,7 +536,9 @@ public class ReadChunkCompactionPerformerAlignedTest {
     Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
-    new ReadChunkCompactionPerformer(resources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(resources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,

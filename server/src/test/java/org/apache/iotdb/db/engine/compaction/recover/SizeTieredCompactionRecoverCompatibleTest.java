@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -69,7 +71,9 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     registerTimeseriesInMManger(2, 3, false);
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
-    new ReadChunkCompactionPerformer(seqResources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     RandomAccessFile targetFile = new RandomAccessFile(targetResource.getTsFile(), "rw");
     long fileLength = targetFile.length();
     targetFile.getChannel().truncate(fileLength - 20);
@@ -126,7 +130,9 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     registerTimeseriesInMManger(2, 3, false);
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
-    new ReadChunkCompactionPerformer(seqResources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, "root.compactionTest");
 
@@ -183,7 +189,9 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     registerTimeseriesInMManger(2, 3, false);
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
-    new ReadChunkCompactionPerformer(seqResources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     RandomAccessFile targetFile = new RandomAccessFile(targetResource.getTsFile(), "rw");
     long fileLength = targetFile.length();
     targetFile.getChannel().truncate(fileLength - 20);
@@ -220,7 +228,9 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     registerTimeseriesInMManger(2, 3, false);
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(unseqResources, true);
-    new ReadChunkCompactionPerformer(unseqResources, targetResource).perform();
+    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, "root.compactionTest");
 
