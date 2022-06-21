@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
 import org.apache.iotdb.db.mpp.execution.datatransfer.ISourceHandle;
-import org.apache.iotdb.db.mpp.plan.StepTracker;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -197,22 +196,22 @@ public class QueryExecution implements IQueryExecution {
     this.scheduler =
         config.isClusterMode()
             ? new ClusterScheduler(
-            context,
-            stateMachine,
-            distributedPlan.getInstances(),
-            context.getQueryType(),
-            executor,
-            writeOperationExecutor,
-            scheduledExecutor,
-            internalServiceClientManager)
+                context,
+                stateMachine,
+                distributedPlan.getInstances(),
+                context.getQueryType(),
+                executor,
+                writeOperationExecutor,
+                scheduledExecutor,
+                internalServiceClientManager)
             : new StandaloneScheduler(
-            context,
-            stateMachine,
-            distributedPlan.getInstances(),
-            context.getQueryType(),
-            executor,
-            scheduledExecutor,
-            internalServiceClientManager);
+                context,
+                stateMachine,
+                distributedPlan.getInstances(),
+                context.getQueryType(),
+                executor,
+                scheduledExecutor,
+                internalServiceClientManager);
     this.scheduler.start();
   }
 
@@ -255,9 +254,7 @@ public class QueryExecution implements IQueryExecution {
     releaseResource();
   }
 
-  /**
-   * Release the resources that current QueryExecution hold.
-   */
+  /** Release the resources that current QueryExecution hold. */
   private void releaseResource() {
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
@@ -307,17 +304,13 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  /**
-   * @return true if there is more tsblocks, otherwise false
-   */
+  /** @return true if there is more tsblocks, otherwise false */
   @Override
   public boolean hasNextResult() {
     return resultHandle != null && !resultHandle.isFinished();
   }
 
-  /**
-   * return the result column count without the time column
-   */
+  /** return the result column count without the time column */
   @Override
   public int getOutputValueColumnCount() {
     return analysis.getRespDatasetHeader().getOutputValueColumnCount();
@@ -358,8 +351,7 @@ public class QueryExecution implements IQueryExecution {
       }
       return new ExecutionResult(
           context.getQueryId(),
-          RpcUtils.getStatus(
-              TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()));
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()));
     }
   }
 
@@ -370,20 +362,20 @@ public class QueryExecution implements IQueryExecution {
       this.resultHandle =
           isSameNode(upstreamEndPoint)
               ? DataBlockService.getInstance()
-              .getDataBlockManager()
-              .createLocalSourceHandle(
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                  context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                  stateMachine::transitionToFailed)
+                  .getDataBlockManager()
+                  .createLocalSourceHandle(
+                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                      stateMachine::transitionToFailed)
               : DataBlockService.getInstance()
-              .getDataBlockManager()
-              .createSourceHandle(
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                  upstreamEndPoint,
-                  context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                  stateMachine::transitionToFailed);
+                  .getDataBlockManager()
+                  .createSourceHandle(
+                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                      upstreamEndPoint,
+                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                      stateMachine::transitionToFailed);
     }
   }
 
