@@ -88,7 +88,7 @@ public class ClusterTestStatement implements Statement {
                     try {
                       r.close();
                     } catch (SQLException e) {
-                      throw new RuntimeException(e);
+                      // Ignore close exceptions
                     }
                   }
                   return null;
