@@ -206,6 +206,9 @@ public class ConfigNodeStartupCheck {
       } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         targetConfigNode = resp.getStatus().getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
+      } else if (resp.getStatus().getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
+        LOGGER.error("Configuration may not be consistent, {}", req);
+        throw new StartupException("Configuration may not be consistent!");
       }
 
       try {
