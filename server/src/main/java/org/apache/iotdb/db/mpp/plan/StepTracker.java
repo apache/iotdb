@@ -73,4 +73,8 @@ public class StepTracker {
     metrics.get().computeIfAbsent(stepName, Metric::new).trace(startTime, endTime);
     metrics.get().get(stepName).tryPrint();
   }
+
+  public static void cleanup() {
+    metrics.set(null);
+  }
 }
