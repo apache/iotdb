@@ -896,7 +896,7 @@ public class IoTDBConfig {
    * Cache size of dataNodeSchemaCache in{@link
    * org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache}.
    */
-  private int dataNodeSchemaCacheSize = 10000;
+  private int dataNodeSchemaCacheSize = 1000000;
 
   /**
    * Cache size of partition cache in {@link
@@ -926,6 +926,12 @@ public class IoTDBConfig {
 
   /** Trigger MQTT forward pool size */
   private int triggerForwardMQTTPoolSize = 4;
+
+  /** ThreadPool size for read operation in coordinator */
+  private int coordinatorReadExecutorSize = 50;
+
+  /** ThreadPool size for write operation in coordinator */
+  private int coordinatorWriteExecutorSize = 50;
 
   IoTDBConfig() {}
 
@@ -2919,6 +2925,22 @@ public class IoTDBConfig {
 
   public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
+  }
+
+  public int getCoordinatorReadExecutorSize() {
+    return coordinatorReadExecutorSize;
+  }
+
+  public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
+    this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
+  }
+
+  public int getCoordinatorWriteExecutorSize() {
+    return coordinatorWriteExecutorSize;
+  }
+
+  public void setCoordinatorWriteExecutorSize(int coordinatorWriteExecutorSize) {
+    this.coordinatorWriteExecutorSize = coordinatorWriteExecutorSize;
   }
 
   public TEndPoint getAddressAndPort() {
