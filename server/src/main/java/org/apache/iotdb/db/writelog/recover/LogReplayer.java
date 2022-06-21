@@ -134,8 +134,6 @@ public class LogReplayer {
         currentTsFileResource.updateEndTime(deviceId, memChunk.getLastTime());
       }
     }
-    //    tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
-    //    tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
 
   private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
