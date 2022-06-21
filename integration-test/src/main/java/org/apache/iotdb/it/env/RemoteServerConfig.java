@@ -18,21 +18,6 @@
  */
 package org.apache.iotdb.it.env;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.itbase.env.BaseConfig;
 
-public class Cluster1Env extends AbstractEnv {
-  private static final Logger logger = LoggerFactory.getLogger(Cluster1Env.class);
-
-  @Override
-  public void initBeforeClass() throws InterruptedException {
-    logger.debug("=======start init class=======");
-    super.initEnvironment(1, 3);
-  }
-
-  @Override
-  public void initBeforeTest() throws InterruptedException {
-    logger.debug("=======start init test=======");
-    super.initEnvironment(1, 3);
-  }
-}
+public class RemoteServerConfig implements BaseConfig {}

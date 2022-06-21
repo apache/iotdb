@@ -236,6 +236,11 @@ public class MultiLeaderConsensus implements IConsensus {
     return new Peer(groupId, thisNode);
   }
 
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    return new ArrayList<>(stateMachineMap.keySet());
+  }
+
   public MultiLeaderServerImpl getImpl(ConsensusGroupId groupId) {
     return stateMachineMap.get(groupId);
   }
