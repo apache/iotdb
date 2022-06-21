@@ -105,7 +105,7 @@ def test_with_null_query():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-
+        session.execute_non_query_statement("set storage group to root.wt1")
         create_ts(session)
 
         # insert data
