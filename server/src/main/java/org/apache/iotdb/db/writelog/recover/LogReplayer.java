@@ -134,6 +134,7 @@ public class LogReplayer {
         recoverMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
+      // TODO： 在这里修改tmpStartTimeMap？
       modFile.write(
           new Deletion(
               path,
