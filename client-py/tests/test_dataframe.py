@@ -34,7 +34,6 @@ def test_simple_query():
 
         # Read
         session_data_set = session.execute_query_statement("SELECT ** FROM root")
-        print(session_data_set.get_column_names())
         df = session_data_set.todf()
 
         session.close()
@@ -44,11 +43,11 @@ def test_simple_query():
 
 
 def test_non_time_query():
-    with IoTDBContainer("apache/iotdb:latest") as db:
+    with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        session = Session("127.0.0.1", db.get_exposed_port(6667))
+        session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-
+        session.execute_non_query_statement("set storage group to root.device")
         # Write data
         session.insert_str_record("root.device", 123, "pressure", "15.0")
 

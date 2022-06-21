@@ -161,7 +161,6 @@ class IoTDBRpcDataSet(object):
 
     def resultset_to_pandas(self):
         result = {}
-        print("self.__column_name_list = " + str(self.__column_name_list))
         for column_name in self.__column_name_list:
             result[column_name] = None
         while self._has_next_result_set():
@@ -275,7 +274,6 @@ class IoTDBRpcDataSet(object):
         for k, v in result.items():
             if v is None:
                 result[k] = []
-        print("result = " + str(result))
 
         df = pd.DataFrame(result)
         return df
