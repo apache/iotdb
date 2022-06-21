@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,19 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.it.udf;
 
-package org.apache.iotdb.db.integration;
-
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,10 +43,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDTFNonAlignQueryIT {
 
-  protected static final int ITERATION_TIMES = Config.DEFAULT_FETCH_SIZE;
+  protected static final int ITERATION_TIMES = 10;
 
   protected static final int ADDEND = 500_000_000;
 
@@ -65,6 +67,15 @@ public class IoTDBUDTFNonAlignQueryIT {
     createTimeSeries();
     generateData();
     registerUDF();
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig()
+        .setUdfCollectorMemoryBudgetInMB(100)
+        .setUdfTransformerMemoryBudgetInMB(100)
+        .setUdfReaderMemoryBudgetInMB(100);
   }
 
   private static void createTimeSeries() {
@@ -107,15 +118,7 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
-  }
-
+  @Ignore
   @Test
   public void queryWithoutValueFilter1() {
     String sqlStr =
@@ -128,8 +131,8 @@ public class IoTDBUDTFNonAlignQueryIT {
     Set<Integer> s1OrS2 = new HashSet<>(Arrays.asList(4, 5));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(10 * 2, columnCount);
@@ -157,13 +160,14 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void queryWithoutValueFilter2() {
     String sqlStr = "select udf(d1.s1, d1.s2), udf(d2.s1, d2.s2) from root.vehicle disable align";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 * 2, columnCount);
@@ -193,6 +197,7 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void queryWithValueFilter1() {
     String sqlStr =
@@ -206,8 +211,8 @@ public class IoTDBUDTFNonAlignQueryIT {
     Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
       int index = (int) (0.25 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(8 * 2, columnCount);
@@ -235,6 +240,7 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void queryWithValueFilter2() {
     String sqlStr =
@@ -244,8 +250,8 @@ public class IoTDBUDTFNonAlignQueryIT {
                 (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
       int index = (int) (0.3 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 * 4 * 4, columnCount);
@@ -266,6 +272,7 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void queryWithValueFilter3() {
     String sqlStr =
@@ -279,8 +286,8 @@ public class IoTDBUDTFNonAlignQueryIT {
     Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
       int index = (int) (0.25 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 * SLIMIT, columnCount);
@@ -308,6 +315,7 @@ public class IoTDBUDTFNonAlignQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void queryWithValueFilter4() {
     String sqlStr =
@@ -317,8 +325,8 @@ public class IoTDBUDTFNonAlignQueryIT {
                 (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES), LIMIT, OFFSET);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
       int index = (int) (0.3 * ITERATION_TIMES) + OFFSET;
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 * 4 * 4, columnCount);
