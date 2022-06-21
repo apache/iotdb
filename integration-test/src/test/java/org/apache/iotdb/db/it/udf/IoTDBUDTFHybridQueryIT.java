@@ -22,16 +22,18 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.UDFTestConstant;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -87,6 +89,7 @@ public class IoTDBUDTFHybridQueryIT {
     EnvFactory.getEnv().cleanAfterClass();
   }
 
+  @Ignore
   @Test
   public void testUserDefinedBuiltInHybridAggregationQuery() {
     String sql =
@@ -106,6 +109,7 @@ public class IoTDBUDTFHybridQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void testUserDefinedFunctionFillFunctionHybridQuery() {
     String sql =
@@ -123,6 +127,7 @@ public class IoTDBUDTFHybridQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void testLastUserDefinedFunctionQuery() {
     String sql =
@@ -140,6 +145,7 @@ public class IoTDBUDTFHybridQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void testUserDefinedFunctionAlignByDeviceQuery() {
     String sql =
