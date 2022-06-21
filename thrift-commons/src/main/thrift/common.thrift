@@ -93,6 +93,10 @@ struct TDataNodeInfo {
   3: required i64 maxMemory
 }
 
+struct TTest {
+ 1: map<TConsensusGroupId, bool> test;
+}
+
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
