@@ -638,6 +638,7 @@ public class IoTDBAggregationByLevelIT {
     }
   }
 
+  @Ignore
   @Test
   public void mismatchedFuncGroupByLevelTest() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
