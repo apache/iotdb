@@ -272,10 +272,13 @@ public class AsyncDataNodeClientPool {
    * @param endPoint The specific DataNode
    */
   public void flush(TEndPoint endPoint, TFlushReq flushReq, FlushHandler handler) {
-    try {
-      clientManager.borrowClient(endPoint).flush(flushReq, handler);
-    } catch (Exception e) {
-      LOGGER.error("Failed to asking DataNode to flush: {}", endPoint, e);
+    for (int retry = 0; retry < 3; retry++) {
+      try {
+        clientManager.borrowClient(endPoint).flush(flushReq, handler);
+        return;
+      } catch (Exception e) {
+        LOGGER.error("Failed to asking DataNode to flush: {}", endPoint, e);
+      }
     }
   }
 

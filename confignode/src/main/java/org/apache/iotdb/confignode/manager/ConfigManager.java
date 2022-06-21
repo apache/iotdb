@@ -651,7 +651,7 @@ public class ConfigManager implements Manager {
   public TSStatus flush(TFlushReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(clusterSchemaManager.flush(req))
+        ? RpcUtils.squashResponseStatusList(nodeManager.flush(req))
         : status;
   }
 
