@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -2292,7 +2291,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void selectAllAlignedWithValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2344,7 +2342,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void selectAllAlignedWithValueFilterAlignByDeviceTest2() {
     String[] retArray =
@@ -2394,7 +2391,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void selectAllAlignedWithTimeAndValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2444,7 +2440,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void selectSomeAlignedWithValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2500,7 +2495,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void selectSomeAlignedWithValueFilterAlignByDeviceTest2() {
     String[] retArray =
@@ -2708,7 +2702,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void countAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "11"};
@@ -2747,7 +2740,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void aggregationFuncAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray =
@@ -2802,7 +2794,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void countAllAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "6", "6", "9", "11", "6"};
@@ -2843,7 +2834,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void aggregationAllAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "160016.0", "11", "1", "13"};
@@ -3129,7 +3119,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void countSumAvgValueFillAlignByDeviceTest() throws SQLException {
     String[] retArray =
@@ -3171,7 +3160,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void maxMinValueTimePreviousUntilLastFillAlignByDeviceTest() throws SQLException {
     String[] retArray =
@@ -3212,7 +3200,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // Remove after supporting value filter
-  @Ignore
   @Test
   public void maxMinValueTimeValueFillAlignByDeviceTest() throws SQLException {
     String[] retArray =
@@ -4182,7 +4169,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // TODO Semantic error
-  @Ignore
   @Test
   public void groupByWithoutAggregationFuncTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -4192,8 +4178,8 @@ public class IoTDBAlignedSeriesQueryIT {
 
       fail("No expected exception thrown");
     } catch (Exception e) {
-      System.out.println(e.getMessage());
       Assert.assertTrue(
+          e.getMessage(),
           e.getMessage()
               .contains(
                   "Common queries and aggregated queries are not allowed to appear at the same time"));
@@ -4201,7 +4187,6 @@ public class IoTDBAlignedSeriesQueryIT {
   }
 
   // TODO Semantic error
-  @Ignore
   @Test
   public void negativeOrZeroTimeIntervalTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -4213,6 +4198,7 @@ public class IoTDBAlignedSeriesQueryIT {
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
+          e.getMessage(),
           e.getMessage()
               .contains("The second parameter time interval should be a positive integer."));
     }
