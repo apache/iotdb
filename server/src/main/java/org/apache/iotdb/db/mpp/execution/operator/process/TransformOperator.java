@@ -316,10 +316,6 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    LOGGER.info(
-        "inputOperator.isFinished() = {}, timeHeap.isEmpty() = {}",
-        inputOperator.isFinished(),
-        timeHeap.isEmpty());
     return inputOperator.isFinished() && timeHeap.isEmpty();
   }
 

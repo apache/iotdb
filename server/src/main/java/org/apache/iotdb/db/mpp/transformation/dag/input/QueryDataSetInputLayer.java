@@ -177,7 +177,6 @@ public class QueryDataSetInputLayer {
       YieldableState yieldableState;
       while (YieldableState.YIELDABLE.equals(
           yieldableState = queryDataSet.canYieldNextRowInObjects())) {
-        LOGGER.info("yieldableState={}", yieldableState);
         Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
         rowRecordList.put(rowRecordCandidate);
         if (rowRecordCandidate[columnIndex] != null
