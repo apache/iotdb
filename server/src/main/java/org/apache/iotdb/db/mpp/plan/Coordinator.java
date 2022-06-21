@@ -109,13 +109,11 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    long startTime = System.nanoTime();
-    try {
       QueryId globalQueryId = queryIdGenerator.createNextQueryId();
       try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-        //      if (sql != null) {
-        //        LOGGER.info("start executing sql: {}", sql);
-        //      }
+        if (sql != null) {
+          LOGGER.info("start executing sql: {}", sql);
+        }
         IQueryExecution execution =
             createQueryExecution(
                 statement,
@@ -134,9 +132,6 @@ public class Coordinator {
 
         return execution.getStatus();
       }
-    } finally {
-      StepTracker.trace("statementExec", startTime, System.nanoTime());
-    }
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {

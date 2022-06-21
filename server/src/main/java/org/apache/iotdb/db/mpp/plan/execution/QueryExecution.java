@@ -47,6 +47,7 @@ import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
@@ -113,8 +114,6 @@ public class QueryExecution implements IQueryExecution {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
-  private long queryExecutionStartTime;
-
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
@@ -124,15 +123,12 @@ public class QueryExecution implements IQueryExecution {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    this.queryExecutionStartTime = System.nanoTime();
     this.executor = executor;
     this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
     this.planOptimizers = new ArrayList<>();
-    long startTime = System.nanoTime();
     this.analysis = analyze(statement, context, partitionFetcher, schemaFetcher);
-    StepTracker.trace("analyze", startTime, System.nanoTime());
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
@@ -193,60 +189,49 @@ public class QueryExecution implements IQueryExecution {
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    // initialize the variable `analysis`
-    //    logger.info("start to analyze query");
     return new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
   }
 
   private void schedule() {
-    long startTime = System.nanoTime();
-    try {
-      // TODO: (xingtanzjr) initialize the query scheduler according to configuration
-      this.scheduler =
-          config.isClusterMode()
-              ? new ClusterScheduler(
-                  context,
-                  stateMachine,
-                  distributedPlan.getInstances(),
-                  context.getQueryType(),
-                  executor,
-                  writeOperationExecutor,
-                  scheduledExecutor,
-                  internalServiceClientManager)
-              : new StandaloneScheduler(
-                  context,
-                  stateMachine,
-                  distributedPlan.getInstances(),
-                  context.getQueryType(),
-                  executor,
-                  scheduledExecutor,
-                  internalServiceClientManager);
-      this.scheduler.start();
-    } finally {
-      StepTracker.trace("dispatch", startTime, System.nanoTime());
-    }
+    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+    this.scheduler =
+        config.isClusterMode()
+            ? new ClusterScheduler(
+            context,
+            stateMachine,
+            distributedPlan.getInstances(),
+            context.getQueryType(),
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            internalServiceClientManager)
+            : new StandaloneScheduler(
+            context,
+            stateMachine,
+            distributedPlan.getInstances(),
+            context.getQueryType(),
+            executor,
+            scheduledExecutor,
+            internalServiceClientManager);
+    this.scheduler.start();
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    long startTime = System.nanoTime();
-    try {
-      LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
-      this.logicalPlan = planner.plan(this.analysis);
-    } finally {
-      StepTracker.trace("doLogicalPlan", startTime, System.nanoTime());
-    }
+    LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
+    this.logicalPlan = planner.plan(this.analysis);
+    logger.info(
+        "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
   }
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
-    long startTime = System.nanoTime();
-    try {
-      DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
-      this.distributedPlan = planner.planFragments();
-    } finally {
-      StepTracker.trace("doDistributionPlan", startTime, System.nanoTime());
-    }
+    DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
+    this.distributedPlan = planner.planFragments();
+    logger.info(
+        "distribution plan done. Fragment instance count is {}, details is: \n {}",
+        distributedPlan.getInstances().size(),
+        printFragmentInstances(distributedPlan.getInstances()));
   }
 
   private String printFragmentInstances(List<FragmentInstance> instances) {
@@ -270,7 +255,9 @@ public class QueryExecution implements IQueryExecution {
     releaseResource();
   }
 
-  /** Release the resources that current QueryExecution hold. */
+  /**
+   * Release the resources that current QueryExecution hold.
+   */
   private void releaseResource() {
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
@@ -320,13 +307,17 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  /** @return true if there is more tsblocks, otherwise false */
+  /**
+   * @return true if there is more tsblocks, otherwise false
+   */
   @Override
   public boolean hasNextResult() {
     return resultHandle != null && !resultHandle.isFinished();
   }
 
-  /** return the result column count without the time column */
+  /**
+   * return the result column count without the time column
+   */
   @Override
   public int getOutputValueColumnCount() {
     return analysis.getRespDatasetHeader().getOutputValueColumnCount();
@@ -344,41 +335,31 @@ public class QueryExecution implements IQueryExecution {
    * @return ExecutionStatus. Contains the QueryId and the TSStatus.
    */
   public ExecutionResult getStatus() {
-    long startTime = System.nanoTime();
+    // Although we monitor the state to transition to RUNNING, the future will return if any
+    // Terminated state is triggered
     try {
-      // Although we monitor the state to transition to RUNNING, the future will return if any
-      // Terminated state is triggered
-      try {
-        if (stateMachine.getState() == QueryState.FINISHED) {
-          return getExecutionResult(QueryState.FINISHED);
-        }
-        SettableFuture<QueryState> future = SettableFuture.create();
-        final long addStart = System.nanoTime();
-        stateMachine.addStateChangeListener(
-            state -> {
-              StepTracker.trace("stateQueue", addStart, System.nanoTime());
-              if (state == QueryState.RUNNING || state.isDone()) {
-                future.set(state);
-              }
-            });
-        long startTimeGet = System.nanoTime();
-        QueryState state = future.get();
-        StepTracker.trace("get()", startTimeGet, System.nanoTime());
-        // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
-        return getExecutionResult(state);
-      } catch (InterruptedException | ExecutionException e) {
-        // TODO: (xingtanzjr) use more accurate error handling
-        if (e instanceof InterruptedException) {
-          Thread.currentThread().interrupt();
-        }
-        return new ExecutionResult(
-            context.getQueryId(),
-            RpcUtils.getStatus(
-                TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()));
+      if (stateMachine.getState() == QueryState.FINISHED) {
+        return getExecutionResult(QueryState.FINISHED);
       }
-    } finally {
-      StepTracker.trace("getStatus", startTime, System.nanoTime());
-      StepTracker.trace("QueryExecutionLifeCycle", this.queryExecutionStartTime, System.nanoTime());
+      SettableFuture<QueryState> future = SettableFuture.create();
+      stateMachine.addStateChangeListener(
+          state -> {
+            if (state == QueryState.RUNNING || state.isDone()) {
+              future.set(state);
+            }
+          });
+      QueryState state = future.get();
+      // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
+      return getExecutionResult(state);
+    } catch (InterruptedException | ExecutionException e) {
+      // TODO: (xingtanzjr) use more accurate error handling
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      return new ExecutionResult(
+          context.getQueryId(),
+          RpcUtils.getStatus(
+              TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()));
     }
   }
 
@@ -389,20 +370,20 @@ public class QueryExecution implements IQueryExecution {
       this.resultHandle =
           isSameNode(upstreamEndPoint)
               ? DataBlockService.getInstance()
-                  .getDataBlockManager()
-                  .createLocalSourceHandle(
-                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                      stateMachine::transitionToFailed)
+              .getDataBlockManager()
+              .createLocalSourceHandle(
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                  context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                  stateMachine::transitionToFailed)
               : DataBlockService.getInstance()
-                  .getDataBlockManager()
-                  .createSourceHandle(
-                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                      upstreamEndPoint,
-                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                      stateMachine::transitionToFailed);
+              .getDataBlockManager()
+              .createSourceHandle(
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                  upstreamEndPoint,
+                  context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                  stateMachine::transitionToFailed);
     }
   }
 
