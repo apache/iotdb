@@ -275,7 +275,7 @@ public class NodeManager {
       countDownLatch.await();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error("ClusterSchemaManager was interrupted during flushing on data nodes", e);
+      LOGGER.error("NodeManager was interrupted during flushing on data nodes", e);
     }
     return dataNodeResponseStatus;
   }
