@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.common.header;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -29,12 +27,9 @@ import java.util.Objects;
 
 public class ColumnHeader {
 
-  private String pathName;
-  private String functionName;
+  private final String columnName;
   private final TSDataType dataType;
-
-  private String columnName;
-  private String alias;
+  private final String alias;
 
   public ColumnHeader(String columnName, TSDataType dataType, String alias) {
     this.columnName = columnName;
@@ -42,65 +37,58 @@ public class ColumnHeader {
     this.alias = alias;
   }
 
-  public ColumnHeader(String pathName, TSDataType dataType) {
-    this.pathName = pathName;
+  public ColumnHeader(String columnName, TSDataType dataType) {
+    this.columnName = columnName;
     this.dataType = dataType;
+    this.alias = null;
   }
 
-  public ColumnHeader(String pathName, String functionName, TSDataType dataType) {
-    this.pathName = pathName;
-    this.functionName = functionName.toLowerCase();
-    this.dataType = dataType;
-  }
-
-  public String getColumnName() {
+  public String getColumnNameWithAlias() {
     if (alias != null) {
       return alias;
     }
-    if (columnName != null) {
-      return columnName;
-    }
-    if (functionName != null) {
-      return String.format("%s(%s)", functionName, pathName);
-    }
-    return pathName;
+    return columnName;
+  }
+
+  public String getColumnName() {
+    return columnName;
   }
 
   public TSDataType getColumnType() {
     return dataType;
   }
 
-  public ColumnHeader replacePathWithMeasurement() {
-    String measurement = null;
-    try {
-      measurement = new PartialPath(pathName).getMeasurement();
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
-    if (functionName != null) {
-      return new ColumnHeader(measurement, functionName, dataType);
-    }
-    return new ColumnHeader(measurement, dataType);
-  }
-
   public boolean hasAlias() {
-    return alias != null;
+    return alias != null && !alias.isEmpty();
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(pathName, byteBuffer);
-    ReadWriteIOUtils.write(functionName, byteBuffer);
+    ReadWriteIOUtils.write(columnName, byteBuffer);
+    ReadWriteIOUtils.write(dataType.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(hasAlias(), byteBuffer);
+    if (hasAlias()) {
+      ReadWriteIOUtils.write(alias, byteBuffer);
+    }
     dataType.serializeTo(byteBuffer);
   }
 
   public static ColumnHeader deserialize(ByteBuffer byteBuffer) {
-    String pathName = ReadWriteIOUtils.readString(byteBuffer);
-    String functionName = ReadWriteIOUtils.readString(byteBuffer);
-    TSDataType tsDataType = TSDataType.deserializeFrom(byteBuffer);
-    if (functionName == null) {
-      return new ColumnHeader(pathName, tsDataType);
+    String columnName = ReadWriteIOUtils.readString(byteBuffer);
+    TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    String alias = null;
+    boolean hasAlias = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasAlias) {
+      alias = ReadWriteIOUtils.readString(byteBuffer);
     }
-    return new ColumnHeader(pathName, functionName, tsDataType);
+    return new ColumnHeader(columnName, dataType, alias);
+  }
+
+  @Override
+  public String toString() {
+    if (hasAlias()) {
+      return String.format("%s(%s) [%s]", columnName, alias, dataType);
+    }
+    return String.format("%s [%s]", columnName, dataType);
   }
 
   @Override
@@ -111,15 +99,14 @@ public class ColumnHeader {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-
     ColumnHeader that = (ColumnHeader) o;
-    return Objects.equals(pathName, that.pathName)
-        && Objects.equals(functionName, that.functionName)
-        && dataType == that.dataType;
+    return Objects.equals(columnName, that.columnName)
+        && dataType == that.dataType
+        && Objects.equals(alias, that.alias);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pathName, functionName, dataType);
+    return Objects.hash(columnName, dataType, alias);
   }
 }

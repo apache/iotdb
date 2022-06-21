@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -143,6 +143,17 @@ public class StorageGroupManager {
   public DataRegion getProcessor(PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws DataRegionException, StorageEngineException {
     int dataRegionId = partitioner.deviceToDataRegionId(partialPath);
+    return getProcessor(storageGroupMNode, dataRegionId);
+  }
+
+  /**
+   * get processor from data region id
+   *
+   * @param dataRegionId dataRegionId
+   * @return virtual storage group processor
+   */
+  public DataRegion getProcessor(int dataRegionId, IStorageGroupMNode storageGroupMNode)
+      throws DataRegionException, StorageEngineException {
     return getProcessor(storageGroupMNode, dataRegionId);
   }
 
@@ -385,10 +396,10 @@ public class StorageGroupManager {
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
-  public void deleteStorageGroupSystemFolder(String path) {
+  public void deleteStorageGroupSystemFolder(String systemDir) {
     for (DataRegion processor : dataRegion) {
       if (processor != null) {
-        processor.deleteFolder(path);
+        processor.deleteFolder(systemDir);
       }
     }
   }
@@ -483,13 +494,17 @@ public class StorageGroupManager {
 
   public void setAllowCompaction(boolean allowCompaction) {
     for (DataRegion processor : dataRegion) {
-      processor.setAllowCompaction(allowCompaction);
+      if (processor != null) {
+        processor.setAllowCompaction(allowCompaction);
+      }
     }
   }
 
   public void abortCompaction() {
     for (DataRegion processor : dataRegion) {
-      processor.abortCompaction();
+      if (processor != null) {
+        processor.abortCompaction();
+      }
     }
   }
 

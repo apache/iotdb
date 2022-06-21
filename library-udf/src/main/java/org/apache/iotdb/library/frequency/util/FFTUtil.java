@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.library.frequency.util;
 
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Util for UDFFFT */
 public class FFTUtil {
   private final String result;
   private final double compressRate;
+  private static final Logger logger = LoggerFactory.getLogger(FFTUtil.class);
 
   public FFTUtil(String res, double cmprate) {
     this.result = res;
@@ -44,7 +48,9 @@ public class FFTUtil {
       add(collector, a, i);
       temp += (a[2 * i] * a[2 * i] + a[2 * i + 1] * a[2 * i + 1]) * 2;
       if (temp > compressRate * sum) {
-        System.out.println(i);
+        if (logger.isDebugEnabled()) {
+          logger.debug(String.valueOf(i));
+        }
         break;
       }
     }

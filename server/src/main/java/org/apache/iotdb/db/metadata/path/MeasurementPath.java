@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -29,6 +31,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class MeasurementPath extends PartialPath {
@@ -69,10 +73,12 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = schema;
   }
 
+  @Override
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
   }
@@ -85,16 +91,23 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
+  @Override
   public String getMeasurementAlias() {
     return measurementAlias;
   }
 
+  @Override
   public void setMeasurementAlias(String measurementAlias) {
     if (measurementAlias != null) {
       this.measurementAlias = measurementAlias;
     }
   }
 
+  public void removeMeasurementAlias() {
+    this.measurementAlias = null;
+  }
+
+  @Override
   public boolean isMeasurementAliasExists() {
     return measurementAlias != null && !measurementAlias.isEmpty();
   }
@@ -145,6 +158,7 @@ public class MeasurementPath extends PartialPath {
     return newMeasurementPath;
   }
 
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Measurement.serialize(byteBuffer);
     super.serializeWithoutType(byteBuffer);
@@ -163,6 +177,25 @@ public class MeasurementPath extends PartialPath {
     ReadWriteIOUtils.write(measurementAlias, byteBuffer);
   }
 
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    PathType.Measurement.serialize(stream);
+    super.serializeWithoutType(stream);
+    if (measurementSchema == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      if (measurementSchema instanceof MeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+      }
+      measurementSchema.serializeTo(stream);
+    }
+    ReadWriteIOUtils.write(isUnderAlignedEntity, stream);
+    ReadWriteIOUtils.write(measurementAlias, stream);
+  }
+
   public static MeasurementPath deserialize(ByteBuffer byteBuffer) {
     PartialPath partialPath = PartialPath.deserialize(byteBuffer);
     MeasurementPath measurementPath = new MeasurementPath();
@@ -177,9 +210,14 @@ public class MeasurementPath extends PartialPath {
     }
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
-    measurementPath.nodes = partialPath.nodes;
+    measurementPath.nodes = partialPath.getNodes();
     measurementPath.device = partialPath.getDevice();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
+  }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    return getDevicePath().concatNode(getTailNode());
   }
 }

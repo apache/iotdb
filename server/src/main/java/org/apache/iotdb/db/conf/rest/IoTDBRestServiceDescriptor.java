@@ -74,6 +74,9 @@ public class IoTDBRestServiceDescriptor {
       conf.setEnableHttps(
           Boolean.parseBoolean(
               properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
+      conf.setClientAuth(
+          Boolean.parseBoolean(
+              properties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
       conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
       conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
       conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));

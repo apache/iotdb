@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -689,6 +689,41 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
 
   public long getMaxTime() {
     return times.length != 0 ? times[times.length - 1] : Long.MAX_VALUE;
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    Object value;
+    switch (dataTypes[index]) {
+      case INT32:
+        int[] intValues = (int[]) columns[index];
+        value = intValues[0];
+        break;
+      case INT64:
+        long[] longValues = (long[]) columns[index];
+        value = longValues[0];
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) columns[index];
+        value = floatValues[0];
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) columns[index];
+        value = doubleValues[0];
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) columns[index];
+        value = boolValues[0];
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) columns[index];
+        value = binaryValues[0];
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(DATATYPE_UNSUPPORTED, dataTypes[index]));
+    }
+    return value;
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {

@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.metadata.path;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathType;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -30,6 +33,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,6 +61,10 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(String vectorPath, List<String> subSensorsList) throws IllegalPathException {
     super(vectorPath);
+    // check whether subSensor is legal
+    for (String subSensor : subSensorsList) {
+      PathUtils.isLegalPath(subSensor);
+    }
     this.measurementList = subSensorsList;
   }
 
@@ -63,6 +72,10 @@ public class AlignedPath extends PartialPath {
       String vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
       throws IllegalPathException {
     super(vectorPath);
+    // check whether measurement is legal
+    for (String measurement : measurementList) {
+      PathUtils.isLegalPath(measurement);
+    }
     this.measurementList = measurementList;
     this.schemaList = schemaList;
   }
@@ -70,12 +83,14 @@ public class AlignedPath extends PartialPath {
   public AlignedPath(String vectorPath, String subSensor) throws IllegalPathException {
     super(vectorPath);
     measurementList = new ArrayList<>();
+    PathUtils.isLegalPath(subSensor);
     measurementList.add(subSensor);
   }
 
-  public AlignedPath(PartialPath vectorPath, String subSensor) {
+  public AlignedPath(PartialPath vectorPath, String subSensor) throws IllegalPathException {
     super(vectorPath.getNodes());
     measurementList = new ArrayList<>();
+    PathUtils.isLegalPath(subSensor);
     measurementList.add(subSensor);
   }
 
@@ -93,6 +108,7 @@ public class AlignedPath extends PartialPath {
     schemaList = new ArrayList<>();
   }
 
+  @Override
   public PartialPath getDevicePath() {
     return new PartialPath(Arrays.copyOf(nodes, nodes.length));
   }
@@ -164,6 +180,7 @@ public class AlignedPath extends PartialPath {
     return this.schemaList == null ? Collections.emptyList() : this.schemaList;
   }
 
+  @Override
   public VectorMeasurementSchema getMeasurementSchema() {
     TSDataType[] types = new TSDataType[measurementList.size()];
     TSEncoding[] encodings = new TSEncoding[measurementList.size()];
@@ -180,6 +197,7 @@ public class AlignedPath extends PartialPath {
         VECTOR_PLACEHOLDER, array, types, encodings, schemaList.get(0).getCompressor());
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return TSDataType.VECTOR;
   }
@@ -235,6 +253,7 @@ public class AlignedPath extends PartialPath {
     return alignedPath;
   }
 
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Aligned.serialize(byteBuffer);
     super.serializeWithoutType(byteBuffer);
@@ -253,6 +272,29 @@ public class AlignedPath extends PartialPath {
           ReadWriteIOUtils.write((byte) 1, byteBuffer);
         }
         measurementSchema.serializeTo(byteBuffer);
+      }
+    }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    PathType.Aligned.serialize(stream);
+    super.serializeWithoutType(stream);
+    ReadWriteIOUtils.write(measurementList.size(), stream);
+    for (String measurement : measurementList) {
+      ReadWriteIOUtils.write(measurement, stream);
+    }
+    if (schemaList == null) {
+      ReadWriteIOUtils.write(-1, stream);
+    } else {
+      ReadWriteIOUtils.write(schemaList.size(), stream);
+      for (IMeasurementSchema measurementSchema : schemaList) {
+        if (measurementSchema instanceof MeasurementSchema) {
+          ReadWriteIOUtils.write((byte) 0, stream);
+        } else if (measurementSchema instanceof VectorMeasurementSchema) {
+          ReadWriteIOUtils.write((byte) 1, stream);
+        }
+        measurementSchema.serializeTo(stream);
       }
     }
   }
@@ -281,9 +323,21 @@ public class AlignedPath extends PartialPath {
 
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
-    alignedPath.nodes = partialPath.nodes;
+    alignedPath.nodes = partialPath.getNodes();
     alignedPath.device = partialPath.getDevice();
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
+  }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    if (measurementList.size() != 1) {
+      throw new UnsupportedOperationException();
+    }
+    return getDevicePath().concatNode(measurementList.get(0));
+  }
+
+  public String getFormattedString() {
+    return getDevicePath().toString() + "[" + String.join(",", measurementList) + "]";
   }
 }

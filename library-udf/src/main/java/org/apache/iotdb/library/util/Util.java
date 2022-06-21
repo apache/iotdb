@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.library.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
 
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.eclipse.collections.api.tuple.primitive.LongIntPair;
@@ -130,9 +130,6 @@ public class Util {
       case DOUBLE:
         pc.putDouble(t, (Double) o);
         break;
-      case TEXT:
-        pc.putString(t, (String) o);
-        break;
       case BOOLEAN:
         pc.putBoolean(t, (Boolean) o);
     }
@@ -200,7 +197,7 @@ public class Util {
     int n = origin.length;
     double[] var = new double[n - 1];
     for (int i = 0; i < n - 1; i++) {
-      var[i] = origin[i + 1] - origin[i];
+      var[i] = (double) (origin[i + 1] - origin[i]);
     }
     return var;
   }
@@ -291,13 +288,13 @@ public class Util {
       unit = 1000;
       s = s.substring(0, s.length() - 1);
     } else if (s.endsWith("m")) {
-      unit = 60 * 1000;
+      unit = 60 * 1000L;
       s = s.substring(0, s.length() - 1);
     } else if (s.endsWith("h")) {
-      unit = 60 * 60 * 1000;
+      unit = 60 * 60 * 1000L;
       s = s.substring(0, s.length() - 1);
     } else if (s.endsWith("d")) {
-      unit = 24 * 60 * 60 * 1000;
+      unit = 24 * 60 * 60 * 1000L;
       s = s.substring(0, s.length() - 1);
     }
     double v = Double.parseDouble(s);

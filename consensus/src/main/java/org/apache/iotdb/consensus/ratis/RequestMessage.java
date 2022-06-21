@@ -18,23 +18,16 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
+import org.apache.ratis.thirdparty.com.google.protobuf.UnsafeByteOperations;
 
 public class RequestMessage implements Message {
 
-  private final Logger logger = LoggerFactory.getLogger(RequestMessage.class);
-
   private final IConsensusRequest actualRequest;
   private volatile ByteString serializedContent;
-  private static final int DEFAULT_BUFFER_SIZE = 2048 * 10;
 
   public RequestMessage(IConsensusRequest request) {
     this.actualRequest = request;
@@ -50,18 +43,8 @@ public class RequestMessage implements Message {
     if (serializedContent == null) {
       synchronized (this) {
         if (serializedContent == null) {
-          ByteBufferConsensusRequest req;
-          if (actualRequest instanceof ByteBufferConsensusRequest) {
-            req = (ByteBufferConsensusRequest) actualRequest;
-            serializedContent = ByteString.copyFrom(req.getContent());
-            req.getContent().flip();
-          } else {
-            // TODO Pooling
-            ByteBuffer byteBuffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-            actualRequest.serializeRequest(byteBuffer);
-            byteBuffer.flip();
-            serializedContent = ByteString.copyFrom(byteBuffer);
-          }
+          serializedContent =
+              UnsafeByteOperations.unsafeWrap(actualRequest.serializeToByteBuffer());
         }
       }
     }

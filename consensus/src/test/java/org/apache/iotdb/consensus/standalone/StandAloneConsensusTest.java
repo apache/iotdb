@@ -26,19 +26,20 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
-import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -58,8 +59,6 @@ import static org.junit.Assert.assertTrue;
 
 public class StandAloneConsensusTest {
 
-  private static final String STANDALONE_CONSENSUS_CLASS_NAME =
-      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   private IConsensus consensusImpl;
   private final TestEntry entry1 = new TestEntry(0);
   private final ByteBufferConsensusRequest entry2 =
@@ -77,12 +76,14 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public void serializeRequest(ByteBuffer buffer) {
-      buffer.putInt(num);
+    public ByteBuffer serializeToByteBuffer() {
+      ByteBuffer buffer = ByteBuffer.allocate(4).putInt(num);
+      buffer.flip();
+      return buffer;
     }
   }
 
-  private static class TestStateMachine implements IStateMachine {
+  private static class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
     private final boolean direction;
 
@@ -99,7 +100,7 @@ public class StandAloneConsensusTest {
     @Override
     public TSStatus write(IConsensusRequest request) {
       if (request instanceof ByteBufferConsensusRequest) {
-        return new TSStatus(((ByteBufferConsensusRequest) request).getContent().getInt());
+        return new TSStatus(request.serializeToByteBuffer().getInt());
       } else if (request instanceof TestEntry) {
         return new TSStatus(
             direction ? ((TestEntry) request).num + 1 : ((TestEntry) request).num - 1);
@@ -113,29 +114,23 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+    public boolean takeSnapshot(File snapshotDir) {
       return false;
     }
 
     @Override
-    public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-      return null;
-    }
-
-    @Override
-    public void loadSnapshot(SnapshotMeta latest) {}
-
-    @Override
-    public void cleanUpOldSnapshots(File snapshotDir) {}
+    public void loadSnapshot(File latestSnapshotRootDir) {}
   }
 
   @Before
   public void setUp() throws Exception {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
-                STANDALONE_CONSENSUS_CLASS_NAME,
-                new TEndPoint("localhost", 6667),
-                new File("./target/standalone"),
+                ConsensusFactory.StandAloneConsensus,
+                ConsensusConfig.newBuilder()
+                    .setThisNode(new TEndPoint("0.0.0.0", 6667))
+                    .setStorageDir("target" + java.io.File.separator + "standalone")
+                    .build(),
                 gid -> {
                   switch (gid.getType()) {
                     case SchemaRegion:
@@ -150,7 +145,7 @@ public class StandAloneConsensusTest {
                     new IllegalArgumentException(
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            STANDALONE_CONSENSUS_CLASS_NAME)));
+                            ConsensusFactory.StandAloneConsensus)));
     consensusImpl.start();
   }
 
@@ -187,10 +182,17 @@ public class StandAloneConsensusTest {
 
     ConsensusGenericResponse response4 =
         consensusImpl.addConsensusGroup(
+            dataRegionId,
+            Collections.singletonList(new Peer(dataRegionId, new TEndPoint("0.0.0.1", 6667))));
+    assertFalse(response4.isSuccess());
+    assertTrue(response4.getException() instanceof IllegalPeerEndpointException);
+
+    ConsensusGenericResponse response5 =
+        consensusImpl.addConsensusGroup(
             schemaRegionId,
             Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response4.isSuccess());
-    assertNull(response4.getException());
+    assertTrue(response5.isSuccess());
+    assertNull(response5.getException());
   }
 
   @Test

@@ -19,9 +19,9 @@
  */
 package org.apache.iotdb.db.sync.transport.server;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
@@ -57,6 +57,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.sync.conf.SyncConstant.DATA_CHUNK_SIZE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.CONFLICT_CODE;
@@ -71,10 +73,12 @@ public class TransportServiceImpl implements TransportService.Iface {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECORD_SUFFIX = ".record";
   private static final String PATCH_SUFFIX = ".patch";
-  private ThreadLocal<IdentityInfo> identityInfoThreadLocal;
+  private final ThreadLocal<IdentityInfo> identityInfoThreadLocal;
+  private final Map<IdentityInfo, Integer> identityInfoCounter;
 
   public TransportServiceImpl() {
     identityInfoThreadLocal = new ThreadLocal<>();
+    identityInfoCounter = new ConcurrentHashMap<>();
   }
 
   private class CheckResult {
@@ -142,6 +146,7 @@ public class TransportServiceImpl implements TransportService.Iface {
   public TransportStatus handshake(IdentityInfo identityInfo) throws TException {
     logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
     identityInfoThreadLocal.set(identityInfo);
+    identityInfoCounter.compute(identityInfo, (k, v) -> v == null ? 1 : v + 1);
     // check ip address
     if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.address)) {
       return new TransportStatus(
@@ -351,15 +356,21 @@ public class TransportServiceImpl implements TransportService.Iface {
     // Handle client exit here.
     IdentityInfo identityInfo = identityInfoThreadLocal.get();
     if (identityInfo != null) {
-      // stop pipe
+      // if all connections exit, stop pipe
       identityInfoThreadLocal.remove();
-      ReceiverService.getInstance()
-          .receiveMsg(
-              new SyncRequest(
-                  RequestType.STOP,
-                  identityInfo.getPipeName(),
-                  identityInfo.getAddress(),
-                  identityInfo.getCreateTime()));
+      synchronized (identityInfoCounter) {
+        identityInfoCounter.compute(identityInfo, (k, v) -> v == null ? 0 : v - 1);
+        if (identityInfoCounter.get(identityInfo) == 0) {
+          identityInfoCounter.remove(identityInfo);
+          ReceiverService.getInstance()
+              .receiveMsg(
+                  new SyncRequest(
+                      RequestType.STOP,
+                      identityInfo.getPipeName(),
+                      identityInfo.getAddress(),
+                      identityInfo.getCreateTime()));
+        }
+      }
     }
   }
 

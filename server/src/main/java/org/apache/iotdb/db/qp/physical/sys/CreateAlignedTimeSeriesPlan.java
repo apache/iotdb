@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -129,7 +129,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     return compressors;
   }
 
-  public void setCompressors(List<CompressionType> compressor) {
+  public void setCompressors(List<CompressionType> compressors) {
     this.compressors = compressors;
   }
 

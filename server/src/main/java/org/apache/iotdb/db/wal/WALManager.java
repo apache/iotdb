@@ -20,15 +20,17 @@ package org.apache.iotdb.db.wal;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.FolderManager;
-import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.wal.allocation.FirstCreateStrategy;
+import org.apache.iotdb.db.wal.allocation.NodeAllocationStrategy;
+import org.apache.iotdb.db.wal.allocation.RoundRobinStrategy;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALFakeNode;
 import org.apache.iotdb.db.wal.node.WALNode;
@@ -37,82 +39,55 @@ import org.apache.iotdb.db.wal.utils.WALMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-/** This class is used to manage all wal nodes */
+/** This class is used to manage and allocate wal nodes */
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final int MAX_WAL_NODE_NUM =
       config.getMaxWalNodesNum() > 0 ? config.getMaxWalNodesNum() : config.getWalDirs().length * 2;
 
-  /** manage wal folders */
-  private FolderManager folderManager;
-  /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
-  private final Lock nodesLock = new ReentrantLock();
-  // region these variables should be protected by nodesLock
-  /** wal nodes, the max number of wal nodes is MAX_WAL_NUM */
-  private final List<WALNode> walNodes = new ArrayList<>(MAX_WAL_NODE_NUM);
-  /** help allocate node for users */
-  private int nodeCursor = -1;
-  /** each wal node has a unique long value identifier */
-  private long nodeIdCounter = -1;
-  // endregion
+  /** manage all wal nodes and decide how to allocate them */
+  private final NodeAllocationStrategy walNodesManager;
   /** single thread to delete old .wal files */
   private ScheduledExecutorService walDeleteThread;
 
-  private WALManager() {}
+  private WALManager() {
+    if (config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      walNodesManager = new FirstCreateStrategy();
+    } else {
+      walNodesManager = new RoundRobinStrategy(MAX_WAL_NODE_NUM);
+    }
+  }
 
   /** Apply for a wal node */
-  public IWALNode applyForWALNode() {
+  public IWALNode applyForWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE) {
       return WALFakeNode.getSuccessInstance();
     }
 
-    WALNode selectedNode;
-    nodesLock.lock();
-    try {
-      if (walNodes.size() < MAX_WAL_NODE_NUM) {
-        nodeIdCounter++;
-        String identifier = String.valueOf(nodeIdCounter);
-        String folder;
-        // get wal folder
-        try {
-          folder = folderManager.getNextFolder();
-        } catch (DiskSpaceInsufficientException e) {
-          logger.error("All disks of wal folders are full, change system mode to read-only.", e);
-          config.setReadOnly(true);
-          return WALFakeNode.getFailureInstance(e);
-        }
-        folder = folder + File.separator + identifier;
-        // create new wal node
-        try {
-          selectedNode = new WALNode(identifier, folder);
-        } catch (FileNotFoundException e) {
-          logger.error("Fail to create wal node", e);
-          return WALFakeNode.getFailureInstance(e);
-        }
-        walNodes.add(selectedNode);
-      } else {
-        // select next wal node by sequence order
-        nodeCursor = (nodeCursor + 1) % MAX_WAL_NODE_NUM;
-        selectedNode = walNodes.get(nodeCursor);
-      }
-    } finally {
-      nodesLock.unlock();
+    return walNodesManager.applyForWALNode(applicantUniqueId);
+  }
+
+  public void registerWALNode(
+      String applicantUniqueId, String logDirectory, int startFileVersion, long startSearchIndex) {
+    String s = config.getDataRegionConsensusProtocolClass();
+    if (config.getWalMode() == WALMode.DISABLE
+        || !config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      return;
     }
-    return selectedNode;
+
+    ((FirstCreateStrategy) walNodesManager)
+        .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
   }
 
   @Override
@@ -122,16 +97,8 @@ public class WALManager implements IService {
     }
 
     try {
-      folderManager =
-          new FolderManager(
-              Arrays.asList(config.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
-      walDeleteThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-      walDeleteThread.scheduleWithFixedDelay(
-          this::deleteOutdatedFiles,
-          config.getDeleteWalFilesPeriodInMs(),
-          config.getDeleteWalFilesPeriodInMs(),
-          TimeUnit.MILLISECONDS);
+      registerScheduleTask(
+          config.getDeleteWalFilesPeriodInMs(), config.getDeleteWalFilesPeriodInMs());
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
@@ -148,10 +115,7 @@ public class WALManager implements IService {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
     }
     logger.info("Stop wal delete thread successfully, and now restart it.");
-    walDeleteThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-    walDeleteThread.scheduleWithFixedDelay(
-        this::deleteOutdatedFiles, 0, config.getDeleteWalFilesPeriodInMs(), TimeUnit.MILLISECONDS);
+    registerScheduleTask(0, config.getDeleteWalFilesPeriodInMs());
     logger.info(
         "Reboot wal delete thread successfully, current period is {} ms",
         config.getDeleteWalFilesPeriodInMs());
@@ -160,6 +124,10 @@ public class WALManager implements IService {
   /** submit delete outdated wal files task and wait for result */
   public void deleteOutdatedWALFiles() {
     if (config.getWalMode() == WALMode.DISABLE) {
+      return;
+    }
+
+    if (walDeleteThread == null) {
       return;
     }
 
@@ -175,24 +143,9 @@ public class WALManager implements IService {
   }
 
   private void deleteOutdatedFiles() {
-    for (WALNode walNode : getNodesSnapshot()) {
+    for (WALNode walNode : walNodesManager.getNodesSnapshot()) {
       walNode.deleteOutdatedFiles();
     }
-  }
-
-  private List<WALNode> getNodesSnapshot() {
-    List<WALNode> snapshot;
-    if (walNodes.size() < MAX_WAL_NODE_NUM) {
-      nodesLock.lock();
-      try {
-        snapshot = new ArrayList<>(walNodes);
-      } finally {
-        nodesLock.unlock();
-      }
-    } else {
-      snapshot = walNodes;
-    }
-    return snapshot;
   }
 
   @Override
@@ -203,6 +156,7 @@ public class WALManager implements IService {
 
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
+      walDeleteThread = null;
     }
     clear();
   }
@@ -219,19 +173,16 @@ public class WALManager implements IService {
     }
   }
 
+  private void registerScheduleTask(long initDelayMs, long periodMs) {
+    walDeleteThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        walDeleteThread, this::deleteOutdatedFiles, initDelayMs, periodMs, TimeUnit.MILLISECONDS);
+  }
+
   @TestOnly
   public void clear() {
-    nodesLock.lock();
-    try {
-      nodeCursor = -1;
-      nodeIdCounter = -1;
-      for (WALNode walNode : walNodes) {
-        walNode.close();
-      }
-      walNodes.clear();
-    } finally {
-      nodesLock.unlock();
-    }
+    walNodesManager.clear();
   }
 
   @Override

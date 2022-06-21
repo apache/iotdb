@@ -19,18 +19,20 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -46,7 +48,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -160,6 +161,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+
+  private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGCachedImpl mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -193,12 +196,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
-
-    init(storageGroupMNode);
+    this.storageGroupMNode = storageGroupMNode;
+    init();
   }
 
   @SuppressWarnings("squid:S2093")
-  public synchronized void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+  public synchronized void init() throws MetadataException {
     if (initialized) {
       return;
     }
@@ -351,12 +354,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        recoverTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
       case CREATE_ALIGNED_TIMESERIES:
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
             (CreateAlignedTimeSeriesPlan) plan;
-        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        recoverAlignedTimeSeries(createAlignedTimeSeriesPlan);
         break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
@@ -419,6 +422,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Schema_File mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Schema_File mode currently doesn't support snapshot feature.");
+  }
+
   // endregion
 
   // region Interfaces and Implementation for Timeseries operation
@@ -428,12 +445,31 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     createTimeseries(plan, -1);
   }
 
+  public void recoverTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+    boolean done = false;
+    while (!done) {
+      try {
+        createTimeseries(plan, offset);
+        done = true;
+      } catch (SeriesOverflowException e) {
+        logger.warn(
+            "Too many timeseries during recovery from MLog, waiting for SchemaFile swapping.");
+        try {
+          Thread.sleep(3000L);
+        } catch (InterruptedException e2) {
+          logger.error("Exception occurs during timeseries recovery.");
+          throw new MetadataException(e2.getMessage());
+        }
+      }
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      logger.error(
+          String.format("Series overflow when creating: [%s]", plan.getPath().getFullPath()));
+      throw new SeriesOverflowException();
     }
 
     try {
@@ -542,6 +578,25 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 
+  public void recoverAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    boolean done = false;
+    while (!done) {
+      try {
+        createAlignedTimeSeries(plan);
+        done = true;
+      } catch (SeriesOverflowException e) {
+        logger.warn(
+            "Too many timeseries during recovery from MLog, waiting for SchemaFile swapping.");
+        try {
+          Thread.sleep(3000L);
+        } catch (InterruptedException e2) {
+          logger.error("Exception occurs during timeseries recovery.");
+          throw new MetadataException(e2.getMessage());
+        }
+      }
+    }
+  }
+
   /**
    * create aligned timeseries
    *
@@ -549,9 +604,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {

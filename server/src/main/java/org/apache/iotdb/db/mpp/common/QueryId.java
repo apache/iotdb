@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -130,6 +132,10 @@ public class QueryId {
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(this.id, byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.id, stream);
   }
 
   public static QueryId deserialize(ByteBuffer byteBuffer) {

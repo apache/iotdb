@@ -63,4 +63,6 @@ public interface IConsensus {
   boolean isLeader(ConsensusGroupId groupId);
 
   Peer getLeader(ConsensusGroupId groupId);
+
+  List<ConsensusGroupId> getAllConsensusGroupIds();
 }

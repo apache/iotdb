@@ -26,30 +26,27 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.consensus.ConsensusImpl;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.service.thrift.impl.InternalServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
-import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -77,31 +74,33 @@ public class InternalServiceImplTest {
     IoTDB.configManager.init();
     configNode = LocalConfigNode.getInstance();
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
-    ConsensusImpl.getInstance().start();
+    DataRegionConsensusImpl.getInstance().start();
+    SchemaRegionConsensusImpl.getInstance().start();
   }
 
   @Before
   public void setUp() throws Exception {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
-    ConsensusImpl.getInstance()
+    SchemaRegionConsensusImpl.getInstance()
         .addConsensusGroup(
-            ConsensusGroupId.Factory.convertFromTConsensusGroupId(regionReplicaSet.getRegionId()),
-            genPeerList(regionReplicaSet));
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
+            genSchemaRegionPeerList(regionReplicaSet));
     internalServiceImpl = new InternalServiceImpl();
   }
 
   @After
   public void tearDown() throws Exception {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
-    ConsensusImpl.getInstance()
+    SchemaRegionConsensusImpl.getInstance()
         .removeConsensusGroup(
-            ConsensusGroupId.Factory.convertFromTConsensusGroupId(regionReplicaSet.getRegionId()));
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()));
     FileUtils.deleteFully(new File(conf.getConsensusDir()));
   }
 
   @AfterClass
   public static void tearDownAfterClass() throws IOException, StorageEngineException {
-    ConsensusImpl.getInstance().stop();
+    DataRegionConsensusImpl.getInstance().stop();
+    SchemaRegionConsensusImpl.getInstance().stop();
     IoTDB.configManager.clear();
     EnvironmentUtils.cleanEnv();
   }
@@ -135,30 +134,19 @@ public class InternalServiceImplTest {
             "meter1");
 
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
-    PlanFragment planFragment = new PlanFragment(new PlanFragmentId("2", 3), createTimeSeriesNode);
-    FragmentInstance fragmentInstance =
-        new FragmentInstance(
-            planFragment,
-            planFragment.getId().genFragmentInstanceId(),
-            new GroupByFilter(1, 2, 3, 4),
-            QueryType.WRITE);
-    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
-    // serialize fragmentInstance
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    // serialize planNode
+    ByteBuffer byteBuffer = createTimeSeriesNode.serializeToByteBuffer();
 
-    // put serialized fragmentInstance to TSendFragmentInstanceReq
-    TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
-    TFragmentInstance tFragmentInstance = new TFragmentInstance();
-    tFragmentInstance.setBody(byteBuffer);
-    request.setFragmentInstance(tFragmentInstance);
+    // put serialized planNode to TSendPlanNodeReq
+    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TPlanNode tPlanNode = new TPlanNode();
+    tPlanNode.setBody(byteBuffer);
+    request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
-    request.setQueryType(QueryType.WRITE.toString());
 
     // Use consensus layer to execute request
-    TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
+    TSendPlanNodeResp response = internalServiceImpl.sendPlanNode(request);
 
     Assert.assertTrue(response.accepted);
   }
@@ -223,31 +211,105 @@ public class InternalServiceImplTest {
             });
 
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
-    PlanFragment planFragment =
-        new PlanFragment(new PlanFragmentId("2", 3), createAlignedTimeSeriesNode);
-    FragmentInstance fragmentInstance =
-        new FragmentInstance(
-            planFragment,
-            planFragment.getId().genFragmentInstanceId(),
-            new GroupByFilter(1, 2, 3, 4),
-            QueryType.WRITE);
-    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
+    // serialize planNode
+    ByteBuffer byteBuffer = createAlignedTimeSeriesNode.serializeToByteBuffer();
 
-    // serialize fragmentInstance
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
-
-    // put serialized fragmentInstance to TSendFragmentInstanceReq
-    TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
-    TFragmentInstance tFragmentInstance = new TFragmentInstance();
-    tFragmentInstance.setBody(byteBuffer);
-    request.setFragmentInstance(tFragmentInstance);
+    // put serialized planNode to TSendPlanNodeReq
+    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TPlanNode tPlanNode = new TPlanNode();
+    tPlanNode.setBody(byteBuffer);
+    request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
-    request.setQueryType(QueryType.WRITE.toString());
 
     // Use consensus layer to execute request
-    TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
+    TSendPlanNodeResp response = internalServiceImpl.sendPlanNode(request);
+
+    Assert.assertTrue(response.accepted);
+  }
+
+  @Test
+  public void testCreateMultiTimeSeries() throws MetadataException {
+    CreateMultiTimeSeriesNode createMultiTimeSeriesNode =
+        new CreateMultiTimeSeriesNode(
+            new PlanNodeId("0"),
+            new ArrayList<PartialPath>() {
+              {
+                add(new PartialPath("root.ln.d3.s1"));
+                add(new PartialPath("root.ln.d3.s2"));
+              }
+            },
+            new ArrayList<TSDataType>() {
+              {
+                add(TSDataType.FLOAT);
+                add(TSDataType.FLOAT);
+              }
+            },
+            new ArrayList<TSEncoding>() {
+              {
+                add(TSEncoding.PLAIN);
+                add(TSEncoding.PLAIN);
+              }
+            },
+            new ArrayList<CompressionType>() {
+              {
+                add(CompressionType.SNAPPY);
+                add(CompressionType.SNAPPY);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("MAX_POINT_NUMBER", "3");
+                      }
+                    });
+                add(null);
+              }
+            },
+            new ArrayList<String>() {
+              {
+                add("meter1");
+                add(null);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("tag1", "t1");
+                      }
+                    });
+                add(null);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("tag1", "t1");
+                      }
+                    });
+                add(null);
+              }
+            });
+
+    TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+
+    // serialize planNode
+    ByteBuffer byteBuffer = createMultiTimeSeriesNode.serializeToByteBuffer();
+
+    // put serialized planNode to TSendPlanNodeReq
+    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TPlanNode tPlanNode = new TPlanNode();
+    tPlanNode.setBody(byteBuffer);
+    request.setPlanNode(tPlanNode);
+    request.setConsensusGroupId(regionReplicaSet.getRegionId());
+
+    // Use consensus layer to execute request
+    TSendPlanNodeResp response = internalServiceImpl.sendPlanNode(request);
 
     Assert.assertTrue(response.accepted);
   }
@@ -260,20 +322,23 @@ public class InternalServiceImplTest {
             .setInternalEndPoint(new TEndPoint(conf.getInternalIp(), conf.getInternalPort()))
             .setDataBlockManagerEndPoint(
                 new TEndPoint(conf.getInternalIp(), conf.getDataBlockManagerPort()))
-            .setConsensusEndPoint(new TEndPoint(conf.getInternalIp(), conf.getConsensusPort())));
+            .setDataRegionConsensusEndPoint(
+                new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))
+            .setSchemaRegionConsensusEndPoint(
+                new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort())));
 
     // construct fragmentInstance
     return new TRegionReplicaSet(
         new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0), dataNodeList);
   }
 
-  private List<Peer> genPeerList(TRegionReplicaSet regionReplicaSet) {
+  private List<Peer> genSchemaRegionPeerList(TRegionReplicaSet regionReplicaSet) {
     List<Peer> peerList = new ArrayList<>();
     for (TDataNodeLocation node : regionReplicaSet.getDataNodeLocations()) {
       peerList.add(
           new Peer(
               new SchemaRegionId(regionReplicaSet.getRegionId().getId()),
-              node.getConsensusEndPoint()));
+              node.getSchemaRegionConsensusEndPoint()));
     }
     return peerList;
   }

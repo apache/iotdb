@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.engine.compaction.performer;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import java.io.IOException;
 import java.util.List;

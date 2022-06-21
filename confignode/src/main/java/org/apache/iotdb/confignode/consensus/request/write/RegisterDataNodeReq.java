@@ -18,52 +18,54 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class RegisterDataNodeReq extends ConfigRequest {
 
-  private TDataNodeLocation location;
+  private TDataNodeInfo info;
 
   public RegisterDataNodeReq() {
     super(ConfigRequestType.RegisterDataNode);
   }
 
-  public RegisterDataNodeReq(TDataNodeLocation location) {
+  public RegisterDataNodeReq(TDataNodeInfo info) {
     this();
-    this.location = location;
+    this.info = info;
   }
 
-  public TDataNodeLocation getLocation() {
-    return location;
+  public TDataNodeInfo getInfo() {
+    return info;
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.RegisterDataNode.ordinal());
-    ThriftCommonsSerDeUtils.writeTDataNodeLocation(location, buffer);
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.RegisterDataNode.ordinal());
+    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    location = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
+    info = ThriftCommonsSerDeUtils.deserializeTDataNodeInfo(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    RegisterDataNodeReq plan = (RegisterDataNodeReq) o;
-    return location.equals(plan.location);
+    RegisterDataNodeReq that = (RegisterDataNodeReq) o;
+    return info.equals(that.info);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(location);
+    return Objects.hash(info);
   }
 }

@@ -209,13 +209,14 @@ WITH (
 
 At present, the trigger can listen to all data insertion operations on the time series. The hook can be called `BEFORE`  or `AFTER` the data is inserted.
 
-`FULL-PATH` is the name of the time series that the trigger listens to. The path must be a measurement path.
+`FULL-PATH` can be a time-series (measurement) path such as root.sg1.d1.s1, a device path such as root.sg1.d1, a storage group path such as root.sg1, or even  a non-measurement path with business semantic such as root.sg1.x.
 
 `CLASSNAME` is the full class name of the trigger.
 
-Note that `CLASSNAME`,  `KEY` and `VALUE` in the attributes need to be quoted in single or double quotes.
-
-
+Note
+1. `CLASSNAME`,  `KEY` and `VALUE` in the attributes need to be quoted in single or double quotes.
+2. Only one trigger can be registered per `full-path`.
+3. When multiple prefix paths of a path are registered with triggers, for example, trigger `trigger-sg1d1s1` is registed on root.sg1.d1, trigger `trigger-sg1d1` is registed on root.sg1.d1, and trigger `trigger-sg1` is registed on root.sg1. When inserting data to root.sg1.d1.s1, triggers will be  triggered in the following order: trigger-sg1d1s1 -> trigger-sg1d1 -> trigger-sg1.
 
 ### Drop Triggers
 
@@ -306,7 +307,7 @@ When a user manages triggers, 4 types of authorities will be involved:
 * `START_TRIGGER`: Only users with this authority are allowed to start triggers. This authority is path dependent.
 * `STOP_TRIGGER`: Only users with this authority are allowed to stop triggers. This authority is path dependent.
 
-For more information, refer to [Authority Management Statement](../Operation%20Manual/Administration.md).
+For more information, refer to [Authority Management Statement](../Administration-Management/Administration.md).
 
 
 
@@ -678,7 +679,113 @@ annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
 alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annotations));
 ```
 
+#### ForwardSink
 
+Trigger can use ForwardSink to forward written data through HTTP and MQTT, which has contains HTTPForwardHandler and MQTTForwardHandler. To improve connection efficiency, all HTTPForwardHandlers share a connection pool, while MQTTForwardHandlers with the same host, port and username parameters share a connection pool.
+
+The difference between MQTTForwardHandler and MQTTHandler is that the former uses connection pool while the latter does not, and the message format is also different.
+
+See [ForwardTrigger](#ForwardTrigger) as example.
+
+## ForwardTrigger
+ForwardTrigger is a built-in trigger for data distribution/forwarding. It uses ForwardSink and consumption queue to realize asynchronous batch processing of trigger events. Asynchronous forwarding can avoid the system blocking caused by forwarding blocking. The connection pool in ForwardSink can make the connections in the pool reuse efficiently and safely, and avoid the overhead of frequent connection establishment and closing.
+
+<img src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Triggers/ForwardQueueConsume.png?raw=true" alt="Forward Queue Consume">
+
+### Trigger process
+1. Trigger event come.
+2. ForwardTrigger put the event into queue pool.
+3. Finish Trigger event.
+
+### Queue pool consumption process
+1. Put trigger event into queue grouping by device (polling if there is no device).
+2. Each queue consumer thread monitors the current queue. If it times out or reaches the maximum forwarding batch, it calls the handler for batch forwarding.
+3. Handler batch serializes trigger events. After message encapsulation, call the built-in connection pool to complete forwarding.
+
+### Message format
+At present, the message format only supports JSON format of fixed template. The template is as follows:
+```
+[{"device":"%s","measurement":"%s","timestamp":%d,"value":%s}]
+```
+
+### Example
+#### Create ForwardTrigger
+Create a forward_http trigger with HTTP protocol and a forward_mqtt trigger with mqtt protocol, which subscribes to the prefix path `root.http` and `root.mqtt` respectively.
+```sql
+CREATE trigger forward_http AFTER INSERT ON root.http 
+AS 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' 
+WITH ('protocol' = 'http', 'endpoint' = 'http://127.0.0.1:8080/forward_receive')
+
+CREATE trigger forward_mqtt AFTER INSERT ON root.mqtt 
+AS 'org.apache.iotdb.db.engine.trigger.builtin.ForwardTrigger' 
+WITH ('protocol' = 'mqtt', 'host' = '127.0.0.1', 'port' = '1883', 'username' = 'root', 'password' = 'root', 'topic' = 'mqtt-test')
+```
+
+#### Fire trigger
+Insert data into the sub-path of the two prefix paths to fire the trigger.
+```sql
+INSERT INTO root.http.d1(timestamp, s1) VALUES (1, 1);
+INSERT INTO root.http.d1(timestamp, s2) VALUES (2, true);
+INSERT INTO root.mqtt.d1(timestamp, s1) VALUES (1, 1);
+INSERT INTO root.mqtt.d1(timestamp, s2) VALUES (2, true);
+```
+
+#### Receive forwarded message
+After the trigger is fired, JSON data in follow format will be received at the HTTP receiving end:
+```json
+[
+    {
+        "device":"root.http.d1",
+        "measurement":"s1",
+        "timestamp":1,
+        "value":1.0
+    },
+    {
+        "device":"root.http.d1",
+        "measurement":"s2",
+        "timestamp":2,
+        "value":true
+    }
+]
+```
+
+After the trigger is fired, JSON data in follow format will be received at the MQTT receiving end:
+```json
+[
+    {
+        "device":"root.mqtt.d1",
+        "measurement":"s1",
+        "timestamp":1,
+        "value":1.0
+    },
+    {
+        "device":"root.mqtt.d1",
+        "measurement":"s2",
+        "timestamp":2,
+        "value":true
+    }
+]
+```
+
+### Config Parameter of ForwardTrigger
+| Parameter          | Required | Default      | Max  | Description                                                                                                                                                                                                             |
+|--------------------|----------|--------------|------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| protocol           | true     | http         |      | Forward protocol, such as HTTP/MQTT                                                                                                                                                                                     |
+| queueNumber        |          | 8            | 8    | The number of queue, comparing to the global parameter trigger_forward_max_queue_number and take the smaller                                                                                                            |
+| queueSize          |          | 2000         | 2000 | The size of queue, comparing to the global parameter trigger_forward_max_size_per_queue and take the smaller                                                                                                            |
+| batchSize          |          | 50           | 50   | The size of each forwarding batch, comparing to the global parameter trigger_forward_batch_size and take the smaller                                                                                                    |
+| stopIfException    |          | false        |      | Stop forwarding if exception occurs                                                                                                                                                                                     |
+| endpoint           | true     |              |      | Request endpoint address (HTTP protocol parameter)<br/>Note: HTTP connection pool parameters depend on global parameters：<br/>trigger_forward_http_pool_size=200<br/>and<br/>trigger_forward_http_pool_max_per_route=20 |
+| host               | true     |              |      | MQTT broker host (MQTT protocol parameter)                                                                                                                                                                              |
+| port               | true     |              |      | MQTT broker port (MQTT protocol parameter)                                                                                                                                                                              |
+| username           | true     |              |      | Username (MQTT protocol parameter)                                                                                                                                                                                      |
+| password           | true     |              |      | Password (MQTT protocol parameter)                                                                                                                                                                                      |
+| topic              | true     |              |      | The topic of MQTT message (MQTT protocol parameter)                                                                                                                                                                     |
+| reconnectDelay     |          | 10ms         |      | Reconnection waiting time (MQTT protocol parameter)                                                                                                                                                                     |
+| connectAttemptsMax |          | 3            |      | Max connection attempts (MQTT protocol parameter)                                                                                                                                                                       |
+| qos                |          | exactly_once |      | Quality of Service (MQTT protocol parameter), must be exactly_once, at_least_once or at_most_once                                                                                                                       |
+| poolSize           |          | 4            | 4    | MQTT Connection Pool Size (MQTT protocol parameter), comparing to the global parameter trigger_forward_mqtt_pool_size and take the smaller                                                                              |
+| retain             |          | false        |      | Let MQTT Broker retain the message after publishing (MQTT protocol parameter)                                                                                                                                           |
 
 ## Maven Project Example
 
@@ -698,7 +805,7 @@ package org.apache.iotdb.trigger;
 
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;

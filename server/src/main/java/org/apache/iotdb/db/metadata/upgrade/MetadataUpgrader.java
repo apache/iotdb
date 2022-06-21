@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.upgrade;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainerMapImpl;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagLogFile;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -80,9 +80,9 @@ public class MetadataUpgrader {
   private File tagFile = new File(tagFilePath);
 
   private String mtreeSnapshotPath =
-      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_OLD_VERSION;
   private String mtreeSnapshotTmpPath =
-      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
+      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP_OLDVERSION;
   private File snapshotFile = new File(mtreeSnapshotPath);
   private File snapshotTmpFile = new File(mtreeSnapshotTmpPath);
 

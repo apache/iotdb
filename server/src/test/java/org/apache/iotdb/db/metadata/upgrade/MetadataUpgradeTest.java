@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.upgrade;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagLogFile;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -132,7 +132,11 @@ public class MetadataUpgradeTest {
     Assert.assertTrue(
         new File(schemaDirPath + File.separator + MetadataConstant.TAG_LOG + ".bak").exists());
     Assert.assertTrue(
-        new File(schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT + ".bak")
+        new File(
+                schemaDirPath
+                    + File.separator
+                    + MetadataConstant.MTREE_SNAPSHOT_OLD_VERSION
+                    + ".bak")
             .exists());
   }
 
@@ -245,7 +249,7 @@ public class MetadataUpgradeTest {
   }
 
   private CreateAlignedTimeSeriesPlan getCreateAlignedTimeseriesPlan() throws IllegalPathException {
-    PartialPath devicePath = new PartialPath("root.unsetTemplate1.sg1.device");
+    PartialPath devicePath = new PartialPath("root.unsetTemplate1.sg1.device0");
     List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
     List<TSDataType> tsDataTypes =
         Arrays.asList(
@@ -306,7 +310,8 @@ public class MetadataUpgradeTest {
     entityMNode.addChild(measurementMNode);
     entityMNode.addAlias("first", measurementMNode);
     try (MLogWriter mLogWriter =
-        new MLogWriter(schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT)) {
+        new MLogWriter(
+            schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_OLD_VERSION)) {
       root.serializeTo(mLogWriter);
     }
   }

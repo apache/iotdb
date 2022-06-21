@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,11 +52,19 @@ public class MetaFormatUtils {
     }
     for (String name : timeseries.getNodes()) {
       try {
-        checkReservedNames(name);
         checkNameFormat(name);
+        checkReservedNames(name);
       } catch (MetadataException e) {
         throw new IllegalPathException(timeseries.getFullPath(), e.getMessage());
       }
+    }
+  }
+
+  /** check whether the node name uses "." or "*" correctly */
+  private static void checkNameFormat(String name) throws MetadataException {
+    if (!((name.startsWith("`") && name.endsWith("`")))
+        && (name.contains(".") || name.contains("*"))) {
+      throw new MetadataException(String.format("%s is an illegal name.", name));
     }
   }
 
@@ -75,15 +83,6 @@ public class MetaFormatUtils {
       if (reservedName.equals(processedName)) {
         throw new MetadataException(String.format("%s is an illegal name.", name));
       }
-    }
-  }
-
-  /** check whether the node name uses "." correctly */
-  private static void checkNameFormat(String name) throws MetadataException {
-    if (!((name.startsWith("'") && name.endsWith("'"))
-            || (name.startsWith("\"") && name.endsWith("\"")))
-        && name.contains(".")) {
-      throw new MetadataException(String.format("%s is an illegal name.", name));
     }
   }
 

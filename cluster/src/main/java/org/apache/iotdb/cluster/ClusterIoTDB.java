@@ -57,6 +57,7 @@ import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -65,8 +66,8 @@ import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -189,14 +190,16 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private void initTasks() {
     reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
-    reportThread.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        reportThread,
         this::generateNodeReport,
         ClusterConstant.REPORT_INTERVAL_SEC,
         ClusterConstant.REPORT_INTERVAL_SEC,
         TimeUnit.SECONDS);
     hardLinkCleanerThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("HardLinkCleaner");
-    hardLinkCleanerThread.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        hardLinkCleanerThread,
         new HardLinkCleaner(),
         ClusterConstant.CLEAN_HARDLINK_INTERVAL_SEC,
         ClusterConstant.CLEAN_HARDLINK_INTERVAL_SEC,
@@ -225,7 +228,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   protected boolean serverCheckAndInit() throws ConfigurationException, IOException {
-    IoTDBConfigCheck.getInstance().checkConfig();
+    IoTDBStartCheck.getInstance().checkConfig();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.

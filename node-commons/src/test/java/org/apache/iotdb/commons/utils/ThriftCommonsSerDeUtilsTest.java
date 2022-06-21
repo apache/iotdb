@@ -25,11 +25,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
@@ -43,59 +46,81 @@ public class ThriftCommonsSerDeUtilsTest {
   }
 
   @Test
-  public void readWriteTEndPointTest() {
+  public void readWriteTEndPointTest() throws IOException {
     TEndPoint endPoint0 = new TEndPoint("0.0.0.0", 6667);
-    ThriftCommonsSerDeUtils.writeTEndPoint(endPoint0, buffer);
-    buffer.flip();
-    TEndPoint endPoint1 = ThriftCommonsSerDeUtils.readTEndPoint(buffer);
-    Assert.assertEquals(endPoint0, endPoint1);
+
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ThriftCommonsSerDeUtils.serializeTEndPoint(endPoint0, outputStream);
+      TEndPoint endPoint1 =
+          ThriftCommonsSerDeUtils.deserializeTEndPoint(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      Assert.assertEquals(endPoint0, endPoint1);
+    }
   }
 
   @Test
-  public void readWriteTDataNodeLocationTest() {
+  public void readWriteTDataNodeLocationTest() throws IOException {
     TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
     dataNodeLocation0.setDataNodeId(0);
     dataNodeLocation0.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation0.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation0.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    ThriftCommonsSerDeUtils.writeTDataNodeLocation(dataNodeLocation0, buffer);
-    buffer.flip();
-    TDataNodeLocation dataNodeLocation1 = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
-    Assert.assertEquals(dataNodeLocation0, dataNodeLocation1);
+    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation0, outputStream);
+      TDataNodeLocation dataNodeLocation1 =
+          ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      Assert.assertEquals(dataNodeLocation0, dataNodeLocation1);
+    }
   }
 
   @Test
-  public void readWriteTSeriesPartitionSlotTest() {
+  public void readWriteTSeriesPartitionSlotTest() throws IOException {
     TSeriesPartitionSlot seriesPartitionSlot0 = new TSeriesPartitionSlot(10);
-    ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot0, buffer);
-    buffer.flip();
-    TSeriesPartitionSlot seriesPartitionSlot1 =
-        ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
-    Assert.assertEquals(seriesPartitionSlot0, seriesPartitionSlot1);
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot0, outputStream);
+      TSeriesPartitionSlot seriesPartitionSlot1 =
+          ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      Assert.assertEquals(seriesPartitionSlot0, seriesPartitionSlot1);
+    }
   }
 
   @Test
-  public void writeTTimePartitionSlot() {
+  public void writeTTimePartitionSlot() throws IOException {
     TTimePartitionSlot timePartitionSlot0 = new TTimePartitionSlot(100);
-    ThriftCommonsSerDeUtils.writeTTimePartitionSlot(timePartitionSlot0, buffer);
-    buffer.flip();
-    TTimePartitionSlot timePartitionSlot1 = ThriftCommonsSerDeUtils.readTTimePartitionSlot(buffer);
-    Assert.assertEquals(timePartitionSlot0, timePartitionSlot1);
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timePartitionSlot0, outputStream);
+      TTimePartitionSlot timePartitionSlot1 =
+          ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      Assert.assertEquals(timePartitionSlot0, timePartitionSlot1);
+    }
   }
 
   @Test
-  public void readWriteTConsensusGroupIdTest() {
+  public void readWriteTConsensusGroupIdTest() throws IOException {
     TConsensusGroupId consensusGroupId0 =
         new TConsensusGroupId(TConsensusGroupType.PartitionRegion, 0);
-    ThriftCommonsSerDeUtils.writeTConsensusGroupId(consensusGroupId0, buffer);
-    buffer.flip();
-    TConsensusGroupId consensusGroupId1 = ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer);
-    Assert.assertEquals(consensusGroupId0, consensusGroupId1);
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId0, outputStream);
+      TConsensusGroupId consensusGroupId1 =
+          ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      Assert.assertEquals(consensusGroupId0, consensusGroupId1);
+    }
   }
 
   @Test
-  public void readWriteTRegionReplicaSetTest() {
+  public void readWriteTRegionReplicaSetTest() throws IOException {
     TRegionReplicaSet regionReplicaSet0 = new TRegionReplicaSet();
     regionReplicaSet0.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
     regionReplicaSet0.setDataNodeLocations(new ArrayList<>());
@@ -105,12 +130,17 @@ public class ThriftCommonsSerDeUtilsTest {
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
       dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
-      dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
       regionReplicaSet0.getDataNodeLocations().add(dataNodeLocation);
     }
-    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet0, buffer);
-    buffer.flip();
-    TRegionReplicaSet regionReplicaSet1 = ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
-    Assert.assertEquals(regionReplicaSet0, regionReplicaSet1);
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet0, outputStream);
+      TRegionReplicaSet regionReplicaSet1 =
+          ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      Assert.assertEquals(regionReplicaSet0, regionReplicaSet1);
+    }
   }
 }

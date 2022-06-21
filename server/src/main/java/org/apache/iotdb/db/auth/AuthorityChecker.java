@@ -19,13 +19,18 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.constant.StatementType;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -34,10 +39,16 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+
 public class AuthorityChecker {
 
-  private static final String SUPER_USER = IoTDBDescriptor.getInstance().getConfig().getAdminName();
+  private static final String SUPER_USER =
+      CommonDescriptor.getInstance().getConfig().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
+
+  private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private static SessionManager sessionManager = SessionManager.getInstance();
 
   private AuthorityChecker() {}
 
@@ -109,13 +120,13 @@ public class AuthorityChecker {
     List<String> allPath = new ArrayList<>();
     if (paths != null && !paths.isEmpty()) {
       for (PartialPath path : paths) {
-        allPath.add(path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath());
+        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath());
       }
     } else {
-      allPath.add(IoTDBConstant.PATH_ROOT);
+      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
     }
 
-    TSStatus status = AuthorizerManager.getInstance().checkPath(username, allPath, permission);
+    TSStatus status = authorizerManager.checkPath(username, allPath, permission);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return true;
     } else {
@@ -125,9 +136,8 @@ public class AuthorityChecker {
 
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
-    AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
     try {
-      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
+      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath();
       if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }
@@ -136,6 +146,38 @@ public class AuthorityChecker {
       throw new AuthException(e);
     }
     return false;
+  }
+
+  /** Check whether specific Session has the authorization to given plan. */
+  public static TSStatus checkAuthority(Statement statement, long sessionId) {
+    try {
+      if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + statement.getType());
+      }
+    } catch (AuthException e) {
+      logger.warn("meet error while checking authorization.", e);
+      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /** Check whether specific user has the authorization to given plan. */
+  public static boolean checkAuthorization(Statement statement, String username)
+      throws AuthException {
+    if (!statement.isAuthenticationRequired()) {
+      return true;
+    }
+    String targetUser = null;
+    if (statement instanceof AuthorStatement) {
+      targetUser = ((AuthorStatement) statement).getUserName();
+    }
+    return AuthorityChecker.checkPermission(
+        username, statement.getPaths(), statement.getType(), targetUser);
   }
 
   private static int translateToPermissionId(Operator.OperatorType type) {

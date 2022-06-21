@@ -21,24 +21,38 @@ package org.apache.iotdb.db.metadata.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /** Schema write PlanNode visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
@@ -67,6 +81,170 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  @Override
+  public TSStatus visitCreateMultiTimeSeries(
+      CreateMultiTimeSeriesNode node, ISchemaRegion schemaRegion) {
+    Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
+    List<TSStatus> failingStatus = new ArrayList<>();
+    PartialPath devicePath;
+    MeasurementGroup measurementGroup;
+    int size;
+    for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+      devicePath = entry.getKey();
+      measurementGroup = entry.getValue();
+      size = measurementGroup.getMeasurements().size();
+      // todo implement batch creation of one device in SchemaRegion
+      for (int i = 0; i < size; i++) {
+        try {
+          schemaRegion.createTimeseries(
+              transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
+        } catch (MetadataException e) {
+          logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+          failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+      }
+    }
+
+    if (!failingStatus.isEmpty()) {
+      return RpcUtils.getStatus(failingStatus);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  private CreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
+      PartialPath devicePath, MeasurementGroup measurementGroup, int index) {
+    return new CreateTimeSeriesPlan(
+        devicePath.concatNode(measurementGroup.getMeasurements().get(index)),
+        measurementGroup.getDataTypes().get(index),
+        measurementGroup.getEncodings().get(index),
+        measurementGroup.getCompressors().get(index),
+        measurementGroup.getPropsList() == null ? null : measurementGroup.getPropsList().get(index),
+        measurementGroup.getTagsList() == null ? null : measurementGroup.getTagsList().get(index),
+        measurementGroup.getAttributesList() == null
+            ? null
+            : measurementGroup.getAttributesList().get(index),
+        measurementGroup.getAliasList() == null
+            ? null
+            : measurementGroup.getAliasList().get(index));
+  }
+
+  @Override
+  public TSStatus visitInternalCreateTimeSeries(
+      InternalCreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
+    PartialPath devicePath = node.getDevicePath();
+    MeasurementGroup measurementGroup = node.getMeasurementGroup();
+
+    List<TSStatus> alreadyExistingTimeseries = new ArrayList<>();
+    List<TSStatus> failingStatus = new ArrayList<>();
+
+    if (node.isAligned()) {
+      executeInternalCreateAlignedTimeseries(
+          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+    } else {
+      executeInternalCreateTimeseries(
+          devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+    }
+
+    if (!failingStatus.isEmpty()) {
+      return RpcUtils.getStatus(failingStatus);
+    }
+
+    if (!alreadyExistingTimeseries.isEmpty()) {
+      return RpcUtils.getStatus(alreadyExistingTimeseries);
+    }
+
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  private void executeInternalCreateTimeseries(
+      PartialPath devicePath,
+      MeasurementGroup measurementGroup,
+      ISchemaRegion schemaRegion,
+      List<TSStatus> alreadyExistingTimeseries,
+      List<TSStatus> failingStatus) {
+
+    int size = measurementGroup.getMeasurements().size();
+    // todo implement batch creation of one device in SchemaRegion
+    for (int i = 0; i < size; i++) {
+      try {
+        schemaRegion.createTimeseries(
+            transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
+      } catch (MeasurementAlreadyExistException e) {
+        logger.info("There's no need to internal create timeseries. {}", e.getMessage());
+        alreadyExistingTimeseries.add(
+            RpcUtils.getStatus(
+                e.getErrorCode(), transformExistingTimeseriesToString(e.getMeasurementPath())));
+      } catch (MetadataException e) {
+        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+  }
+
+  private String transformExistingTimeseriesToString(MeasurementPath measurementPath) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      measurementPath.serialize(dataOutputStream);
+    } catch (IOException ignored) {
+      // this exception won't happen.
+    }
+    return byteArrayOutputStream.toString();
+  }
+
+  private void executeInternalCreateAlignedTimeseries(
+      PartialPath devicePath,
+      MeasurementGroup measurementGroup,
+      ISchemaRegion schemaRegion,
+      List<TSStatus> alreadyExistingTimeseries,
+      List<TSStatus> failingStatus) {
+    List<String> measurementList = measurementGroup.getMeasurements();
+    List<TSDataType> dataTypeList = measurementGroup.getDataTypes();
+    List<TSEncoding> encodingList = measurementGroup.getEncodings();
+    List<CompressionType> compressionTypeList = measurementGroup.getCompressors();
+    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+        new CreateAlignedTimeSeriesPlan(
+            devicePath,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypeList,
+            null,
+            null,
+            null);
+
+    boolean shouldRetry = true;
+    while (shouldRetry) {
+      try {
+        schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        shouldRetry = false;
+      } catch (MeasurementAlreadyExistException e) {
+        // the existence check will be executed before truly creation
+        logger.info("There's no need to internal create timeseries. {}", e.getMessage());
+        MeasurementPath measurementPath = e.getMeasurementPath();
+        alreadyExistingTimeseries.add(
+            RpcUtils.getStatus(
+                e.getErrorCode(), transformExistingTimeseriesToString(measurementPath)));
+
+        // remove the existing timeseries from plan
+        int index = measurementList.indexOf(measurementPath.getMeasurement());
+        measurementList.remove(index);
+        dataTypeList.remove(index);
+        encodingList.remove(index);
+        compressionTypeList.remove(index);
+
+        if (measurementList.isEmpty()) {
+          shouldRetry = false;
+        }
+
+      } catch (MetadataException e) {
+        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        shouldRetry = false;
+      }
+    }
   }
 
   @Override

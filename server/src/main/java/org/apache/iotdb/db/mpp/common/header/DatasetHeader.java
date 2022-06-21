@@ -40,7 +40,7 @@ public class DatasetHeader {
   // indicate whether the result dataset contain timestamp column
   private final boolean isIgnoreTimestamp;
 
-  // map from
+  // map from output column to output tsBlock index
   private Map<String, Integer> columnToTsBlockIndexMap;
 
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {
@@ -64,6 +64,12 @@ public class DatasetHeader {
   }
 
   public List<String> getRespColumns() {
+    return columnHeaders.stream()
+        .map(ColumnHeader::getColumnNameWithAlias)
+        .collect(Collectors.toList());
+  }
+
+  public List<String> getColumnNameWithoutAlias() {
     return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
@@ -89,6 +95,20 @@ public class DatasetHeader {
   }
 
   public Map<String, Integer> getColumnNameIndexMap() {
-    return columnToTsBlockIndexMap;
+    if (columnToTsBlockIndexMap == null || columnToTsBlockIndexMap.isEmpty()) {
+      return columnToTsBlockIndexMap;
+    }
+
+    Map<String, Integer> columnNameIndexMap = new HashMap<>();
+    for (ColumnHeader columnHeader : columnHeaders) {
+      columnNameIndexMap.put(
+          columnHeader.getColumnNameWithAlias(),
+          columnToTsBlockIndexMap.get(columnHeader.getColumnName()));
+    }
+    return columnNameIndexMap;
+  }
+
+  public int getOutputValueColumnCount() {
+    return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
   }
 }

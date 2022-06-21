@@ -106,7 +106,6 @@ public class MemTableInfo implements SerializedSize {
     return firstFileVersionId;
   }
 
-  /** */
   public void setFirstFileVersionId(int firstFileVersionId) {
     this.firstFileVersionId = firstFileVersionId;
   }

@@ -27,13 +27,13 @@ public class ConfigNodeConstant {
           ? ConfigNodeConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
 
-  public static final String GLOBAL_NAME = "IoTDB ConfigNode";
+  public static final String GLOBAL_NAME = "IoTDB-ConfigNode";
   public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
   public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
   public static final String ENV_FILE_NAME = "confignode-env";
-  public static final String CONF_NAME = "iotdb-confignode.properties";
-  public static final String SPECIAL_CONF_NAME = "iotdb-confignode-special.properties";
+  public static final String CONF_FILE_NAME = "iotdb-confignode.properties";
+  public static final String SYSTEM_FILE_NAME = "confignode-system.properties";
 
   public static final String CONFIGNODE_PACKAGE = "org.apache.iotdb.confignode.service";
   public static final String JMX_TYPE = "type";
@@ -42,6 +42,7 @@ public class ConfigNodeConstant {
   public static final String DATA_DIR = "data";
   public static final String CONF_DIR = "conf";
   public static final String CONSENSUS_FOLDER = "consensus";
+  public static final String UDF_FOLDER = "udf";
 
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 

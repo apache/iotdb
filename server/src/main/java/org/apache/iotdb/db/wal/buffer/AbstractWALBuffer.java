@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALWriter;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,20 +40,27 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   protected final String logDirectory;
   /** current wal file version id */
   protected final AtomicInteger currentWALFileVersion = new AtomicInteger();
+  /** current search index */
+  protected volatile long currentSearchIndex;
   /** current wal file log writer */
   protected volatile ILogWriter currentWALFileWriter;
 
-  public AbstractWALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
+  public AbstractWALBuffer(
+      String identifier, String logDirectory, int startFileVersion, long startSearchIndex)
+      throws FileNotFoundException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
-      logger.info("create folder {} for wal buffer-{}.", logDirectory, identifier);
+      logger.info("Create folder {} for wal node-{}'s buffer.", logDirectory, identifier);
     }
+    currentSearchIndex = startSearchIndex;
+    currentWALFileVersion.set(startFileVersion);
     currentWALFileWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
-                logDirectory, WALWriter.getLogFileName(currentWALFileVersion.get())));
+                logDirectory,
+                WALFileUtils.getLogFileName(currentWALFileVersion.get(), currentSearchIndex)));
   }
 
   @Override
@@ -60,12 +68,19 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     return currentWALFileVersion.get();
   }
 
+  @Override
+  public long getCurrentWALFileSize() {
+    return currentWALFileWriter.size();
+  }
+
   /** Notice: only called by syncBufferThread and old log writer will be closed by this function. */
-  protected void rollLogWriter() throws IOException {
+  protected void rollLogWriter(long searchIndex) throws IOException {
     currentWALFileWriter.close();
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, WALWriter.getLogFileName(currentWALFileVersion.incrementAndGet()));
+            logDirectory,
+            WALFileUtils.getLogFileName(currentWALFileVersion.incrementAndGet(), searchIndex));
     currentWALFileWriter = new WALWriter(nextLogFile);
+    logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
   }
 }

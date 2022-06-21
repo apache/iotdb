@@ -44,8 +44,7 @@ jobs:
         #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
         # but we just add labels here to make the action name more graceful
         it_task: [ 'others',
-                   'server',
-                   'cluster'
+                   'server'
         ]
     runs-on: windows-latest
 

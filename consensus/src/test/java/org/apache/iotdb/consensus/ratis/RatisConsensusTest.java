@@ -28,6 +28,8 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -39,7 +41,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -48,30 +49,42 @@ import java.util.concurrent.TimeUnit;
 
 public class RatisConsensusTest {
 
-  private static final String RATIS_CLASS_NAME = "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
   private ConsensusGroupId gid;
   private List<Peer> peers;
   private List<File> peersStorage;
   private List<IConsensus> servers;
+  private List<TestUtils.IntegerCounter> stateMachines;
   private ConsensusGroup group;
-  private Peer peer0;
-  private Peer peer1;
-  private Peer peer2;
   CountDownLatch latch;
 
   private void makeServers() throws IOException {
     for (int i = 0; i < 3; i++) {
+      stateMachines.add(new TestUtils.IntegerCounter());
+      RatisConfig config =
+          RatisConfig.newBuilder()
+              .setLog(
+                  RatisConfig.Log.newBuilder()
+                      .setPurgeUptoSnapshotIndex(true)
+                      .setPurgeGap(10)
+                      .build())
+              .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
+              .build();
+      int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
-                  RATIS_CLASS_NAME,
-                  peers.get(i).getEndpoint(),
-                  peersStorage.get(i),
-                  groupId -> new TestUtils.IntegerCounter())
+                  ConsensusFactory.RatisConsensus,
+                  ConsensusConfig.newBuilder()
+                      .setThisNode(peers.get(i).getEndpoint())
+                      .setRatisConfig(config)
+                      .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                      .build(),
+                  groupId -> stateMachines.get(finalI))
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              ConsensusFactory.RatisConsensus))));
       servers.get(i).start();
     }
   }
@@ -80,21 +93,19 @@ public class RatisConsensusTest {
   public void setUp() throws IOException {
     gid = new DataRegionId(1);
     peers = new ArrayList<>();
-    peer0 = new Peer(gid, new TEndPoint("127.0.0.1", 6000));
-    peer1 = new Peer(gid, new TEndPoint("127.0.0.1", 6001));
-    peer2 = new Peer(gid, new TEndPoint("127.0.0.1", 6002));
-    peers.add(peer0);
-    peers.add(peer1);
-    peers.add(peer2);
+    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6000)));
+    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6001)));
+    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
     peersStorage = new ArrayList<>();
-    peersStorage.add(new File("./target/1/"));
-    peersStorage.add(new File("./target/2/"));
-    peersStorage.add(new File("./target/3/"));
+    peersStorage.add(new File("target" + java.io.File.separator + "1"));
+    peersStorage.add(new File("target" + java.io.File.separator + "2"));
+    peersStorage.add(new File("target" + java.io.File.separator + "3"));
     for (File dir : peersStorage) {
       dir.mkdirs();
     }
     group = new ConsensusGroup(gid, peers);
     servers = new ArrayList<>();
+    stateMachines = new ArrayList<>();
     makeServers();
   }
 
@@ -109,63 +120,68 @@ public class RatisConsensusTest {
   }
 
   @Test
-  public void basicConsensus() throws Exception {
-
-    // 1. Add a new group
+  public void basicConsensus3Copy() throws Exception {
     servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
 
-    // 2. Do Consensus 10
+    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+  }
+
+  @Test
+  public void addMemberToGroup() throws Exception {
+    List<Peer> original = peers.subList(0, 1);
+
+    servers.get(0).addConsensusGroup(group.getGroupId(), original);
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    // 3. Remove two Peers from Group (peer 0 and peer 2)
-    // transfer the leader to peer1
-    servers.get(0).transferLeader(gid, peer1);
-    // Assert.assertTrue(servers.get(1).isLeader(gid));
-    // first use removePeer to inform the group leader of configuration change
-    servers.get(1).removePeer(gid, peer0);
-    servers.get(1).removePeer(gid, peer2);
-    // then use removeConsensusGroup to clean up removed Consensus-Peer's states
-    servers.get(0).removeConsensusGroup(gid);
+    // add 2 members
+    servers.get(1).addConsensusGroup(group.getGroupId(), peers);
+    servers.get(0).addPeer(group.getGroupId(), peers.get(1));
+
+    servers.get(2).addConsensusGroup(group.getGroupId(), peers);
+    servers.get(0).changePeer(group.getGroupId(), peers);
+
+    Assert.assertEquals(stateMachines.get(0).getConfiguration().size(), 3);
+    doConsensus(servers.get(0), group.getGroupId(), 10, 20);
+  }
+
+  @Test
+  public void removeMemberFromGroup() throws Exception {
+    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
+
+    doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+
+    servers.get(0).transferLeader(gid, peers.get(0));
+    servers.get(0).removePeer(gid, peers.get(1));
+    servers.get(1).removeConsensusGroup(gid);
+    servers.get(0).removePeer(gid, peers.get(2));
     servers.get(2).removeConsensusGroup(gid);
-    Assert.assertEquals(servers.get(1).getLeader(gid).getEndpoint(), peers.get(1).getEndpoint());
 
-    // 4. try consensus again with one peer
-    doConsensus(servers.get(1), gid, 10, 20);
+    doConsensus(servers.get(0), group.getGroupId(), 10, 20);
+  }
 
-    // 5. add two peers back
-    // first notify these new peers, let them initialize
-    servers.get(0).addConsensusGroup(gid, peers);
-    servers.get(2).addConsensusGroup(gid, peers);
-    // then use addPeer to inform the group leader of configuration change
-    servers.get(1).addPeer(gid, peer0);
-    servers.get(1).addPeer(gid, peer2);
+  @Test
+  public void crashAndStart() throws Exception {
+    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
 
-    // 6. try consensus with all 3 peers
-    doConsensus(servers.get(2), gid, 10, 30);
+    // 200 operation will trigger snapshot & purge
+    doConsensus(servers.get(0), group.getGroupId(), 200, 200);
 
-    // 7. again, group contains only peer0
-    servers.get(0).transferLeader(group.getGroupId(), peer0);
-    servers.get(0).changePeer(group.getGroupId(), Collections.singletonList(peer0));
-    servers.get(1).removeConsensusGroup(group.getGroupId());
-    servers.get(2).removeConsensusGroup(group.getGroupId());
-
-    // 8. try consensus with only peer0
-    doConsensus(servers.get(0), gid, 10, 40);
-
-    // 9. shutdown all the servers
     for (IConsensus consensus : servers) {
       consensus.stop();
     }
     servers.clear();
 
-    // 10. start again and verify the snapshot
     makeServers();
     servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
-    doConsensus(servers.get(0), gid, 10, 50);
+    doConsensus(servers.get(0), gid, 10, 210);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
@@ -206,7 +222,7 @@ public class RatisConsensusTest {
     IConsensus leader = null;
     while (leader == null) {
       long current = System.currentTimeMillis();
-      if ((current - start) > 60 * 1000 * 1000) {
+      if ((current - start) > 60 * 1000) {
         break;
       }
       for (int i = 0; i < 3; i++) {

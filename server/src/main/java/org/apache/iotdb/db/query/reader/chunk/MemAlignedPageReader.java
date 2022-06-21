@@ -19,33 +19,32 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
-import java.util.stream.Collectors;
+import java.util.List;
 
 public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
-  private final IPointReader timeValuePairIterator;
+  private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
   private Filter valueFilter;
+  private TsBlockBuilder builder;
 
-  public MemAlignedPageReader(
-      IPointReader timeValuePairIterator, AlignedChunkMetadata chunkMetadata, Filter filter) {
-    this.timeValuePairIterator = timeValuePairIterator;
+  public MemAlignedPageReader(TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter) {
+    this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
     this.valueFilter = filter;
   }
@@ -58,14 +57,12 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
       // save the first not null value of each row
       Object firstNotNullObject = null;
-      for (TsPrimitiveType value : values) {
-        if (value != null) {
-          firstNotNullObject = value.getValue();
+      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+        if (!tsBlock.getColumn(column).isNull(row)) {
+          firstNotNullObject = tsBlock.getColumn(column).getObject(row);
           break;
         }
       }
@@ -75,46 +72,65 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // accept AlignedPath with only one sub sensor
       if (firstNotNullObject != null
           && (valueFilter == null
-              || valueFilter.satisfy(timeValuePair.getTimestamp(), firstNotNullObject))) {
-        batchData.putVector(timeValuePair.getTimestamp(), values);
+              || valueFilter.satisfy(tsBlock.getTimeByIndex(row), firstNotNullObject))) {
+        TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
+        for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+          if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
+            values[column] = tsBlock.getColumn(column).getTsPrimitiveType(row);
+          }
+        }
+        batchData.putVector(tsBlock.getTimeByIndex(row), values);
       }
     }
     return batchData.flip();
   }
 
   @Override
-  public TsBlock getAllSatisfiedData() throws IOException {
-    // TODO change from the row-based style to column-based style
-    TsBlockBuilder builder =
-        new TsBlockBuilder(
-            chunkMetadata.getValueChunkMetadataList().stream()
-                .map(IChunkMetadata::getDataType)
-                .collect(Collectors.toList()));
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      TsPrimitiveType[] values = timeValuePair.getValue().getVector();
-      // save the first not null value of each row
-      Object firstNotNullObject = null;
-      for (TsPrimitiveType value : values) {
-        if (value != null) {
-          firstNotNullObject = value.getValue();
-          break;
-        }
+  public TsBlock getAllSatisfiedData() {
+    builder.reset();
+
+    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
+
+    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      long time = tsBlock.getTimeByIndex(row);
+      // ValueFilter in MPP will only contain time filter now.
+      if ((valueFilter == null || valueFilter.satisfy(time, null))) {
+        satisfyInfo[row] = true;
       }
-      // if all the sub sensors' value are null in current time
-      // or current row is not satisfied with the filter, just discard it
-      // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
-      // accept AlignedPath with only one sub sensor
-      if (firstNotNullObject != null
-          && (valueFilter == null
-              || valueFilter.satisfy(timeValuePair.getTimestamp(), firstNotNullObject))) {
-        builder.getTimeColumnBuilder().writeLong(timeValuePair.getTimestamp());
-        for (int i = 0; i < values.length; i++) {
-          builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
-        }
+    }
+
+    boolean[] hasValue = new boolean[tsBlock.getPositionCount()];
+    // other value column
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      Column valueColumn = tsBlock.getColumn(column);
+      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+        hasValue[row] = hasValue[row] || !valueColumn.isNull(row);
+      }
+    }
+
+    // build time column
+    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      if (satisfyInfo[row] && hasValue[row]) {
+        builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
         builder.declarePosition();
       }
     }
+
+    // build value column
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      Column valueColumn = tsBlock.getColumn(column);
+      ColumnBuilder valueBuilder = builder.getColumnBuilder(column);
+      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+        if (satisfyInfo[row] && hasValue[row]) {
+          if (!valueColumn.isNull(row)) {
+            valueBuilder.write(valueColumn, row);
+          } else {
+            valueBuilder.appendNull();
+          }
+        }
+      }
+    }
+
     return builder.build();
   }
 
@@ -145,5 +161,10 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public boolean isModified() {
     return false;
+  }
+
+  @Override
+  public void initTsBlockBuilder(List<TSDataType> dataTypes) {
+    builder = new TsBlockBuilder(dataTypes);
   }
 }

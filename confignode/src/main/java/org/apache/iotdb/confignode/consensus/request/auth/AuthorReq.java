@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.confignode.consensus.request.auth;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.db.auth.AuthException;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Objects;
@@ -131,22 +133,22 @@ public class AuthorReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), buffer);
-    BasicStructureSerDeUtil.write(userName, buffer);
-    BasicStructureSerDeUtil.write(roleName, buffer);
-    BasicStructureSerDeUtil.write(password, buffer);
-    BasicStructureSerDeUtil.write(newPassword, buffer);
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), stream);
+    BasicStructureSerDeUtil.write(userName, stream);
+    BasicStructureSerDeUtil.write(roleName, stream);
+    BasicStructureSerDeUtil.write(password, stream);
+    BasicStructureSerDeUtil.write(newPassword, stream);
     if (permissions == null) {
-      buffer.put((byte) 0);
+      stream.write((byte) 0);
     } else {
-      buffer.put((byte) 1);
-      buffer.putInt(permissions.size());
+      stream.write((byte) 1);
+      stream.writeInt(permissions.size());
       for (int permission : permissions) {
-        buffer.putInt(permission);
+        stream.writeInt(permission);
       }
     }
-    BasicStructureSerDeUtil.write(nodeName, buffer);
+    BasicStructureSerDeUtil.write(nodeName, stream);
   }
 
   @Override
@@ -171,56 +173,56 @@ public class AuthorReq extends ConfigRequest {
   private int getPlanTypeOrdinal(ConfigRequestType configRequestType) {
     int type;
     switch (configRequestType) {
-      case CREATE_USER:
-        type = ConfigRequestType.CREATE_USER.ordinal();
+      case CreateUser:
+        type = ConfigRequestType.CreateUser.ordinal();
         break;
-      case CREATE_ROLE:
-        type = ConfigRequestType.CREATE_ROLE.ordinal();
+      case CreateRole:
+        type = ConfigRequestType.CreateRole.ordinal();
         break;
-      case DROP_USER:
-        type = ConfigRequestType.DROP_USER.ordinal();
+      case DropUser:
+        type = ConfigRequestType.DropUser.ordinal();
         break;
-      case DROP_ROLE:
-        type = ConfigRequestType.DROP_ROLE.ordinal();
+      case DropRole:
+        type = ConfigRequestType.DropRole.ordinal();
         break;
-      case GRANT_ROLE:
-        type = ConfigRequestType.GRANT_ROLE.ordinal();
+      case GrantRole:
+        type = ConfigRequestType.GrantRole.ordinal();
         break;
-      case GRANT_USER:
-        type = ConfigRequestType.GRANT_USER.ordinal();
+      case GrantUser:
+        type = ConfigRequestType.GrantUser.ordinal();
         break;
-      case GRANT_ROLE_TO_USER:
-        type = ConfigRequestType.GRANT_ROLE_TO_USER.ordinal();
+      case GrantRoleToUser:
+        type = ConfigRequestType.GrantRoleToUser.ordinal();
         break;
-      case REVOKE_USER:
-        type = ConfigRequestType.REVOKE_USER.ordinal();
+      case RevokeUser:
+        type = ConfigRequestType.RevokeUser.ordinal();
         break;
-      case REVOKE_ROLE:
-        type = ConfigRequestType.REVOKE_ROLE.ordinal();
+      case RevokeRole:
+        type = ConfigRequestType.RevokeRole.ordinal();
         break;
-      case REVOKE_ROLE_FROM_USER:
-        type = ConfigRequestType.REVOKE_ROLE_FROM_USER.ordinal();
+      case RevokeRoleFromUser:
+        type = ConfigRequestType.RevokeRoleFromUser.ordinal();
         break;
-      case UPDATE_USER:
-        type = ConfigRequestType.UPDATE_USER.ordinal();
+      case UpdateUser:
+        type = ConfigRequestType.UpdateUser.ordinal();
         break;
-      case LIST_USER:
-        type = ConfigRequestType.LIST_USER.ordinal();
+      case ListUser:
+        type = ConfigRequestType.ListUser.ordinal();
         break;
-      case LIST_ROLE:
-        type = ConfigRequestType.LIST_ROLE.ordinal();
+      case ListRole:
+        type = ConfigRequestType.ListRole.ordinal();
         break;
-      case LIST_USER_PRIVILEGE:
-        type = ConfigRequestType.LIST_USER_PRIVILEGE.ordinal();
+      case ListUserPrivilege:
+        type = ConfigRequestType.ListUserPrivilege.ordinal();
         break;
-      case LIST_ROLE_PRIVILEGE:
-        type = ConfigRequestType.LIST_ROLE_PRIVILEGE.ordinal();
+      case ListRolePrivilege:
+        type = ConfigRequestType.ListRolePrivilege.ordinal();
         break;
-      case LIST_USER_ROLES:
-        type = ConfigRequestType.LIST_USER_ROLES.ordinal();
+      case ListUserRoles:
+        type = ConfigRequestType.ListUserRoles.ordinal();
         break;
-      case LIST_ROLE_USERS:
-        type = ConfigRequestType.LIST_ROLE_USERS.ordinal();
+      case ListRoleUsers:
+        type = ConfigRequestType.ListRoleUsers.ordinal();
         break;
       default:
         throw new IllegalArgumentException("Unknown operator: " + configRequestType);
@@ -244,5 +246,11 @@ public class AuthorReq extends ConfigRequest {
         && Objects.equals(newPassword, that.newPassword)
         && Objects.equals(permissions, that.permissions)
         && Objects.equals(nodeName, that.nodeName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        authorType, userName, roleName, password, newPassword, permissions, nodeName);
   }
 }

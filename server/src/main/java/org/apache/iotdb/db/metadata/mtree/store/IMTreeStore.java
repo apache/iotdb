@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+
+import java.io.File;
 
 /**
  * This interface defines the basic access methods of an MTreeStore.
@@ -58,4 +60,6 @@ public interface IMTreeStore {
   void unPinPath(IMNode node);
 
   void clear();
+
+  boolean createSnapshot(File snapshotDir);
 }

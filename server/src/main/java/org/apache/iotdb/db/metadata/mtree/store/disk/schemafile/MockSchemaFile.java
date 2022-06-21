@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -59,7 +59,7 @@ public class MockSchemaFile implements ISchemaFile {
         new StorageGroupMNode(
             null,
             storageGroupPath.getTailNode(),
-            IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+            CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     writeMNode(storageGroupMNode);
     return cloneMNode(storageGroupMNode);
   }

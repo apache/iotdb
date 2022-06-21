@@ -106,7 +106,7 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>DEBUG</level>
+            <level>${CONSOLE_LOG_LEVEL:-DEBUG}</level>
         </filter>
     </appender>
     <!-- a log appender that collect all log records whose level is greater than debug-->
@@ -136,5 +136,5 @@
         <appender-ref ref="stdout"/>
     </root>
     <logger level="info" name="org.apache.iotdb.confignode"/>
-    <!-- <logger level="info" name="org.apache.ratis"/> -->
+    <logger level="info" name="org.apache.ratis"/>
 </configuration>

@@ -78,117 +78,141 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.1. API
 
-| Metric              | Tag                   | level  | Description                              | Sample                                       |
-| ------------------- | --------------------- | ------ | ---------------------------------------- | -------------------------------------------- |
+| Metric              | Tag                   | level     | Description                              | Sample                                       |
+| ------------------- | --------------------- | --------- | ---------------------------------------- | -------------------------------------------- |
 | entry_seconds_count | name="interface name" | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
 | entry_seconds_sum   | name="interface name" | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
 | entry_seconds_max   | name="interface name" | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total      | name="pointsIn"       | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
 
-#### 4.3.2. File
+#### 4.3.2. Task
+| Metric                  | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| queue                   | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
+| cost_task_seconds_count | name="inner_compaction/cross_compaction/flush"                                | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max   | name="inner_compaction/cross_compaction/flush"                                | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
+| data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
 
-| Metric     | Tag                  | level  | Description                                     | Sample                      |
-| ---------- | -------------------- | ------ | ----------------------------------------------- | --------------------------- |
-| file_size  | name="wal/seq/unseq" | important | The current file size of wal/seq/unseq in bytes | file_size{name="wal",} 67.0 |
-| file_count | name="wal/seq/unseq" | important | The current count of wal/seq/unseq files        | file_count{name="seq",} 1.0 |
+#### 4.3.3. Memory Usage
 
-#### 4.3.3. Flush
-
-| Metric                  | Tag                                         | level  | Description                                                       | Sample                                                                                  |
-| ----------------------- | ------------------------------------------- | ------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| queue                   | name="flush",<br />status="running/waiting" | important | The count of current flushing tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="flush"                                | important | The total count of flushing occurs till now                       | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max   | name="flush"                                | important | The seconds of the longest flushing task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum   | name="flush"                                | important | The total cost seconds of all flushing tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
-
-#### 4.3.4. Compaction
-
-| Metric                  | Tag                                                                     | level       | Description                                                         | Sample                                                        |
-|-------------------------|-------------------------------------------------------------------------|-------------|---------------------------------------------------------------------|---------------------------------------------------------------|
-| queue                   | name="compaction_inner/compaction_cross",<br />status="running/waiting" | important   | The count of current compaction tasks in running and waiting status | queue{name="compaction_inner",status="waiting",} 0.0          |
-| cost_task_seconds_count | name="compaction"                                                       | important   | The total count of compaction occurs till now                       | cost_task_seconds_count{name="compaction",} 1.0               |
-| cost_task_seconds_max   | name="compaction"                                                       | important   | The seconds of the longest compaction task takes till now           | cost_task_seconds_max{name="compaction",} 0.363               |
-| cost_task_seconds_sum   | name="compaction"                                                       | important   | The total cost seconds of all compaction tasks till now             | cost_task_seconds_sum{name="compaction",} 0.363               |
-| data_written            | name="compaction", <br />type="aligned/not-aligned/total"               | important   | The size of data written in compaction                              | data_written{name="compaction",type="total",} 10240           |
-| data_read               | name="compaction"                                                       | important   | The size of data read in compaction                                 | data_read={name="compaction",} 10240                          |
-#### 4.3.5. Memory Usage
-
-| Metric | Tag                                     | level  | Description                                                           | Sample                            |
-| ------ | --------------------------------------- | ------ | --------------------------------------------------------------------- | --------------------------------- |
+| Metric | Tag                                     | level     | Description                                                           | Sample                            |
+| ------ | --------------------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
-#### 4.3.6. Cache Hit Ratio
+#### 4.3.4. Cache
 
-| Metric    | Tag                                     | level  | Description                                                                   | Sample                      |
-| --------- | --------------------------------------- | ------ | ----------------------------------------------------------------------------- | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
+| Metric      | Tag                                                               | level     | Description                                                                               | Sample                                              |
+| ----------- | ----------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| cache_hit   | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache"               | important | Cache hit ratio of chunk/timeSeriesMeta/SchemaCache  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80                         |
+| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | The cache hit/all counts of StorageGroup/SchemaPartition/DataPartition                    | cache_total{name="DataPartition",type="all",} 801.0 |
 
-#### 4.3.7. Business Data
 
-| Metric   | Tag                                   | level  | Description                                                   | Sample                           |
-| -------- | ------------------------------------- | ------ | ------------------------------------------------------------- | -------------------------------- |
+#### 4.3.5. Business Data
+
+| Metric   | Tag                                   | level     | Description                                                   | Sample                           |
+| -------- | ------------------------------------- | --------- | ------------------------------------------------------------- | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",} 1.0 |
 
-#### 4.3.8. Cluster
+#### 4.3.6. Cluster
 
-| Metric                    | Tag                             | level  | Description                                                                                  | Sample                                                                       |
-| ------------------------- | ------------------------------- | ------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| cluster_node_leader_count | name="{{ip}}"                   | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
-| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"   | important | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
-| cluster_node_status       | name="{{ip}}"                   | important | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
-| cluster_elect_total       | name="{{ip}}",status="fail/win" | important | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| Metric                    | Tag                                                                | level     | Description                                                                                  | Sample                                                                       |
+| ------------------------- | ------------------------------------------------------------------ | --------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| cluster_node_leader_count | name="{{ip}}"                                                      | important | The count of  ```dataGroupLeader``` on each node, which reflects the distribution of leaders | cluster_node_leader_count{name="127.0.0.1",} 2.0                             |
+| cluster_uncommitted_log   | name="{{ip_datagroupHeader}}"                                      | important | The count of ```uncommitted_log``` on each node in data groups it belongs to                 | cluster_uncommitted_log{name="127.0.0.1_Data-127.0.0.1-40010-raftId-0",} 0.0 |
+| cluster_node_status       | name="{{ip}}"                                                      | important | The current node status, 1=online  2=offline                                                 | cluster_node_status{name="127.0.0.1",} 1.0                                   |
+| cluster_elect_total       | name="{{ip}}",status="fail/win"                                    | important | The count and result (won or failed) of elections the node participated in.                  | cluster_elect_total{name="127.0.0.1",status="win",} 1.0                      |
+| config_node               | name="online"                                                      | core      | The number of online confignodes                                                             | config_node{name="online",} 3.0                                              |
+| data_node                 | name="online"                                                      | core      | The number of online datanodes                                                               | data_node{name="online",} 3.0                                                |
+| partition_table           | name="number"                                                      | core      | The number of partition table                                                                | partition_table{name="number",} 2.0                                          |
+| region                    | name="total/{{ip}}:{{port}}",type="SchemaRegion/DataRegion"        | important | The number of schemaRegion/dataRegion of cluster or specific node                            | region{name="127.0.0.1:6671",type="DataRegion",} 10.0                        |
+| region                    | name="{{storageGroupName}}",type="SchemaRegion/DataRegion"         | normal    | The number of DataRegion/SchemaRegion in storage group                                       | region{name="root.schema.sg1",type="DataRegion",} 14.0                       |
+| slot                      | name="{{storageGroupName}}",type="schemaSlotNumber/dataSlotNumber" | normal    | The number of dataSlot/schemaSlot in storage group                                           | slot{name="root.schema.sg1",type="schemaSlotNumber",} 2.0                    |
 
 ### 4.4. IoTDB PreDefined Metrics Set
-Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics, which `LOGBACK` does not support in `dropwizard`.
+Users can modify the value of `predefinedMetrics` in the `iotdb-metric.yml` file to enable the predefined set of metrics，now support `JVM`, `LOGBACK`, `FILE`, `PROCESS`, `SYSYTEM`.
 
 #### 4.4.1. JVM
 
 ##### 4.4.1.1. Threads
 
-| Metric                     | Tag                                                           | Description                          | Sample                                             |
-| -------------------------- | ------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------- |
-| jvm_threads_live_threads   | None                                                          | The current count of threads         | jvm_threads_live_threads 25.0                      |
-| jvm_threads_daemon_threads | None                                                          | The current count of  daemon threads | jvm_threads_daemon_threads 12.0                    |
-| jvm_threads_peak_threads   | None                                                          | The max count of threads till now    | jvm_threads_peak_threads 28.0                      |
-| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | The count of threads in each status  | jvm_threads_states_threads{state="runnable",} 10.0 |
+| Metric                     | Tag                                                           | level     | Description                          | Sample                                             |
+| -------------------------- | ------------------------------------------------------------- | --------- | ------------------------------------ | -------------------------------------------------- |
+| jvm_threads_live_threads   | None                                                          | Important | The current count of threads         | jvm_threads_live_threads 25.0                      |
+| jvm_threads_daemon_threads | None                                                          | Important | The current count of  daemon threads | jvm_threads_daemon_threads 12.0                    |
+| jvm_threads_peak_threads   | None                                                          | Important | The max count of threads till now    | jvm_threads_peak_threads 28.0                      |
+| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | Important | The count of threads in each status  | jvm_threads_states_threads{state="runnable",} 10.0 |
 
 ##### 4.4.1.2. GC
 
-| Metric                              | Tag                                                    | Description                                                                                                                                                          | Sample                                                                                  |
-| ----------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| jvm_gc_pause_seconds_count          | action="end of major GC/end of minor GC",cause="xxxx"  | The total count of YGC/FGC events and its cause                                                                                                                      | jvm_gc_pause_seconds_count{action="end of major GC",cause="Metadata GC Threshold",} 1.0 |
-| jvm_gc_pause_seconds_sum            | action="end of major GC/end of minor GC",cause="xxxx"  | The total cost seconds of YGC/FGC and its cause                                                                                                                      | jvm_gc_pause_seconds_sum{action="end of major GC",cause="Metadata GC Threshold",} 0.03  |
-| jvm_gc_pause_seconds_max            | action="end of major GC",cause="Metadata GC Threshold" | The max  cost seconds of YGC/FGC till now and its cause                                                                                                              | jvm_gc_pause_seconds_max{action="end of major GC",cause="Metadata GC Threshold",} 0.0   |
-| jvm_gc_overhead_percent             | None                                                   | An approximation of the percent of CPU time used by GC activities over the last lookback period or since monitoring began, whichever is shorter, in the range [0..1] | jvm_gc_overhead_percent 0.0                                                             |
-| jvm_gc_memory_promoted_bytes_total  | None                                                   | Count of positive increases in the size of the old generation memory pool before GC to after GC                                                                      | jvm_gc_memory_promoted_bytes_total 8425512.0                                            |
-| jvm_gc_max_data_size_bytes          | None                                                   | Max size of long-lived heap memory pool                                                                                                                              | jvm_gc_max_data_size_bytes 2.863661056E9                                                |
-| jvm_gc_live_data_size_bytes         | 无                                                     | Size of long-lived heap memory pool after reclamation                                                                                                                | jvm_gc_live_data_size_bytes 8450088.0                                                   |
-| jvm_gc_memory_allocated_bytes_total | None                                                   | Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next                                                              | jvm_gc_memory_allocated_bytes_total 4.2979144E7                                         |
+| Metric                              | Tag                                                    | level     | Description                                                                                             | Sample                                                                                  |
+| ----------------------------------- | ------------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| jvm_gc_pause_seconds_count          | action="end of major GC/end of minor GC",cause="xxxx"  | Important | The total count of YGC/FGC events and its cause                                                         | jvm_gc_pause_seconds_count{action="end of major GC",cause="Metadata GC Threshold",} 1.0 |
+| jvm_gc_pause_seconds_sum            | action="end of major GC/end of minor GC",cause="xxxx"  | Important | The total cost seconds of YGC/FGC and its cause                                                         | jvm_gc_pause_seconds_sum{action="end of major GC",cause="Metadata GC Threshold",} 0.03  |
+| jvm_gc_pause_seconds_max            | action="end of major GC",cause="Metadata GC Threshold" | Important | The max  cost seconds of YGC/FGC till now and its cause                                                 | jvm_gc_pause_seconds_max{action="end of major GC",cause="Metadata GC Threshold",} 0.0   |
+| jvm_gc_memory_promoted_bytes_total  | None                                                   | Important | Count of positive increases in the size of the old generation memory pool before GC to after GC         | jvm_gc_memory_promoted_bytes_total 8425512.0                                            |
+| jvm_gc_max_data_size_bytes          | None                                                   | Important | Max size of long-lived heap memory pool                                                                 | jvm_gc_max_data_size_bytes 2.863661056E9                                                |
+| jvm_gc_live_data_size_bytes         | None                                                   | Important | Size of long-lived heap memory pool after reclamation                                                   | jvm_gc_live_data_size_bytes 8450088.0                                                   |
+| jvm_gc_memory_allocated_bytes_total | None                                                   | Important | Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next | jvm_gc_memory_allocated_bytes_total 4.2979144E7                                         |
 
 ##### 4.4.1.3. Memory
 
-| Metric                          | Tag                             | Description                                                                           | Sample                                                                                                                                                        |
-| ------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | An estimate of the memory that the Java virtual machine is using for this buffer pool | jvm_buffer_memory_used_bytes{id="direct",} 3.46728099E8                                                                                                       |
-| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | An estimate of the total capacity of the buffers in this pool                         | jvm_buffer_total_capacity_bytes{id="mapped",} 0.0                                                                                                             |
-| jvm_buffer_count_buffers        | id="direct/mapped"              | An estimate of the number of buffers in the pool                                      | jvm_buffer_count_buffers{id="direct",} 183.0                                                                                                                  |
-| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | The amount of memory in bytes that is committed for the Java virtual machine to use   | jvm_memory_committed_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_committed_bytes{area="nonheap",id="Metaspace",} 3.9051264E7<br/> |
-| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | The maximum amount of memory in bytes that can be used for memory management          | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9   |
-| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | The amount of used memory                                                             | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/>             |
+| Metric                          | Tag                             | level     | Description                                                                           | Sample                                                                                                                                                        |
+| ------------------------------- | ------------------------------- | --------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | Important | An estimate of the memory that the Java virtual machine is using for this buffer pool | jvm_buffer_memory_used_bytes{id="direct",} 3.46728099E8                                                                                                       |
+| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | Important | An estimate of the total capacity of the buffers in this pool                         | jvm_buffer_total_capacity_bytes{id="mapped",} 0.0                                                                                                             |
+| jvm_buffer_count_buffers        | id="direct/mapped"              | Important | An estimate of the number of buffers in the pool                                      | jvm_buffer_count_buffers{id="direct",} 183.0                                                                                                                  |
+| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | Important | The amount of memory in bytes that is committed for the Java virtual machine to use   | jvm_memory_committed_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_committed_bytes{area="nonheap",id="Metaspace",} 3.9051264E7<br/> |
+| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | Important | The maximum amount of memory in bytes that can be used for memory management          | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9   |
+| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | Important | The amount of used memory                                                             | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/>             |
 
 ##### 4.4.1.4. Classes
 
-| Metric                             | Tag                                           | Description                                                                               | Sample                                                                              |
-| ---------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| jvm_classes_unloaded_classes_total | 无                                            | The total number of classes unloaded since the Java virtual machine has started execution | jvm_classes_unloaded_classes_total 680.0                                            |
-| jvm_classes_loaded_classes         | 无                                            | The number of classes that are currently loaded in the Java virtual machine               | jvm_classes_loaded_classes 5975.0                                                   |
-| jvm_compilation_time_ms_total      | {compiler="HotSpot 64-Bit Tiered Compilers",} | The approximate accumulated elapsed time spent in compilation                             | jvm_compilation_time_ms_total{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
+| Metric                             | Tag                                           | level     | Description                                                                               | Sample                                                                              |
+| ---------------------------------- | --------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| jvm_classes_unloaded_classes_total | None                                          | Important | The total number of classes unloaded since the Java virtual machine has started execution | jvm_classes_unloaded_classes_total 680.0                                            |
+| jvm_classes_loaded_classes         | None                                          | Important | The number of classes that are currently loaded in the Java virtual machine               | jvm_classes_loaded_classes 5975.0                                                   |
+| jvm_compilation_time_ms_total      | {compiler="HotSpot 64-Bit Tiered Compilers",} | Important | The approximate accumulated elapsed time spent in compilation                             | jvm_compilation_time_ms_total{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
-#### 4.4.2. Log Events
+#### 4.4.2. File
 
-| Metric               | Tag                                    | Description                                                   | Sample                                  |
-| -------------------- | -------------------------------------- | ------------------------------------------------------------- | --------------------------------------- |
-| logback_events_total | {level="trace/debug/info/warn/error",} | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
+| Metric     | Tag                  | level     | Description                                     | Sample                      |
+| ---------- | -------------------- | --------- | ----------------------------------------------- | --------------------------- |
+| file_size  | name="wal/seq/unseq" | important | The current file size of wal/seq/unseq in bytes | file_size{name="wal",} 67.0 |
+| file_count | name="wal/seq/unseq" | important | The current count of wal/seq/unseq files        | file_count{name="seq",} 1.0 |
+
+#### 4.4.3. Logback
+
+| Metric               | Tag                                    | level     | Description                                                   | 示例                                    |
+| -------------------- | -------------------------------------- | --------- | ------------------------------------------------------------- | --------------------------------------- |
+| logback_events_total | {level="trace/debug/info/warn/error",} | Important | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
+
+#### 4.4.4. Process
+| Metric                | Tag            | level | Description                                                                   | 示例                                            |
+| --------------------- | -------------- | ----- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| process_cpu_load      | name="cpu"     | core  | current process CPU Usage (%)                                                 | process_cpu_load{name="process",} 5.0           |
+| process_cpu_time      | name="cpu"     | core  | total Process CPU Time Occupied (ns)                                          | process_cpu_time{name="process",} 3.265625E9    |
+| process_max_mem       | name="memory"  | core  | The maximum available memory for the JVM                                      | process_max_mem{name="process",} 3.545759744E9  |
+| process_used_mem      | name="memory"  | core  | The current available memory for the JVM                                      | process_used_mem{name="process",} 4.6065456E7   |
+| process_total_mem     | name="memory"  | core  | The current requested memory for the JVM                                      | process_total_mem{name="process",} 2.39599616E8 |
+| process_free_mem      | name="memory"  | core  | The free available memory for the JVM                                         | process_free_mem{name="process",} 1.94035584E8  |
+| process_mem_ratio     | name="memory"  | core  | Memory footprint ratio of process                                             | process_mem_ratio{name="process",} 0.0          |
+| process_threads_count | name="process" | core  | The current number of threads                                                 | process_threads_count{name="process",} 11.0     |
+| process_status        | name="process" | core  | The process survivor status, 1.0 means survivorship, and 0.0 means terminated | process_status{name="process",} 1.0             |
+
+#### 4.4.5. System
+| Metric                         | Tag           | level     | Description                                                 | 示例                                                           |
+| ------------------------------ | ------------- | --------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
+| sys_cpu_load                   | name="cpu"    | core      | current system CPU Usage(%)                                 | sys_cpu_load{name="system",} 15.0                              |
+| sys_cpu_cores                  | name="cpu"    | core      | available CPU cores                                         | sys_cpu_cores{name="system",} 16.0                             |
+| sys_total_physical_memory_size | name="memory" | core      | Maximum physical memory of system                           | sys_total_physical_memory_size{name="system",} 1.5950999552E10 |
+| sys_free_physical_memory_size  | name="memory" | core      | The current available memory of system                      | sys_free_physical_memory_size{name="system",} 4.532396032E9    |
+| sys_total_swap_space_size      | name="memory" | core      | The maximum swap area of system                             | sys_total_swap_space_size{name="system",} 2.1051273216E10      |
+| sys_free_swap_space_size       | name="memory" | core      | The available swap area of system                           | sys_free_swap_space_size{name="system",} 2.931576832E9         |
+| sys_committed_vm_size          | name="memory" | important | the amount of virtual memory available to running processes | sys_committed_vm_size{name="system",} 5.04344576E8             |
+| sys_disk_total_space           | name="disk"   | core      | The total disk space                                        | sys_disk_total_space{name="system",} 5.10770798592E11          |
+| sys_disk_free_space            | name="disk"   | core      | The available  disk space                                   | sys_disk_free_space{name="system",} 3.63467845632E11           |
 
 ### 4.5. Add custom metrics
 - If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
@@ -216,6 +240,9 @@ The metrics collection switch is disabled by default，you need to enable it fro
 # whether enable the module
 enableMetric: false
 
+# Is stat performance of operation latency
+enablePerformanceStat: false
+
 # Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
 metricReporterList:
   - JMX
@@ -227,9 +254,10 @@ monitorType: MICROMETER
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
 
-# Predefined metric, options: [JVM, LOGBACK], LOGBACK are not supported in dropwizard
+# Predefined metric, options: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
 predefinedMetrics:
   - JVM
+  - FILE
 
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091

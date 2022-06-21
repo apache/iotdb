@@ -20,6 +20,8 @@ package org.apache.iotdb.db.protocol.mqtt;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
@@ -50,13 +52,28 @@ public class JSONPayloadFormatter implements PayloadFormatter {
       return null;
     }
     String txt = payload.toString(StandardCharsets.UTF_8);
-    JsonObject jsonObject = GSON.fromJson(txt, JsonObject.class);
-
-    if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
-      return formatJson(jsonObject);
-    }
-    if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
-      return formatBatchJson(jsonObject);
+    JsonElement jsonElement = GSON.fromJson(txt, JsonElement.class);
+    if (jsonElement.isJsonObject()) {
+      JsonObject jsonObject = jsonElement.getAsJsonObject();
+      if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
+        return formatJson(jsonObject);
+      }
+      if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
+        return formatBatchJson(jsonObject);
+      }
+    } else if (jsonElement.isJsonArray()) {
+      JsonArray jsonArray = jsonElement.getAsJsonArray();
+      List<Message> messages = new ArrayList<>();
+      for (JsonElement element : jsonArray) {
+        JsonObject jsonObject = element.getAsJsonObject();
+        if (jsonObject.get(JSON_KEY_TIMESTAMP) != null) {
+          messages.addAll(formatJson(jsonObject));
+        }
+        if (jsonObject.get(JSON_KEY_TIMESTAMPS) != null) {
+          messages.addAll(formatBatchJson(jsonObject));
+        }
+      }
+      return messages;
     }
     throw new JsonParseException("payload is invalidate");
   }

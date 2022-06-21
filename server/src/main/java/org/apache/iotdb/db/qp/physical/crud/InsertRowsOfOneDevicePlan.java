@@ -19,11 +19,12 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -140,6 +141,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
       }
     }
     return minTime;
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
   }
 
   @Override

@@ -21,7 +21,10 @@ package org.apache.iotdb.consensus.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
@@ -43,6 +46,19 @@ public class Peer {
     return endpoint;
   }
 
+  public void serialize(DataOutputStream stream) {
+    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
+        groupId.convertToTConsensusGroupId(), stream);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, stream);
+  }
+
+  public static Peer deserialize(ByteBuffer buffer) {
+    return new Peer(
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(
+            ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer)),
+        ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer));
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -58,5 +74,10 @@ public class Peer {
   @Override
   public int hashCode() {
     return Objects.hash(groupId, endpoint);
+  }
+
+  @Override
+  public String toString() {
+    return "Peer{" + "groupId=" + groupId + ", endpoint=" + endpoint + '}';
   }
 }

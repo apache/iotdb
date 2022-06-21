@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.library.drepair.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.exception.UDFException;
 
 import java.util.ArrayList;
 
@@ -52,7 +53,7 @@ public abstract class ValueFill {
     repaired = new double[n];
   }
 
-  public abstract void fill();
+  public abstract void fill() throws UDFException;
 
   public long[] getTime() {
     return time;
@@ -62,14 +63,16 @@ public abstract class ValueFill {
     return repaired;
   };
 
-  public void calMeanAndVar() {
+  public void calMeanAndVar() throws UDFException {
     for (double v : original) {
       if (!Double.isNaN(v)) {
         mean += v;
         not_nan_number += 1;
       }
     }
-    assert not_nan_number > 0 : "All values are NaN";
+    if (not_nan_number == 0) {
+      throw new UDFException("All values are NaN");
+    }
     mean /= not_nan_number;
     for (double v : original) {
       if (!Double.isNaN(v)) {

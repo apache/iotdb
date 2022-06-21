@@ -18,16 +18,13 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /** this class contains several constants used in SQL. */
-@SuppressWarnings("unused") // some fields are for future features
+// some fields are for future features
 public class SQLConstant {
 
   public SQLConstant() throws InstantiationException {
@@ -57,36 +54,16 @@ public class SQLConstant {
   // names of aggregations
   public static final String MIN_TIME = "min_time";
   public static final String MAX_TIME = "max_time";
-
   public static final String MAX_VALUE = "max_value";
   public static final String MIN_VALUE = "min_value";
-
   public static final String EXTREME = "extreme";
-
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
-
-  public static final String LAST = "last";
-
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
 
-  public static final String ALL = "all";
-
-  private static final Set<String> NATIVE_FUNCTION_NAMES =
-      new HashSet<>(
-          Arrays.asList(
-              MIN_TIME,
-              MAX_TIME,
-              MIN_VALUE,
-              MAX_VALUE,
-              EXTREME,
-              FIRST_VALUE,
-              LAST_VALUE,
-              COUNT,
-              SUM,
-              AVG));
+  public static final String LAST = "last";
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;
@@ -320,9 +297,5 @@ public class SQLConstant {
 
   public static boolean isNotReservedPath(PartialPath pathStr) {
     return !pathStr.equals(TIME_PATH);
-  }
-
-  public static Set<String> getNativeFunctionNames() {
-    return NATIVE_FUNCTION_NAMES;
   }
 }

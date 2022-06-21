@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -160,7 +160,7 @@ public class IDTableTest {
         fail("should throw exception");
       } catch (DataTypeMismatchException e) {
         assertEquals(
-            "DataType mismatch, Insert timeseries root.laptop.d1.aligned_device.s2 type DOUBLE, metadata tree type INT64",
+            "data type of root.laptop.d1.aligned_device.s2 is not consistent, registered type INT64, inserting type DOUBLE, timestamp 1, value 10000.0",
             e.getMessage());
       } catch (Exception e2) {
         fail("throw wrong exception");

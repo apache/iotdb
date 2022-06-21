@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,10 +51,22 @@ public class LocalDataPartitionTable {
     return LocalDataPartitionTableHolder.INSTANCE;
   }
 
-  public synchronized void init(Map<PartialPath, List<DataRegionId>> recoveredLocalDataRegionInfo) {
+  public synchronized void init(Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo)
+      throws IllegalPathException {
     table = new ConcurrentHashMap<>();
     dataRegionIdGenerator = new AtomicInteger(0);
-    // TODO:(recovery)
+    for (Map.Entry<String, List<DataRegionId>> entry : recoveredLocalDataRegionInfo.entrySet()) {
+      String storageGroup = entry.getKey();
+      List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
+      table.put(new PartialPath(storageGroup), dataRegionIdList);
+      for (DataRegionId dataRegionId : recoveredLocalDataRegionInfo.get(storageGroup)) {
+        dataRegionIdList.add(dataRegionId);
+
+        if (dataRegionId.getId() >= dataRegionIdGenerator.get()) {
+          dataRegionIdGenerator.set(dataRegionId.getId() + 1);
+        }
+      }
+    }
   }
 
   public synchronized void clear() {
@@ -66,18 +80,8 @@ public class LocalDataPartitionTable {
     }
   }
 
-  public synchronized DataRegionId allocateDataRegionId(PartialPath storageGroup) {
-    DataRegionId dataRegionId = new DataRegionId(dataRegionIdGenerator.getAndIncrement());
-    table.get(storageGroup).add(dataRegionId);
-    return dataRegionId;
-  }
-
   public synchronized void putDataRegionId(PartialPath storageGroup, DataRegionId dataRegionId) {
     table.get(storageGroup).add(dataRegionId);
-
-    if (dataRegionId.getId() >= dataRegionIdGenerator.get()) {
-      dataRegionIdGenerator.set(dataRegionId.getId() + 1);
-    }
   }
 
   public synchronized void removeDataRegionId(PartialPath storageGroup, DataRegionId dataRegionId) {
@@ -85,7 +89,10 @@ public class LocalDataPartitionTable {
   }
 
   public DataRegionId getDataRegionId(PartialPath storageGroup, PartialPath path) {
-    return calculateDataRegionId(storageGroup, path);
+    if (!table.containsKey(storageGroup)) {
+      return null;
+    }
+    return table.get(storageGroup).get(0);
   }
 
   public List<DataRegionId> getInvolvedDataRegionIds(
@@ -98,29 +105,30 @@ public class LocalDataPartitionTable {
   }
 
   public List<DataRegionId> getDataRegionIdsByStorageGroup(PartialPath storageGroup) {
-    return new ArrayList<>(table.get(storageGroup));
+    return table.getOrDefault(storageGroup, Collections.emptyList());
   }
 
-  public synchronized List<DataRegionId> setStorageGroup(PartialPath storageGroup) {
+  public synchronized void setDataPartitionInfo(PartialPath storageGroup) {
+    List<DataRegionId> dataRegionIdList;
     if (table.containsKey(storageGroup)) {
-      return table.get(storageGroup);
+      dataRegionIdList = table.get(storageGroup);
+    } else {
+      dataRegionIdList = new CopyOnWriteArrayList<>();
     }
-    List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
-    dataRegionIdList.add(new DataRegionId(dataRegionIdGenerator.getAndIncrement()));
+    dataRegionIdList.add(generateDataRegionId());
     table.put(storageGroup, dataRegionIdList);
-    return dataRegionIdList;
   }
 
   public synchronized List<DataRegionId> deleteStorageGroup(PartialPath storageGroup) {
-    return table.remove(storageGroup);
+    if (table.containsKey(storageGroup)) {
+      return table.remove(storageGroup);
+    }
+    return Collections.emptyList();
   }
 
   // This method may be extended to implement multi dataRegion for one storageGroup
   // todo keep consistent with the partition method of config node in new cluster
-  private DataRegionId calculateDataRegionId(PartialPath storageGroup, PartialPath path) {
-    if (!table.containsKey(storageGroup)) {
-      setStorageGroup(storageGroup);
-    }
-    return table.get(storageGroup).iterator().next();
+  private DataRegionId generateDataRegionId() {
+    return new DataRegionId(dataRegionIdGenerator.getAndIncrement());
   }
 }

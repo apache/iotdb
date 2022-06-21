@@ -19,10 +19,10 @@
  */
 package org.apache.iotdb.db.sync.sender.pipe;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
@@ -62,6 +62,7 @@ public class TsFilePipe implements Pipe {
 
   private boolean isCollectingRealTimeData;
   private long maxSerialNumber;
+  private boolean disconnected; // true if pipe cannot connect to receiver
 
   private PipeStatus status;
 
@@ -84,6 +85,7 @@ public class TsFilePipe implements Pipe {
     this.maxSerialNumber = Math.max(0L, realTimeQueue.getLastMaxSerialNumber());
 
     this.status = PipeStatus.STOP;
+    this.disconnected = false;
   }
 
   @Override
@@ -174,13 +176,20 @@ public class TsFilePipe implements Pipe {
   }
 
   public File createHistoryTsFileHardlink(File tsFile, long modsOffset) {
+    collectRealTimeDataLock.lock(); // synchronize the pipeLog.isHardlinkExist
     try {
+      if (pipeLog.isHardlinkExist(tsFile)) {
+        return null;
+      }
+
       return pipeLog.createTsFileAndModsHardlink(tsFile, modsOffset);
     } catch (IOException e) {
       logger.error(
           String.format("Create hardlink for history tsfile %s error.", tsFile.getPath()), e);
+      return null;
+    } finally {
+      collectRealTimeDataLock.unlock();
     }
-    return null;
   }
 
   public void collectRealTimeDeletion(Deletion deletion) {
@@ -212,6 +221,10 @@ public class TsFilePipe implements Pipe {
   public void collectRealTimeTsFile(File tsFile) {
     collectRealTimeDataLock.lock();
     try {
+      if (pipeLog.isHardlinkExist(tsFile)) {
+        return;
+      }
+
       maxSerialNumber += 1L;
       File hardlink = pipeLog.createTsFileHardlink(tsFile);
       PipeData tsFileData =
@@ -262,6 +275,16 @@ public class TsFilePipe implements Pipe {
       historyQueue.commit();
     }
     realTimeQueue.commit();
+  }
+
+  @Override
+  public void setDisconnected(boolean disconnected) {
+    this.disconnected = disconnected;
+  }
+
+  @Override
+  public boolean isDisconnected() {
+    return disconnected;
   }
 
   public void commit(long serialNumber) {

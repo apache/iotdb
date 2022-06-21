@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -125,7 +125,7 @@ public class IoTDBSelectIntoIT {
         null);
 
     IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath("root.sg.d1.datatype"),
+        new PartialPath("root.sg.d1.`datatype`"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
@@ -418,7 +418,7 @@ public class IoTDBSelectIntoIT {
           throwable
               .getMessage()
               .contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
-      assertTrue(throwable.getMessage().contains("mismatch"));
+      assertTrue(throwable.getMessage().contains("not consistent"));
     }
   }
 
@@ -438,7 +438,8 @@ public class IoTDBSelectIntoIT {
       assertTrue(
           throwable
               .getMessage()
-              .contains("failed to insert measurements [s1, s2] caused by DataType mismatch"));
+              .contains(
+                  "failed to insert measurements [s1, s2] caused by data type of root.sg.aligned.s1 is not consistent"));
     }
   }
 

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.IOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

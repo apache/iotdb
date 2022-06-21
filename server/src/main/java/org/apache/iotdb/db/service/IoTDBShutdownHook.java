@@ -18,8 +18,13 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +37,21 @@ public class IoTDBShutdownHook extends Thread {
   public void run() {
     CompactionTaskManager.getInstance().stop();
     // close rocksdb if possible to avoid lose data
-    IoTDB.configManager.clear();
+    if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+        .equals(SchemaEngineMode.Rocksdb_based)) {
+      IoTDB.configManager.clear();
+    }
+
+    // == flush data to Tsfile and remove WAL log files
+    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        StorageEngineV2.getInstance().syncCloseAllProcessor();
+      }
+    } else {
+      StorageEngine.getInstance().syncCloseAllProcessor();
+    }
+    WALManager.getInstance().deleteOutdatedWALFiles();
+
     if (logger.isInfoEnabled()) {
       logger.info(
           "IoTDB exits. Jvm memory usage: {}",

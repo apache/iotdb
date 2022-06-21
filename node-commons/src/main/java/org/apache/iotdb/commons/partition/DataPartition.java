@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.PathUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,14 +31,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// TODO: Remove this class
 public class DataPartition extends Partition {
-
+  public static final TRegionReplicaSet NOT_ASSIGNED = new TRegionReplicaSet();
   // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       dataPartitionMap;
 
   public DataPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     super(seriesSlotExecutorName, seriesPartitionSlotNum);
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return dataPartitionMap == null || dataPartitionMap.isEmpty();
   }
 
   public DataPartition(
@@ -64,6 +71,10 @@ public class DataPartition extends Partition {
       String deviceName, List<TTimePartitionSlot> timePartitionSlotList) {
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    if (!dataPartitionMap.containsKey(storageGroup)
+        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
     // TODO: (xingtanzjr) the timePartitionIdList is ignored
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
@@ -104,7 +115,7 @@ public class DataPartition extends Partition {
 
   private String getStorageGroupByDevice(String deviceName) {
     for (String storageGroup : dataPartitionMap.keySet()) {
-      if (deviceName.startsWith(storageGroup + ".")) {
+      if (PathUtils.isStartWith(deviceName, storageGroup)) {
         return storageGroup;
       }
     }
@@ -112,123 +123,23 @@ public class DataPartition extends Partition {
     return null;
   }
 
-  /* Interfaces for ConfigNode */
+  @Override
+  public List<RegionReplicaSetInfo> getDistributionInfo() {
+    Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
 
-  /**
-   * Get DataPartition by partitionSlotsMap
-   *
-   * @param partitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return Subset of current DataPartition, including Map<StorageGroupName,
-   *     Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
-   */
-  public DataPartition getDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap,
-      String seriesSlotExecutorName,
-      int seriesPartitionSlotNum) {
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        result = new HashMap<>();
-
-    for (String storageGroupName : partitionSlotsMap.keySet()) {
-      // Compare StorageGroupName
-      if (dataPartitionMap.containsKey(storageGroupName)) {
-        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-            seriesTimePartitionSlotMap = dataPartitionMap.get(storageGroupName);
-        for (TSeriesPartitionSlot seriesPartitionSlot :
-            partitionSlotsMap.get(storageGroupName).keySet()) {
-          // Compare SeriesPartitionSlot
-          if (seriesTimePartitionSlotMap.containsKey(seriesPartitionSlot)) {
-            Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap =
-                seriesTimePartitionSlotMap.get(seriesPartitionSlot);
-            if (partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot).size() == 0) {
-              result
-                  .computeIfAbsent(storageGroupName, key -> new HashMap<>())
-                  .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
-                  .putAll(new HashMap<>(timePartitionSlotMap));
-            } else {
-              for (TTimePartitionSlot timePartitionSlot :
-                  partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)) {
-                // Compare TimePartitionSlot
-                if (timePartitionSlotMap.containsKey(timePartitionSlot)) {
-                  result
-                      .computeIfAbsent(storageGroupName, key -> new HashMap<>())
-                      .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
-                      .put(
-                          timePartitionSlot,
-                          new ArrayList<>(timePartitionSlotMap.get(timePartitionSlot)));
-                }
-              }
-            }
+    dataPartitionMap.forEach(
+        (storageGroup, partition) -> {
+          List<TRegionReplicaSet> ret =
+              partition.entrySet().stream()
+                  .flatMap(
+                      s -> s.getValue().entrySet().stream().flatMap(e -> e.getValue().stream()))
+                  .collect(Collectors.toList());
+          for (TRegionReplicaSet regionReplicaSet : ret) {
+            distributionMap
+                .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
+                .setStorageGroup(storageGroup);
           }
-        }
-      }
-    }
-
-    return new DataPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
-  }
-
-  /**
-   * Filter out unassigned PartitionSlots
-   *
-   * @param partitionSlotsMap Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map < SeriesPartitionSlot, List < TimePartitionSlot>>>,
-   *     unassigned PartitionSlots
-   */
-  public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-      filterNoAssignedDataPartitionSlots(
-          Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result = new HashMap<>();
-
-    for (String storageGroupName : partitionSlotsMap.keySet()) {
-      // Compare StorageGroupName
-      if (dataPartitionMap.containsKey(storageGroupName)) {
-        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-            seriesTimePartitionSlotMap = dataPartitionMap.get(storageGroupName);
-        for (TSeriesPartitionSlot seriesPartitionSlot :
-            partitionSlotsMap.get(storageGroupName).keySet()) {
-          // Compare SeriesPartitionSlot
-          if (seriesTimePartitionSlotMap.containsKey(seriesPartitionSlot)) {
-            Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap =
-                seriesTimePartitionSlotMap.get(seriesPartitionSlot);
-            for (TTimePartitionSlot timePartitionSlot :
-                partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)) {
-              // Compare TimePartitionSlot
-              if (!timePartitionSlotMap.containsKey(timePartitionSlot)) {
-                result
-                    .computeIfAbsent(storageGroupName, key -> new HashMap<>())
-                    .computeIfAbsent(seriesPartitionSlot, key -> new ArrayList<>())
-                    .add(timePartitionSlot);
-              }
-            }
-          } else {
-            // Clone all if SeriesPartitionSlot not assigned
-            result
-                .computeIfAbsent(storageGroupName, key -> new HashMap<>())
-                .put(
-                    seriesPartitionSlot,
-                    new ArrayList<>(
-                        partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)));
-          }
-        }
-      } else {
-        // Clone all if StorageGroupName not assigned
-        result.put(storageGroupName, new HashMap<>(partitionSlotsMap.get(storageGroupName)));
-      }
-    }
-
-    return result;
-  }
-
-  /** Create a DataPartition by ConfigNode */
-  public void createDataPartition(
-      String storageGroup,
-      TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      TRegionReplicaSet regionReplicaSet) {
-    dataPartitionMap
-        .computeIfAbsent(storageGroup, key -> new HashMap<>())
-        .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
-        .put(timePartitionSlot, Collections.singletonList(regionReplicaSet));
+        });
+    return new ArrayList<>(distributionMap.values());
   }
 }

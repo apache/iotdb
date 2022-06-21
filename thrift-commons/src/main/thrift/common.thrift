@@ -57,6 +57,12 @@ struct TRegionReplicaSet {
   2: required list<TDataNodeLocation> dataNodeLocations
 }
 
+struct TConfigNodeLocation {
+  1: required i32 configNodeId
+  2: required TEndPoint internalEndPoint
+  3: required TEndPoint consensusEndPoint
+}
+
 struct TDataNodeLocation {
   1: required i32 dataNodeId
   // TEndPoint for DataNode's external rpc
@@ -65,6 +71,30 @@ struct TDataNodeLocation {
   3: required TEndPoint internalEndPoint
   // TEndPoint for transfering data between DataNodes
   4: required TEndPoint dataBlockManagerEndPoint
-  // TEndPoint for DataNode's ConsensusLayer
-  5: required TEndPoint consensusEndPoint
+  // TEndPoint for DataNode's dataRegion consensus protocol
+  5: required TEndPoint dataRegionConsensusEndPoint
+  // TEndPoint for DataNode's schemaRegion consensus protocol
+  6: required TEndPoint schemaRegionConsensusEndPoint
+}
+
+struct TRegionLocation {
+  1: required TConsensusGroupId consensusGroupId
+  2: required string storageGroup
+  3: required i32 dataNodeId;
+  4: required string rpcAddresss;
+  5: required i32 rpcPort;
+  6: required i64 slots;
+  7: optional string status;
+}
+
+struct TDataNodeInfo {
+  1: required TDataNodeLocation location
+  2: required i32 cpuCoreNum
+  3: required i64 maxMemory
+}
+
+struct TFlushReq {
+   1: optional string isSeq
+   2: optional list<string> storageGroups
+   3: optional i32 dataNodeId
 }

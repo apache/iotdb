@@ -69,7 +69,7 @@ public class RunLengthEncodedColumn implements Column {
 
   @Override
   public ColumnEncoding getEncoding() {
-    return value.getEncoding();
+    return ColumnEncoding.RLE;
   }
 
   @Override
@@ -145,6 +145,14 @@ public class RunLengthEncodedColumn implements Column {
   public Column getRegion(int positionOffset, int length) {
     checkValidRegion(positionCount, positionOffset, length);
     return new RunLengthEncodedColumn(value, length);
+  }
+
+  @Override
+  public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new RunLengthEncodedColumn(value, positionCount - fromIndex);
   }
 
   @Override

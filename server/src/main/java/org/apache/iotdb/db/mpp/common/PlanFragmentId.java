@@ -20,6 +20,8 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -72,7 +74,12 @@ public class PlanFragmentId {
 
   public void serialize(ByteBuffer byteBuffer) {
     queryId.serialize(byteBuffer);
-    byteBuffer.putInt(id);
+    ReadWriteIOUtils.write(id, byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    queryId.serialize(stream);
+    ReadWriteIOUtils.write(id, stream);
   }
 
   public static PlanFragmentId deserialize(ByteBuffer byteBuffer) {
@@ -94,6 +101,6 @@ public class PlanFragmentId {
 
   @Override
   public int hashCode() {
-    return Objects.hash(queryId, id, nextFragmentInstanceId);
+    return Objects.hash(queryId, id);
   }
 }

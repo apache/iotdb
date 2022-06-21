@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.builder.DAGBuilder;
+import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.query.udf.core.layer.DAGBuilder;
-import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -50,7 +50,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
 
   protected final long queryId;
   protected final UDTFPlan udtfPlan;
-  protected final RawQueryInputLayer rawQueryInputLayer;
+  protected final QueryDataSetInputLayer queryDataSetInputLayer;
 
   protected LayerPointReader[] transformers;
 
@@ -68,8 +68,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    rawQueryInputLayer =
-        new RawQueryInputLayer(
+    queryDataSetInputLayer =
+        new QueryDataSetInputLayer(
             queryId,
             UDF_READER_MEMORY_BUDGET_IN_MB,
             deduplicatedPaths,
@@ -94,8 +94,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    rawQueryInputLayer =
-        new RawQueryInputLayer(
+    queryDataSetInputLayer =
+        new QueryDataSetInputLayer(
             queryId, UDF_READER_MEMORY_BUDGET_IN_MB, udtfPlan, readersOfSelectedSeries);
 
     initTransformers();
@@ -106,7 +106,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
       throws QueryProcessException, IOException {
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    rawQueryInputLayer = new RawQueryInputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, dataSet);
+    queryDataSetInputLayer =
+        new QueryDataSetInputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, dataSet);
     initTransformers();
     initDataSetFields();
   }
@@ -121,7 +122,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
           new DAGBuilder(
                   queryId,
                   udtfPlan,
-                  rawQueryInputLayer,
+                  queryDataSetInputLayer,
                   UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB + UDF_COLLECTOR_MEMORY_BUDGET_IN_MB)
               .bindInputLayerColumnIndexWithExpression()
               .buildLayerMemoryAssigner()

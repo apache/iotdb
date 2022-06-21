@@ -22,36 +22,37 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class DeleteStorageGroupReq extends ConfigRequest {
 
-  private String storageGroup;
+  private String name;
 
   public DeleteStorageGroupReq() {
     super(ConfigRequestType.DeleteStorageGroup);
   }
 
-  public DeleteStorageGroupReq(String storageGroup) {
+  public DeleteStorageGroupReq(String name) {
     this();
-    this.storageGroup = storageGroup;
+    this.name = name;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getName() {
+    return name;
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteStorageGroup.ordinal());
-
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.DeleteStorageGroup.ordinal());
+    BasicStructureSerDeUtil.write(name, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    name = BasicStructureSerDeUtil.readString(buffer);
   }
 
   @Override
@@ -59,11 +60,11 @@ public class DeleteStorageGroupReq extends ConfigRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DeleteStorageGroupReq that = (DeleteStorageGroupReq) o;
-    return storageGroup.equals(that.storageGroup);
+    return name.equals(that.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup);
+    return Objects.hash(name);
   }
 }
