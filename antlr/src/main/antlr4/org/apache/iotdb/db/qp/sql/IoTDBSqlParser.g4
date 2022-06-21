@@ -505,7 +505,7 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges
+    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
     ;
 
 // Grant Role Privileges
