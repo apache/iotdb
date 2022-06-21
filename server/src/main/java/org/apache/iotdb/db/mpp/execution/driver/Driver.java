@@ -184,8 +184,9 @@ public abstract class Driver implements IDriver {
       if (!blocked.isDone()) {
         return blocked;
       }
-      LOGGER.info("root.hasNext()={}", root.hasNext());
-      if (root.hasNext()) {
+      boolean hasNext = root.hasNext();
+      LOGGER.info("root.hasNext()={}", hasNext);
+      if (hasNext) {
         TsBlock tsBlock = root.next();
         LOGGER.info("got a TsBlock {}", tsBlock);
         if (tsBlock != null && !tsBlock.isEmpty()) {
