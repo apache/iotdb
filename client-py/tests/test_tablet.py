@@ -30,6 +30,7 @@ def test_tablet_insertion():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
+        session.execute_non_query_statement("set storage group to root.sg_test_01")
 
         measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
         data_types_ = [
@@ -72,6 +73,7 @@ def test_nullable_tablet_insertion():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
+        session.execute_non_query_statement("set storage group to root.sg_test_01")
 
         measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
         data_types_ = [
