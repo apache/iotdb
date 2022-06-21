@@ -198,6 +198,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public long getLastTime() {
+    return list.getLastTime();
+  }
+
+  @Override
   public int delete(long lowerBound, long upperBound) {
     return list.delete(lowerBound, upperBound);
   }

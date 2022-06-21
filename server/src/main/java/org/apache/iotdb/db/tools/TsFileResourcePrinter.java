@@ -35,15 +35,16 @@ import java.util.Comparator;
  */
 public class TsFileResourcePrinter {
 
-
-  private static String f1 = "/Users/chenyanze/Downloads/iotdblost/归档/1655802273946-1-0-0.tsfile.resource";
-  private static String f2 = "/Users/chenyanze/Downloads/iotdblost/1655802754429-1-0-0.tsfile.resource";
+  private static String f1 =
+      "/Users/chenyanze/Downloads/iotdblost/归档/1655802273946-1-0-0.tsfile.resource";
+  private static String f2 =
+      "/Users/chenyanze/Downloads/iotdblost/1655802754429-1-0-0.tsfile.resource";
 
   @SuppressWarnings("squid:S106")
   public static void main(String[] args) throws IOException {
 
-//    String folder = "data/data/sequence/root.group_1/0";
-    String folder = f2;
+    //    String folder = "data/data/sequence/root.group_1/0";
+    String folder = "/Users/chenyanze/Downloads/iotdblost/1655819748131-1-0-0.tsfile.resource";
     if (args.length >= 1) {
       folder = args[0];
     }

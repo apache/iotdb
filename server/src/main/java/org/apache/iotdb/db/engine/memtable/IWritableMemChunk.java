@@ -90,6 +90,10 @@ public interface IWritableMemChunk {
     return Long.MIN_VALUE;
   }
 
+  default long getLastTime() {
+    return Long.MAX_VALUE;
+  }
+
   /** @return how many points are deleted */
   int delete(long lowerBound, long upperBound);
 }
