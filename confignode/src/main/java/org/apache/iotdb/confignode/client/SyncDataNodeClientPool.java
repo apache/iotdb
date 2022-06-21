@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
+/** Synchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class SyncDataNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
@@ -57,10 +57,8 @@ public class SyncDataNodeClientPool {
 
   public TSStatus invalidatePartitionCache(
       TEndPoint endPoint, TInvalidateCacheReq invalidateCacheReq) {
-    SyncDataNodeInternalServiceClient client;
     TSStatus status;
-    try {
-      client = clientManager.borrowClient(endPoint);
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
       status = client.invalidatePartitionCache(invalidateCacheReq);
       LOGGER.info("Invalid Schema Cache {} successfully", invalidateCacheReq);
     } catch (IOException e) {
