@@ -71,7 +71,7 @@ public class IoTDBAggregationDeleteIT {
         Statement statement = connection.createStatement()) {
 
       int cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("select count(*) from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(**) from root")) {
         while (resultSet.next()) {
           assertEquals("3", resultSet.getString(count("root.turbine.d1.s1")));
           cnt++;
