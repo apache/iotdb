@@ -1991,7 +1991,7 @@ public class PlanExecutor implements IPlanExecutor {
           break;
         case GRANT_USER:
           for (int i : permissions) {
-            authorizerManager.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
+            authorizerManager.grantPrivilegeToUser(userName, "root", i);
           }
           break;
         case GRANT_ROLE_TO_USER:
