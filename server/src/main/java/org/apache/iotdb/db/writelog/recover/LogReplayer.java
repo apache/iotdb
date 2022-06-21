@@ -131,7 +131,7 @@ public class LogReplayer {
           deviceEntry.getValue().entrySet()) {
         IWritableMemChunk memChunk = measurementEntry.getValue();
         currentTsFileResource.updateStartTime(deviceId, memChunk.getMinTime());
-        currentTsFileResource.updateEndTime(deviceId, memChunk.getLastTime());
+        currentTsFileResource.updateEndTime(deviceId, memChunk.getMaxTime());
       }
     }
   }
@@ -143,7 +143,6 @@ public class LogReplayer {
         recoverMemTable.delete(
             path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
-      // TODO： 在这里修改tmpStartTimeMap？
       modFile.write(
           new Deletion(
               path,

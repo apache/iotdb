@@ -61,7 +61,6 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
-      //      IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(4);
     } catch (IOException e) {
       logger.error("meet error when doing start checking", e);
     }

@@ -90,7 +90,7 @@ public interface IWritableMemChunk {
     return Long.MIN_VALUE;
   }
 
-  default long getLastTime() {
+  default long getMaxTime() {
     return Long.MAX_VALUE;
   }
 

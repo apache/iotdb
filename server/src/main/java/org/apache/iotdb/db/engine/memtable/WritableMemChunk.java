@@ -198,8 +198,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public long getLastTime() {
-    return list.getLastTime();
+  public long getMaxTime() {
+    return list.getMaxTime();
   }
 
   @Override
