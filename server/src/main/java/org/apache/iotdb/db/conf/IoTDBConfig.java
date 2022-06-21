@@ -2926,7 +2926,7 @@ public class IoTDBConfig {
   public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
     this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
-  
+
   public int getCoordinatorReadExecutorSize() {
     return coordinatorReadExecutorSize;
   }

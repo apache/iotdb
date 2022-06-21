@@ -325,7 +325,13 @@ public class PartitionManager {
               getNodeManager().getOnlineDataNodeCount()
                   / ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
     } else {
-      regionNum = 1;
+      regionNum =
+          Math.max(
+              2,
+              (int)
+                  (getNodeManager().getTotalCpuCoreCount()
+                      * 0.3
+                      / ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor()));
     }
 
     // Do Region allocation for those StorageGroups who get the particle

@@ -96,19 +96,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     schemaFetchStatement.setSchemaPartition(schemaPartition);
 
     SchemaTree result = executeSchemaFetchQuery(schemaFetchStatement);
-    //    SchemaTree result = mockFetch(patternTree);
     result.setStorageGroups(storageGroups);
     return result;
-  }
-
-  public SchemaTree mockFetch(PathPatternTree patternTree) {
-    SchemaTree tree = new SchemaTree();
-    List<PartialPath> paths = patternTree.getAllPathPatterns();
-    for (PartialPath path : paths) {
-      tree.appendSingleMeasurement(
-          path, new MeasurementSchema(path.getMeasurement(), TSDataType.FLOAT), null, false);
-    }
-    return tree;
   }
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {

@@ -13,8 +13,6 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.db.mpp.plan.StepTracker;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -272,7 +270,6 @@ public class StateMachine<T> {
    * execution. The listener is notified immediately of the current state.
    */
   public void addStateChangeListener(StateChangeListener<T> stateChangeListener) {
-    long startTime = System.nanoTime();
     requireNonNull(stateChangeListener, "stateChangeListener is null");
 
     boolean inTerminalState;
@@ -284,7 +281,7 @@ public class StateMachine<T> {
         stateChangeListeners.add(stateChangeListener);
       }
     }
-    StepTracker.trace("addStateListener", startTime, System.nanoTime());
+
     // fire state change listener with the current state
     // always fire listener callbacks from a different thread
     safeExecute(() -> stateChangeListener.stateChanged(currentState));
@@ -313,8 +310,6 @@ public class StateMachine<T> {
 
   private void safeExecute(Runnable command) {
     try {
-      //      new Thread(command).start();
-      //      command.run();
       executor.execute(command);
     } catch (RejectedExecutionException e) {
       if ((executor instanceof ExecutorService) && ((ExecutorService) executor).isShutdown()) {
