@@ -140,9 +140,10 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       }
     }
     // The result is calculated from the cache
-    return (ascending
-        ? inputTsBlock.getEndTime() > timeRange.getMax()
-        : inputTsBlock.getEndTime() < timeRange.getMin());
+    return inputTsBlock != null
+        && (ascending
+            ? inputTsBlock.getEndTime() > timeRange.getMax()
+            : inputTsBlock.getEndTime() < timeRange.getMin());
   }
 
   @Override
