@@ -1,6 +1,7 @@
 #!/bin/sh
 
 ################################################################################
+##  Copyright 2022 leonardodalinky(linkyy2000313@gmail.com)
 ##
 ##  Licensed to the Apache Software Foundation (ASF) under one or more
 ##  contributor license agreements.  See the NOTICE file distributed with
@@ -30,8 +31,11 @@ PROMPT="Pre-commit-hooks:"
 LOG_OUT_PATH="/dev/null"
 
 exec_with_log() {
-    if [ "$IOTDB_VERBOSE" -le 2 ]; then
+    if [ "$IOTDB_VERBOSE" -le 1 ]; then
         eval "$*" > "$LOG_OUT_PATH" 2>&1
+    elif [ "$IOTDB_VERBOSE" -eq 2 ]; then
+        # compatible with git bash
+        eval "$*" 2>&1
     else
         eval "$*" 2>&1 | tee "$LOG_OUT_PATH"
     fi
@@ -84,6 +88,7 @@ main() {
     if [ "$IOTDB_VERBOSE" -eq 1 ]; then
         LOG_OUT_PATH="$(mktemp --suff .log)"
     elif [ "$IOTDB_VERBOSE" -eq 2 ]; then
+        # not used in git bash
         LOG_OUT_PATH="/dev/stdout"
     elif [ "$IOTDB_VERBOSE" -ge 3 ]; then
         LOG_OUT_PATH="$(mktemp --suff .log)"
@@ -93,7 +98,7 @@ main() {
     if [ "$IOTDB_SPOTLESS_APPLY" -ne 0 ]; then
         echo "$PROMPT Apply spotless:apply..."
         if [ "$IOTDB_SMART_JAVA_MODULES" -eq 0 ] || [ -n "$smart_args" ]; then
-            exec_with_log "$IOTDB_MAVEN_PATH $smart_args spotless:apply"
+            exec_with_log "\"$IOTDB_MAVEN_PATH\" $smart_args spotless:apply"
         else
             echo "$PROMPT No changed module for spotless:apply."
         fi
@@ -106,7 +111,7 @@ main() {
     if [ "$IOTDB_VALIDATE" -ne 0 ]; then
         echo "$PROMPT Validating..."
         if [ "$IOTDB_SMART_JAVA_MODULES" -eq 0 ] || [ -n "$smart_args" ]; then
-            exec_with_log "$IOTDB_MAVEN_PATH $smart_args validate"
+            exec_with_log "\"$IOTDB_MAVEN_PATH\" $smart_args validate"
         else
             echo "$PROMPT No changed module for validating."
         fi

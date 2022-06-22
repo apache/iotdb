@@ -1,6 +1,7 @@
 #!/bin/sh
 
 ################################################################################
+##  Copyright 2022 leonardodalinky(linkyy2000313@gmail.com)
 ##
 ##  Licensed to the Apache Software Foundation (ASF) under one or more
 ##  contributor license agreements.  See the NOTICE file distributed with
@@ -46,10 +47,10 @@ check_paths() {
 }
 
 install() {
-    if [ -f "$INSTALL_PATH" ] || [ -L "$INSTALL_PATH" ]; then
-        echo "WARN: Overwriting '$INSTALL_PATH'"
-    fi
     # create the relative symlink of pre-commit script
+    if [ -f "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" ] || [ -L "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" ]; then
+        echo "WARN: Overwriting '$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit'"
+    fi
     ln -sf "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" "$HOOKS_DIR/pre-commit" || exit 1
     if [ -f "pre-commit" ] && [ ! -x "pre-commit" ]; then
         echo "ERROR: 'pre-commit' has no execute permission. Try to grant it the 'x' permission."
