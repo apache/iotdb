@@ -44,9 +44,12 @@ public class CountAccumulator implements Accumulator {
     if (!valueColumn.mayHaveNull() && timeRange.contains(minTime, maxTime)) {
       countValue += timeColumn.getPositionCount();
     } else {
-      for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      int curPositionCount = timeColumn.getPositionCount();
+      long curMinTime = timeRange.getMin();
+      long curMaxTime = timeRange.getMax();
+      for (int i = 0; i < curPositionCount; i++) {
         long curTime = timeColumn.getLong(i);
-        if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        if (curTime > curMaxTime || curTime < curMinTime) {
           return i;
         }
         if (!valueColumn.isNull(i)) {
