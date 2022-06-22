@@ -36,7 +36,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-
 import static org.junit.Assert.assertEquals;
 
 @RunWith(IoTDBTestRunner.class)
@@ -79,7 +78,8 @@ public class IoTDBQuotedPathIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.ln.`wf+01`.wt01")) {
         while (resultSet.next()) {
-          String result = resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(2);
+          String result =
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(2);
           assertEquals(exp[cnt++], result);
         }
       }
@@ -88,7 +88,8 @@ public class IoTDBQuotedPathIT {
         exp = new String[] {"1509465600002,false", "1509465600003,false"};
         cnt = 0;
         while (resultSet.next()) {
-          String result = resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(2);
+          String result =
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(2);
           assertEquals(exp[cnt++], result);
         }
       }
