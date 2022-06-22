@@ -212,9 +212,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     } catch (Exception e) {
 
     }
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      // wait
-    }
+    CompactionTaskManager.getInstance().waitAllCompactionFinish();
     QueryContext context = new QueryContext();
     MeasurementPath path =
         SchemaTestUtils.getMeasurementPath(

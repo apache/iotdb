@@ -185,7 +185,7 @@ public class CompactionTaskManager implements IService {
 
   private void awaitTermination(ExecutorService service, long milliseconds) {
     try {
-      service.shutdown();
+      service.shutdownNow();
       service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       logger.warn("CompactionThreadPool can not be closed in {} ms", milliseconds);
