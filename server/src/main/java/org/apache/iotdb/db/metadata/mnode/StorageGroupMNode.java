@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import java.io.IOException;
@@ -106,5 +107,10 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
 
   public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
     return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
+  }
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitStorageGroupMNode(this, context);
   }
 }

@@ -139,9 +139,6 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
 
-  /** This parameter only exists for a few days */
-  private boolean enableHeartbeat = true;
-
   ConfigNodeConfig() {
     // empty constructor
   }
@@ -421,13 +418,5 @@ public class ConfigNodeConfig {
 
   public void setHeartbeatInterval(long heartbeatInterval) {
     this.heartbeatInterval = heartbeatInterval;
-  }
-
-  public boolean isEnableHeartbeat() {
-    return enableHeartbeat;
-  }
-
-  public void setEnableHeartbeat(boolean enableHeartbeat) {
-    this.enableHeartbeat = enableHeartbeat;
   }
 }
