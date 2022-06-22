@@ -210,6 +210,8 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
+      conf.setRoutingPolicy(properties.getProperty("routing_policy", conf.getRoutingPolicy()));
+
       // commons
       commonDescriptor.loadCommonProps(properties);
       commonDescriptor.initCommonConfigDir(conf.getSystemDir());

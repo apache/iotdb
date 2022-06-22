@@ -139,6 +139,9 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
 
+  /** The routing policy of read/write requests */
+  private String routingPolicy = "leader";
+
   ConfigNodeConfig() {
     // empty constructor
   }
@@ -418,5 +421,13 @@ public class ConfigNodeConfig {
 
   public void setHeartbeatInterval(long heartbeatInterval) {
     this.heartbeatInterval = heartbeatInterval;
+  }
+
+  public String getRoutingPolicy() {
+    return routingPolicy;
+  }
+
+  public void setRoutingPolicy(String routingPolicy) {
+    this.routingPolicy = routingPolicy;
   }
 }

@@ -18,14 +18,19 @@
  */
 package org.apache.iotdb.confignode.client.handlers;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatPackage;
+import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.RegionGroupCache;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 public class HeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
@@ -34,16 +39,32 @@ public class HeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
   // Update HeartbeatCache when success
   private final TDataNodeLocation dataNodeLocation;
   private final HeartbeatCache heartbeatCache;
+  private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
 
-  public HeartbeatHandler(TDataNodeLocation dataNodeLocation, HeartbeatCache heartbeatCache) {
+  public HeartbeatHandler(
+      TDataNodeLocation dataNodeLocation,
+      HeartbeatCache heartbeatCache,
+      Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap) {
     this.dataNodeLocation = dataNodeLocation;
     this.heartbeatCache = heartbeatCache;
+    this.regionGroupCacheMap = regionGroupCacheMap;
   }
 
   @Override
-  public void onComplete(THeartbeatResp tHeartbeatResp) {
+  public void onComplete(THeartbeatResp resp) {
     heartbeatCache.cacheHeartBeat(
-        new HeartbeatPackage(tHeartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
+        new HeartbeatPackage(resp.getHeartbeatTimestamp(), System.currentTimeMillis()));
+    if (resp.isSetJudgedLeaders()) {
+      resp.getJudgedLeaders()
+          .forEach(
+              (consensusGroupId, isLeader) -> {
+                if (isLeader) {
+                  regionGroupCacheMap
+                      .computeIfAbsent(consensusGroupId, empty -> new RegionGroupCache())
+                      .updateLeader(resp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId());
+                }
+              });
+    }
   }
 
   @Override

@@ -20,9 +20,11 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.Manager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
+import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
 
 import java.util.List;
@@ -46,8 +48,13 @@ public class RouteBalancer {
   }
 
   private IRouter genRouter() {
-    // TODO: The Router should be configurable
-    return new LoadScoreGreedyRouter(getLoadManager().getAllLoadScores());
+    String policy = ConfigNodeDescriptor.getInstance().getConf().getRoutingPolicy();
+    if (policy.equals("leader")) {
+      return new LeaderRouter(
+          getLoadManager().getAllLeadership(), getLoadManager().getAllLoadScores());
+    } else {
+      return new LoadScoreGreedyRouter(getLoadManager().getAllLoadScores());
+    }
   }
 
   private LoadManager getLoadManager() {

@@ -123,6 +123,11 @@ public class ConfigNodeStartupCheck {
           String.format(
               "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
+
+    if (!conf.getRoutingPolicy().equals("leader") && !conf.getRoutingPolicy().equals("greedy")) {
+      throw new ConfigurationException(
+          "routing_policy", conf.getRoutingPolicy(), "leader or greedy");
+    }
   }
 
   /**

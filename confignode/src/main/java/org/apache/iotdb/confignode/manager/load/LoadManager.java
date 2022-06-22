@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IHeartbeatStatistic;
+import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 
 import org.slf4j.Logger;
@@ -56,6 +57,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
@@ -69,11 +71,16 @@ public class LoadManager {
 
   private final long heartbeatInterval =
       ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
+
+  /** Heartbeat sample cache */
   // Map<NodeId, HeartbeatCache>
   private final Map<Integer, HeartbeatCache> heartbeatCacheMap;
+  // Map<RegionId, RegionGroupCache>
+  private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
 
-  // Balancers
+  /** Balancers */
   private final RegionBalancer regionBalancer;
+
   private final PartitionBalancer partitionBalancer;
   private final RouteBalancer routeBalancer;
 
@@ -85,15 +92,18 @@ public class LoadManager {
   private final Object heartbeatMonitor = new Object();
 
   private Future<?> currentHeartbeatFuture;
-  private int balanceCount = 0;
+  private final AtomicInteger balanceCount;
 
   public LoadManager(Manager configManager) {
     this.configManager = configManager;
     this.heartbeatCacheMap = new ConcurrentHashMap<>();
+    this.regionGroupCacheMap = new ConcurrentHashMap<>();
 
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
+
+    this.balanceCount = new AtomicInteger(0);
   }
 
   /**
@@ -173,10 +183,26 @@ public class LoadManager {
     return result;
   }
 
+  /**
+   * Get the leadership of each RegionGroup
+   *
+   * @return Map<RegionGroupId, leader location>
+   */
+  public Map<TConsensusGroupId, Integer> getAllLeadership() {
+    Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
+
+    regionGroupCacheMap.forEach(
+        (consensusGroupId, regionGroupCache) ->
+            result.put(consensusGroupId, regionGroupCache.getLeaderId()));
+
+    return result;
+  }
+
   /** Start the heartbeat service */
   public void start() {
     LOGGER.debug("Start Heartbeat Service of LoadManager");
     synchronized (heartbeatMonitor) {
+      balanceCount.set(0);
       if (currentHeartbeatFuture == null) {
         currentHeartbeatFuture =
             ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
@@ -208,18 +234,24 @@ public class LoadManager {
       // TODO: Send heartbeat requests to all the online ConfigNodes
 
       // Do load balancing
-      doLoadBalancing(balanceCount);
-      balanceCount += 1;
+      doLoadBalancing();
+      balanceCount.getAndIncrement();
     }
   }
 
   private THeartbeatReq genHeartbeatReq() {
-    return new THeartbeatReq(System.currentTimeMillis());
+    THeartbeatReq heartbeatReq = new THeartbeatReq();
+    heartbeatReq.setHeartbeatTimestamp(System.currentTimeMillis());
+    // We update RegionGroups' leadership in every 5s
+    heartbeatReq.setNeedJudgeLeader(balanceCount.get() % 5 == 0);
+    // We sample DataNode load in every 10s
+    heartbeatReq.setNeedSamplingLoad(balanceCount.get() % 10 == 0);
+    return heartbeatReq;
   }
 
-  private void doLoadBalancing(int balanceCount) {
-    if (balanceCount % 5 == 0) {
-      // We update nodes' load statistic in every 5s
+  private void doLoadBalancing() {
+    if (balanceCount.get() % 10 == 0) {
+      // We update nodes' load statistic in every 10s
       updateNodeLoadStatistic();
     }
   }
@@ -240,7 +272,8 @@ public class LoadManager {
           new HeartbeatHandler(
               dataNodeInfo.getLocation(),
               heartbeatCacheMap.computeIfAbsent(
-                  dataNodeInfo.getLocation().getDataNodeId(), empty -> new HeartbeatCache()));
+                  dataNodeInfo.getLocation().getDataNodeId(), empty -> new HeartbeatCache()),
+              regionGroupCacheMap);
       AsyncDataNodeClientPool.getInstance()
           .getHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
