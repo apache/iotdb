@@ -78,6 +78,12 @@ public class IoTDBConnection implements Connection {
    */
   private int queryTimeout = 0;
 
+  /**
+   * ConnectionTimeout and SocketTimeout. Unit: ms. If not set, default value 0 will be used, which
+   * means that there's no timeout in the client side.
+   */
+  private int networkTimeout = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+
   private ZoneId zoneId;
   private boolean autoCommit;
   private String url;
@@ -99,6 +105,7 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
     this.url = url;
     this.userName = info.get("user").toString();
+    this.networkTimeout = params.getNetworkTimeout();
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
@@ -274,7 +281,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getNetworkTimeout() {
-    return Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+    return networkTimeout;
   }
 
   @Override
@@ -451,7 +458,7 @@ public class IoTDBConnection implements Connection {
     RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
-            params.getHost(), params.getPort(), Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+            params.getHost(), params.getPort(), getNetworkTimeout());
     if (!transport.isOpen()) {
       transport.open();
     }
