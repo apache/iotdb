@@ -158,59 +158,91 @@ public class SnapshotLoader {
               seqFileDir.getAbsolutePath(), unseqFileDir.getAbsolutePath()));
     }
 
-    File[] seqPartitionDirs = seqFileDir.listFiles();
-    if (seqPartitionDirs != null && seqPartitionDirs.length > 0) {
-      for (File seqPartitionDir : seqPartitionDirs) {
-        if (!seqPartitionDir.isDirectory()) {
-          LOGGER.info("Skip {}, because it is not a directory", seqPartitionDir);
+    File[] seqRegionDirs = seqFileDir.listFiles();
+    if (seqRegionDirs != null && seqRegionDirs.length > 0) {
+      for (File seqRegionDir : seqRegionDirs) {
+        if (!seqRegionDir.isDirectory()) {
+          LOGGER.info("Skip {}, because it is not a directory", seqRegionDir);
           continue;
         }
-        String[] splitPath =
-            seqPartitionDir
-                .getAbsolutePath()
-                .split(File.separator.equals("\\") ? "\\\\" : File.separator);
-        long timePartition = Long.parseLong(splitPath[splitPath.length - 1]);
-        File[] files = seqPartitionDir.listFiles();
-        if (files != null && files.length > 0) {
-          Arrays.sort(files, Comparator.comparing(File::getName));
-          String currDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
-          for (File file : files) {
-            if (file.getName().endsWith(".tsfile")) {
-              currDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+        File[] seqPartitionDirs = seqRegionDir.listFiles();
+        if (seqPartitionDirs != null && seqPartitionDirs.length > 0) {
+          for (File seqPartitionDir : seqPartitionDirs) {
+            String[] splitPath =
+                seqPartitionDir
+                    .getAbsolutePath()
+                    .split(File.separator.equals("\\") ? "\\\\" : File.separator);
+            long timePartition = Long.parseLong(splitPath[splitPath.length - 1]);
+            File[] files = seqPartitionDir.listFiles();
+            if (files != null && files.length > 0) {
+              Arrays.sort(files, Comparator.comparing(File::getName));
+              String currDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+              for (File file : files) {
+                if (file.getName().endsWith(".tsfile")) {
+                  currDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+                }
+                File targetFile =
+                    new File(
+                        currDir,
+                        storageGroupName
+                            + File.separator
+                            + dataRegionId
+                            + File.separator
+                            + timePartition
+                            + File.separator
+                            + file.getName());
+                if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+                  throw new IOException(
+                      String.format("Failed to create dir %s", targetFile.getParent()));
+                }
+                Files.createLink(targetFile.toPath(), file.toPath());
+              }
             }
-            File targetFile =
-                new File(
-                    currDir,
-                    storageGroupName
-                        + File.separator
-                        + dataRegionId
-                        + File.separator
-                        + timePartition
-                        + File.separator
-                        + file.getName());
-            Files.createLink(targetFile.toPath(), file.toPath());
           }
         }
+      }
+    }
 
-        files = unseqFileDir.listFiles();
-        if (files != null && files.length > 0) {
-          Arrays.sort(files, Comparator.comparing(File::getName));
-          String currDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
-          for (File file : files) {
-            if (file.getName().endsWith(".tsfile")) {
-              currDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
+    File[] unseqRegionDirs = unseqFileDir.listFiles();
+    if (unseqRegionDirs != null && unseqRegionDirs.length > 0) {
+      for (File unseqRegionDir : unseqRegionDirs) {
+        if (!unseqRegionDir.isDirectory()) {
+          LOGGER.info("Skip {}, because it is not a directory", unseqRegionDir);
+          continue;
+        }
+        File[] unseqPartitionDirs = unseqRegionDir.listFiles();
+        if (unseqPartitionDirs != null && unseqPartitionDirs.length > 0) {
+          for (File unseqPartitionDir : unseqPartitionDirs) {
+            String[] splitPath =
+                unseqPartitionDir
+                    .getAbsolutePath()
+                    .split(File.separator.equals("\\") ? "\\\\" : File.separator);
+            long timePartition = Long.parseLong(splitPath[splitPath.length - 1]);
+            File[] files = unseqPartitionDir.listFiles();
+            if (files != null && files.length > 0) {
+              Arrays.sort(files, Comparator.comparing(File::getName));
+              String currDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
+              for (File file : files) {
+                if (file.getName().endsWith(".tsfile")) {
+                  currDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
+                }
+                File targetFile =
+                    new File(
+                        currDir,
+                        storageGroupName
+                            + File.separator
+                            + dataRegionId
+                            + File.separator
+                            + timePartition
+                            + File.separator
+                            + file.getName());
+                if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+                  throw new IOException(
+                      String.format("Failed to create dir %s", targetFile.getParent()));
+                }
+                Files.createLink(targetFile.toPath(), file.toPath());
+              }
             }
-            File targetFile =
-                new File(
-                    currDir,
-                    storageGroupName
-                        + File.separator
-                        + dataRegionId
-                        + File.separator
-                        + timePartition
-                        + File.separator
-                        + file.getName());
-            Files.createLink(targetFile.toPath(), file.toPath());
           }
         }
       }
