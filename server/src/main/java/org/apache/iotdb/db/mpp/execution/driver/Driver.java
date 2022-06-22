@@ -186,7 +186,6 @@ public abstract class Driver implements IDriver {
       }
       if (root.hasNext()) {
         TsBlock tsBlock = root.next();
-        LOGGER.info("got a TsBlock {}", tsBlock);
         if (tsBlock != null && !tsBlock.isEmpty()) {
           sinkHandle.send(Collections.singletonList(tsBlock));
         }
