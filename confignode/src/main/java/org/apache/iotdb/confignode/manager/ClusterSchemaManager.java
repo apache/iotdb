@@ -143,7 +143,7 @@ public class ClusterSchemaManager {
    * Only leader use this interface. Adjust the maxSchemaRegionGroupCount and
    * maxDataRegionGroupCount of each StorageGroup bases on existing cluster resources
    */
-  public void adjustMaxRegionGroupCount() {
+  public synchronized void adjustMaxRegionGroupCount() {
     // Get all StorageGroupSchemas
     Map<String, TStorageGroupSchema> storageGroupSchemaMap =
         getMatchedStorageGroupSchemasByName(getStorageGroupNames());
