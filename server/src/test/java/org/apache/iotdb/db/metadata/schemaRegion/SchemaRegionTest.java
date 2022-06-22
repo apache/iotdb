@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -37,6 +40,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -49,22 +53,48 @@ public class SchemaRegionTest {
   SchemaEngine schemaEngine = SchemaEngine.getInstance();
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  boolean isMppMode;
+  boolean isClusterMode;
+  String schemaRegionConsensusProtocolClass;
+  long schemaMemory;
+
   @Before
   public void setUp() {
+    isMppMode = config.isMppMode();
+    isClusterMode = config.isClusterMode();
+    schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    schemaMemory = config.getAllocateMemoryForSchema();
+
+    config.setMppMode(true);
+    config.setClusterMode(true);
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
+    config.setAllocateMemoryForSchema(1024 * 1024 * 1024);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    config.setMppMode(isMppMode);
+    config.setClusterMode(isClusterMode);
+    config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    config.setAllocateMemoryForSchema(schemaMemory);
   }
 
   @Test
-  public void testSnapshot() throws Exception {
+  public void testRatisModeSnapshot() throws Exception {
     PartialPath storageGroup = new PartialPath("root.sg");
     SchemaRegionId schemaRegionId = new SchemaRegionId(0);
     schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
     ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+
+    File mLogFile =
+        SystemFileFactory.INSTANCE.getFile(
+            schemaRegion.getStorageGroupFullPath()
+                + File.separator
+                + schemaRegion.getSchemaRegionId().getId(),
+            MetadataConstant.METADATA_LOG);
+    Assert.assertFalse(mLogFile.exists());
 
     Map<String, String> tags = new HashMap<>();
     tags.put("tag-key", "tag-value");
@@ -81,6 +111,7 @@ public class SchemaRegionTest {
         -1);
 
     File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    snapshotDir.mkdir();
     schemaRegion.createSnapshot(snapshotDir);
 
     schemaRegion.loadSnapshot(snapshotDir);
@@ -96,5 +127,42 @@ public class SchemaRegionTest {
     Map<String, String> resultTagMap = seriesResult.getTag();
     Assert.assertEquals(1, resultTagMap.size());
     Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
+  }
+
+  @Test
+  @Ignore
+  public void testSnapshotPerformance() throws Exception {
+
+    PartialPath storageGroup = new PartialPath("root.sg");
+    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
+    schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
+    ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+
+    Map<String, String> tags = new HashMap<>();
+    tags.put("tag-key", "tag-value");
+
+    long time = System.currentTimeMillis();
+    for (int i = 0; i < 1000; i++) {
+      for (int j = 0; j < 1000; j++) {
+        schemaRegion.createTimeseries(
+            new CreateTimeSeriesPlan(
+                new PartialPath("root.sg.d" + i + ".s" + j),
+                TSDataType.INT32,
+                TSEncoding.PLAIN,
+                CompressionType.UNCOMPRESSED,
+                null,
+                tags,
+                null,
+                null),
+            -1);
+      }
+    }
+    System.out.println("Timeseries creation costs " + (System.currentTimeMillis() - time) + "ms.");
+
+    File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    snapshotDir.mkdir();
+    schemaRegion.createSnapshot(snapshotDir);
+
+    schemaRegion.loadSnapshot(snapshotDir);
   }
 }

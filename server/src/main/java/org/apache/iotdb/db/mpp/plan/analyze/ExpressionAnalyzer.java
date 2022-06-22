@@ -289,6 +289,7 @@ public class ExpressionAnalyzer {
       // removing all wildcards. We use actualExpressions to collect them.
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+
       return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath path = ((TimeSeriesOperand) expression).getPath();

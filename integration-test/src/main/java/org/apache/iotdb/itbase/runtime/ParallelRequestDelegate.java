@@ -22,8 +22,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * ParallelRequestDelegate will handle requests in parallel. It's more efficient when requests
@@ -44,10 +46,13 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
       resultFutures.add(f);
     }
     List<T> results = new ArrayList<>(getRequests().size());
+    Exception[] exceptions = new Exception[getEndpoints().size()];
     for (int i = 0; i < getEndpoints().size(); i++) {
       try {
         results.add(resultFutures.get(i).get(taskTimeoutSeconds, TimeUnit.SECONDS));
-      } catch (Exception e) {
+      } catch (ExecutionException e) {
+        exceptions[i] = e;
+      } catch (InterruptedException | TimeoutException e) {
         for (int j = i; j < getEndpoints().size(); j++) {
           resultFutures.get(j).cancel(true);
         }
@@ -55,6 +60,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
             String.format("Waiting for query results of %s failed", getEndpoints().get(i)), e);
       }
     }
+    handleExceptions(exceptions);
     return results;
   }
 }

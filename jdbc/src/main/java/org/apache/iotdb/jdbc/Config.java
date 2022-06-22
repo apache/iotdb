@@ -56,4 +56,7 @@ public class Config {
 
   /** key of thrift max frame size */
   public static final String THRIFT_FRAME_MAX_SIZE = "thrift_max_frame_size";
+
+  /** key of underlying transport socketTimeout and connectionTimeout */
+  public static final String NETWORK_TIMEOUT = "network_timeout";
 }

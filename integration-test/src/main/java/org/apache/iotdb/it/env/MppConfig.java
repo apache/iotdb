@@ -22,19 +22,19 @@ import org.apache.iotdb.itbase.env.BaseConfig;
 
 import java.util.Properties;
 
-public class ClusterEnvConfig implements BaseConfig {
+public class MppConfig implements BaseConfig {
   private final Properties engineProperties;
-  private final Properties clusterProperties;
+  private final Properties confignodeProperties;
 
-  public ClusterEnvConfig() {
+  public MppConfig() {
     engineProperties = new Properties();
-    clusterProperties = new Properties();
+    confignodeProperties = new Properties();
   }
 
   @Override
   public void clearAllProperties() {
     engineProperties.clear();
-    clusterProperties.clear();
+    confignodeProperties.clear();
   }
 
   @Override
@@ -43,8 +43,8 @@ public class ClusterEnvConfig implements BaseConfig {
   }
 
   @Override
-  public Properties getClusterProperties() {
-    return this.clusterProperties;
+  public Properties getConfignodeProperties() {
+    return this.confignodeProperties;
   }
 
   @Override
@@ -175,7 +175,7 @@ public class ClusterEnvConfig implements BaseConfig {
 
   @Override
   public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
-    clusterProperties.setProperty(
+    engineProperties.setProperty(
         "enable_auto_create_schema", String.valueOf(enableAutoCreateSchema));
     return this;
   }
@@ -190,10 +190,5 @@ public class ClusterEnvConfig implements BaseConfig {
   public BaseConfig setPrimitiveArraySize(int primitiveArraySize) {
     engineProperties.setProperty("primitive_array_size", String.valueOf(primitiveArraySize));
     return this;
-  }
-
-  @Override
-  public String getFlushCommand() {
-    return "flush on cluster";
   }
 }

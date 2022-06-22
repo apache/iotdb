@@ -40,46 +40,50 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
-public abstract class ClusterEnvBase implements BaseEnv {
-  private static final Logger logger = LoggerFactory.getLogger(ClusterEnvBase.class);
-  private final int NODE_START_TIMEOUT = 10;
-  private List<ConfigNode> configNodes;
-  private List<DataNode> dataNodes;
+public abstract class AbstractEnv implements BaseEnv {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractEnv.class);
+  private final int NODE_START_TIMEOUT = 100;
+  private final int PROBE_TIMEOUT_MS = 2000;
+  private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+  protected List<ConfigNodeWrapper> configNodeWrapperList;
+  protected List<DataNodeWrapper> dataNodeWrapperList;
   private final Random rand = new Random();
-  private String nextTestCase = null;
+  protected String nextTestCase = null;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) throws InterruptedException {
-    this.configNodes = new ArrayList<>();
-    this.dataNodes = new ArrayList<>();
+    this.configNodeWrapperList = new ArrayList<>();
+    this.dataNodeWrapperList = new ArrayList<>();
 
     final String testName = getTestClassName() + getNextTestCaseString();
 
-    ConfigNode seedConfigNode = new ConfigNode(true, "", testName);
-    seedConfigNode.createDir();
-    seedConfigNode.changeConfig(null);
-    seedConfigNode.start();
-    String targetConfignode = seedConfigNode.getIpAndPortString();
-    this.configNodes.add(seedConfigNode);
-    logger.info("In test " + testName + " SeedConfigNode " + seedConfigNode.getId() + " started.");
+    ConfigNodeWrapper seedConfigNodeWrapper = new ConfigNodeWrapper(true, "", testName);
+    seedConfigNodeWrapper.createDir();
+    seedConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+    seedConfigNodeWrapper.start();
+    String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
+    this.configNodeWrapperList.add(seedConfigNodeWrapper);
+    logger.info(
+        "In test " + testName + " SeedConfigNode " + seedConfigNodeWrapper.getId() + " started.");
 
     List<String> configNodeEndpoints = new ArrayList<>();
     RequestDelegate<Void> configNodesDelegate = new SerialRequestDelegate<>(configNodeEndpoints);
     for (int i = 1; i < configNodesNum; i++) {
-      ConfigNode configNode = new ConfigNode(false, targetConfignode, testName);
-      this.configNodes.add(configNode);
-      configNodeEndpoints.add(configNode.getIpAndPortString());
-      configNode.createDir();
-      configNode.changeConfig(null);
+      ConfigNodeWrapper configNodeWrapper =
+          new ConfigNodeWrapper(false, targetConfigNode, testName);
+      this.configNodeWrapperList.add(configNodeWrapper);
+      configNodeEndpoints.add(configNodeWrapper.getIpAndPortString());
+      configNodeWrapper.createDir();
+      configNodeWrapper.changeConfig(null);
       configNodesDelegate.addRequest(
           () -> {
-            configNode.start();
-            logger.info("In test " + testName + " ConfigNode " + configNode.getId() + " started.");
+            configNodeWrapper.start();
+            logger.info(
+                "In test " + testName + " ConfigNode " + configNodeWrapper.getId() + " started.");
             return null;
           });
     }
@@ -94,15 +98,16 @@ public abstract class ClusterEnvBase implements BaseEnv {
     RequestDelegate<Void> dataNodesDelegate =
         new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT);
     for (int i = 0; i < dataNodesNum; i++) {
-      DataNode dataNode = new DataNode(targetConfignode, testName);
-      this.dataNodes.add(dataNode);
-      dataNodeEndpoints.add(dataNode.getIpAndPortString());
-      dataNode.createDir();
-      dataNode.changeConfig(ConfigFactory.getConfig().getEngineProperties());
+      DataNodeWrapper dataNodeWrapper = new DataNodeWrapper(targetConfigNode, testName);
+      this.dataNodeWrapperList.add(dataNodeWrapper);
+      dataNodeEndpoints.add(dataNodeWrapper.getIpAndPortString());
+      dataNodeWrapper.createDir();
+      dataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
       dataNodesDelegate.addRequest(
           () -> {
-            dataNode.start();
-            logger.info("In test " + testName + " DataNode " + dataNode.getId() + " started.");
+            dataNodeWrapper.start();
+            logger.info(
+                "In test " + testName + " DataNode " + dataNodeWrapper.getId() + " started.");
             return null;
           });
     }
@@ -118,23 +123,23 @@ public abstract class ClusterEnvBase implements BaseEnv {
   }
 
   private void cleanupEnvironment() {
-    for (DataNode dataNode : this.dataNodes) {
-      dataNode.stop();
-      dataNode.waitingToShutDown();
-      dataNode.destroyDir();
+    for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
+      dataNodeWrapper.stop();
+      dataNodeWrapper.waitingToShutDown();
+      dataNodeWrapper.destroyDir();
     }
-    for (ConfigNode configNode : this.configNodes) {
-      configNode.stop();
-      configNode.waitingToShutDown();
-      configNode.destroyDir();
+    for (ConfigNodeWrapper configNodeWrapper : this.configNodeWrapperList) {
+      configNodeWrapper.stop();
+      configNodeWrapper.waitingToShutDown();
+      configNodeWrapper.destroyDir();
     }
     nextTestCase = null;
   }
 
   public String getTestClassName() {
-    StackTraceElement stack[] = Thread.currentThread().getStackTrace();
-    for (int i = 0; i < stack.length; i++) {
-      String className = stack[i].getClassName();
+    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+    for (StackTraceElement stackTraceElement : stack) {
+      String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
         return className.substring(className.lastIndexOf(".") + 1);
       }
@@ -155,50 +160,34 @@ public abstract class ClusterEnvBase implements BaseEnv {
     return "IT";
   }
 
-  public void testWorking() throws InterruptedException {
+  public void testWorking() {
     List<String> endpoints =
-        dataNodes.stream().map(ClusterNodeBase::getIpAndPortString).collect(Collectors.toList());
-    boolean[] success = new boolean[dataNodes.size()];
-    Exception[] exceptions = new Exception[dataNodes.size()];
-    final int probeTimeout = 5;
-    AtomicInteger successCount = new AtomicInteger(0);
-    for (int counter = 0; counter < 30; counter++) {
-      RequestDelegate<Void> testDelegate = new ParallelRequestDelegate<>(endpoints, probeTimeout);
-      for (int i = 0; i < dataNodes.size(); i++) {
-        final int idx = i;
-        final String dataNodeEndpoint = dataNodes.get(i).getIpAndPortString();
-        testDelegate.addRequest(
-            () -> {
-              if (!success[idx]) {
-                try (Connection ignored = getConnection(dataNodeEndpoint, probeTimeout)) {
-                  success[idx] = true;
-                  successCount.incrementAndGet();
-                } catch (Exception e) {
-                  exceptions[idx] = e;
-                  logger.debug("Open connection of {} failed", dataNodeEndpoint, e);
-                }
+        dataNodeWrapperList.stream()
+            .map(DataNodeWrapper::getIpAndPortString)
+            .collect(Collectors.toList());
+    RequestDelegate<Void> testDelegate =
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+    for (DataNodeWrapper dataNode : dataNodeWrapperList) {
+      final String dataNodeEndpoint = dataNode.getIpAndPortString();
+      testDelegate.addRequest(
+          () -> {
+            Exception lastException = null;
+            for (int i = 0; i < 30; i++) {
+              try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
+                return null;
+              } catch (Exception e) {
+                lastException = e;
+                TimeUnit.SECONDS.sleep(1L);
               }
-              return null;
-            });
-      }
-      try {
-        testDelegate.requestAll();
-      } catch (SQLException e) {
-        // It will never be thrown as it has already caught in the request.
-      }
-      if (successCount.get() == dataNodes.size()) {
-        logger.info("The whole cluster is ready.");
-        return;
-      }
-      TimeUnit.SECONDS.sleep(1);
+            }
+            throw lastException;
+          });
     }
-    // The cluster is not ready after 30 times to try
-    for (int i = 0; i < dataNodes.size(); i++) {
-      if (!success[i] && exceptions[i] != null) {
-        logger.error("Connect to {} failed", dataNodes.get(i).getIpAndPortString(), exceptions[i]);
-      }
+    try {
+      testDelegate.requestAll();
+    } catch (Exception e) {
+      fail("After 30 times retry, the cluster can't work!");
     }
-    fail("After 30 times retry, the cluster can't work!");
   }
 
   @Override
@@ -225,25 +214,37 @@ public abstract class ClusterEnvBase implements BaseEnv {
     IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + endpoint,
+                Config.IOTDB_URL_PREFIX + endpoint + getParam(null, queryTimeout),
                 System.getProperty("User", "root"),
                 System.getProperty("Password", "root"));
     connection.setQueryTimeout(queryTimeout);
+
     return connection;
   }
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
-    return new ClusterTestConnection(getWriteConnection(version), getReadConnections(version));
+    if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
+      return new ClusterTestConnection(getWriteConnection(version), getReadConnections(version));
+    } else {
+      return getWriteConnection(version).getUnderlyingConnecton();
+    }
   }
 
   protected NodeConnection getWriteConnection(Constant.Version version) throws SQLException {
-    // Randomly choose a node for handling write requests
-    DataNode dataNode = this.dataNodes.get(rand.nextInt(this.dataNodes.size()));
+    DataNodeWrapper dataNode;
+
+    if (System.getProperty("RandomSelectWriteNode", "true").equalsIgnoreCase("true")) {
+      // Randomly choose a node for handling write requests
+      dataNode = this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    } else {
+      dataNode = this.dataNodeWrapperList.get(0);
+    }
+
     String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
     Connection writeConnection =
         DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
+            Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
             System.getProperty("User", "root"),
             System.getProperty("Password", "root"));
     return new NodeConnection(
@@ -257,14 +258,14 @@ public abstract class ClusterEnvBase implements BaseEnv {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
-    for (DataNode dataNode : this.dataNodes) {
-      final String endpoint = dataNode.getIpAndPortString();
+    for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
+      final String endpoint = dataNodeWrapper.getIpAndPortString();
       endpoints.add(endpoint);
       readConnRequestDelegate.addRequest(
           () -> {
             Connection readConnection =
                 DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
+                    Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
                     System.getProperty("User", "root"),
                     System.getProperty("Password", "root"));
             return new NodeConnection(
@@ -277,14 +278,16 @@ public abstract class ClusterEnvBase implements BaseEnv {
     return readConnRequestDelegate.requestAll();
   }
 
-  private String getVersionParam(Constant.Version version) {
-    if (version == null) {
-      return "";
+  private String getParam(Constant.Version version, int timeout) {
+    StringBuilder sb = new StringBuilder("?");
+    sb.append(Config.NETWORK_TIMEOUT).append("=").append(timeout);
+    if (version != null) {
+      sb.append("&").append(VERSION).append("=").append(version);
     }
-    return "?" + VERSION + "=" + version;
+    return sb.toString();
   }
 
-  private String getNextTestCaseString() {
+  public String getNextTestCaseString() {
     if (nextTestCase != null) {
       return "_" + nextTestCase;
     }

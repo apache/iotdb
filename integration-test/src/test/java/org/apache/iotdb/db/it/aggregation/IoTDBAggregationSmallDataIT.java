@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration.aggregation;
+package org.apache.iotdb.db.it.aggregation;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -47,7 +47,7 @@ import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
 /** Multiple aggregation with filter test. */
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationSmallDataIT {
 
   private static final String TIMESTAMP_STR = "Time";
@@ -131,13 +131,11 @@ public class IoTDBAggregationSmallDataIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT count(s0),count(s1),count(s2),count(s3),count(s4) "
-                  + "FROM root.vehicle.d0 WHERE time >= 3 AND time <= 106");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT count(s0),count(s1),count(s2),count(s3),count(s4) "
+                  + "FROM root.vehicle.d0 WHERE time >= 3 AND time <= 106")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -171,13 +169,10 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       // select count(d0.s0),count(d1.s1),count(d0.s3),count(d0.s4) from root.vehicle
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT count(d0.s0),count(d1.s1),count(d0.s3),count(d0.s4) FROM root.vehicle");
-
-      Assert.assertTrue(hasResultSet);
       int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT count(d0.s0),count(d1.s1),count(d0.s3),count(d0.s4) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -208,21 +203,19 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.execute(
+        statement.executeQuery(
             "SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) FROM root.vehicle");
         fail();
-      } catch (IoTDBSQLException e) {
+      } catch (Exception e) {
         Assert.assertTrue(
             e.toString()
                 .contains(
                     "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
 
-      boolean hasResultSet =
-          statement.execute("SELECT max_value(d0.s0),max_value(d1.s1) FROM root.vehicle");
-      Assert.assertTrue(hasResultSet);
       int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT max_value(d0.s0),max_value(d1.s1) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -249,20 +242,19 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.execute("SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) FROM root.vehicle");
+        statement.executeQuery(
+            "SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) FROM root.vehicle");
         fail();
-      } catch (IoTDBSQLException e) {
+      } catch (Exception e) {
         Assert.assertTrue(
             e.toString()
                 .contains(
                     "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
 
-      boolean hasResultSet =
-          statement.execute("SELECT extreme(d0.s0),extreme(d1.s1) FROM root.vehicle");
-      Assert.assertTrue(hasResultSet);
       int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT extreme(d0.s0),extreme(d1.s1) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -289,12 +281,10 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       // select first_value(d0.s0),first_value(d1.s1),first_value(d0.s3) from root.vehicle
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT first_value(d0.s0),first_value(d1.s1),first_value(d0.s3) FROM root.vehicle");
-      Assert.assertTrue(hasResultSet);
       int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT first_value(d0.s0),first_value(d1.s1),first_value(d0.s3) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -323,12 +313,10 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       // select last_value(d0.s0),last_value(d1.s1),last_value(d0.s3) from root.vehicle
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT last_value(d0.s0),last_value(d1.s1),last_value(d0.s3) FROM root.vehicle");
-      Assert.assertTrue(hasResultSet);
       int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT last_value(d0.s0),last_value(d1.s1),last_value(d0.s3) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -357,10 +345,9 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       // select sum(d0.s0),sum(d1.s1),sum(d0.s3) from root.vehicle
-      boolean hasResultSet = statement.execute("SELECT sum(d0.s0),sum(d1.s1) FROM root.vehicle");
-      Assert.assertTrue(hasResultSet);
       int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT sum(d0.s0),sum(d1.s1) FROM root.vehicle")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -379,17 +366,17 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void lastValueWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,22222,55555"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT last_value(s0),last_value(s1) FROM root.vehicle.d0 WHERE s2 >= 3.33");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT last_value(s0),last_value(s1) FROM root.vehicle.d0 WHERE s2 >= 3.33")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -409,17 +396,17 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void firstValueWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,99,180"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT first_value(s0),first_value(s1) FROM root.vehicle.d0 WHERE s2 >= 3.33");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT first_value(s0),first_value(s1) FROM root.vehicle.d0 WHERE s2 >= 3.33")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -439,15 +426,17 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void sumWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,22321.0,55934.0,1029"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("SELECT sum(s0),sum(s1),sum(s2) FROM root.vehicle.d0 WHERE s2 >= 3.33");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT sum(s0),sum(s1),sum(s2) FROM root.vehicle.d0 WHERE s2 >= 3.33")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -469,15 +458,17 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void avgWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,11160.5,18645,206"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("SELECT avg(s0),avg(s1),avg(s2) FROM root.vehicle.d0 WHERE s2 >= 3.33");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT avg(s0),avg(s1),avg(s2) FROM root.vehicle.d0 WHERE s2 >= 3.33")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -499,18 +490,19 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void countWithSingleValueFilterTest() {
     String[] retArray = new String[] {"0,2,3,5,1,0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "SELECT count(s0),count(s1),count(s2),count(s3),"
-                  + "count(s4) FROM root.vehicle.d0 WHERE s2 >= 3.33");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + "count(s4) FROM root.vehicle.d0 WHERE s2 >= 3.33")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -536,19 +528,19 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void minTimeWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,104,1,2,101,100"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT min_time(s0),min_time(s1),min_time(s2)"
-                  + ",min_time(s3),min_time(s4) FROM root.vehicle.d0 WHERE s1 < 50000 AND s1 != 100");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT min_time(s0),min_time(s1),min_time(s2)"
+                  + ",min_time(s3),min_time(s4) FROM root.vehicle.d0 WHERE s1 < 50000 AND s1 != 100")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -574,19 +566,19 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void maxTimeWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,105,105,105,102,100"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT max_time(s0),max_time(s1),max_time(s2)"
-                  + ",max_time(s3),max_time(s4) FROM root.vehicle.d0 WHERE s1 < 50000 AND s1 != 100");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT max_time(s0),max_time(s1),max_time(s2)"
+                  + ",max_time(s3),max_time(s4) FROM root.vehicle.d0 WHERE s1 < 50000 AND s1 != 100")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -612,19 +604,19 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void minValueWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,90,180,2.22"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT min_value(s0),min_value(s1),min_value(s2) FROM root.vehicle.d0 "
-                  + "WHERE s1 < 50000 AND s1 != 100");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT min_value(s0),min_value(s1),min_value(s2) FROM root.vehicle.d0 "
+                  + "WHERE s1 < 50000 AND s1 != 100")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -647,19 +639,19 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void maxValueWithMultiValueFiltersTest() {
     String[] retArray = new String[] {"0,99,40000,11.11"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT max_value(s0),max_value(s1),max_value(s2) FROM root.vehicle.d0 "
-                  + "WHERE s1 < 50000 AND s1 != 100");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT max_value(s0),max_value(s1),max_value(s2) FROM root.vehicle.d0 "
+                  + "WHERE s1 < 50000 AND s1 != 100")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -681,20 +673,20 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  // TODO: remove ignore after supporting value filter
+  @Ignore
   @Test
   public void extremeWithMultiValueFiltersTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0,99,40000,11.11"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "SELECT extreme(s0),extreme(s1),extreme(s2)"
                   + " FROM root.vehicle.d0 "
-                  + "WHERE s1 < 50000 AND s1 != 100");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + "WHERE s1 < 50000 AND s1 != 100")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -741,42 +733,37 @@ public class IoTDBAggregationSmallDataIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
-      if (hasResultSet) {
-        try (ResultSet resultSet = statement.getResultSet()) {
-          int cnt = 0;
-          while (resultSet.next()) {
-            String ans =
-                resultSet.getString(TIMESTAMP_STR)
-                    + ","
-                    + resultSet.getString(d0s0)
-                    + ","
-                    + resultSet.getString(d0s1)
-                    + ","
-                    + resultSet.getString(d0s2)
-                    + ","
-                    + resultSet.getString(d0s3)
-                    + ","
-                    + resultSet.getString(d1s0);
-            Assert.assertEquals(retArray[cnt], ans);
-            cnt++;
-          }
-          Assert.assertEquals(17, cnt);
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(d0s0)
+                  + ","
+                  + resultSet.getString(d0s1)
+                  + ","
+                  + resultSet.getString(d0s2)
+                  + ","
+                  + resultSet.getString(d0s3)
+                  + ","
+                  + resultSet.getString(d1s0);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(17, cnt);
       }
 
       retArray = new String[] {"100,true"};
-      hasResultSet = statement.execute("SELECT s4 FROM root.vehicle.d0");
-      if (hasResultSet) {
-        try (ResultSet resultSet = statement.getResultSet()) {
-          int cnt = 0;
-          while (resultSet.next()) {
-            String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
-            Assert.assertEquals(retArray[cnt], ans);
-            cnt++;
-          }
-          Assert.assertEquals(1, cnt);
+      try (ResultSet resultSet = statement.executeQuery("SELECT s4 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
