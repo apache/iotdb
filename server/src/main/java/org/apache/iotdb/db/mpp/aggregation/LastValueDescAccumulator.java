@@ -42,7 +42,10 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   protected int addIntInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateIntLastValue(column[1].getInt(i), curTime);
         return i;
       }
@@ -53,7 +56,10 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   protected int addLongInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateLongLastValue(column[1].getLong(i), curTime);
         return i;
       }
@@ -64,7 +70,10 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   protected int addFloatInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateFloatLastValue(column[1].getFloat(i), curTime);
         return i;
       }
@@ -75,7 +84,10 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   protected int addDoubleInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateDoubleLastValue(column[1].getDouble(i), curTime);
         return i;
       }
@@ -86,7 +98,10 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   protected int addBooleanInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateBooleanLastValue(column[1].getBoolean(i), curTime);
         return i;
       }
@@ -97,7 +112,10 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   protected int addBinaryInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateBinaryLastValue(column[1].getBinary(i), curTime);
         return i;
       }

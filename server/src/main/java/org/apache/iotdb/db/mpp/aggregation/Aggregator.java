@@ -71,7 +71,8 @@ public class Aggregator {
         Column[] timeValueColumn = new Column[2];
         timeValueColumn[0] = tsBlock.getTimeColumn();
         timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        lastReadReadIndex = accumulator.addInput(timeValueColumn, curTimeRange);
+        lastReadReadIndex =
+            Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curTimeRange));
       }
       return lastReadReadIndex;
     }

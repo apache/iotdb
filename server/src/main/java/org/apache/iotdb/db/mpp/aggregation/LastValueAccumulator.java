@@ -332,7 +332,7 @@ public class LastValueAccumulator implements Accumulator {
       if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         return i;
       }
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (!column[1].isNull(i)) {
         updateBinaryLastValue(column[1].getBinary(i), curTime);
       }
     }
