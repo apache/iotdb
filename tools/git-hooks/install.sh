@@ -34,14 +34,20 @@ REL_CONFIG_SAMPLE_FILE="config.sample.sh"
 # config filename rel to script dir
 REL_CONFIG_FILE="config.sh"
 
+# color
+Red="\x1B[31m"
+Green="\x1B[32m"
+Yellow="\x1B[33m"
+NC="\x1B[0m"
+
 check_paths() {
     echo "Checking paths..."
     if [ ! -d "$PROJECT_DIR" ]; then
-        echo "ERROR: Project directory '$PROJECT_DIR' does not exist." >&2
+        printf "${Red}ERROR: Project directory '$PROJECT_DIR' does not exist.${NC}\n" >&2
         exit 1
     fi
     if [ ! -d "$HOOKS_DIR" ]; then
-        echo "ERROR: Hooks directory '$HOOKS_DIR' does not exist." >&2
+        printf "${Red}ERROR: Hooks directory '$HOOKS_DIR' does not exist.${NC}\n" >&2
         exit 1
     fi
 }
@@ -49,11 +55,11 @@ check_paths() {
 install() {
     # create the relative symlink of pre-commit script
     if [ -f "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" ] || [ -L "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" ]; then
-        echo "WARN: Overwriting '$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit'"
+        printf "${Yellow}WARN: Overwriting '$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit'${NC}\n"
     fi
     ln -sf "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" "$HOOKS_DIR/pre-commit" || exit 1
     if [ -f "pre-commit" ] && [ ! -x "pre-commit" ]; then
-        echo "ERROR: 'pre-commit' has no execute permission. Try to grant it the 'x' permission."
+        printf "${Yellow}ERROR: 'pre-commit' has no execute permission. Try to grant it the 'x' permission.${NC}\n"
         exit 1
     fi
     # create the relative symlink of config file
@@ -62,7 +68,7 @@ install() {
         test -f "$REL_CONFIG_SAMPLE_FILE" || { echo "ERROR: Could not find '$REL_CONFIG_SAMPLE_FILE'." >&2; exit 1; }
         cp "$REL_CONFIG_SAMPLE_FILE" "$REL_CONFIG_FILE"
     else
-        echo "WARN: $REL_CONFIG_FILE is already existed. Ignored."
+        printf "${Yellow}WARN: $REL_CONFIG_FILE is already existed. Ignored.${NC}\n"
     fi
     ln -sf "$PROJECT_DIR/$REL_SCRIPT_DIR/$REL_CONFIG_FILE" "$HOOKS_DIR/$REL_CONFIG_FILE" || exit 1
     # finished
@@ -73,6 +79,7 @@ main() {
     echo "Installing pre-commit hook..."
     check_paths
     install
+    printf "${Green}Installation succeed.${NC}\n"
 }
 
 main
