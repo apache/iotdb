@@ -95,6 +95,13 @@ public class SyncConfigNodeClientPool {
         .setMessage("All retry failed.");
   }
 
+  /**
+   * ConfigNode Leader stop any ConfigNode in the cluster
+   *
+   * @param configNodeLocations confignode_list of confignode-system.properties
+   * @param configNodeLocation To be removed ConfigNode
+   * @return SUCCESS_STATUS: remove ConfigNode success, other status remove failed
+   */
   public TSStatus removeConfigNode(
       List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic

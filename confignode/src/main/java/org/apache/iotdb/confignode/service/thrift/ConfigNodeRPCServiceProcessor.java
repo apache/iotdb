@@ -419,7 +419,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     if (!configManager.getNodeManager().getOnlineConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
+          .setMessage("Stop ConfigNode failed because the ConfigNode not in current Cluster.");
     }
 
     ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
@@ -427,7 +427,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         configManager.getConsensusManager().getConsensusImpl().removeConsensusGroup(groupId);
     if (!resp.isSuccess()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Remove ConfigNode failed because remove ConsensusGroup failed.");
+          .setMessage("Stop ConfigNode failed because remove ConsensusGroup failed.");
     }
 
     new Thread(

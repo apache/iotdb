@@ -194,14 +194,14 @@ public class NodeManager {
   public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
     if (removeConfigNodeLock.tryLock()) {
       try {
-        // Check ConfigNode numbers
+        // Check ConfigNodes number
         if (getOnlineConfigNodes().size() <= 1) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
                   "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
         }
 
-        // Check whether the onlineConfigNode contain the ConfigNode to be removed.
+        // Check whether the onlineConfigNodes contain the ConfigNode to be removed.
         if (!getOnlineConfigNodes().contains(removeConfigNodeReq.getConfigNodeLocation())) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
@@ -222,7 +222,7 @@ public class NodeManager {
           return getConsensusManager().write(removeConfigNodeReq).getStatus();
         } else {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-              .setMessage("Remove ConfigNode failed because there is no ConfigNode.");
+              .setMessage("Remove ConfigNode failed because update ConsensusGroup peer information failed.");
         }
       } finally {
         removeConfigNodeLock.unlock();
@@ -250,7 +250,7 @@ public class NodeManager {
     }
     return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
         .setRedirectNode(newLeader.getInternalEndPoint())
-        .setMessage("Remove ConfigNode is leader, already transfer Leader.");
+        .setMessage("The ConfigNode to be removed is leader, already transfer Leader to " + newLeader + ".");
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
