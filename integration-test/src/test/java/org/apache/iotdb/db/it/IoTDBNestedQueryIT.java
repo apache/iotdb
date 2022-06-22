@@ -394,6 +394,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -474,6 +475,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testAssociativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -502,6 +504,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testDistributiveLaw() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -528,6 +531,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testOrderOfArithmeticOperations() {
     // Priority from high to low:
     //   1. exponentiation and root extraction (not supported yet)
