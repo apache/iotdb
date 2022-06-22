@@ -255,17 +255,23 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
         tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
       }
 
+      int lastReadRowIndex = 0;
       for (Aggregator aggregator : aggregators) {
         // current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
         }
 
-        aggregator.processTsBlock(tsBlock);
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(tsBlock));
+      }
+      if (lastReadRowIndex >= tsBlock.getPositionCount()) {
+        tsBlock = null;
+      } else {
+        tsBlock = tsBlock.subTsBlock(lastReadRowIndex);
       }
 
       // can calc for next interval
-      if (tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
+      if (tsBlock != null && tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
         preCachedData = tsBlock;
       }
     }

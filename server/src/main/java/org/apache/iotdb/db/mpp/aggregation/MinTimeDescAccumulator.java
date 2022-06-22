@@ -25,13 +25,17 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 public class MinTimeDescAccumulator extends MinTimeAccumulator {
 
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateMinTime(curTime);
       }
     }
+    return column[0].getPositionCount();
   }
 
   @Override

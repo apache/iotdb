@@ -36,7 +36,7 @@ public class CountAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
     Column valueColumn = column[1];
     long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
@@ -47,13 +47,14 @@ public class CountAccumulator implements Accumulator {
       for (int i = 0; i < timeColumn.getPositionCount(); i++) {
         long curTime = timeColumn.getLong(i);
         if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-          break;
+          return i;
         }
         if (!valueColumn.isNull(i)) {
           countValue++;
         }
       }
     }
+    return timeColumn.getPositionCount();
   }
 
   // partialResult should be like: | partialCountValue1 |

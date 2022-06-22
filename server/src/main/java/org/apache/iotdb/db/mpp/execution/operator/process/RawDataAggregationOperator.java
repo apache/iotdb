@@ -151,13 +151,19 @@ public class RawDataAggregationOperator implements ProcessOperator {
         preCachedData = skipOutOfTimeRangePoints(preCachedData, curTimeRange, ascending);
       }
 
+      int lastReadRowIndex = 0;
       for (Aggregator aggregator : aggregators) {
         // current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
         }
 
-        aggregator.processTsBlock(preCachedData);
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(preCachedData));
+      }
+      if (lastReadRowIndex >= preCachedData.getPositionCount()) {
+        preCachedData = null;
+      } else {
+        preCachedData = preCachedData.subTsBlock(lastReadRowIndex);
       }
     }
     // The result is calculated from the cache
@@ -173,7 +179,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
       TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     long targetTime = ascending ? curTimeRange.getMin() : curTimeRange.getMax();
-    int left = 0, right = timeColumn.getPositionCount(), mid;
+    int left = 0, right = timeColumn.getPositionCount() - 1, mid;
     // if ascending, find the first greater than or equal to targetTime
     // else, find the first less than or equal to targetTime
     while (left < right) {
