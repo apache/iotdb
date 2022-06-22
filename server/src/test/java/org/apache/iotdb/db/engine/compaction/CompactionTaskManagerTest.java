@@ -82,7 +82,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
             0,
@@ -90,7 +91,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     seqResources.get(0).readLock();
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     Future<CompactionTaskSummary> summaryFuture = null;
@@ -146,7 +148,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
             0,
@@ -154,7 +157,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     seqResources.get(0).readLock();
     try {
       CompactionTaskManager manager = CompactionTaskManager.getInstance();
@@ -208,7 +212,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
             0,
@@ -216,7 +221,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
 
@@ -259,7 +265,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.restart();
     seqResources.get(0).readLock();
@@ -303,7 +310,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             true,
             new ReadChunkCompactionPerformer(seqResources),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
 
     for (TsFileResource resource : seqResources) {
@@ -330,7 +338,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 
 import java.util.Collections;
 import java.util.Map;
@@ -159,5 +160,10 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @Override
   public boolean isEntity() {
     return true;
+  }
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitEntityMNode(this, context);
   }
 }

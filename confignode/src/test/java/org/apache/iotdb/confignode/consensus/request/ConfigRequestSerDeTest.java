@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -516,5 +517,15 @@ public class ConfigRequestSerDeTest {
     DeleteProcedureReq req1 =
         (DeleteProcedureReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void GetRegionLocaltionsReqTest() throws IOException {
+    GetRegionLocationsReq req0 = new GetRegionLocationsReq();
+    req0.setRegionType(TConsensusGroupType.DataRegion);
+    GetRegionLocationsReq req1 =
+        (GetRegionLocationsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0.getType(), req1.getType());
+    Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
   }
 }

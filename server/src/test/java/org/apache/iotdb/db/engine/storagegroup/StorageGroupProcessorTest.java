@@ -729,7 +729,8 @@ public class StorageGroupProcessorTest {
               processor.getSequenceFileList(),
               true,
               new ReadChunkCompactionPerformer(processor.getSequenceFileList()),
-              new AtomicInteger(0));
+              new AtomicInteger(0),
+              0);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
       StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));

@@ -21,7 +21,7 @@ package org.apache.iotdb.it.env;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Cluster1Env extends ClusterEnvBase {
+public class Cluster1Env extends AbstractEnv {
   private static final Logger logger = LoggerFactory.getLogger(Cluster1Env.class);
 
   @Override

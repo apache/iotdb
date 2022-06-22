@@ -16,27 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.itbase.env;
 
-import java.util.Properties;
+package org.apache.iotdb.confignode.consensus.response;
 
-public interface BaseNode {
+import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.common.DataSet;
 
-  void createDir();
+import java.util.List;
 
-  void destroyDir();
+public class RegionLocationsResp implements DataSet {
 
-  void changeConfig(Properties properties);
+  private TSStatus status;
 
-  void start();
+  private List<TRegionLocation> regionInfosList;
 
-  void stop();
+  public TSStatus getStatus() {
+    return status;
+  }
 
-  void waitingToShutDown();
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
 
-  String getIp();
+  public List<TRegionLocation> getRegionInfosList() {
+    return regionInfosList;
+  }
 
-  int getPort();
-
-  String getIpAndPortString();
+  public void setRegionInfosList(List<TRegionLocation> regionInfosList) {
+    this.regionInfosList = regionInfosList;
+  }
 }

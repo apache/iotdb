@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -52,17 +51,19 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
   protected CompactionTaskSummary summary = new CompactionTaskSummary();
-  private Future<CompactionTaskSummary> future;
+  protected long serialId;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      AtomicInteger currentTaskNum) {
+      AtomicInteger currentTaskNum,
+      long serialId) {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
+    this.serialId = serialId;
   }
 
   public abstract void setSourceFilesToCompactionCandidate();
@@ -154,5 +155,9 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
 
   public boolean isTaskFinished() {
     return summary.isFinished();
+  }
+
+  public long getSerialId() {
+    return serialId;
   }
 }
