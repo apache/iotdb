@@ -110,31 +110,32 @@ public class IoTDBNumberPathIT {
           }
           statement.execute(sql);
           if (sql.split(" ")[0].equals("SELECT")) {
-            ResultSet resultSet = statement.getResultSet();
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            int count = metaData.getColumnCount();
-            String[] column = new String[count];
-            for (int i = 0; i < count; i++) {
-              column[i] = metaData.getColumnName(i + 1);
-            }
-            result = "";
-            while (resultSet.next()) {
-              for (int i = 1; i <= count; i++) {
-                if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
-                  String timestr = resultSet.getString(i);
-                  Long tn = Long.valueOf(timestr);
-                  Long now = System.currentTimeMillis();
-                  if (tn >= now_start && tn <= now) {
-                    timestr = "NOW()";
-                  }
-                  result += timestr + ',';
-                } else {
-                  result += resultSet.getString(i) + ',';
-                }
+            try (ResultSet resultSet = statement.executeQuery(sql)) {
+              ResultSetMetaData metaData = resultSet.getMetaData();
+              int count = metaData.getColumnCount();
+              String[] column = new String[count];
+              for (int i = 0; i < count; i++) {
+                column[i] = metaData.getColumnName(i + 1);
               }
-              result += '\n';
+              result = "";
+              while (resultSet.next()) {
+                for (int i = 1; i <= count; i++) {
+                  if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
+                    String timestr = resultSet.getString(i);
+                    Long tn = Long.valueOf(timestr);
+                    Long now = System.currentTimeMillis();
+                    if (tn >= now_start && tn <= now) {
+                      timestr = "NOW()";
+                    }
+                    result += timestr + ',';
+                  } else {
+                    result += resultSet.getString(i) + ',';
+                  }
+                }
+                result += '\n';
+              }
+              cmp = true;
             }
-            cmp = true;
           }
         }
       }

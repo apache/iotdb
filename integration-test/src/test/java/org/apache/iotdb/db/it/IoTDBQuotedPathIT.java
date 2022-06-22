@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.TestConstant;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -34,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
@@ -104,7 +104,7 @@ public class IoTDBQuotedPathIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.`\"ln`");
-    } catch (IoTDBSQLException e) {
+    } catch (SQLException e) {
       Assert.assertEquals(
           "315: The storage group name can only be characters, numbers and underscores. root.`\"ln` is not a legal path",
           e.getMessage());
