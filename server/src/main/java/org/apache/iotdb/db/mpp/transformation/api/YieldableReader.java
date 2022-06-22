@@ -20,34 +20,10 @@
 package org.apache.iotdb.db.mpp.transformation.api;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 
-public interface LayerPointReader extends YieldableReader {
+public interface YieldableReader {
 
-  boolean isConstantPointReader();
-
-  boolean next() throws QueryProcessException, IOException;
-
-  void readyForNext();
-
-  TSDataType getDataType();
-
-  long currentTime() throws IOException;
-
-  int currentInt() throws IOException;
-
-  long currentLong() throws IOException;
-
-  float currentFloat() throws IOException;
-
-  double currentDouble() throws IOException;
-
-  boolean currentBoolean() throws IOException;
-
-  boolean isCurrentNull() throws IOException;
-
-  Binary currentBinary() throws IOException;
+  YieldableState yield() throws IOException, QueryProcessException;
 }

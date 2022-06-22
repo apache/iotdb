@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.transformation.dag.util;
 
-import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
+import org.apache.iotdb.db.mpp.transformation.dag.input.IUDFInputDataSet;
 
 public class InputRowUtils {
 
