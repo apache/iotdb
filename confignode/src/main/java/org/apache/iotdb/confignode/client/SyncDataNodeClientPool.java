@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.client;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -41,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
+/** Synchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class SyncDataNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
@@ -57,10 +56,8 @@ public class SyncDataNodeClientPool {
 
   public TSStatus invalidatePartitionCache(
       TEndPoint endPoint, TInvalidateCacheReq invalidateCacheReq) {
-    SyncDataNodeInternalServiceClient client;
     TSStatus status;
-    try {
-      client = clientManager.borrowClient(endPoint);
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
       status = client.invalidatePartitionCache(invalidateCacheReq);
       LOGGER.info("Invalid Schema Cache {} successfully", invalidateCacheReq);
     } catch (IOException e) {
@@ -122,20 +119,6 @@ public class SyncDataNodeClientPool {
     } catch (TException e) {
       LOGGER.error("Delete Region on DataNode {} failed", endPoint, e);
     }
-  }
-
-  public TSStatus flush(TEndPoint endPoint, TFlushReq flushReq) {
-    TSStatus status;
-    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-      status = client.flush(flushReq);
-    } catch (IOException e) {
-      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
-      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
-    } catch (TException e) {
-      LOGGER.error("flush on DataNode {} failed", endPoint, e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-    }
-    return status;
   }
 
   public TSStatus invalidatePermissionCache(
