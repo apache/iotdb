@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -479,6 +480,17 @@ public class ConfigRequestSerDeTest {
                 0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
     ApplyConfigNodeReq req1 =
         (ApplyConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void removeConfigNodeReqTest() throws IOException {
+    RemoveConfigNodeReq req0 =
+        new RemoveConfigNodeReq(
+            new TConfigNodeLocation(
+                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+    RemoveConfigNodeReq req1 =
+        (RemoveConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
