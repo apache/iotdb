@@ -26,15 +26,16 @@ import org.apache.iotdb.itbase.constant.UDFTestConstant;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -56,6 +57,8 @@ public class IoTDBUDTFHybridQueryIT {
       statement.execute("SET STORAGE GROUP TO root.vehicle");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle.d2.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle.d2.s2 with datatype=INT32,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -64,10 +67,13 @@ public class IoTDBUDTFHybridQueryIT {
   private static void generateData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (int i = 0; i < 10; ++i) {
+      for (int i = 0; i < 4; ++i) {
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+        statement.execute(
+            (String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -89,7 +95,6 @@ public class IoTDBUDTFHybridQueryIT {
     EnvFactory.getEnv().cleanAfterClass();
   }
 
-  @Ignore
   @Test
   public void testUserDefinedBuiltInHybridAggregationQuery() {
     String sql =
@@ -105,11 +110,10 @@ public class IoTDBUDTFHybridQueryIT {
       assertTrue(
           throwable
               .getMessage()
-              .contains("User-defined and built-in hybrid aggregation is not supported together."));
+              .contains("Raw data and aggregation hybrid query is not supported."));
     }
   }
 
-  @Ignore
   @Test
   public void testUserDefinedFunctionFillFunctionHybridQuery() {
     String sql =
@@ -127,7 +131,6 @@ public class IoTDBUDTFHybridQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void testLastUserDefinedFunctionQuery() {
     String sql =
@@ -145,23 +148,38 @@ public class IoTDBUDTFHybridQueryIT {
     }
   }
 
-  @Ignore
   @Test
   public void testUserDefinedFunctionAlignByDeviceQuery() {
-    String sql =
-        String.format(
-            "select adder(temperature), counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 align by device",
-            UDFTestConstant.ACCESS_STRATEGY_KEY, UDFTestConstant.ACCESS_STRATEGY_ROW_BY_ROW);
+    String[] retArray =
+        new String[] {
+          "0,root.vehicle.d1,1.0,0.0",
+          "1,root.vehicle.d1,2.0,0.8414709848078965",
+          "2,root.vehicle.d1,3.0,0.9092974268256817",
+          "3,root.vehicle.d1,4.0,0.1411200080598672"
+        };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail();
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 + 1, sin(s2) from root.vehicle.* align by device")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString("s1 + 1")
+                  + ","
+                  + resultSet.getString("sin(s2)");
+          System.out.println(ans);
+          cnt++;
+        }
+        // assertEquals(retSet.size(), cnt);
+      }
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains("ALIGN BY DEVICE clause is not supported in UDF queries."));
+      throwable.printStackTrace();
+      fail(throwable.getMessage());
     }
   }
 }
