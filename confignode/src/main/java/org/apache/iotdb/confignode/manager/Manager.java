@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -225,6 +226,8 @@ public interface Manager {
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  TSStatus flush(TFlushReq req);
 
   void addMetrics();
 

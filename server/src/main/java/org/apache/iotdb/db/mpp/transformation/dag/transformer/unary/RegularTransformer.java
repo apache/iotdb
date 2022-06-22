@@ -50,10 +50,6 @@ public class RegularTransformer extends UnaryTransformer {
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
     Binary binary = layerPointReader.currentBinary();
-    if (pattern.matcher(binary.getStringValue()).find()) {
-      cachedBoolean = true;
-    } else {
-      currentNull = true;
-    }
+    cachedBoolean = pattern.matcher(binary.getStringValue()).find();
   }
 }
