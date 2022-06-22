@@ -87,23 +87,13 @@ struct TRegionLocation {
   7: optional string status;
 }
 
-struct THeartbeatReq {
-  1: required i64 heartbeatTimestamp
-}
-
-struct THeartbeatResp {
-  1: required i64 heartbeatTimestamp
-  2: optional i16 cpu
-  3: optional i16 memory
-}
-
 struct TDataNodeInfo {
   1: required TDataNodeLocation location
   2: required i32 cpuCoreNum
   3: required i64 maxMemory
 }
 
-struct TFlushReq{
+struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
    3: optional i32 dataNodeId

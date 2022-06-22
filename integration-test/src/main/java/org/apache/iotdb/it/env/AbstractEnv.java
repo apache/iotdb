@@ -40,7 +40,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
@@ -48,7 +47,9 @@ import static org.junit.Assert.fail;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = LoggerFactory.getLogger(AbstractEnv.class);
-  private final int NODE_START_TIMEOUT = 10;
+  private final int NODE_START_TIMEOUT = 100;
+  private final int PROBE_TIMEOUT_MS = 2000;
+  private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
   protected List<ConfigNodeWrapper> configNodeWrapperList;
   protected List<DataNodeWrapper> dataNodeWrapperList;
   private final Random rand = new Random();
@@ -136,9 +137,9 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   public String getTestClassName() {
-    StackTraceElement stack[] = Thread.currentThread().getStackTrace();
-    for (int i = 0; i < stack.length; i++) {
-      String className = stack[i].getClassName();
+    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+    for (StackTraceElement stackTraceElement : stack) {
+      String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
         return className.substring(className.lastIndexOf(".") + 1);
       }
@@ -159,53 +160,34 @@ public abstract class AbstractEnv implements BaseEnv {
     return "IT";
   }
 
-  public void testWorking() throws InterruptedException {
+  public void testWorking() {
     List<String> endpoints =
         dataNodeWrapperList.stream()
-            .map(AbstractNodeWrapper::getIpAndPortString)
+            .map(DataNodeWrapper::getIpAndPortString)
             .collect(Collectors.toList());
-    boolean[] success = new boolean[dataNodeWrapperList.size()];
-    Exception[] exceptions = new Exception[dataNodeWrapperList.size()];
-    final int probeTimeout = 5;
-    AtomicInteger successCount = new AtomicInteger(0);
-    for (int counter = 0; counter < 30; counter++) {
-      RequestDelegate<Void> testDelegate = new ParallelRequestDelegate<>(endpoints, probeTimeout);
-      for (int i = 0; i < dataNodeWrapperList.size(); i++) {
-        final int idx = i;
-        final String dataNodeEndpoint = dataNodeWrapperList.get(i).getIpAndPortString();
-        testDelegate.addRequest(
-            () -> {
-              if (!success[idx]) {
-                try (Connection ignored = getConnection(dataNodeEndpoint, probeTimeout)) {
-                  success[idx] = true;
-                  successCount.incrementAndGet();
-                } catch (Exception e) {
-                  exceptions[idx] = e;
-                  logger.debug("Open connection of {} failed", dataNodeEndpoint, e);
-                }
+    RequestDelegate<Void> testDelegate =
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+    for (DataNodeWrapper dataNode : dataNodeWrapperList) {
+      final String dataNodeEndpoint = dataNode.getIpAndPortString();
+      testDelegate.addRequest(
+          () -> {
+            Exception lastException = null;
+            for (int i = 0; i < 30; i++) {
+              try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
+                return null;
+              } catch (Exception e) {
+                lastException = e;
+                TimeUnit.SECONDS.sleep(1L);
               }
-              return null;
-            });
-      }
-      try {
-        testDelegate.requestAll();
-      } catch (SQLException e) {
-        // It will never be thrown as it has already caught in the request.
-      }
-      if (successCount.get() == dataNodeWrapperList.size()) {
-        logger.info("The whole cluster is ready.");
-        return;
-      }
-      TimeUnit.SECONDS.sleep(1);
+            }
+            throw lastException;
+          });
     }
-    // The cluster is not ready after 30 times to try
-    for (int i = 0; i < dataNodeWrapperList.size(); i++) {
-      if (!success[i] && exceptions[i] != null) {
-        logger.error(
-            "Connect to {} failed", dataNodeWrapperList.get(i).getIpAndPortString(), exceptions[i]);
-      }
+    try {
+      testDelegate.requestAll();
+    } catch (Exception e) {
+      fail("After 30 times retry, the cluster can't work!");
     }
-    fail("After 30 times retry, the cluster can't work!");
   }
 
   @Override
@@ -232,7 +214,7 @@ public abstract class AbstractEnv implements BaseEnv {
     IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + endpoint,
+                Config.IOTDB_URL_PREFIX + endpoint + getParam(null, queryTimeout),
                 System.getProperty("User", "root"),
                 System.getProperty("Password", "root"));
     connection.setQueryTimeout(queryTimeout);
@@ -262,7 +244,7 @@ public abstract class AbstractEnv implements BaseEnv {
     String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
     Connection writeConnection =
         DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
+            Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
             System.getProperty("User", "root"),
             System.getProperty("Password", "root"));
     return new NodeConnection(
@@ -276,14 +258,14 @@ public abstract class AbstractEnv implements BaseEnv {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
-    for (DataNodeWrapper dataNodeWarpper : this.dataNodeWrapperList) {
-      final String endpoint = dataNodeWarpper.getIpAndPortString();
+    for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
+      final String endpoint = dataNodeWrapper.getIpAndPortString();
       endpoints.add(endpoint);
       readConnRequestDelegate.addRequest(
           () -> {
             Connection readConnection =
                 DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
+                    Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
                     System.getProperty("User", "root"),
                     System.getProperty("Password", "root"));
             return new NodeConnection(
@@ -296,11 +278,13 @@ public abstract class AbstractEnv implements BaseEnv {
     return readConnRequestDelegate.requestAll();
   }
 
-  private String getVersionParam(Constant.Version version) {
-    if (version == null) {
-      return "";
+  private String getParam(Constant.Version version, int timeout) {
+    StringBuilder sb = new StringBuilder("?");
+    sb.append(Config.NETWORK_TIMEOUT).append("=").append(timeout);
+    if (version != null) {
+      sb.append("&").append(VERSION).append("=").append(version);
     }
-    return "?" + VERSION + "=" + version;
+    return sb.toString();
   }
 
   public String getNextTestCaseString() {

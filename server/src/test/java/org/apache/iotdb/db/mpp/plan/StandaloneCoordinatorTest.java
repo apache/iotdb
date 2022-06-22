@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -78,6 +79,7 @@ public class StandaloneCoordinatorTest {
   public void tearDown() throws Exception {
     configNode.clear();
     WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
     WALManager.getInstance().stop();
     StorageEngineV2.getInstance().stop();
     FlushManager.getInstance().stop();

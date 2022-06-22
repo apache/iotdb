@@ -136,12 +136,20 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void destroyDir() {
-    // rm this.path
-    try {
-      FileUtils.forceDelete(new File(getNodePath()));
-    } catch (IOException ex) {
-      fail("Delete node dir failed. " + ex);
+    for (int i = 0; i < 3; i++) {
+      try {
+        FileUtils.forceDelete(new File(getNodePath()));
+        return;
+      } catch (IOException ex) {
+        logger.error("Delete node dir failed. RetryTimes={}", i + 1, ex);
+        try {
+          TimeUnit.SECONDS.sleep(3);
+        } catch (InterruptedException e) {
+          fail("Delete node dir failed. " + e);
+        }
+      }
     }
+    fail("Delete node dir failed.");
   }
 
   @Override
