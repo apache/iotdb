@@ -20,6 +20,8 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.RpcUtils;
 
+import java.time.ZoneId;
+
 public class IoTDBConnectionParams {
 
   private String host = Config.IOTDB_DEFAULT_HOST;
@@ -35,6 +37,8 @@ public class IoTDBConnectionParams {
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
   private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
   private int networkTimeout = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+
+  private String timeZone = ZoneId.systemDefault().toString();
 
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
@@ -122,5 +126,13 @@ public class IoTDBConnectionParams {
 
   public int getNetworkTimeout() {
     return this.networkTimeout;
+  }
+
+  public void setTimeZone(String timeZone) {
+    this.timeZone = timeZone;
+  }
+
+  public String getTimeZone() {
+    return this.timeZone;
   }
 }
