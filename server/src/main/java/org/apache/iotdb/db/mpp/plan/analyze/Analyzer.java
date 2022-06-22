@@ -62,7 +62,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
-import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -401,14 +400,24 @@ public class Analyzer {
 
         if (queryStatement.getFillComponent() != null) {
           FillComponent fillComponent = queryStatement.getFillComponent();
+          List<Expression> fillColumnList =
+              outputExpressions.stream().map(Pair::getLeft).distinct().collect(Collectors.toList());
           if (fillComponent.getFillPolicy() == FillPolicy.VALUE) {
-            List<Expression> fillColumnList =
-                outputExpressions.stream()
-                    .map(Pair::getLeft)
-                    .distinct()
-                    .collect(Collectors.toList());
             for (Expression fillColumn : fillColumnList) {
-              checkDataTypeConsistencyInFill(fillColumn, fillComponent.getFillValue());
+              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
+              if (!fillComponent.getFillValue().isDataTypeConsistency(checkedDataType)) {
+                throw new SemanticException(
+                    "FILL: the data type of the fill value should be the same as the output column");
+              }
+            }
+          } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
+            for (Expression fillColumn : fillColumnList) {
+              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
+              if (!checkedDataType.isNumeric()) {
+                throw new SemanticException(
+                    String.format(
+                        "FILL: dataType %s doesn't support linear fill.", checkedDataType));
+              }
             }
           }
           analysis.setFillDescriptor(
@@ -854,15 +863,6 @@ public class Analyzer {
           throw new SemanticException(
               "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
         }
-      }
-    }
-
-    private void checkDataTypeConsistencyInFill(Expression fillColumn, Literal fillValue) {
-      TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
-      if (!fillValue.isDataTypeConsistency(checkedDataType)) {
-        // TODO: consider type casting
-        throw new SemanticException(
-            "FILL: the data type of the fill value should be the same as the output column");
       }
     }
 
