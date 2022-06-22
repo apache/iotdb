@@ -38,7 +38,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -481,10 +480,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
       e.printStackTrace();
       fail();
     }
-  }
 
-  @Test
-  public void testUDFNameIllegal() {
+    // Illegal Name
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -515,253 +512,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
       try {
         statement.execute(
             "create function \"udf\" as 'org.apache.iotdb.db.query.udf.example.Adder'");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
-  public void testTriggerName() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      String[] timeseries = {
-        "root.vehicle.d1.s1",
-        "root.vehicle.d1.s2",
-        "root.vehicle.d1.s3",
-        "root.vehicle.d1.s4",
-        "root.vehicle.d1.s5",
-      };
-
-      String[] triggerNames = {
-        "`trigger`", "trigger1", "`test```", "`111`", "`[trigger]`",
-      };
-
-      String[] resultNames = {
-        "trigger", "trigger1", "test`", "111", "[trigger]",
-      };
-
-      // show
-      try (ResultSet resultSet = statement.executeQuery("show triggers")) {
-        assertFalse(resultSet.next());
-      }
-
-      String createTimeSereisSql = "CREATE TIMESERIES %s FLOAT";
-      String createTriggerSql =
-          "create trigger %s before insert on %s "
-              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'";
-      for (int i = 0; i < timeseries.length; ++i) {
-        statement.execute(String.format(createTimeSereisSql, timeseries[i]));
-        statement.execute(String.format(createTriggerSql, triggerNames[i], timeseries[i]));
-      }
-      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-      try (ResultSet resultSet = statement.executeQuery("show triggers")) {
-        while (resultSet.next()) {
-          String trigger = resultSet.getString(1).toLowerCase();
-          Assert.assertTrue(expectedResult.contains(trigger));
-          expectedResult.remove(trigger);
-        }
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  // todo: add these back when support trigger and cq in new cluster
-  //  @Test
-  //  public void testTriggerNameIllegal() {
-  //    try (Connection connection = EnvFactory.getEnv().getConnection();
-  //        Statement statement = connection.createStatement()) {
-  //      try {
-  //        statement.execute(
-  //            "create trigger trigger` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create trigger `trigger`` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create trigger 111 before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create trigger 'tri' before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create trigger \"tri\" before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //    } catch (SQLException e) {
-  //      e.printStackTrace();
-  //      fail();
-  //    }
-  //  }
-  //
-  //  @Test
-  //  public void testContinuousQueryNameIllegal() {
-  //    try (Connection connection = EnvFactory.getEnv().getConnection();
-  //        Statement statement = connection.createStatement()) {
-  //      try {
-  //        statement.execute(
-  //            "CREATE CONTINUOUS QUERY `cq1 "
-  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-  //                + "GROUP BY time(1s) END");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "CREATE CONTINUOUS QUERY 111 "
-  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-  //                + "GROUP BY time(1s) END");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "CREATE CONTINUOUS QUERY ``cq1` "
-  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-  //                + "GROUP BY time(1s) END");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "CREATE CONTINUOUS QUERY 'cq1' "
-  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-  //                + "GROUP BY time(1s) END");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "CREATE CONTINUOUS QUERY \"cq1\" "
-  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-  //                + "GROUP BY time(1s) END");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //    } catch (SQLException e) {
-  //      e.printStackTrace();
-  //      fail();
-  //    }
-  //  }
-
-  @Test
-  public void testTemplateName() {
-    String[] templateNames = {
-      "id",
-      "ID",
-      "id0",
-      "_id",
-      "0id",
-      "`233`",
-      "`ab!`",
-      "`\"ab\"`",
-      "`\\\"ac\\\"`",
-      "`'ab'`",
-      "`a.b`",
-      "`a``b`"
-    };
-
-    String[] resultNames = {
-      "id", "ID", "id0", "_id", "0id", "233", "ab!", "\"ab\"", "\\\"ac\\\"", "'ab'", "a.b", "a`b"
-    };
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      for (String templateName : templateNames) {
-        String createTemplateSql =
-            String.format(
-                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
-                templateName);
-        statement.execute(createTemplateSql);
-      }
-
-      try (ResultSet resultSet = statement.executeQuery("SHOW TEMPLATES")) {
-        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
-        while (resultSet.next()) {
-          Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
-          expectedResult.remove(resultSet.getString("template name"));
-        }
-        Assert.assertEquals(0, expectedResult.size());
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
-
-  @Test
-  public void testTemplateNameIllegal() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try {
-        statement.execute(
-            "create schema template `a`` "
-                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create schema template 111 "
-                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create schema template `a "
-                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create schema template 'a' "
-                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute(
-            "create schema template \"a\" "
-                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
         fail();
       } catch (Exception ignored) {
       }
@@ -819,10 +569,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
       e.printStackTrace();
       fail();
     }
-  }
 
-  @Test
-  public void testUserNameIllegal() {
+    // Illegal names
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -906,10 +654,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
       e.printStackTrace();
       fail();
     }
-  }
 
-  @Test
-  public void testRoleNameIllegal() {
+    // Illegal names
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -948,7 +694,163 @@ public class IoTDBSyntaxConventionIdentifierIT {
     }
   }
 
+  // todo: add this back when supporting trigger
+  //  @Test
+  //  public void testTriggerName() {
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      String[] timeseries = {
+  //        "root.vehicle.d1.s1",
+  //        "root.vehicle.d1.s2",
+  //        "root.vehicle.d1.s3",
+  //        "root.vehicle.d1.s4",
+  //        "root.vehicle.d1.s5",
+  //      };
+  //
+  //      String[] triggerNames = {
+  //        "`trigger`", "trigger1", "`test```", "`111`", "`[trigger]`",
+  //      };
+  //
+  //      String[] resultNames = {
+  //        "trigger", "trigger1", "test`", "111", "[trigger]",
+  //      };
+  //
+  //      // show
+  //      try (ResultSet resultSet = statement.executeQuery("show triggers")) {
+  //        assertFalse(resultSet.next());
+  //      }
+  //
+  //      String createTimeSereisSql = "CREATE TIMESERIES %s FLOAT";
+  //      String createTriggerSql =
+  //          "create trigger %s before insert on %s "
+  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'";
+  //      for (int i = 0; i < timeseries.length; ++i) {
+  //        statement.execute(String.format(createTimeSereisSql, timeseries[i]));
+  //        statement.execute(String.format(createTriggerSql, triggerNames[i], timeseries[i]));
+  //      }
+  //      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
+  //      try (ResultSet resultSet = statement.executeQuery("show triggers")) {
+  //        while (resultSet.next()) {
+  //          String trigger = resultSet.getString(1).toLowerCase();
+  //          Assert.assertTrue(expectedResult.contains(trigger));
+  //          expectedResult.remove(trigger);
+  //        }
+  //      }
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
+
+  //  @Test
+  //  public void testTriggerNameIllegal() {
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      try {
+  //        statement.execute(
+  //            "create trigger trigger` before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger `trigger`` before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger 111 before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger 'tri' before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger \"tri\" before insert on root.sg1.d1  "
+  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
+  //
+
+  // todo: add this back when supporting cq
+
+  //  @Test
+  //  public void testContinuousQueryNameIllegal() {
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY `cq1 "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY 111 "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY ``cq1` "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY 'cq1' "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "CREATE CONTINUOUS QUERY \"cq1\" "
+  //                + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+  //                + "GROUP BY time(1s) END");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
+
   // todo: add these back when support sync
+
   //  @Test
   //  public void testPipeSinkNameIllegal() {
   //    try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -979,6 +881,110 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //
   //      try {
   //        statement.execute("CREATE PIPESINK a!@cb AS IoTDB (`ip` = '127.0.0.1')");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
+
+  // todo: add this back when support template
+
+  //  @Test
+  //  public void testTemplateName() {
+  //    String[] templateNames = {
+  //        "id",
+  //        "ID",
+  //        "id0",
+  //        "_id",
+  //        "0id",
+  //        "`233`",
+  //        "`ab!`",
+  //        "`\"ab\"`",
+  //        "`\\\"ac\\\"`",
+  //        "`'ab'`",
+  //        "`a.b`",
+  //        "`a``b`"
+  //    };
+  //
+  //    String[] resultNames = {
+  //        "id", "ID", "id0", "_id", "0id", "233", "ab!", "\"ab\"", "\\\"ac\\\"", "'ab'", "a.b",
+  // "a`b"
+  //    };
+  //
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      for (String templateName : templateNames) {
+  //        String createTemplateSql =
+  //            String.format(
+  //                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN
+  // encoding=PLAIN compression=SNAPPY)",
+  //                templateName);
+  //        statement.execute(createTemplateSql);
+  //      }
+  //
+  //      try (ResultSet resultSet = statement.executeQuery("SHOW TEMPLATES")) {
+  //        Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
+  //        while (resultSet.next()) {
+  //          Assert.assertTrue(expectedResult.contains(resultSet.getString("template name")));
+  //          expectedResult.remove(resultSet.getString("template name"));
+  //        }
+  //        Assert.assertEquals(0, expectedResult.size());
+  //      }
+  //    } catch (SQLException e) {
+  //      e.printStackTrace();
+  //      fail();
+  //    }
+  //  }
+  //
+  //  @Test
+  //  public void testTemplateNameIllegal() {
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      try {
+  //        statement.execute(
+  //            "create schema template `a`` "
+  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
+  // compression=SNAPPY)");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create schema template 111 "
+  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
+  // compression=SNAPPY)");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create schema template `a "
+  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
+  // compression=SNAPPY)");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create schema template 'a' "
+  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
+  // compression=SNAPPY)");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create schema template \"a\" "
+  //                + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN
+  // compression=SNAPPY)");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
