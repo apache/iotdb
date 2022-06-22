@@ -122,8 +122,10 @@ public class SourceHandle implements ISourceHandle {
         throw new IllegalStateException("Source handle is blocked.");
       }
 
-      TsBlock tsBlock;
-      tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
+      TsBlock tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
+      if (tsBlock == null) {
+        return null;
+      }
       logger.info(
           "Receive {} TsdBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
       currSequenceId += 1;
