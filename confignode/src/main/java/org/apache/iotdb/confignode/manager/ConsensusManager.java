@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -144,6 +145,23 @@ public class ConsensusManager {
         .isSuccess();
   }
 
+  /**
+   * Remove a ConfigNode Peer out of PartitionRegion
+   *
+   * @param removeConfigNodeReq RemoveConfigNodeReq
+   * @return True if successfully removePeer. False if another ConfigNode is being removed to the
+   *     PartitionRegion
+   */
+  public boolean removeConfigNodePeer(RemoveConfigNodeReq removeConfigNodeReq) {
+    return consensusImpl
+        .removePeer(
+            consensusGroupId,
+            new Peer(
+                consensusGroupId,
+                removeConfigNodeReq.getConfigNodeLocation().getConsensusEndPoint()))
+        .isSuccess();
+  }
+
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusWriteResponse write(ConfigRequest req) {
     return consensusImpl.write(consensusGroupId, req);
@@ -158,7 +176,22 @@ public class ConsensusManager {
     return consensusImpl.isLeader(consensusGroupId);
   }
 
+  public Peer getLeader(List<TConfigNodeLocation> onlineConfigNodes) {
+    Peer leader = consensusImpl.getLeader(consensusGroupId);
+
+    TConfigNodeLocation nodeLocation =
+        onlineConfigNodes.stream()
+            .filter(e -> e.getConsensusEndPoint().equals(leader.getEndpoint()))
+            .findFirst()
+            .get();
+    return new Peer(consensusGroupId, nodeLocation.getInternalEndPoint());
+  }
+
   public ConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
+  }
+
+  public IConsensus getConsensusImpl() {
+    return consensusImpl;
   }
 }
