@@ -23,8 +23,13 @@
 # enable the pre-commit hooks, 0 - off, 1 - on
 export IOTDB_GIT_HOOKS=1
 # maven path
+# If in Git Bash, replace all '\' to '/', and change the driver path from 'C:\' to '/c/
+# No escape character is needed.
+# Example:
+#   export IOTDB_MAVEN_PATH="/c/Program Files/apache-maven-3.6/bin/mvn"
 export IOTDB_MAVEN_PATH="mvn"
 # git path
+# If in Git Bash, see 'IOTDB_MAVEN_PATH'
 export IOTDB_GIT_PATH="git"
 # smart select the changed java module, 0 - off, 1 - on
 export IOTDB_SMART_JAVA_MODULES=1
