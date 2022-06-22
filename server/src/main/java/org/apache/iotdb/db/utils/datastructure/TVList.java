@@ -59,7 +59,7 @@ public abstract class TVList {
     timestamps = new ArrayList<>();
     size = 0;
     minTime = Long.MAX_VALUE;
-    maxTime = Long.MAX_VALUE;
+    maxTime = Long.MIN_VALUE;
     referenceCount = new AtomicInteger();
   }
 
