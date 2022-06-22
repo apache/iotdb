@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -73,6 +74,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -473,7 +475,9 @@ public class ConfigManager implements Manager {
     if (getConsensusManager().isLeader()) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
+      Peer leader = consensusManager.getLeader(nodeManager.getOnlineConfigNodes());
       return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+          .setRedirectNode(leader.getEndpoint())
           .setMessage(
               "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
     }
@@ -623,6 +627,16 @@ public class ConfigManager implements Manager {
   @Override
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     return nodeManager.applyConfigNode(applyConfigNodeReq);
+  }
+
+  @Override
+  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.removeConfigNode(removeConfigNodeReq);
+    } else {
+      return status;
+    }
   }
 
   @Override

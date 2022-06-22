@@ -304,6 +304,10 @@ service ConfigIService {
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
 
+  common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
+
   /* UDF */
 
   common.TSStatus createFunction(TCreateFunctionReq req)
