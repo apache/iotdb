@@ -515,6 +515,12 @@ class RatisConsensus implements IConsensus {
     return divisionInfo.isLeader();
   }
 
+  /**
+   * returns the known leader to the given group. NOTICE: if the local peer isn't a member of given
+   * group, getLeader will return null.
+   *
+   * @return null if local peer isn't in group, otherwise group leader.
+   */
   @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
@@ -526,8 +532,23 @@ class RatisConsensus implements IConsensus {
       logger.warn("fetch division info for group " + groupId + " failed due to: ", e);
       return null;
     }
+    if (leaderId == null) {
+      return null;
+    }
     TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(leaderId);
     return new Peer(groupId, leaderEndpoint);
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    List<ConsensusGroupId> ids = new ArrayList<>();
+    server
+        .getGroupIds()
+        .forEach(
+            groupId -> {
+              ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
+            });
+    return ids;
   }
 
   @Override

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -84,7 +85,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.apache.commons.io.FileUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -142,7 +142,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 @SuppressWarnings("java:S1135") // ignore todos
 public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionMemoryImpl.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -153,9 +153,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
 
-  // the log file seriesPath
-  private String logFilePath;
-  private File logFile;
+  // the log file writer
+  private boolean usingMLog = true;
   private MLogWriter logWriter;
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
@@ -199,6 +198,36 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return;
     }
 
+    initDir();
+
+    try {
+      // do not write log when recover
+      isRecovering = true;
+
+      tagManager = new TagManager(schemaRegionDirPath);
+      mtree = new MTreeBelowSGMemoryImpl(storageGroupMNode, schemaRegionId.getId());
+
+      if (!(config.isClusterMode()
+          && config
+              .getSchemaRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.RatisConsensus))) {
+        usingMLog = true;
+        initMLog();
+      } else {
+        usingMLog = false;
+      }
+
+      isRecovering = false;
+    } catch (IOException e) {
+      logger.error(
+          "Cannot recover all schema info from {}, we try to recover as possible as we can",
+          schemaRegionDirPath,
+          e);
+    }
+    initialized = true;
+  }
+
+  private void initDir() throws SchemaDirCreationFailureException {
     String sgDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgDirPath);
     if (!sgSchemaFolder.exists()) {
@@ -229,39 +258,31 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         }
       }
     }
-    logFilePath = schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG;
+  }
 
-    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+  private void initMLog() throws IOException {
+    int lineNumber = initFromLog();
 
-    try {
-      // do not write log when recover
-      isRecovering = true;
+    logWriter = new MLogWriter(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
+    logWriter.setLogNum(lineNumber);
+  }
 
-      tagManager = new TagManager(schemaRegionDirPath);
-      mtree = new MTreeBelowSGMemoryImpl(storageGroupMNode, schemaRegionId.getId());
-
-      int lineNumber = initFromLog(logFile);
-
-      logWriter = new MLogWriter(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
-      logWriter.setLogNum(lineNumber);
-      isRecovering = false;
-    } catch (IOException e) {
-      logger.error(
-          "Cannot recover all MTree from {} file, we try to recover as possible as we can",
-          storageGroupFullPath,
-          e);
+  public void writeToMLog(PhysicalPlan plan) throws IOException {
+    if (usingMLog && !isRecovering) {
+      logWriter.putLog(plan);
     }
-    initialized = true;
   }
 
   public void forceMlog() {
     if (!initialized) {
       return;
     }
-    try {
-      logWriter.force();
-    } catch (IOException e) {
-      logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
+    if (usingMLog) {
+      try {
+        logWriter.force();
+      } catch (IOException e) {
+        logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
+      }
     }
   }
 
@@ -271,7 +292,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @return line number of the logFile
    */
   @SuppressWarnings("squid:S3776")
-  private int initFromLog(File logFile) throws IOException {
+  private int initFromLog() throws IOException {
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(
+            schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG);
+
     long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
@@ -413,76 +438,104 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
+  // currently, this method is only used for cluster-ratis mode
   @Override
   public synchronized boolean createSnapshot(File snapshotDir) {
-    File mLogSnapshotTmp =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT_TMP);
-    File mLogSnapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
+    logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
+    boolean isSuccess = true;
+    long startTime = System.currentTimeMillis();
 
-    try {
-      logWriter.copyTo(mLogSnapshotTmp);
-      if (mLogSnapshot.exists() && !mLogSnapshot.delete()) {
-        logger.error(
-            "Failed to delete old snapshot file {} while creating snapshot for schemaRegion {}.",
-            mLogSnapshot.getName(),
-            schemaRegionId);
-        return false;
-      }
+    long mtreeSnapshotStartTime = System.currentTimeMillis();
+    isSuccess = isSuccess && mtree.createSnapshot(snapshotDir);
+    logger.info(
+        "MTree snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - mtreeSnapshotStartTime);
 
-      if (!mLogSnapshotTmp.renameTo(mLogSnapshot)) {
-        logger.error(
-            "Failed to rename {} to {} while creating snapshot for schemaRegion {}.",
-            mLogSnapshotTmp.getName(),
-            mLogSnapshot.getName(),
-            schemaRegionId);
-        mLogSnapshot.delete();
-        return false;
-      }
+    long tagSnapshotStartTime = System.currentTimeMillis();
+    isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
+    logger.info(
+        "Tag snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - tagSnapshotStartTime);
 
-      return tagManager.createSnapshot(snapshotDir);
-    } catch (IOException e) {
-      logger.error(
-          "Failed to create snapshot for schemaRegion {} due to {}",
-          schemaRegionId,
-          e.getMessage(),
-          e);
-      mLogSnapshot.delete();
-      return false;
-    } finally {
-      mLogSnapshotTmp.delete();
-    }
+    logger.info(
+        "Snapshot creation of schemaRegion {} costs {}ms.",
+        schemaRegionId,
+        System.currentTimeMillis() - startTime);
+    logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+
+    return isSuccess;
   }
 
+  // currently, this method is only used for cluster-ratis mode
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    File mLogSnapshot =
-        SystemFileFactory.INSTANCE.getFile(
-            latestSnapshotRootDir, MetadataConstant.METADATA_LOG_SNAPSHOT);
-    File tagSnapshot =
-        SystemFileFactory.INSTANCE.getFile(
-            latestSnapshotRootDir, MetadataConstant.TAG_LOG_SNAPSHOT);
-
     clear();
 
-    File mLog =
-        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.METADATA_LOG);
-    File tagFile =
-        SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath, MetadataConstant.TAG_LOG);
-    mLog.delete();
-    tagFile.delete();
+    logger.info("Start loading snapshot of schemaRegion {}", schemaRegionId);
+    long startTime = System.currentTimeMillis();
 
     try {
-      FileUtils.copyFile(mLogSnapshot, mLog);
-      FileUtils.copyFile(tagSnapshot, tagFile);
+      usingMLog = false;
 
-      init();
-    } catch (IOException | MetadataException e) {
+      isRecovering = true;
+
+      long tagSnapshotStartTime = System.currentTimeMillis();
+      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      logger.info(
+          "Tag snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - tagSnapshotStartTime);
+
+      long mtreeSnapshotStartTime = System.currentTimeMillis();
+      mtree =
+          MTreeBelowSGMemoryImpl.loadFromSnapshot(
+              latestSnapshotRootDir,
+              storageGroupMNode,
+              schemaRegionId.getId(),
+              measurementMNode -> {
+                if (measurementMNode.getOffset() == -1) {
+                  return;
+                }
+                try {
+                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
+                } catch (IOException e) {
+                  logger.error(
+                      "Failed to recover tagIndex for {} in schemaRegion {}.",
+                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+                      schemaRegionId);
+                }
+              });
+      logger.info(
+          "MTree snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - mtreeSnapshotStartTime);
+
+      isRecovering = false;
+      initialized = true;
+
+      logger.info(
+          "Snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - startTime);
+      logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
+    } catch (IOException e) {
       logger.error(
-          "Failed to load snapshot for schemaRegion {}  ue to {}",
+          "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
           schemaRegionId,
           e.getMessage(),
           e);
+      try {
+        initialized = false;
+        isRecovering = true;
+        init();
+      } catch (MetadataException metadataException) {
+        logger.error(
+            "Error occurred during initializing schemaRegion {}",
+            schemaRegionId,
+            metadataException);
+      }
     }
   }
 
@@ -541,7 +594,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
         }
         plan.setTagOffset(offset);
-        logWriter.createTimeseries(plan);
+        writeToMLog(plan);
         if (syncManager.isEnableSync()) {
           syncManager.syncMetadataPlan(plan);
         }
@@ -675,7 +728,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           }
         }
         plan.setTagOffsets(tagOffsets);
-        logWriter.createAlignedTimeseries(plan);
+        writeToMLog(plan);
         if (syncManager.isEnableSync()) {
           syncManager.syncMetadataPlan(plan);
         }
@@ -744,7 +797,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
-        logWriter.deleteTimeseries(deleteTimeSeriesPlan);
+        writeToMLog(deleteTimeSeriesPlan);
         if (syncManager.isEnableSync()) {
           syncManager.syncMetadataPlan(deleteTimeSeriesPlan);
         }
@@ -808,20 +861,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     node = mtree.getDeviceNodeWithAutoCreating(path);
-    if (!isRecovering) {
-      logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
-    }
+    writeToMLog(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath());
-    if (!isRecovering) {
-      try {
-        logWriter.autoCreateDeviceMNode(plan);
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+    try {
+      writeToMLog(plan);
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
   // endregion
@@ -1240,7 +1289,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setOffset(offset);
 
     if (isRecovering) {
-
       try {
         tagManager.recoverIndex(offset, measurementMNode);
       } catch (IOException e) {
@@ -1258,9 +1306,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     mtree.setAlias(leafMNode, alias);
 
     try {
-      if (!isRecovering) {
-        logWriter.changeAlias(path, alias);
-      }
+      writeToMLog(new ChangeAliasPlan(path, alias));
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1294,7 +1340,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(tagsMap, attributesMap);
-      logWriter.changeOffset(fullPath, offset);
+      writeToMLog(new ChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       // update inverted Index map
       if (tagsMap != null && !tagsMap.isEmpty()) {
@@ -1320,7 +1366,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       mtree.setAlias(leafMNode, alias);
       // persist to WAL
-      logWriter.changeAlias(fullPath, alias);
+      writeToMLog(new ChangeAliasPlan(fullPath, alias));
     }
   }
 
@@ -1337,7 +1383,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
-      logWriter.changeOffset(fullPath, offset);
+      writeToMLog(new ChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       return;
     }
@@ -1357,7 +1403,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
-      logWriter.changeOffset(fullPath, offset);
+      writeToMLog(new ChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       // update inverted Index map
       tagManager.addIndex(tagsMap, leafMNode);
@@ -1683,9 +1729,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           .markSchemaRegion(template, storageGroupFullPath, schemaRegionId);
 
       // write wal
-      if (!isRecovering) {
-        logWriter.setSchemaTemplate(plan);
-      }
+      writeToMLog(plan);
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1709,9 +1753,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       TemplateManager.getInstance()
           .unmarkSchemaRegion(template, storageGroupFullPath, schemaRegionId);
       // write wal
-      if (!isRecovering) {
-        logWriter.unsetSchemaTemplate(plan);
-      }
+      writeToMLog(plan);
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1766,12 +1808,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (node != mountedMNode) {
       mNodeCache.invalidate(mountedMNode.getPartialPath());
     }
-    if (!isRecovering) {
-      try {
-        logWriter.setUsingSchemaTemplate(node.getPartialPath());
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+    try {
+      writeToMLog(new ActivateTemplatePlan(node.getPartialPath()));
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
     return mountedMNode;
   }

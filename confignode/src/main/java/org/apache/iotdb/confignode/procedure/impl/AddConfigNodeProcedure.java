@@ -68,13 +68,13 @@ public class AddConfigNodeProcedure
           setNextState(AddConfigNodeState.ADD_CONSENSUS_GROUP);
           break;
         case ADD_CONSENSUS_GROUP:
-          LOG.info("Add consensus group {}", tConfigNodeLocation);
           env.addConsensusGroup(tConfigNodeLocation);
           setNextState(AddConfigNodeState.ADD_PEER);
+          LOG.info("Add consensus group {}", tConfigNodeLocation);
           break;
         case ADD_PEER:
-          LOG.info("Add Peer of {}", tConfigNodeLocation);
           env.addPeer(tConfigNodeLocation);
+          LOG.info("Add Peer of {}", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {

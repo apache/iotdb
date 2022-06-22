@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.client.DispatchLogHandler;
-import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.thrift.TLogBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
@@ -60,11 +59,14 @@ public class LogDispatcher {
 
   private final MultiLeaderServerImpl impl;
   private final List<LogDispatcherThread> threads;
+  private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
   private ExecutorService executorService;
-  private IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
 
-  public LogDispatcher(MultiLeaderServerImpl impl) {
+  public LogDispatcher(
+      MultiLeaderServerImpl impl,
+      IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager) {
     this.impl = impl;
+    this.clientManager = clientManager;
     this.threads =
         impl.getConfiguration().stream()
             .filter(x -> !Objects.equals(x, impl.getThisNode()))
@@ -73,9 +75,6 @@ public class LogDispatcher {
     if (!threads.isEmpty()) {
       this.executorService =
           IoTDBThreadPoolFactory.newFixedThreadPool(threads.size(), "LogDispatcher");
-      this.clientManager =
-          new IClientManager.Factory<TEndPoint, AsyncMultiLeaderServiceClient>()
-              .createClientManager(new AsyncMultiLeaderServiceClientPoolFactory(impl.getConfig()));
     }
   }
 
@@ -89,7 +88,6 @@ public class LogDispatcher {
     if (!threads.isEmpty()) {
       threads.forEach(LogDispatcherThread::stop);
       executorService.shutdownNow();
-      clientManager.close();
       int timeout = 10;
       try {
         if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {

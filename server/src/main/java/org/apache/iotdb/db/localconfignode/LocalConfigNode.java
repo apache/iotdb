@@ -906,7 +906,7 @@ public class LocalConfigNode {
             partitionSlotsMap
                 .computeIfAbsent(storageGroup, key -> new HashMap<>())
                 .put(
-                    executor.getSeriesPartitionSlot(device.getDevice()),
+                    executor.getSeriesPartitionSlot(device.getFullPath()),
                     genStandaloneRegionReplicaSet(
                         TConsensusGroupType.SchemaRegion, schemaRegionId.getId()));
           }
