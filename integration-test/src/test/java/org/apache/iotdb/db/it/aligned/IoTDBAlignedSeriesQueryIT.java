@@ -27,6 +27,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -3123,13 +3124,13 @@ public class IoTDBAlignedSeriesQueryIT {
   public void countSumAvgValueFillAlignByDeviceTest() throws SQLException {
     String[] retArray =
         new String[] {
-          "1,root.sg1.d1,1,3.14,30000.0",
+          "1,root.sg1.d1,1,3.0,30000.0",
           "6,root.sg1.d1,4,40.0,7.5",
           "11,root.sg1.d1,5,130052.0,26010.4",
           "16,root.sg1.d1,5,90.0,18.0",
-          "21,root.sg1.d1,1,3.14,230000.0",
-          "26,root.sg1.d1,0,3.14,3.14",
-          "31,root.sg1.d1,0,3.14,3.14"
+          "21,root.sg1.d1,1,3.0,230000.0",
+          "26,root.sg1.d1,0,3.0,3.0",
+          "31,root.sg1.d1,0,3.0,3.0"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -3138,7 +3139,7 @@ public class IoTDBAlignedSeriesQueryIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(s1), sum(s2), avg(s1) from root.sg1.d1 "
-                  + "where s3 > 5 and time < 30 GROUP BY ([1, 36), 5ms) FILL (3.14) align by device")) {
+                  + "where s3 > 5 and time < 30 GROUP BY ([1, 36), 5ms) FILL (3) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -3159,7 +3160,8 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
+  // TODO we may never support this in mpp
+  @Ignore
   @Test
   public void maxMinValueTimePreviousUntilLastFillAlignByDeviceTest() throws SQLException {
     String[] retArray =
@@ -3199,7 +3201,8 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
+  // TODO need to discuss fill function
+  @Ignore
   @Test
   public void maxMinValueTimeValueFillAlignByDeviceTest() throws SQLException {
     String[] retArray =
