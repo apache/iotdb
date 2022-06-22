@@ -95,6 +95,7 @@ public class ConsensusManager {
    */
   public void addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
     if (configNodeLocations.size() == 0) {
+      LOGGER.warn("configNodeLocations is null");
       return;
     }
 
