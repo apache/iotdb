@@ -669,7 +669,7 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.compact();
     long totalWaitingTime = 0;
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+    do {
       // wait
       try {
         Thread.sleep(100);
@@ -684,7 +684,7 @@ public class StorageGroupProcessorTest {
         Assert.fail();
         break;
       }
-    }
+    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
 
     QueryDataSource queryDataSource =
         processor.query(

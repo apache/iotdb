@@ -725,7 +725,7 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     dataRegion.compact();
     long totalWaitingTime = 0;
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+    do {
       // wait
       try {
         Thread.sleep(100);
@@ -740,7 +740,7 @@ public class DataRegionTest {
         Assert.fail();
         break;
       }
-    }
+    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
 
     QueryDataSource queryDataSource =
         dataRegion.query(

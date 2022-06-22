@@ -71,6 +71,7 @@ public class CompactionTaskManager implements IService {
   // virtualStorageGroup
   private final Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
       storageGroupTasks = new ConcurrentHashMap<>();
+  private AtomicInteger finishTaskNum = new AtomicInteger(0);
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
@@ -260,6 +261,7 @@ public class CompactionTaskManager implements IService {
     // add metrics
     CompactionMetricsRecorder.recordTaskInfo(
         task, CompactionTaskStatus.FINISHED, currentTaskNum.get());
+    finishTaskNum.incrementAndGet();
   }
 
   public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
@@ -322,16 +324,13 @@ public class CompactionTaskManager implements IService {
   }
 
   public long getFinishTaskNum() {
-    return taskExecutionPool.getCompletedTaskCount();
+    return finishTaskNum.get();
   }
 
   public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {
-    synchronized (storageGroupTasks) {
-      storageGroupTasks
-          .computeIfAbsent(task.getFullStorageGroupName(), x -> new ConcurrentHashMap<>())
-          .put(task, summary);
-      storageGroupTasks.notify();
-    }
+    storageGroupTasks
+        .computeIfAbsent(task.getFullStorageGroupName(), x -> new ConcurrentHashMap<>())
+        .put(task, summary);
   }
 
   @TestOnly
@@ -364,6 +363,7 @@ public class CompactionTaskManager implements IService {
         }
       }
       initThreadPool();
+      finishTaskNum.set(0);
       candidateCompactionTaskQueue.clear();
     }
     currentTaskNum = new AtomicInteger(0);
@@ -380,18 +380,13 @@ public class CompactionTaskManager implements IService {
       throws InterruptedException {
     String storageGroup = task.getFullStorageGroupName();
     logger.error("try to get future for {}", storageGroup);
-    long waitingTime = 0;
-    synchronized (storageGroupTasks) {
-      while (!storageGroupTasks.containsKey(storageGroup)
-          || !storageGroupTasks.get(storageGroup).containsKey(task)) {
-        storageGroupTasks.wait(1_000);
-        waitingTime += 1000;
-        logger.error("{}", storageGroupTasks);
-        if (waitingTime > 20_000) {
-          throw new InterruptedException("Timeout when waiting for task future");
-        }
+    long startTime = System.currentTimeMillis();
+    while (!storageGroupTasks.containsKey(storageGroup)
+        || !storageGroupTasks.get(storageGroup).containsKey(task)) {
+      if (System.currentTimeMillis() - startTime > 20_000) {
+        throw new InterruptedException("Timeout when waiting for task future");
       }
-      return storageGroupTasks.get(storageGroup).get(task);
     }
+    return storageGroupTasks.get(storageGroup).get(task);
   }
 }
