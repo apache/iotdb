@@ -51,20 +51,14 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateTimeseriesIT {
-  private static Statement statement;
-  private static Connection connection;
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    statement.close();
-    connection.close();
     EnvFactory.getEnv().cleanAfterClass();
   }
 
@@ -73,28 +67,26 @@ public class IoTDBCreateTimeseriesIT {
   public void testCreateTimeseries() throws Exception {
     String storageGroup = "root.sg1.a.b.c";
 
-    statement.execute(String.format("SET storage group TO %s", storageGroup));
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("SET storage group TO %s", storageGroup));
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               storageGroup));
+
     } catch (Exception ignored) {
     }
 
     // ensure that current storage group in cache is right.
     createTimeSeriesTool(storageGroup);
-
-    //    tearDown();
-    //    setUp();
-    //
-    //    // ensure storage group in cache is right after recovering.
-    //    createTimeSeries2Tool(storageGroup);
   }
 
   private void createTimeSeriesTool(String storageGroup) throws SQLException {
     Set<String> resultList = new HashSet<>();
-    try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
         String str = resultSet.getString("timeseries");
         resultList.add(str);
@@ -102,7 +94,9 @@ public class IoTDBCreateTimeseriesIT {
     }
     Assert.assertFalse(resultList.contains(storageGroup));
     resultList.clear();
-    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("show storage group")) {
       while (resultSet.next()) {
         String res = resultSet.getString("storage group");
         resultList.add(res);
@@ -113,7 +107,8 @@ public class IoTDBCreateTimeseriesIT {
 
   @Test
   public void testCreateTimeseriesWithSpecialCharacter() throws Exception {
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
@@ -122,7 +117,8 @@ public class IoTDBCreateTimeseriesIT {
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
@@ -131,7 +127,8 @@ public class IoTDBCreateTimeseriesIT {
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
@@ -148,27 +145,27 @@ public class IoTDBCreateTimeseriesIT {
     };
 
     for (String timeSeries : timeSeriesArray) {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                timeSeries));
+      }
     }
 
     // ensure that current timeseries in cache is right.
     createTimeSeriesWithSpecialCharacterTool(timeSeriesResArray);
 
-    //    tearDown();
-    //    setUp();
-    //
-    //    // ensure timeseries in cache is right after recovered.
-    //    createTimeSeriesWithSpecialCharacterTool(timeSeriesResArray);
   }
 
   private void createTimeSeriesWithSpecialCharacterTool(String[] timeSeriesArray)
       throws SQLException {
 
     List<String> resultList = new ArrayList<>();
-    try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.**")) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("show timeseries root.sg.**")) {
       while (resultSet.next()) {
         String timeseries = resultSet.getString("timeseries");
         resultList.add(timeseries);
@@ -188,20 +185,23 @@ public class IoTDBCreateTimeseriesIT {
 
   @Test
   public void testCreateTimeSeriesWithWrongAttribute() {
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format("create timeseries %s with datatype=INT64, datatype = test", "root.sg.a"));
       fail();
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(String.format("create timeseries %s with encoding=plain", "root.sg.a"));
       fail();
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "create timeseries %s with encoding=plain, compressor=snappy", "root.sg.a"));
@@ -209,21 +209,24 @@ public class IoTDBCreateTimeseriesIT {
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format("create timeseries %s with datatype=float, encoding=plan", "root.sg.a"));
       fail();
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format("create timeseries %s with datatype=INT64, encoding=test", "root.sg.a"));
       fail();
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=test, compression=test",
@@ -232,14 +235,16 @@ public class IoTDBCreateTimeseriesIT {
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format("create timeseries %s with datatype=INT64,compression=test", "root.sg.a"));
       fail();
     } catch (SQLException ignored) {
     }
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=test",
@@ -251,13 +256,16 @@ public class IoTDBCreateTimeseriesIT {
 
   @Test
   public void testQueryDataFromTimeSeriesWithoutData() {
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
     } catch (SQLException ignored) {
       fail();
     }
     int cnt = 0;
-    try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg2.d")) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select s1 from root.sg2.d")) {
       while (resultSet.next()) {
         cnt++;
       }
