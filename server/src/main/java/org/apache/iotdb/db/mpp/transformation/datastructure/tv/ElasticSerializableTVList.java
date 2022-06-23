@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.transformation.datastructure.tv;
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -282,6 +283,11 @@ public class ElasticSerializableTVList implements PointCollector {
       @Override
       public boolean isConstantPointReader() {
         return false;
+      }
+
+      @Override
+      public YieldableState yield() {
+        throw new UnsupportedOperationException();
       }
 
       @Override
