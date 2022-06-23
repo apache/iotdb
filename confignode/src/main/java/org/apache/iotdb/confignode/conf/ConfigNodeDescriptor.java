@@ -117,7 +117,6 @@ public class ConfigNodeDescriptor {
 
       String targetConfigNodeList = properties.getProperty("target_confignode", null);
       if (targetConfigNodeList != null) {
-        LOGGER.info("target confignode: {}", NodeUrlUtils.parseTEndPointUrls(targetConfigNodeList));
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(targetConfigNodeList));
       }
 

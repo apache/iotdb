@@ -143,7 +143,6 @@ public class ConfigNode implements ConfigNodeMBean {
                 }
               })
           .start();
-      LOGGER.info("Check Configuration end...");
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
