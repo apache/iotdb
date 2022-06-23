@@ -170,9 +170,10 @@ public class RawDataAggregationOperator implements ProcessOperator {
       }
     }
     // The result is calculated from the cache
-    return (ascending
-            ? preCachedData.getEndTime() > curTimeRange.getMax()
-            : preCachedData.getEndTime() < curTimeRange.getMin())
+    return (preCachedData != null
+            && (ascending
+                ? preCachedData.getEndTime() > curTimeRange.getMax()
+                : preCachedData.getEndTime() < curTimeRange.getMin()))
         || isEndCalc(aggregators);
   }
 
