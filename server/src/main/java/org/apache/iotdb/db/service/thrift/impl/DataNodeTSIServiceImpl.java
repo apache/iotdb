@@ -218,15 +218,18 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus cancelOperation(TSCancelOperationReq req) {
     // TODO implement
-    cleanupQueryExecution(req.queryId);
     return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, "Cancellation is not implemented");
   }
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    cleanupQueryExecution(req.queryId);
     return SESSION_MANAGER.closeOperation(
-        req.sessionId, req.queryId, req.statementId, req.isSetStatementId(), req.isSetQueryId());
+        req.sessionId,
+        req.queryId,
+        req.statementId,
+        req.isSetStatementId(),
+        req.isSetQueryId(),
+        this::cleanupQueryExecution);
   }
 
   @Override
