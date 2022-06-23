@@ -56,7 +56,6 @@ public class CompactionWorker implements Runnable {
           CompactionTaskSummary summary = task.getSummary();
           CompactionTaskFuture future = new CompactionTaskFuture(summary);
           CompactionTaskManager.getInstance().recordTask(task, future);
-          log.error("start to execute {}", task);
           task.call();
         }
       } catch (InterruptedException e) {

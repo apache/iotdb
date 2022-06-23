@@ -379,7 +379,6 @@ public class CompactionTaskManager implements IService {
   public Future<CompactionTaskSummary> getCompactionTaskFutureMayBlock(AbstractCompactionTask task)
       throws InterruptedException {
     String storageGroup = task.getFullStorageGroupName();
-    logger.error("try to get future for {}", storageGroup);
     long startTime = System.currentTimeMillis();
     while (!storageGroupTasks.containsKey(storageGroup)
         || !storageGroupTasks.get(storageGroup).containsKey(task)) {
