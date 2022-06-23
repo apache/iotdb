@@ -21,6 +21,7 @@ package org.apache.iotdb.it.env;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.file.PathUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,14 +44,17 @@ import java.lang.management.ThreadMXBean;
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.fail;
 
@@ -79,14 +83,32 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   @Override
   public void createDir() {
     // Copy templateNodePath to nodePath
+    String destPath = getNodePath();
     try {
-      File nodeDir = new File(getNodePath());
+      File nodeDir = new File(destPath);
       try {
         FileUtils.forceDelete(nodeDir);
       } catch (FileNotFoundException e) {
         // ignored
       }
-      FileUtils.copyDirectoryToDirectory(new File(this.templateNodePath), nodeDir);
+      // Here we need to copy without follow symbolic links, so we can't use FileUtils directly.
+      try (Stream<Path> s = Files.walk(Paths.get(this.templateNodePath))) {
+        s.forEach(
+            source -> {
+              Path destination =
+                  Paths.get(destPath, source.toString().substring(this.templateNodePath.length()));
+              try {
+                Files.copy(
+                    source,
+                    destination,
+                    LinkOption.NOFOLLOW_LINKS,
+                    StandardCopyOption.COPY_ATTRIBUTES);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
+      }
+
       String startScriptPath = getStartScriptPath();
       String stopScriptPath = getStopScriptPath();
       if (!new File(startScriptPath).setExecutable(true)) {
@@ -106,7 +128,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   public void destroyDir() {
     for (int i = 0; i < 3; i++) {
       try {
-        FileUtils.forceDelete(new File(getNodePath()));
+        // DO NOT use FileUtils.forceDelete, as it will follow the symbolic link to make libs
+        // read-only, which causes permission denied in deletion.
+        PathUtils.deleteDirectory(Paths.get(getNodePath()));
         return;
       } catch (IOException ex) {
         logger.warn("Delete node dir failed. RetryTimes={}", i + 1, ex);
@@ -215,13 +239,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   protected String workDirFilePath(String dirName, String fileName) {
-    return getNodePath()
-        + File.separator
-        + "template-node"
-        + File.separator
-        + dirName
-        + File.separator
-        + fileName;
+    return getNodePath() + File.separator + dirName + File.separator + fileName;
   }
 
   protected abstract String getConfigPath();
