@@ -41,7 +41,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 ``` xml
 <dependency>
   <groupId>org.apache.iotdb</groupId>
-  <artifactId>udf</artifactId>
+  <artifactId>udf-api</artifactId>
   <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
