@@ -242,7 +242,8 @@ public class QueryStatement extends Statement {
       }
     } else {
       if (isGroupByTime() || isGroupByLevel()) {
-        throw new SemanticException("Raw data query doesn't support GROUP BY.");
+        throw new SemanticException(
+            "Common queries and aggregated queries are not allowed to appear at the same time");
       }
     }
 

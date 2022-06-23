@@ -17,21 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.transformation.api;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.udf.api.access.RowWindow;
-
-import java.io.IOException;
-
-public interface LayerRowWindowReader extends YieldableReader {
-
-  boolean next() throws IOException, QueryProcessException;
-
-  void readyForNext() throws IOException, QueryProcessException;
-
-  TSDataType[] getDataTypes();
-
-  RowWindow currentWindow();
+public enum AddConfigNodeState {
+  ADD_CONFIG_NODE_PREPARE,
+  ADD_CONSENSUS_GROUP,
+  ADD_PEER
 }
