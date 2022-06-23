@@ -208,6 +208,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
+    SESSION_MANAGER.releaseSessionResource(req.sessionId, this::cleanupQueryExecution);
     return new TSStatus(
         !SESSION_MANAGER.closeSession(req.sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
@@ -217,11 +218,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus cancelOperation(TSCancelOperationReq req) {
     // TODO implement
+    cleanupQueryExecution(req.queryId);
     return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, "Cancellation is not implemented");
   }
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
+    cleanupQueryExecution(req.queryId);
     return SESSION_MANAGER.closeOperation(
         req.sessionId, req.queryId, req.statementId, req.isSetStatementId(), req.isSetQueryId());
   }
@@ -1295,7 +1298,6 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   public void handleClientExit() {
     Long sessionId = SESSION_MANAGER.getCurrSessionId();
     if (sessionId != null) {
-      SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
