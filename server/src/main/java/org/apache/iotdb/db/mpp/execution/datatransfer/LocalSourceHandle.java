@@ -43,6 +43,8 @@ public class LocalSourceHandle implements ISourceHandle {
   private final SharedTsBlockQueue queue;
   private boolean aborted = false;
 
+  private int currSequenceId;
+
   private final String threadName;
 
   public LocalSourceHandle(
@@ -88,6 +90,11 @@ public class LocalSourceHandle implements ISourceHandle {
       TsBlock tsBlock;
       synchronized (queue) {
         tsBlock = queue.remove();
+      }
+      if (tsBlock != null) {
+        currSequenceId++;
+        logger.info(
+            "Receive {} TsdBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
       }
       checkAndInvokeOnFinished();
       return tsBlock;

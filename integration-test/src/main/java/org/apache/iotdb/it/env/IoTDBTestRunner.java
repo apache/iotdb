@@ -38,7 +38,7 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
   protected void runChild(final FrameworkMethod method, RunNotifier notifier) {
     Description description = describeChild(method);
     logger.info("Run {}", description.getMethodName());
-    EnvFactory.getEnv().setNextTestCaseName(description.getMethodName());
+    EnvFactory.getEnv().setTestMethodName(description.getMethodName());
     super.runChild(method, notifier);
   }
 }

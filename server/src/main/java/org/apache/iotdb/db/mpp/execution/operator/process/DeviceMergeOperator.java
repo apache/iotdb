@@ -112,6 +112,9 @@ public class DeviceMergeOperator implements ProcessOperator {
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNext()) {
         inputTsBlocks[i] = deviceOperators.get(i).next();
+        if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
+          return null;
+        }
         deviceOfInputTsBlocks[i] = getDeviceNameFromTsBlock(inputTsBlocks[i]);
         tryToAddCurDeviceTsBlockList(i);
       }

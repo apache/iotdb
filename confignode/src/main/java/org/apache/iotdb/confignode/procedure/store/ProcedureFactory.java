@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 
 import java.io.IOException;
@@ -39,6 +40,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DELETE_STORAGE_GROUP_PROCEDURE:
         procedure = new DeleteStorageGroupProcedure();
         break;
+      case ADD_CONFIG_NODE_PROCEDURE:
+        procedure = new AddConfigNodeProcedure();
+        break;
       default:
         throw new IOException("unknown Procedure type: " + typeNum);
     }
@@ -49,12 +53,15 @@ public class ProcedureFactory implements IProcedureFactory {
   public static ProcedureType getProcedureType(Procedure procedure) {
     if (procedure instanceof DeleteStorageGroupProcedure) {
       return ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE;
+    } else if (procedure instanceof AddConfigNodeProcedure) {
+      return ProcedureType.ADD_CONFIG_NODE_PROCEDURE;
     }
     return null;
   }
 
   public enum ProcedureType {
-    DELETE_STORAGE_GROUP_PROCEDURE
+    DELETE_STORAGE_GROUP_PROCEDURE,
+    ADD_CONFIG_NODE_PROCEDURE
   }
 
   private static class ProcedureFactoryHolder {
