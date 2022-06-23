@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -68,9 +67,6 @@ public class LogReplayer {
 
   // only unsequence file tolerates duplicated data
   private boolean sequence;
-
-  private Map<String, Long> tempStartTimeMap = new HashMap<>();
-  private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
   public LogReplayer(
       String logNodePrefix,
@@ -130,8 +126,8 @@ public class LogReplayer {
       for (Map.Entry<String, IWritableMemChunk> measurementEntry :
           deviceEntry.getValue().entrySet()) {
         IWritableMemChunk memChunk = measurementEntry.getValue();
-        currentTsFileResource.updateStartTime(deviceId, memChunk.getMinTime());
-        currentTsFileResource.updateEndTime(deviceId, memChunk.getMaxTime());
+        currentTsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
+        currentTsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
       }
     }
   }
@@ -167,14 +163,6 @@ public class LogReplayer {
       long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().getFullPath());
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
         return;
-      }
-      Long startTime = tempStartTimeMap.get(plan.getDeviceId().getFullPath());
-      if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(plan.getDeviceId().getFullPath(), minTime);
-      }
-      Long endTime = tempEndTimeMap.get(plan.getDeviceId().getFullPath());
-      if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(plan.getDeviceId().getFullPath(), maxTime);
       }
     }
     MeasurementMNode[] mNodes;

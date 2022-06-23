@@ -86,11 +86,11 @@ public interface IWritableMemChunk {
     return null;
   }
 
-  default long getMinTime() {
+  default long getFirstPoint() {
     return Long.MIN_VALUE;
   }
 
-  default long getMaxTime() {
+  default long getLastPoint() {
     return Long.MAX_VALUE;
   }
 

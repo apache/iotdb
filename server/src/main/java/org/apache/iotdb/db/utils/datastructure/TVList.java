@@ -50,16 +50,12 @@ public abstract class TVList {
   // currently this reference will only be increase because we can't know when to decrease it
   protected AtomicInteger referenceCount;
   protected long pivotTime;
-  protected long minTime;
-  protected long maxTime;
 
   private long version;
 
   public TVList() {
     timestamps = new ArrayList<>();
     size = 0;
-    minTime = Long.MAX_VALUE;
-    maxTime = Long.MIN_VALUE;
     referenceCount = new AtomicInteger();
   }
 
@@ -195,14 +191,6 @@ public abstract class TVList {
 
   public abstract void sort();
 
-  public long getMinTime() {
-    return minTime;
-  }
-
-  public long getMaxTime() {
-    return maxTime;
-  }
-
   public long getVersion() {
     return version;
   }
@@ -233,14 +221,10 @@ public abstract class TVList {
 
   public int delete(long lowerBound, long upperBound) {
     int newSize = 0;
-    minTime = Long.MAX_VALUE;
-    maxTime = Long.MIN_VALUE;
     for (int i = 0; i < size; i++) {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
-        minTime = Math.min(time, minTime);
-        maxTime = Math.max(time, maxTime);
       }
     }
     int deletedNumber = size - newSize;
@@ -263,15 +247,11 @@ public abstract class TVList {
     }
     cloneList.size = size;
     cloneList.sorted = sorted;
-    cloneList.minTime = minTime;
-    cloneList.maxTime = maxTime;
   }
 
   public void clear() {
     size = 0;
     sorted = true;
-    minTime = Long.MAX_VALUE;
-    maxTime = Long.MIN_VALUE;
     clearTime();
     clearSortedTime();
 
@@ -483,8 +463,6 @@ public abstract class TVList {
         inputSorted = false;
       }
     }
-    minTime = Math.min(inPutMinTime, minTime);
-    maxTime = Math.max(inPutMaxTime, maxTime);
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 
