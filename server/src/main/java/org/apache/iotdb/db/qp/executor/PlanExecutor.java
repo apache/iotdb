@@ -95,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
@@ -393,6 +394,8 @@ public class PlanExecutor implements IPlanExecutor {
         return setTemplate((SetTemplatePlan) plan);
       case ACTIVATE_TEMPLATE:
         return activateTemplate((ActivateTemplatePlan) plan);
+      case DEACTIVATE_TEMPLATE:
+        return deactivateTemplate((DeactivateTemplatePlan) plan);
       case UNSET_TEMPLATE:
         return unsetTemplate((UnsetTemplatePlan) plan);
       case CREATE_CONTINUOUS_QUERY:
@@ -460,6 +463,51 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.setUsingSchemaTemplate(activateTemplatePlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean deactivateTemplate(DeactivateTemplatePlan deactivateTemplatePlan)
+      throws QueryProcessException {
+    try {
+      // get all measurement paths
+      List<String> measurementsInnerPaths =
+          IoTDB.metaManager.getMeasurementsInTemplate(deactivateTemplatePlan.getTemplateName(), "");
+
+      // not with stream for the exception in constructor of PartialPath
+      List<PartialPath> innerPartialPath = new ArrayList<>();
+      for (String path : measurementsInnerPaths) {
+        innerPartialPath.add(new PartialPath(path));
+      }
+
+      List<PartialPath> pathToDeactivate = deactivateTemplatePlan.getPaths();
+      List<PartialPath> pathToDelete =
+          new ArrayList<>(innerPartialPath.size() * pathToDeactivate.size());
+
+      for (PartialPath prePath : pathToDeactivate) {
+        for (PartialPath sufPath : innerPartialPath) {
+          pathToDelete.add(prePath.concatPath(sufPath));
+        }
+      }
+
+      // delete related data
+      AUDIT_LOGGER.info("delete timeseries {}", pathToDelete);
+      DeleteTimeSeriesPlan dtsp = new DeleteTimeSeriesPlan(pathToDelete);
+      for (PartialPath path : pathToDelete) {
+        StorageEngine.getInstance()
+            .deleteTimeseries(path, dtsp.getIndex(), dtsp.getPartitionFilter());
+      }
+      StorageEngine.getInstance().syncCloseAllProcessor();
+
+      IoTDB.metaManager.deactivateSchemaTemplate(deactivateTemplatePlan);
+    } catch (StorageEngineException e) {
+      logger.error(
+          "Deactivation of template [{}] failed since one of its time series is failed to delete.",
+          deactivateTemplatePlan.getTemplateName());
+      logger.error(e.getMessage());
+      throw new QueryProcessException(e);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

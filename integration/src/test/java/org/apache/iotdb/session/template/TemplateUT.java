@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -394,6 +395,101 @@ public class TemplateUT {
       // x is not inside template
       assertEquals(2, rec.getFields().size());
     }
+  }
+
+  @Test
+  public void testUnsetTemplate()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    Template temp1 = getTemplate("template1");
+    session.createSchemaTemplate(temp1);
+    session.setSchemaTemplate("template1", "root.sg.v1");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.l1.d1");
+
+    try {
+      session.executeNonQueryStatement("delete timeseries root.sg.v1.l1.d1.x");
+      fail();
+    } catch (BatchExecutionException e) {
+    }
+
+    // wildcard usage on prefix
+    session.deactivateTemplateOn("template1", "root");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.*");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.**");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.l1.d1");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1.*");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1.**");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1");
+    session.unsetSchemaTemplate("root.sg.v1", "template1");
+    assertEquals(0, session.showPathsTemplateSetOn("template1").size());
+    session.dropSchemaTemplate("template1");
+    assertEquals(0, session.showAllTemplates().size());
+
+    // data delete and rewrite
+    session.createSchemaTemplate(temp1);
+    session.setSchemaTemplate("template1", "root.sg.v1");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1");
+    session.insertAlignedRecord(
+        "root.sg.v1", 11L, Collections.singletonList("x"), Collections.singletonList("1.1"));
+    SessionDataSet sds = session.executeQueryStatement("select * from root.sg.v1");
+    int cnt = 0;
+    while (sds.hasNext()) {
+      cnt++;
+      sds.next();
+    }
+    assertEquals(1, cnt);
+    session.deactivateTemplateOn("template1", "root.**");
+
+    sds = session.executeQueryStatement("select * from root.sg.v1");
+    cnt = 0;
+    while (sds.hasNext()) {
+      cnt++;
+      sds.next();
+    }
+    assertEquals(0, cnt);
+
+    try {
+      session.insertAlignedRecord(
+          "root.sg.v1", 999L, Collections.singletonList("x"), Collections.singletonList("abcd"));
+      fail();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    try {
+      session.insertRecord(
+          "root.sg.v1", 999L, Collections.singletonList("x"), Collections.singletonList("abcd"));
+      fail();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    session.deactivateTemplateOn("template1", "root.**");
+    session.unsetSchemaTemplate("root.sg.v1", "template1");
+    session.insertAlignedRecord(
+        "root.sg.v1", 911L, Collections.singletonList("x"), Collections.singletonList("abcd"));
+
+    sds = session.executeQueryStatement("select * from root.sg.v1");
+    cnt = 0;
+    while (sds.hasNext()) {
+      cnt++;
+      assertEquals("abcd", sds.next().getFields().get(0).toString());
+    }
+    assertEquals(1, cnt);
   }
 
   @Test

@@ -944,6 +944,23 @@ public class SessionConnection {
     }
   }
 
+  protected void deactivateTemplate(String tName, String pPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      RpcUtils.verifySuccess(client.unsetUsingTemplate(sessionId, tName, pPath));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.unsetUsingTemplate(sessionId, tName, pPath));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
   protected void dropSchemaTemplate(TSDropSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     request.setSessionId(sessionId);

@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -2054,6 +2055,38 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
+    }
+  }
+
+  @Override
+  public TSStatus unsetUsingTemplate(long sessionId, String templateName, String prefixPath)
+      throws TException {
+    if (!serviceProvider.checkLogin(sessionId)) {
+      return getNotLoggedInStatus();
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session-{} unset using schema template {} on {}",
+          SESSION_MANAGER.getCurrSessionId(),
+          templateName,
+          prefixPath);
+    }
+
+    try {
+      // paths using template involved since related to the authority check
+      DeactivateTemplatePlan plan =
+          new DeactivateTemplatePlan(
+              templateName,
+              new PartialPath(prefixPath),
+              new ArrayList<>(
+                  IoTDB.metaManager.getPathsUsingTemplateUnderPrefix(
+                      templateName, prefixPath, false)));
+      // FIXME: update authority check
+      TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
+      return status != null ? status : executeNonQueryPlan(plan);
+    } catch (MetadataException e) {
       return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
     }
   }

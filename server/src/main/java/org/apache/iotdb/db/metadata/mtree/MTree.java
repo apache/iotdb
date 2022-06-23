@@ -107,6 +107,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
@@ -1779,11 +1780,8 @@ public class MTree implements Serializable {
             protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
                 throws MetadataException {
               // shall not traverse nodes inside template
-              if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
-                return true;
-              }
-
-              if (node.isMeasurement()) {
+              if (node.isMeasurement()
+                  || !node.getPartialPath().equals(getCurrentPartialPath(node))) {
                 return true;
               }
 
@@ -1806,13 +1804,45 @@ public class MTree implements Serializable {
     return resSet;
   }
 
-  public List<String> getPathsUsingTemplate(Template template) throws MetadataException {
+  /**
+   * Notice that wildcards do not semantically equal prefix match. E.g., prefix match for a.b.c
+   * always includes itself, while neither one level nor multi level wildcard acts do not.
+   *
+   * <p>When it comes to delete one time series, it is necessary to make a more cautious filtering
+   * which requires explicit designation by wildcards, unlike viewing some paths about.
+   *
+   * <p><b>Incidentally, ANY wildcard in prefix will DISABLE prefix mode.</b> And a combination of
+   * non-wildcard prefix and disabled prefix mode implies an exact match.
+   *
+   * @return may include prefix itself if prefixMode is true, otherwise exclude itself
+   */
+  public List<PartialPath> getPathsUsingTemplateUnderPrefix(
+      Template template, PartialPath prefix, boolean prefixMode) throws MetadataException {
+    // enable prefix match by default, disabled if contains any wildcard
+    boolean containWildcard =
+        prefix != null
+            && (Arrays.asList(prefix.getNodes()).contains(ONE_LEVEL_PATH_WILDCARD)
+                || Arrays.asList(prefix.getNodes()).contains(MULTI_LEVEL_PATH_WILDCARD));
+
     String templateName = template == null ? ONE_LEVEL_PATH_WILDCARD : template.getName();
     Set<PartialPath> initPath =
         template == null
             ? Collections.singleton(new PartialPath("root"))
             : template.getRelatedStorageGroup();
-    List<String> result = new ArrayList<>();
+    List<PartialPath> result = new ArrayList<>();
+
+    // start with given prefix if any related sg matches or set initPath null if not
+    if (prefix != null) {
+      initPath =
+          initPath.stream().anyMatch(p -> p.matchPrefixPath(prefix))
+                  || initPath.stream().anyMatch(prefix::matchPrefixPath)
+              ? Collections.singleton(prefix)
+              : null;
+    }
+
+    if (initPath == null || initPath.size() == 0) {
+      return Collections.emptyList();
+    }
 
     for (PartialPath sgPath : initPath) {
       CollectorTraverser<Set<String>> usingTemplatePaths =
@@ -1841,13 +1871,13 @@ public class MTree implements Serializable {
 
                 // descendants of this node may be using template too
                 if (node.isUseTemplate()) {
-                  result.add(node.getFullPath());
+                  result.add(node.getPartialPath());
                 }
               }
               return false;
             }
           };
-      usingTemplatePaths.setPrefixMatch(true);
+      usingTemplatePaths.setPrefixMatch(!containWildcard && prefixMode);
       usingTemplatePaths.traverse();
     }
     return result;
