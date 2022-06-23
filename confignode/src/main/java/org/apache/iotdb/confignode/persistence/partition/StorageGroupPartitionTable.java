@@ -147,11 +147,11 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Cache allocation result of new Regions
+   * Cache allocation result of new RegionGroups
    *
    * @param replicaSets List<TRegionReplicaSet>
    */
-  public void createRegions(List<TRegionReplicaSet> replicaSets) {
+  public void createRegionGroups(List<TRegionReplicaSet> replicaSets) {
     replicaSets.forEach(
         replicaSet -> regionInfoMap.put(replicaSet.getRegionId(), new RegionGroup(replicaSet)));
   }
@@ -205,12 +205,12 @@ public class StorageGroupPartitionTable {
   }
 
   /**
-   * Only leader use this interface. Contending the Region allocation particle
+   * Only leader use this interface. Contending the Region allocation particle.
    *
    * @param type SchemaRegion or DataRegion
    * @return True when successfully get the allocation particle, false otherwise
    */
-  public boolean getRegionAllocationParticle(TConsensusGroupType type) {
+  public boolean contendRegionAllocationParticle(TConsensusGroupType type) {
     switch (type) {
       case SchemaRegion:
         return schemaRegionParticle.getAndSet(false);
@@ -219,6 +219,40 @@ public class StorageGroupPartitionTable {
       default:
         return false;
     }
+  }
+
+  /**
+   * Only leader use this interface. Put back the Region allocation particle.
+   *
+   * @param type SchemaRegion or DataRegion
+   */
+  public void putBackRegionAllocationParticle(TConsensusGroupType type) {
+    switch (type) {
+      case SchemaRegion:
+        schemaRegionParticle.set(true);
+      case DataRegion:
+        dataRegionParticle.set(true);
+    }
+  }
+
+  /**
+   * Only leader use this interface. Get the Region allocation particle.
+   *
+   * @param type SchemaRegion or DataRegion
+   */
+  public boolean getRegionAllocationParticle(TConsensusGroupType type) {
+    switch (type) {
+      case SchemaRegion:
+        return schemaRegionParticle.get();
+      case DataRegion:
+        return dataRegionParticle.get();
+      default:
+        return false;
+    }
+  }
+
+  public int getSlotsCount() {
+    return seriesPartitionSlotsCount.get();
   }
 
   /**

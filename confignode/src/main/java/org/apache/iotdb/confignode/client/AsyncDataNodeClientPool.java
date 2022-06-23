@@ -64,10 +64,10 @@ public class AsyncDataNodeClientPool {
   /**
    * Execute CreateRegionsReq asynchronously
    *
-   * @param createRegionsReq CreateRegionsReq
+   * @param createRegionGroupsReq CreateRegionsReq
    * @param ttlMap Map<StorageGroupName, TTL>
    */
-  public void createRegions(CreateRegionsReq createRegionsReq, Map<String, Long> ttlMap) {
+  public void createRegions(CreateRegionsReq createRegionGroupsReq, Map<String, Long> ttlMap) {
 
     // Index of each Region
     int index = 0;
@@ -78,7 +78,7 @@ public class AsyncDataNodeClientPool {
 
     // Assign an independent index to each Region
     for (Map.Entry<String, List<TRegionReplicaSet>> entry :
-        createRegionsReq.getRegionMap().entrySet()) {
+        createRegionGroupsReq.getRegionGroupMap().entrySet()) {
       for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
         regionNum += regionReplicaSet.getDataNodeLocationsSize();
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -93,8 +93,8 @@ public class AsyncDataNodeClientPool {
     BitSet bitSet = new BitSet(regionNum);
     for (int retry = 0; retry < 3; retry++) {
       CountDownLatch latch = new CountDownLatch(regionNum - bitSet.cardinality());
-      createRegionsReq
-          .getRegionMap()
+      createRegionGroupsReq
+          .getRegionGroupMap()
           .forEach(
               (storageGroup, regionReplicaSets) -> {
                 // Enumerate each RegionReplicaSet
