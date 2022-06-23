@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionR
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
@@ -153,6 +154,8 @@ public class ConfigRequestExecutor {
           return status;
         }
         return partitionInfo.setStorageGroup((SetStorageGroupReq) req);
+      case AdjustMaxRegionGroupCount:
+        return clusterSchemaInfo.adjustMaxRegionGroupCount((AdjustMaxRegionGroupCountReq) req);
       case DeleteStorageGroup:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
@@ -166,8 +169,8 @@ public class ConfigRequestExecutor {
         return clusterSchemaInfo.setDataReplicationFactor((SetDataReplicationFactorReq) req);
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
-      case CreateRegions:
-        return partitionInfo.createRegions((CreateRegionsReq) req);
+      case CreateRegionGroups:
+        return partitionInfo.createRegionGroups((CreateRegionsReq) req);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:

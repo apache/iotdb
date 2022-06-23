@@ -62,6 +62,11 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public long getPartitionInterval() {
+    return IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+  }
+
+  @Override
   public BaseConfig setCompressor(String compressor) {
     TSFileDescriptor.getInstance().getConfig().setCompressor(compressor);
     return this;

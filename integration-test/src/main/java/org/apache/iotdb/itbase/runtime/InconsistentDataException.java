@@ -23,7 +23,7 @@ import java.util.List;
 
 public class InconsistentDataException extends SQLException {
 
-  public InconsistentDataException(Object data, List<String> endpoints) {
+  public <T> InconsistentDataException(List<T> data, List<String> endpoints) {
     super(String.format("Datasets are inconsistent: %s with data %s", endpoints, data));
   }
 }

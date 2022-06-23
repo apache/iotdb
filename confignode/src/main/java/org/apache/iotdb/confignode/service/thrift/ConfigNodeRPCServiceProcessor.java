@@ -39,7 +39,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
@@ -195,9 +194,9 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
 
-    // Mark the StorageGroup as SchemaRegions and DataRegions not yet created
-    storageGroupSchema.setMaximumSchemaRegionCount(0);
-    storageGroupSchema.setMaximumDataRegionCount(0);
+    // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0
+    storageGroupSchema.setMaxSchemaRegionGroupCount(0);
+    storageGroupSchema.setMaxDataRegionGroupCount(0);
 
     SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);
@@ -400,14 +399,8 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
-    TSStatus status = configManager.applyConfigNode(applyConfigNodeReq);
-
-    // Print log to record the ConfigNode that performs the ApplyConfigNodeRequest
-    LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
-
-    return status;
+  public TSStatus addConsensusGroup(TConfigNodeRegisterResp registerResp) {
+    return configManager.addConsensusGroup(registerResp.getConfigNodeList());
   }
 
   /**
