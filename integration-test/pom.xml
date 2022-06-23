@@ -190,7 +190,7 @@
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
                             <parallel>${integrationTest.parallelMode}</parallel>
-                            <useUnlimitedThreads>true</useUnlimitedThreads>
+                            <threadCount>1</threadCount>
                             <forkCount>${integrationTest.forkCount}</forkCount>
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>

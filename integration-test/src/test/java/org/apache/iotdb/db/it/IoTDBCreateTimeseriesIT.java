@@ -17,22 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -49,82 +48,29 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateTimeseriesIT {
-  private Statement statement;
-  private Connection connection;
+  private static Statement statement;
+  private static Connection connection;
 
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
+    connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     statement.close();
     connection.close();
-    EnvironmentUtils.cleanEnv();
-  }
-
-  /** Test creating a time series that is a prefix path of an existing time series */
-  @Ignore // nested measurement has been forbidden
-  @Test
-  public void testCreateTimeseries1() throws Exception {
-    String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
-
-    try {
-      for (String timeSeries : timeSeriesArray) {
-        statement.execute(
-            String.format(
-                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                timeSeries));
-      }
-
-      // ensure that current timeseries in cache is right.
-      createTimeSeries1Tool(timeSeriesArray);
-
-      statement.close();
-      connection.close();
-      EnvironmentUtils.stopDaemon();
-      setUp();
-
-      // ensure timeseries in cache is right after recovering.
-      createTimeSeries1Tool(timeSeriesArray);
-    } catch (IoTDBSQLException e) {
-      Assert.assertEquals("300: Path [root.sg1.aa.bb] already exist", e.getMessage());
-    }
-  }
-
-  private void createTimeSeries1Tool(String[] timeSeriesArray) throws SQLException {
-    boolean hasResult = statement.execute("show timeseries");
-    Assert.assertTrue(hasResult);
-
-    List<String> resultList = new ArrayList<>();
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        String timeseries = resultSet.getString("timeseries");
-        resultList.add(timeseries);
-      }
-    }
-    Assert.assertEquals(3, resultList.size());
-
-    List<String> collect =
-        resultList.stream()
-            .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
-            .collect(Collectors.toList());
-
-    Assert.assertEquals(timeSeriesArray[2], collect.get(0));
-    Assert.assertEquals(timeSeriesArray[0], collect.get(1));
-    Assert.assertEquals(timeSeriesArray[1], collect.get(2));
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   /** Test if creating a time series will cause the storage group with same name to disappear */
   @Test
-  public void testCreateTimeseries2() throws Exception {
+  public void testCreateTimeseries() throws Exception {
     String storageGroup = "root.sg1.a.b.c";
 
     statement.execute(String.format("SET storage group TO %s", storageGroup));
@@ -133,35 +79,30 @@ public class IoTDBCreateTimeseriesIT {
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               storageGroup));
-    } catch (IoTDBSQLException ignored) {
+    } catch (Exception ignored) {
     }
 
     // ensure that current storage group in cache is right.
-    createTimeSeries2Tool(storageGroup);
+    createTimeSeriesTool(storageGroup);
 
-    statement.close();
-    connection.close();
-    EnvironmentUtils.stopDaemon();
-    setUp();
-
-    // ensure storage group in cache is right after recovering.
-    createTimeSeries2Tool(storageGroup);
+    //    tearDown();
+    //    setUp();
+    //
+    //    // ensure storage group in cache is right after recovering.
+    //    createTimeSeries2Tool(storageGroup);
   }
 
-  private void createTimeSeries2Tool(String storageGroup) throws SQLException {
-    statement.execute("show timeseries");
+  private void createTimeSeriesTool(String storageGroup) throws SQLException {
     Set<String> resultList = new HashSet<>();
-    try (ResultSet resultSet = statement.getResultSet()) {
+    try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
         String str = resultSet.getString("timeseries");
         resultList.add(str);
       }
     }
     Assert.assertFalse(resultList.contains(storageGroup));
-
-    statement.execute("show storage group");
     resultList.clear();
-    try (ResultSet resultSet = statement.getResultSet()) {
+    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
       while (resultSet.next()) {
         String res = resultSet.getString("storage group");
         resultList.add(res);
@@ -216,22 +157,18 @@ public class IoTDBCreateTimeseriesIT {
     // ensure that current timeseries in cache is right.
     createTimeSeriesWithSpecialCharacterTool(timeSeriesResArray);
 
-    statement.close();
-    connection.close();
-    EnvironmentUtils.stopDaemon();
-    setUp();
-
-    // ensure timeseries in cache is right after recovered.
-    createTimeSeriesWithSpecialCharacterTool(timeSeriesResArray);
+    //    tearDown();
+    //    setUp();
+    //
+    //    // ensure timeseries in cache is right after recovered.
+    //    createTimeSeriesWithSpecialCharacterTool(timeSeriesResArray);
   }
 
   private void createTimeSeriesWithSpecialCharacterTool(String[] timeSeriesArray)
       throws SQLException {
-    boolean hasResult = statement.execute("show timeseries");
-    Assert.assertTrue(hasResult);
 
     List<String> resultList = new ArrayList<>();
-    try (ResultSet resultSet = statement.getResultSet()) {
+    try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.**")) {
       while (resultSet.next()) {
         String timeseries = resultSet.getString("timeseries");
         resultList.add(timeseries);
@@ -310,5 +247,23 @@ public class IoTDBCreateTimeseriesIT {
       fail();
     } catch (SQLException ignored) {
     }
+  }
+
+  @Test
+  public void testQueryDataFromTimeSeriesWithoutData() {
+    try {
+      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+    } catch (SQLException ignored) {
+      fail();
+    }
+    int cnt = 0;
+    try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg2.d")) {
+      while (resultSet.next()) {
+        cnt++;
+      }
+    } catch (SQLException e) {
+      fail();
+    }
+    Assert.assertEquals(0, cnt);
   }
 }
