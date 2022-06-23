@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.builder.EvaluationDAGBuilder;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.TsBlockInputDataSet;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.IsNullTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -161,7 +162,9 @@ public class TransformOperator implements ProcessOperator {
     // If keepNull is false, we must iterate the reader until a non-null row is returned.
     YieldableState yieldableState;
     while ((yieldableState = reader.yield()) == YieldableState.YIELDABLE) {
-      if (reader.isCurrentNull() && !keepNull) {
+      if (reader.isCurrentNull()
+          && !keepNull
+          && !(this.inputOperator instanceof IsNullTransformer)) {
         reader.readyForNext();
         continue;
       }

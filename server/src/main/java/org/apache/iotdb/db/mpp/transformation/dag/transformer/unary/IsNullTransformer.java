@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -39,9 +40,10 @@ public class IsNullTransformer extends UnaryTransformer {
   }
 
   @Override
-  protected final boolean cacheValue() throws QueryProcessException, IOException {
-    if (!layerPointReader.next()) {
-      return false;
+  public final YieldableState yieldValue() throws IOException, QueryProcessException {
+    final YieldableState yieldableState = layerPointReader.yield();
+    if (!YieldableState.YIELDABLE.equals(yieldableState)) {
+      return yieldableState;
     }
 
     if (!isLayerPointReaderConstant) {
@@ -51,7 +53,7 @@ public class IsNullTransformer extends UnaryTransformer {
     transformAndCache();
 
     layerPointReader.readyForNext();
-    return true;
+    return YieldableState.YIELDABLE;
   }
 
   /*
