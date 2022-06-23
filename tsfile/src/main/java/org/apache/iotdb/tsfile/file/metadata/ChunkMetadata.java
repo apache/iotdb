@@ -82,6 +82,9 @@ public class ChunkMetadata implements IChunkMetadata {
   // high 32 bit is compaction level, low 32 bit is merge count
   private long compactionVersion;
 
+  // used for ChunkCache, tsfile timestamp
+  private long timestamp;
+
   public ChunkMetadata() {}
 
   /**
@@ -250,7 +253,8 @@ public class ChunkMetadata implements IChunkMetadata {
     return offsetOfChunkHeader == that.offsetOfChunkHeader
         && version == that.version
         && compactionVersion == that.compactionVersion
-        && tsFilePrefixPath.equals(that.tsFilePrefixPath);
+        && tsFilePrefixPath.equals(that.tsFilePrefixPath)
+        && timestamp == that.timestamp;
   }
 
   @Override
@@ -326,6 +330,7 @@ public class ChunkMetadata implements IChunkMetadata {
     tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
     this.version = tsFilePrefixPathAndTsFileVersionPair.right[0];
     this.compactionVersion = tsFilePrefixPathAndTsFileVersionPair.right[1];
+    this.timestamp = tsFilePrefixPathAndTsFileVersionPair.right[2];
   }
 
   @Override
