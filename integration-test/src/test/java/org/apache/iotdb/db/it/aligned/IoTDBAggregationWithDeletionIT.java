@@ -443,9 +443,10 @@ public class IoTDBAggregationWithDeletionIT {
 
   @Test
   public void countAllAlignedWithValueFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0", "9", "11", "6"};
+    String[] retArray = new String[] {"0", "0", "9", "11", "6"};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
+      "count(root.sg1.d1.s2)",
       "count(root.sg1.d1.s3)",
       "count(root.sg1.d1.s4)",
       "count(root.sg1.d1.s5)"
