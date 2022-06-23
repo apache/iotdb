@@ -23,8 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
-import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -76,6 +74,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
@@ -97,7 +97,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -313,8 +315,8 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public THeartbeatResp getHeartBeat(THeartbeatReq req) {
-    THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp());
+  public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
+    THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp(), getJudgedLeaders());
     Random whetherToGetMetric = new Random();
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
         && whetherToGetMetric.nextDouble() < loadBalanceThreshold) {
@@ -334,6 +336,27 @@ public class InternalServiceImpl implements InternalService.Iface {
       }
     }
     return resp;
+  }
+
+  private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
+    Map<TConsensusGroupId, Boolean> result = new HashMap<>();
+    DataRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId -> {
+              result.put(
+                  groupId.convertToTConsensusGroupId(),
+                  DataRegionConsensusImpl.getInstance().isLeader(groupId));
+            });
+    SchemaRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId -> {
+              result.put(
+                  groupId.convertToTConsensusGroupId(),
+                  SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
+            });
+    return result;
   }
 
   private long getMemory(String gaugeName) {

@@ -302,7 +302,11 @@ service ConfigIService {
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
+
+  common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /* UDF */
 

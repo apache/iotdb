@@ -23,20 +23,18 @@ import org.apache.commons.lang3.SystemUtils;
 import java.io.File;
 import java.util.Properties;
 
-public class DataNode extends ClusterNodeBase {
+public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String targetConfigNode;
-
   private final int dataBlockManagerPort;
   private final int internalPort;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
-  private final int[] portList;
 
-  public DataNode(String targetConfigNode, String testName) {
-    super(testName);
+  public DataNodeWrapper(
+      String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
+    super(testClassName, testMethodName, portList);
     this.targetConfigNode = targetConfigNode;
-    portList = super.searchAvailablePorts();
     this.dataBlockManagerPort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
@@ -55,12 +53,22 @@ public class DataNode extends ClusterNodeBase {
     properties.setProperty(
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("connection_timeout_ms", "30000");
-    properties.setProperty("config_nodes", this.targetConfigNode);
+    if (this.targetConfigNode != null) {
+      properties.setProperty("config_nodes", this.targetConfigNode);
+    }
   }
 
   @Override
   protected String getConfigPath() {
     return workDirFilePath("datanode" + File.separator + "conf", "iotdb-engine.properties");
+  }
+
+  @Override
+  protected String getEnvConfigPath() {
+    if (SystemUtils.IS_OS_WINDOWS) {
+      return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.bat");
+    }
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.sh");
   }
 
   @Override
@@ -82,22 +90,7 @@ public class DataNode extends ClusterNodeBase {
   }
 
   @Override
-  protected String getLogPath() {
-    return System.getProperty("user.dir")
-        + File.separator
-        + "target"
-        + File.separator
-        + "cluster-logs"
-        + File.separator
-        + testName
-        + File.separator
-        + "Data"
-        + super.getId()
-        + ".log";
-  }
-
-  @Override
-  public int getPort() {
-    return portList[0];
+  public final String getId() {
+    return "DataNode" + getPort();
   }
 }

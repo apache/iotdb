@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -216,6 +217,11 @@ class StandAloneConsensus implements IConsensus {
       return null;
     }
     return new Peer(groupId, thisNode);
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    return new ArrayList<>(stateMachineMap.keySet());
   }
 
   private String buildPeerDir(ConsensusGroupId groupId) {

@@ -142,8 +142,11 @@ public class RawDataAggregationOperator implements ProcessOperator {
 
   /** @return if already get the result */
   private boolean calcFromCacheData(TimeRange curTimeRange) {
+    if (preCachedData == null || preCachedData.isEmpty()) {
+      return false;
+    }
     // check if the batchData does not contain points in current interval
-    if (preCachedData != null && satisfied(preCachedData, curTimeRange, ascending)) {
+    if (satisfied(preCachedData, curTimeRange, ascending)) {
       // skip points that cannot be calculated
       preCachedData = skipOutOfTimeRangePoints(preCachedData, curTimeRange, ascending);
 
@@ -157,10 +160,9 @@ public class RawDataAggregationOperator implements ProcessOperator {
       }
     }
     // The result is calculated from the cache
-    return (preCachedData != null
-            && (ascending
-                ? preCachedData.getEndTime() > curTimeRange.getMax()
-                : preCachedData.getEndTime() < curTimeRange.getMin()))
+    return (ascending
+            ? preCachedData.getEndTime() > curTimeRange.getMax()
+            : preCachedData.getEndTime() < curTimeRange.getMin())
         || isEndCalc(aggregators);
   }
 

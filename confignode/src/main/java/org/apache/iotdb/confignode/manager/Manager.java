@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -27,8 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -37,7 +39,10 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -152,37 +157,38 @@ public interface Manager {
   /**
    * Get SchemaPartition
    *
-   * @return SchemaPartitionDataSet
+   * @return TSchemaPartitionResp
    */
-  DataSet getSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionResp getSchemaPartition(PathPatternTree patternTree);
 
   /**
    * Get or create SchemaPartition
    *
-   * @return SchemaPartitionDataSet
+   * @return TSchemaPartitionResp
    */
-  DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionResp getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
    * create SchemaNodeManagementPartition for child paths node management
    *
-   * @return SchemaNodeManagementPartitionDataSet
+   * @return TSchemaNodeManagementResp
    */
-  DataSet getNodePathsPartition(PartialPath partialPath, Integer level);
+  TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level);
 
   /**
    * Get DataPartition
    *
-   * @return DataPartitionDataSet
+   * @return TDataPartitionResp
    */
-  DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq);
+  TDataPartitionResp getDataPartition(GetDataPartitionReq getDataPartitionReq);
 
   /**
    * Get or create DataPartition
    *
-   * @return DataPartitionDataSet
+   * @return TDataPartitionResp
    */
-  DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
+  TDataPartitionResp getOrCreateDataPartition(
+      GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
 
   /**
    * Operate Permission
@@ -212,15 +218,24 @@ public interface Manager {
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
-   * Apply ConfigNode when it is first startup
+   * Add Consensus Group in new node.
    *
    * @return status
    */
-  TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
+  TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations);
+
+  /**
+   * Remove ConfigNode
+   *
+   * @return status
+   */
+  TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq);
 
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  TSStatus flush(TFlushReq req);
 
   void addMetrics();
 

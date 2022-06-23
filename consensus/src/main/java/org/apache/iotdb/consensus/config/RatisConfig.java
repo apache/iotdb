@@ -519,8 +519,8 @@ public class RatisConfig {
       private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
       private int purgeGap = 1024;
       private boolean purgeUptoSnapshotIndex = false;
-      private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("8MB");
-      private int segmentCacheNumMax = 6;
+      private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("128MB");
+      private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");
       private SizeInBytes preallocatedSize = SizeInBytes.valueOf("4MB");
       private SizeInBytes writeBufferSize = SizeInBytes.valueOf("64KB");

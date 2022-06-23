@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -40,8 +42,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -67,11 +69,15 @@ import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -141,12 +147,6 @@ public class ConfigManager implements Manager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
     this.consensusManager = new ConsensusManager(stateMachine);
-
-    // We are on testing.......
-    if (ConfigNodeDescriptor.getInstance().getConf().isEnableHeartbeat()) {
-      // Start asking for heartbeat
-      new Thread(this.loadManager).start();
-    }
   }
 
   public void close() throws IOException {
@@ -294,7 +294,7 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getSchemaPartition(PathPatternTree patternTree) {
+  public TSchemaPartitionResp getSchemaPartition(PathPatternTree patternTree) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
@@ -327,38 +327,35 @@ public class ConfigManager implements Manager {
 
       // return empty partition
       if (partitionSlotsMap.isEmpty()) {
-        SchemaPartitionResp resp = new SchemaPartitionResp();
+        TSchemaPartitionResp resp = new TSchemaPartitionResp();
         resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-        // TODO: (xingtanzjr) replace with new data structure
-        resp.setSchemaPartition(
-            new SchemaPartition(
-                new HashMap<>(),
-                IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-                IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum()));
+        resp.setSchemaRegionMap(new HashMap<>());
+        return resp;
       }
 
       getSchemaPartitionReq.setPartitionSlotsMap(
           partitionSlotsMap.entrySet().stream()
               .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
+
       SchemaPartitionResp resp =
           (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionReq);
+      TSchemaPartitionResp result =
+          resp.convertToRpcSchemaPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
-          "GetSchemaPartition interface receive paths: {}, return SchemaPartition: {}",
+          "GetSchemaPartition receive paths: {}, return TSchemaPartitionResp: {}",
           relatedPaths,
-          resp.getSchemaPartition().getSchemaPartitionMap());
+          result);
 
-      return resp;
+      return result;
     } else {
-      SchemaPartitionResp dataSet = new SchemaPartitionResp();
-      dataSet.setStatus(status);
-      return dataSet;
+      return new TSchemaPartitionResp().setStatus(status);
     }
   }
 
   @Override
-  public DataSet getOrCreateSchemaPartition(PathPatternTree patternTree) {
+  public TSchemaPartitionResp getOrCreateSchemaPartition(PathPatternTree patternTree) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> devicePaths = patternTree.getAllDevicePatterns();
@@ -367,7 +364,6 @@ public class ConfigManager implements Manager {
       GetOrCreateSchemaPartitionReq getOrCreateSchemaPartitionReq =
           new GetOrCreateSchemaPartitionReq();
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-
       for (String devicePath : devicePaths) {
         if (!devicePath.contains("*")) {
           // Only check devicePaths that without "*"
@@ -381,32 +377,28 @@ public class ConfigManager implements Manager {
           }
         }
       }
-
       getOrCreateSchemaPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
+
       SchemaPartitionResp resp =
           (SchemaPartitionResp)
               partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionReq);
+      TSchemaPartitionResp result =
+          resp.convertToRpcSchemaPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
 
       // TODO: Delete or hide this LOGGER before officially release.
-      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
-            "GetOrCreateSchemaPartition success. receive devicePaths: {}, return SchemaPartition: {}",
-            devicePaths,
-            resp.getSchemaPartition().getSchemaPartitionMap());
-      } else {
-        LOGGER.info("GetOrCreateSchemaPartition failed: {}", resp.getStatus());
-      }
+      LOGGER.info(
+          "GetOrCreateSchemaPartition receive devicePaths: {}, return TSchemaPartitionResp: {}",
+          devicePaths,
+          result);
 
-      return resp;
+      return result;
     } else {
-      SchemaPartitionResp dataSet = new SchemaPartitionResp();
-      dataSet.setStatus(status);
-      return dataSet;
+      return new TSchemaPartitionResp().setStatus(status);
     }
   }
 
   @Override
-  public DataSet getNodePathsPartition(PartialPath partialPath, Integer level) {
+  public TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetNodePathsPartitionReq getNodePathsPartitionReq = new GetNodePathsPartitionReq();
@@ -414,58 +406,69 @@ public class ConfigManager implements Manager {
       if (null != level) {
         getNodePathsPartitionReq.setLevel(level);
       }
-      return partitionManager.getNodePathsPartition(getNodePathsPartitionReq);
+      SchemaNodeManagementResp resp =
+          (SchemaNodeManagementResp)
+              partitionManager.getNodePathsPartition(getNodePathsPartitionReq);
+      TSchemaNodeManagementResp result =
+          resp.convertToRpcSchemaNodeManagementPartitionResp(
+              getLoadManager().genRealTimeRoutingPolicy());
+
+      // TODO: Delete or hide this LOGGER before officially release.
+      LOGGER.info(
+          "getNodePathsPartition receive devicePaths: {}, level: {}, return TSchemaNodeManagementResp: {}",
+          partialPath,
+          level,
+          result);
+
+      return result;
     } else {
-      SchemaNodeManagementResp dataSet = new SchemaNodeManagementResp();
-      dataSet.setStatus(status);
-      return dataSet;
+      return new TSchemaNodeManagementResp().setStatus(status);
     }
   }
 
   @Override
-  public DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq) {
+  public TDataPartitionResp getDataPartition(GetDataPartitionReq getDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       DataPartitionResp resp =
           (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionReq);
 
+      TDataPartitionResp result =
+          resp.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
+
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
-          "GetDataPartition interface receive PartitionSlotsMap: {}, return DataPartition: {}",
+          "GetDataPartition interface receive PartitionSlotsMap: {}, return TDataPartitionResp: {}",
           getDataPartitionReq.getPartitionSlotsMap(),
-          resp.getDataPartition().getDataPartitionMap());
+          result);
 
-      return resp;
+      return result;
     } else {
-      DataPartitionResp dataSet = new DataPartitionResp();
-      dataSet.setStatus(status);
-      return dataSet;
+      return new TDataPartitionResp().setStatus(status);
     }
   }
 
   @Override
-  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq) {
+  public TDataPartitionResp getOrCreateDataPartition(
+      GetOrCreateDataPartitionReq getOrCreateDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       DataPartitionResp resp =
           (DataPartitionResp)
               partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
-      // TODO: Delete or hide this LOGGER before officially release.
-      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
-            "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return DataPartition: {}",
-            getOrCreateDataPartitionReq.getPartitionSlotsMap(),
-            resp.getDataPartition().getDataPartitionMap());
-      } else {
-        LOGGER.info("GetOrCreateDataPartition failed: {}", resp.getStatus());
-      }
+      TDataPartitionResp result =
+          resp.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
 
-      return resp;
+      // TODO: Delete or hide this LOGGER before officially release.
+      LOGGER.info(
+          "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return TDataPartitionResp: {}",
+          getOrCreateDataPartitionReq.getPartitionSlotsMap(),
+          result);
+
+      return result;
     } else {
-      DataPartitionResp dataSet = new DataPartitionResp();
-      dataSet.setStatus(status);
-      return dataSet;
+      return new TDataPartitionResp().setStatus(status);
     }
   }
 
@@ -473,7 +476,9 @@ public class ConfigManager implements Manager {
     if (getConsensusManager().isLeader()) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
+      Peer leader = consensusManager.getLeader(nodeManager.getOnlineConfigNodes());
       return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+          .setRedirectNode(leader.getEndpoint())
           .setMessage(
               "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
     }
@@ -554,6 +559,20 @@ public class ConfigManager implements Manager {
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     // Check global configuration
+    TSStatus status = confirmLeader();
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TConfigNodeRegisterResp errorResp1 = checkConfigNodeRegisterResp(req);
+      if (errorResp1 != null) return errorResp1;
+
+      procedureManager.addConfigNode(req);
+      return nodeManager.registerConfigNode(req);
+    }
+
+    return new TConfigNodeRegisterResp().setStatus(status);
+  }
+
+  private TConfigNodeRegisterResp checkConfigNodeRegisterResp(TConfigNodeRegisterReq req) {
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
@@ -616,13 +635,23 @@ public class ConfigManager implements Manager {
               "Reject register, please ensure that the data_replication_factor are consistent.");
       return errorResp;
     }
-
-    return nodeManager.registerConfigNode(req);
+    return null;
   }
 
   @Override
-  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
-    return nodeManager.applyConfigNode(applyConfigNodeReq);
+  public TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+    consensusManager.addConsensusGroup(configNodeLocations);
+    return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.removeConfigNode(removeConfigNodeReq);
+    } else {
+      return status;
+    }
   }
 
   @Override
@@ -638,6 +667,14 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? udfManager.dropFunction(udfName)
+        : status;
+  }
+
+  @Override
+  public TSStatus flush(TFlushReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.flush(req))
         : status;
   }
 

@@ -1548,6 +1548,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "trigger_forward_mqtt_pool_size",
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
+    conf.setCoordinatorReadExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_read_executor_size",
+                Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+    conf.setCoordinatorWriteExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_write_executor_size",
+                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
   }
 
   private void loadCQProps(Properties properties) {

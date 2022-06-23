@@ -16,8 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.itbase.env.BaseConfig;
+package org.apache.iotdb.db.mpp.transformation.api;
 
-public class RemoteEnvConfig implements BaseConfig {}
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+
+import java.io.IOException;
+
+public interface YieldableReader {
+
+  YieldableState yield() throws IOException, QueryProcessException;
+}

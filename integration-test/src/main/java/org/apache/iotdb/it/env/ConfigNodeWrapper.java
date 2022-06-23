@@ -23,18 +23,19 @@ import org.apache.commons.lang3.SystemUtils;
 import java.io.File;
 import java.util.Properties;
 
-public class ConfigNode extends ClusterNodeBase {
+public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   private final int consensusPort;
   private final String targetConfigNode;
-  private final int[] portList;
 
-  public ConfigNode(boolean isSeed, String targetConfigNode, String testName) {
-    super(testName);
-
-    portList = super.searchAvailablePorts();
+  public ConfigNodeWrapper(
+      boolean isSeed,
+      String targetConfigNode,
+      String testClassName,
+      String testMethodName,
+      int[] portList) {
+    super(testClassName, testMethodName, portList);
     this.consensusPort = portList[1];
-
     if (isSeed) {
       this.targetConfigNode = getIpAndPortString();
     } else {
@@ -68,6 +69,14 @@ public class ConfigNode extends ClusterNodeBase {
   }
 
   @Override
+  protected String getEnvConfigPath() {
+    if (SystemUtils.IS_OS_WINDOWS) {
+      return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.bat");
+    }
+    return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.sh");
+  }
+
+  @Override
   protected String getStartScriptPath() {
     String scriptName = "start-confignode.sh";
     if (SystemUtils.IS_OS_WINDOWS) {
@@ -86,31 +95,7 @@ public class ConfigNode extends ClusterNodeBase {
   }
 
   @Override
-  protected String getLogPath() {
-    return System.getProperty("user.dir")
-        + File.separator
-        + "target"
-        + File.separator
-        + "cluster-logs"
-        + File.separator
-        + testName
-        + File.separator
-        + "Config"
-        + super.getId()
-        + ".log";
-  }
-
-  @Override
-  protected String getNodePath() {
-    return System.getProperty("user.dir")
-        + File.separator
-        + "target"
-        + File.separator
-        + super.getId();
-  }
-
-  @Override
-  public int getPort() {
-    return portList[0];
+  public final String getId() {
+    return "ConfigNode" + getPort();
   }
 }

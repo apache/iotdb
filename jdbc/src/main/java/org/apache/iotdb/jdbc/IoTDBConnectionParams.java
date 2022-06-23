@@ -34,6 +34,7 @@ public class IoTDBConnectionParams {
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
   private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
+  private int networkTimeout = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
 
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
@@ -109,5 +110,17 @@ public class IoTDBConnectionParams {
 
   public void setVersion(Constant.Version version) {
     this.version = version;
+  }
+
+  public void setNetworkTimeout(int networkTimeout) {
+    if (networkTimeout < 0) {
+      this.networkTimeout = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+    } else {
+      this.networkTimeout = networkTimeout;
+    }
+  }
+
+  public int getNetworkTimeout() {
+    return this.networkTimeout;
   }
 }
