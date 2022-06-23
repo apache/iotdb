@@ -37,10 +37,10 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.query.TestUtils.assertResultSetEqual;
-import static org.apache.iotdb.db.it.query.TestUtils.assertTestFail;
-import static org.apache.iotdb.db.it.query.TestUtils.prepareData;
-import static org.apache.iotdb.db.it.query.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)

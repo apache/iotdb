@@ -37,7 +37,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.sql.Types;
 
-import static org.apache.iotdb.db.it.query.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 

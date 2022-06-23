@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.query;
+package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.it.env.EnvFactory;
 

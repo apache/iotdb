@@ -34,9 +34,9 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.query.TestUtils.assertTestFail;
-import static org.apache.iotdb.db.it.query.TestUtils.prepareData;
-import static org.apache.iotdb.db.it.query.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
