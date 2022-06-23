@@ -45,11 +45,12 @@ public class AsyncConfigNodeClientPool {
    *
    * @param endPoint The specific ConfigNode
    */
-  public void getHeartBeat(TEndPoint endPoint, long timestamp, ConfigNodeHeartbeatHandler handler) {
+  public void getConfigNodeHeartBeat(
+      TEndPoint endPoint, long timestamp, ConfigNodeHeartbeatHandler handler) {
     AsyncConfigNodeIServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
-      client.getHeartBeat(timestamp, handler);
+      client.getConfigNodeHeartBeat(timestamp, handler);
     } catch (Exception e) {
       LOGGER.error("Asking ConfigNode: {}, for heartbeat failed", endPoint, e);
     }

@@ -20,6 +20,11 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+<<<<<<< HEAD
+=======
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+>>>>>>> a4bf6d1f90 (add remove cache and fix name)
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -67,6 +72,7 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -181,6 +187,28 @@ public class ConfigManager implements IManager {
       DataNodeInfosResp dataSet = new DataNodeInfosResp();
       dataSet.setStatus(status);
       return dataSet;
+    }
+  }
+
+  @Override
+  public TClusterNodeInfos getAllClusterNodeInfos() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<TConfigNodeLocation> configNodeLocations = getNodeManager().getOnlineConfigNodes();
+      List<TDataNodeLocation> dataNodeInfoLocations =
+          getNodeManager().getOnlineDataNodes(-1).stream()
+              .map(TDataNodeInfo::getLocation)
+              .collect(Collectors.toList());
+      Map<Integer, String> nodeStatus = new HashMap<>();
+      getLoadManager()
+          .getHeartbeatCacheMap()
+          .forEach(
+              (nodeId, heartbeatCache) -> {
+                nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus());
+              });
+      return new TClusterNodeInfos(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
+    } else {
+      return new TClusterNodeInfos(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
     }
   }
 

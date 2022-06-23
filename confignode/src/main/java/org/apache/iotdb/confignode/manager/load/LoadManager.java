@@ -73,7 +73,7 @@ public class LoadManager {
 
   private final long heartbeatInterval =
       ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
-  // Map<NodeId, DataNodeHeartbeatCache>
+  // Map<NodeId, IHeartbeatStatistic>
   private final Map<Integer, IHeartbeatStatistic> heartbeatCacheMap;
 
   // Balancers
@@ -244,7 +244,7 @@ public class LoadManager {
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()));
       AsyncDataNodeClientPool.getInstance()
-          .getHeartBeat(
+          .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
     }
   }
@@ -265,11 +265,20 @@ public class LoadManager {
                       configNodeLocation.getConfigNodeId(),
                       empty -> new ConfigNodeHeartbeatCache()));
       AsyncConfigNodeClientPool.getInstance()
-          .getHeartBeat(
+          .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
               genHeartbeatReq().getHeartbeatTimestamp(),
               handler);
     }
+  }
+
+  /**
+   * When a node is removed, clear the node's cache
+   *
+   * @param nodeId removed node id
+   */
+  public void removeNodeHeartbeatHandCache(Integer nodeId) {
+    heartbeatCacheMap.remove(nodeId);
   }
 
   private ConsensusManager getConsensusManager() {

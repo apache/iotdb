@@ -324,7 +324,7 @@ service ConfigIService {
   TShowRegionResp showRegion(TShowRegionReq req)
 
   /* Get confignode heartbeat */
-  i64 getHeartBeat(i64 timestamp)
+  i64 getConfigNodeHeartBeat(i64 timestamp)
 
 }
 
