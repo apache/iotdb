@@ -64,8 +64,6 @@ public class ConfigNodeHeartbeatCache implements IHeartbeatStatistic {
 
     // TODO: Optimize
     if (System.currentTimeMillis() - lastSendTime > 20_000) {
-      status = NodeStatus.Down;
-    } else if (System.currentTimeMillis() - lastSendTime > 10_000) {
       status = NodeStatus.Unknown;
     } else {
       status = NodeStatus.Running;
@@ -91,8 +89,6 @@ public class ConfigNodeHeartbeatCache implements IHeartbeatStatistic {
     switch (status) {
       case Running:
         return NodeStatus.Running;
-      case Down:
-        return NodeStatus.Down;
       case Unknown:
       default:
         return NodeStatus.Unknown;
