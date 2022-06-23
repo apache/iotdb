@@ -23,7 +23,9 @@ public enum NodeStatus {
   // Node running properly
   Running("Running"),
   // Node connection failure
-  Unknown("Unknown");
+  Unknown("Unknown"),
+  // Node not running
+  Down("Down");
 
   private final String status;
 

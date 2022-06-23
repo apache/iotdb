@@ -718,6 +718,19 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
+  public long getHeartBeat(long timestamp) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        return client.getHeartBeat(timestamp);
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TSStatus dropFunction(TDropFunctionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

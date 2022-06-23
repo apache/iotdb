@@ -100,7 +100,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -163,11 +165,19 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         configManager.getNodeManager().getOnlineDataNodes(-1).stream()
             .map(TDataNodeInfo::getLocation)
             .collect(Collectors.toList());
-
+    Map<Integer, String> nodeStatus = new HashMap<>();
+    configManager
+        .getLoadManager()
+        .getHeartbeatCacheMap()
+        .forEach(
+            (nodeId, heartbeatCache) -> {
+              nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus());
+            });
     return new TClusterNodeInfos(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         configNodeLocations,
-        dataNodeInfoLocations);
+        dataNodeInfoLocations,
+        nodeStatus);
   }
 
   @Override
@@ -471,6 +481,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     showRegionResp.setStatus(dataSet.getStatus());
     showRegionResp.setRegionInfoList(dataSet.getRegionInfoList());
     return showRegionResp;
+  }
+
+  @Override
+  public long getHeartBeat(long timestamp) throws TException {
+    return timestamp;
   }
 
   public void handleClientExit() {}

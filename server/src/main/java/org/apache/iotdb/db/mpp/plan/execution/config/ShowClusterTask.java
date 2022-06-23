@@ -74,7 +74,7 @@ public class ShowClusterTask implements IConfigTask {
                     builder,
                     e.getConfigNodeId(),
                     NODE_TYPE_CONFIG_NODE,
-                    NODE_STATUS_RUNNING,
+                    clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort()));
 

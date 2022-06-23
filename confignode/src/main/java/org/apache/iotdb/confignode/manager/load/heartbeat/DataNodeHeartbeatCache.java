@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 
 import java.util.LinkedList;
 
-/** HeartbeatCache caches and maintains all the heartbeat data */
-public class HeartbeatCache implements IHeartbeatStatistic {
+/** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
+public class DataNodeHeartbeatCache implements IHeartbeatStatistic {
 
   // Cache heartbeat samples
   private static final int maximumWindowSize = 100;
@@ -34,7 +34,7 @@ public class HeartbeatCache implements IHeartbeatStatistic {
   // For showing cluster
   private volatile NodeStatus status;
 
-  public HeartbeatCache() {
+  public DataNodeHeartbeatCache() {
     this.slidingWindow = new LinkedList<>();
 
     this.loadScore = 0;
