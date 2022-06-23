@@ -44,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
+public class IoTDBAggregationWithDeletionIT {
 
   private static final double DELTA = 1e-6;
   protected static boolean enableSeqSpaceCompaction;
