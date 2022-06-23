@@ -51,9 +51,9 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    if (children.get(currentIndex).hasNext()) {
+    if(children.get(currentIndex).hasNext()){
       return children.get(currentIndex).next();
-    } else {
+    }else {
       currentIndex++;
       return null;
     }
@@ -66,7 +66,7 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    return currentIndex < children.size() ? children.get(currentIndex).isBlocked() : NOT_BLOCKED;
+    return children.get(currentIndex).isBlocked();
   }
 
   @Override
@@ -76,7 +76,7 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
+    for(Operator child: children){
       child.close();
     }
   }
