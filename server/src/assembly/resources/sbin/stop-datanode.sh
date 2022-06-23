@@ -24,6 +24,6 @@ if [ ! $PIDS ];then
   echo "No DataNode to stop"
 else
   echo "Stop DataNode"
-  jps | grep -w DataNode | grep -v grep | awk '{print $1}'  | xargs kill -9
+  jps | grep -w DataNode | grep -v grep | awk '{print $1}'  | xargs kill
 fi
 
