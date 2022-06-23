@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.groupby;
+package org.apache.iotdb.db.it.groupby;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
@@ -30,6 +31,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -39,7 +41,8 @@ import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByUnseqIT {
 
   private static String[] dataSet1 =
@@ -99,7 +102,6 @@ public class IoTDBGroupByUnseqIT {
    * 7, 9. The unseq page is overlapped with the second seq page.
    */
   @Test
-  @Category(ClusterTest.class)
   public void test1() {
     String[] retArray1 =
         new String[] {

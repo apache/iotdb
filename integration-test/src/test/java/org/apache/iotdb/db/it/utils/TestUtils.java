@@ -59,6 +59,58 @@ public class TestUtils {
     }
   }
 
+  public static void resultSetEqualTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray) {
+    StringBuilder header = new StringBuilder();
+    for (String s : expectedHeader) {
+      header.append(s).append(",");
+    }
+    resultSetEqualTest(sql, header.toString(), expectedRetArray);
+  }
+
+  public static void resultSetEqualWithDescOrderTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int cnt;
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+        }
+
+        cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(expectedHeader[i - 1])).append(",");
+          }
+          assertEquals(expectedRetArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(expectedRetArray.length, cnt);
+      }
+
+      try (ResultSet resultSet = statement.executeQuery(sql + " order by time desc")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+        }
+
+        cnt = expectedRetArray.length;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(expectedHeader[i - 1])).append(",");
+          }
+          assertEquals(expectedRetArray[cnt - 1], builder.toString());
+          cnt--;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+    }
+  }
+
   public static void assertTestFail(String sql, String errMsg) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

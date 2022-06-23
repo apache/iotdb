@@ -16,18 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.groupby;
+package org.apache.iotdb.db.it.groupby;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -36,15 +37,18 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IOTDBGroupByInnerIntervalIT {
 
-  private static String[] dataSet1 =
+  private static String[] SQLs =
       new String[] {
         "SET STORAGE GROUP TO root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -108,16 +112,14 @@ public class IOTDBGroupByInnerIntervalIT {
 
   private static final double DETLA = 1e-6;
 
-  private static final String TIMESTAMP_STR = "Time";
-
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
-    prepareData();
+    prepareData(SQLs);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
@@ -324,19 +326,6 @@ public class IOTDBGroupByInnerIntervalIT {
       fail();
     } catch (Exception e) {
       assertTrue(e instanceof IoTDBSQLException);
-    }
-  }
-
-  private void prepareData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : dataSet1) {
-        statement.execute(sql);
-      }
-
-    } catch (Exception e) {
-      e.printStackTrace();
     }
   }
 }
