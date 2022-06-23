@@ -272,49 +272,51 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  /**
+   * Get target ConfigNode configuration
+   *
+   * @param req GetConfigNodeConfigurationReq
+   * @return GET_CONFIGNODE_CONFIGURATION_FAILED if confignode-system.properties not exist
+   */
   public ConfigNodeConfigurationResp getConfigNodeConfiguration(GetConfigNodeConfigurationReq req) {
     ConfigNodeConfigurationResp result = new ConfigNodeConfigurationResp();
     Properties systemProperties = new Properties();
     configNodeInfoReadWriteLock.readLock().lock();
-    for (TConfigNodeLocation onlineConfigNode : onlineConfigNodes) {
-      if (onlineConfigNode.equals(req.getConfigNodeLocation())) {
-        if (!systemPropertiesFile.exists()) {
-          LOGGER.info("The system properties file is not exists.");
-          result.setStatus(
-              new TSStatus(TSStatusCode.GET_CONFIGNODE_CONFIGURATION_FAILED.getStatusCode()));
-          return result;
-        }
 
-        try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
-          systemProperties.load(inputStream);
-          result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-          result.setConfigNodes(
-              NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list")));
+    if (!systemPropertiesFile.exists()) {
+      LOGGER.info("The system properties file is not exists.");
+      result.setStatus(
+          new TSStatus(TSStatusCode.GET_CONFIGNODE_CONFIGURATION_FAILED.getStatusCode()));
+      return result;
+    }
 
-          ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
+      systemProperties.load(inputStream);
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setConfigNodes(
+          NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list")));
 
-          TGlobalConfig globalConfig = new TGlobalConfig();
-          globalConfig.setDataRegionConsensusProtocolClass(
-              systemProperties.getProperty("data_region_consensus_protocol_class"));
-          globalConfig.setSchemaRegionConsensusProtocolClass(
-              systemProperties.getProperty("schema_region_consensus_protocol_class"));
-          globalConfig.setSeriesPartitionSlotNum(
-              Integer.parseInt(systemProperties.getProperty("series_partition_slot_num")));
-          globalConfig.setSeriesPartitionExecutorClass(
-              systemProperties.getProperty("series_partition_executor_class"));
-          globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
-          result.setGlobalConfig(globalConfig);
+      ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
-          result.setDefaultTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
-          result.setSchemaReplicationFactor(conf.getSchemaReplicationFactor());
-          result.setDataReplicationFactor(conf.getDataReplicationFactor());
-          return result;
-        } catch (IOException | BadNodeUrlException e) {
-          LOGGER.error("Load system properties file failed.", e);
-        } finally {
-          configNodeInfoReadWriteLock.readLock().unlock();
-        }
-      }
+      TGlobalConfig globalConfig = new TGlobalConfig();
+      globalConfig.setDataRegionConsensusProtocolClass(
+          systemProperties.getProperty("data_region_consensus_protocol_class"));
+      globalConfig.setSchemaRegionConsensusProtocolClass(
+          systemProperties.getProperty("schema_region_consensus_protocol_class"));
+      globalConfig.setSeriesPartitionSlotNum(
+          Integer.parseInt(systemProperties.getProperty("series_partition_slot_num")));
+      globalConfig.setSeriesPartitionExecutorClass(
+          systemProperties.getProperty("series_partition_executor_class"));
+      globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
+      result.setGlobalConfig(globalConfig);
+
+      result.setDefaultTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
+      result.setSchemaReplicationFactor(conf.getSchemaReplicationFactor());
+      result.setDataReplicationFactor(conf.getDataReplicationFactor());
+    } catch (IOException | BadNodeUrlException e) {
+      LOGGER.error("Load system properties file failed.", e);
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
     }
     return result;
   }

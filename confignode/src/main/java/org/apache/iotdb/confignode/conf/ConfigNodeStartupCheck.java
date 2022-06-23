@@ -59,6 +59,9 @@ public class ConfigNodeStartupCheck {
   private final File systemPropertiesFile;
   private final Properties systemProperties;
 
+  /** Be true only in first start, check system parameter in all config node */
+  private boolean isCheckAllConfigNodeParameter;
+
   private ConfigNodeStartupCheck() {
     systemPropertiesFile =
         new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
@@ -75,6 +78,7 @@ public class ConfigNodeStartupCheck {
         // Apply after constructing PartitionRegion
         conf.setNeedApply(true);
       }
+      isCheckAllConfigNodeParameter = true;
       // Persistence the unchangeable parameters
       writeSystemProperties();
     } else {
@@ -422,6 +426,7 @@ public class ConfigNodeStartupCheck {
     }
   }
 
+  /** Check configuration */
   public boolean checkConfigurations(TConsensusGroupId groupId) {
     if (!isContainsRpcConfigNode()) {
       return true;
@@ -528,6 +533,10 @@ public class ConfigNodeStartupCheck {
     }
 
     return true;
+  }
+
+  public boolean isCheckAllConfigNodeParameter() {
+    return isCheckAllConfigNodeParameter;
   }
 
   private static class ConfigNodeConfCheckHolder {

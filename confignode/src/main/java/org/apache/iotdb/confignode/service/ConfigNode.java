@@ -124,25 +124,7 @@ public class ConfigNode implements ConfigNodeMBean {
     try {
       setUp();
       // Check key parameters between ConfigNodes
-      new Thread(
-              () -> {
-                try {
-                  waitLeader();
-                  TConsensusGroupId groupId =
-                      configManager
-                          .getConsensusManager()
-                          .getConsensusGroupId()
-                          .convertToTConsensusGroupId();
-                  if (!ConfigNodeStartupCheck.getInstance().checkConfigurations(groupId)) {
-                    stop();
-                    LOGGER.info("Check configurations failed!");
-                    return;
-                  }
-                } catch (IOException | InterruptedException e) {
-                  LOGGER.error("Meet error when stop ConfigNode!", e);
-                }
-              })
-          .start();
+      checkSystemConfig();
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -155,6 +137,31 @@ public class ConfigNode implements ConfigNodeMBean {
 
     LOGGER.info(
         "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+  }
+
+  private void checkSystemConfig() {
+    new Thread(
+            () -> {
+              if (!ConfigNodeStartupCheck.getInstance().isCheckAllConfigNodeParameter()) {
+                return;
+              }
+              try {
+                waitLeader();
+                TConsensusGroupId groupId =
+                    configManager
+                        .getConsensusManager()
+                        .getConsensusGroupId()
+                        .convertToTConsensusGroupId();
+                if (!ConfigNodeStartupCheck.getInstance().checkConfigurations(groupId)) {
+                  stop();
+                  LOGGER.info("Check configurations failed!");
+                  return;
+                }
+              } catch (IOException | InterruptedException e) {
+                LOGGER.error("Meet error when stop ConfigNode!", e);
+              }
+            })
+        .start();
   }
 
   /** Waiting for the leader to be elected */

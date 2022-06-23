@@ -63,6 +63,7 @@ public class SyncConfigNodeClientPool {
     }
   }
 
+  /** Get target ConfigNode configuration */
   public TConfigNodeConfigurationResp getConfigNodeConfiguration(
       TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
