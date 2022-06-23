@@ -181,13 +181,7 @@ public class IoTDBCreateTimeseriesIT {
             .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
             .collect(Collectors.toList());
 
-    for (String s : collect) {
-      System.out.println(s);
-    }
     for (String timeseries : timeSeriesArray) {
-      if (!collect.contains(timeseries)) {
-        System.out.println(timeseries);
-      }
       Assert.assertTrue(collect.contains(timeseries));
     }
   }
