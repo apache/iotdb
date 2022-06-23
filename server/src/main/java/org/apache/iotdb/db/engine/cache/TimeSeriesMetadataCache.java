@@ -268,6 +268,7 @@ public class TimeSeriesMetadataCache {
 
     private final String filePath;
     private final String tsFilePrefixPath;
+    private final long timestamp;
     private final long tsFileVersion;
     // high 32 bit is compaction level, low 32 bit is merge count
     private final long compactionVersion;
@@ -281,6 +282,7 @@ public class TimeSeriesMetadataCache {
       this.tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
       this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right[0];
       this.compactionVersion = tsFilePrefixPathAndTsFileVersionPair.right[1];
+      this.timestamp = tsFilePrefixPathAndTsFileVersionPair.right[2];
       this.device = device;
       this.measurement = measurement;
     }
@@ -298,7 +300,8 @@ public class TimeSeriesMetadataCache {
           && Objects.equals(device, that.device)
           && tsFileVersion == that.tsFileVersion
           && compactionVersion == that.compactionVersion
-          && tsFilePrefixPath.equals(that.tsFilePrefixPath);
+          && tsFilePrefixPath.equals(that.tsFilePrefixPath)
+          && timestamp == that.timestamp;
     }
 
     @Override

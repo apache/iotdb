@@ -148,6 +148,7 @@ public class BloomFilterCache {
     // share this String.
     private final String filePath;
     private final String tsFilePrefixPath;
+    private final long timestamp;
     private final long tsFileVersion;
     // high 32 bit is compaction level, low 32 bit is merge count
     private final long compactionVersion;
@@ -159,6 +160,7 @@ public class BloomFilterCache {
       this.tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
       this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right[0];
       this.compactionVersion = tsFilePrefixPathAndTsFileVersionPair.right[1];
+      this.timestamp = tsFilePrefixPathAndTsFileVersionPair.right[2];
     }
 
     @Override
@@ -172,7 +174,8 @@ public class BloomFilterCache {
       BloomFilterCache.BloomFilterCacheKey that = (BloomFilterCache.BloomFilterCacheKey) o;
       return tsFileVersion == that.tsFileVersion
           && compactionVersion == that.compactionVersion
-          && tsFilePrefixPath.equals(that.tsFilePrefixPath);
+          && tsFilePrefixPath.equals(that.tsFilePrefixPath)
+          && timestamp == that.timestamp;
     }
 
     @Override
