@@ -694,7 +694,8 @@ public class IoTDBSyntaxConventionIdentifierIT {
     }
   }
 
-  // todo: add this back when supporting trigger
+  // todo: add this back when supporting trigger in cluster
+
   //  @Test
   //  public void testTriggerName() {
   //    try (Connection connection = EnvFactory.getEnv().getConnection();
