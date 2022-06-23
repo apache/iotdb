@@ -264,7 +264,6 @@ public class SnapshotStorage implements StateMachineStorage {
   public static class FileInfoWithAsyncMd5Computing extends FileInfo {
 
     private static final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
-    private Future<Void> computeMd5;
     private volatile MD5Hash digest;
 
     public FileInfoWithAsyncMd5Computing(Path path, MD5Hash fileDigest) {
@@ -274,9 +273,14 @@ public class SnapshotStorage implements StateMachineStorage {
 
     public FileInfoWithAsyncMd5Computing(Path path) {
       this(path, null);
+    }
+
+    // return null iff sync md5 computing failed
+    @Override
+    public MD5Hash getFileDigest() {
 
       // start an async job to compute MD5Hash
-      computeMd5 =
+      Future<Void> computeMd5 =
           CompletableFuture.runAsync(
               () -> {
                 try {
@@ -290,23 +294,14 @@ public class SnapshotStorage implements StateMachineStorage {
                   logger.error("compute md5 digest for {} failed due to {}", path, e);
                 }
               });
-    }
 
-    // return null iff sync md5 computing failed
-    @Override
-    public MD5Hash getFileDigest() {
-      if (computeMd5 != null) {
-        try {
-          computeMd5.get(15, TimeUnit.SECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-          logger.error("async compute md5 for {} failed due to {}", getPath(), e);
-          return null;
-        }
-
-        if (computeMd5.isDone()) {
-          computeMd5 = null;
-        }
+      try {
+        computeMd5.get(15, TimeUnit.SECONDS);
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        logger.error("async compute md5 for {} failed due to {}", getPath(), e);
+        return null;
       }
+
       return digest;
     }
   }
