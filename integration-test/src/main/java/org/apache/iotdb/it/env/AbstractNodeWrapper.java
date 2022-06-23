@@ -32,7 +32,6 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,6 +44,7 @@ import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -85,10 +85,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     // Copy templateNodePath to nodePath
     String destPath = getNodePath();
     try {
-      File nodeDir = new File(destPath);
       try {
-        FileUtils.forceDelete(nodeDir);
-      } catch (FileNotFoundException e) {
+        PathUtils.deleteDirectory(Paths.get(destPath));
+      } catch (NoSuchFileException e) {
         // ignored
       }
       // Here we need to copy without follow symbolic links, so we can't use FileUtils directly.
@@ -120,7 +119,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       // Make sure the log dir exist, as the first file is output by starting script directly.
       FileUtils.createParentDirectories(new File(getLogPath()));
     } catch (IOException ex) {
-      fail("Copy node dir failed. " + ex);
+      logger.error("Copy node dir failed", ex);
+      fail();
     }
   }
 
