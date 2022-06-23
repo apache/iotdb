@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
@@ -289,8 +290,12 @@ public class StorageEngine implements IService {
     recover();
 
     ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL-Check");
-    ttlCheckThread.scheduleAtFixedRate(
-        this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        ttlCheckThread,
+        this::checkTTL,
+        TTL_CHECK_INTERVAL,
+        TTL_CHECK_INTERVAL,
+        TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
 
     startTimedService();
@@ -314,7 +319,8 @@ public class StorageEngine implements IService {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
-      seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
           config.getSeqMemtableFlushCheckInterval(),
@@ -326,7 +332,8 @@ public class StorageEngine implements IService {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
-      unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
+      ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+          unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
           config.getUnseqMemtableFlushCheckInterval(),
@@ -336,22 +343,14 @@ public class StorageEngine implements IService {
   }
 
   private void timedFlushSeqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushSeqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing sequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushSeqMemTable();
     }
   }
 
   private void timedFlushUnseqMemTable() {
-    try {
-      for (StorageGroupManager processor : processorMap.values()) {
-        processor.timedFlushUnseqMemTable();
-      }
-    } catch (Exception e) {
-      logger.error("An error occurred when timed flushing unsequence memtables", e);
+    for (StorageGroupManager processor : processorMap.values()) {
+      processor.timedFlushUnseqMemTable();
     }
   }
 
@@ -856,8 +855,7 @@ public class StorageEngine implements IService {
     abortCompactionTaskForStorageGroup(storageGroupPath);
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
-    storageGroupManager.deleteStorageGroupSystemFolder(
-        systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.deleteStorageGroupSystemFolder(systemDir);
     storageGroupManager.stopSchedulerPool();
   }
 
@@ -927,7 +925,11 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */
+  /**
+   * Get all the closed tsfiles of each storage group.
+   *
+   * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
+   */
   public Map<PartialPath, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
     Map<PartialPath, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
     for (Entry<PartialPath, StorageGroupManager> entry : processorMap.entrySet()) {
@@ -1031,7 +1033,11 @@ public class StorageEngine implements IService {
     list.forEach(DataRegion::readUnlock);
   }
 
-  /** @return virtual storage group name, like root.sg1/0 */
+  /**
+   * Get the virtual storage group name.
+   *
+   * @return virtual storage group name, like root.sg1/0
+   */
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
     DataRegion storageGroupProcessor = getProcessor(deviceId);

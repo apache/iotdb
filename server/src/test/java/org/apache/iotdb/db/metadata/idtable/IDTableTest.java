@@ -160,7 +160,7 @@ public class IDTableTest {
         fail("should throw exception");
       } catch (DataTypeMismatchException e) {
         assertEquals(
-            "DataType mismatch, Insert timeseries root.laptop.d1.aligned_device.s2 type DOUBLE, metadata tree type INT64",
+            "data type of root.laptop.d1.aligned_device.s2 is not consistent, registered type INT64, inserting type DOUBLE, timestamp 1, value 10000.0",
             e.getMessage());
       } catch (Exception e2) {
         fail("throw wrong exception");

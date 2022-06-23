@@ -48,6 +48,7 @@ class Template:
         if not self.children.pop(name, []):
             raise Exception("It is not a direct child of the template: " + name)
 
+    @property
     def serialize(self):
         format_str_list = [">"]
         values_tobe_packed = []
@@ -65,7 +66,7 @@ class Template:
             pair = stack.pop()
             prefix = pair.left
             cur_node = pair.right
-            full_path = list()
+            full_path = [prefix]
             if not cur_node.is_measurement():
                 if prefix != "":
                     full_path.append(TsFileConstant.PATH_SEPARATOR)
@@ -73,7 +74,7 @@ class Template:
                 if cur_node.is_share_time():
                     aligned_prefix.add("".join(full_path))
                 for child in cur_node.children:
-                    stack.append(Pair("".join(full_path), self.children[child]))
+                    stack.append(Pair("".join(full_path), cur_node.children[child]))
             else:
                 ReadWriteUtils.write(prefix, format_str_list, values_tobe_packed)
                 if prefix in aligned_prefix:

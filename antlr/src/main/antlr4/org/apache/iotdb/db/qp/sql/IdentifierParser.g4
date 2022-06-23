@@ -51,6 +51,7 @@ keyWords
     | CACHE
     | CHILD
     | CLEAR
+    | CLUSTER
     | CONCAT
     | CONFIGURATION
     | CONTINUOUS
@@ -95,6 +96,7 @@ keyWords
     | LINK
     | LIST
     | LOAD
+    | LOCAL
     | LOCK
     | MERGE
     | METADATA

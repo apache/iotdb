@@ -33,6 +33,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -46,6 +47,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
+
+import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
 
 public class DataBlockManager implements IDataBlockManager {
 
@@ -74,103 +77,118 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
-      logger.debug(
-          "Get data block request received, for data blocks whose sequence ID in [{}, {}) from {}.",
-          req.getStartSequenceId(),
-          req.getEndSequenceId(),
-          req.getSourceFragmentInstanceId());
-      if (!sinkHandles.containsKey(req.getSourceFragmentInstanceId())) {
-        throw new TException(
-            "Source fragment instance not found. Fragment instance ID: "
-                + req.getSourceFragmentInstanceId()
-                + ".");
-      }
-      TGetDataBlockResponse resp = new TGetDataBlockResponse();
-      SinkHandle sinkHandle = (SinkHandle) sinkHandles.get(req.getSourceFragmentInstanceId());
-      for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
-        try {
-          ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
-          resp.addToTsBlocks(serializedTsBlock);
-        } catch (IOException e) {
-          throw new TException(e);
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(createFullIdFrom(req.sourceFragmentInstanceId, "SinkHandle"))) {
+        logger.debug(
+            "Get data block request received, for data blocks whose sequence ID in [{}, {}) from {}.",
+            req.getStartSequenceId(),
+            req.getEndSequenceId(),
+            req.getSourceFragmentInstanceId());
+        if (!sinkHandles.containsKey(req.getSourceFragmentInstanceId())) {
+          throw new TException(
+              "Source fragment instance not found. Fragment instance ID: "
+                  + req.getSourceFragmentInstanceId()
+                  + ".");
         }
+        TGetDataBlockResponse resp = new TGetDataBlockResponse();
+        SinkHandle sinkHandle = (SinkHandle) sinkHandles.get(req.getSourceFragmentInstanceId());
+        for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
+          try {
+            ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
+            resp.addToTsBlocks(serializedTsBlock);
+          } catch (IOException e) {
+            throw new TException(e);
+          }
+        }
+        return resp;
       }
-      return resp;
     }
 
     @Override
     public void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e) throws TException {
-      logger.debug(
-          "Acknowledge data block event received, for data blocks whose sequence ID in [{}, {}) from {}.",
-          e.getStartSequenceId(),
-          e.getEndSequenceId(),
-          e.getSourceFragmentInstanceId());
-      if (!sinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
-        logger.warn(
-            "received ACK event but target FragmentInstance[{}] is not found.",
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(createFullIdFrom(e.sourceFragmentInstanceId, "SinkHandle"))) {
+        logger.debug(
+            "Acknowledge data block event received, for data blocks whose sequence ID in [{}, {}) from {}.",
+            e.getStartSequenceId(),
+            e.getEndSequenceId(),
             e.getSourceFragmentInstanceId());
-        return;
+        if (!sinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
+          logger.warn(
+              "received ACK event but target FragmentInstance[{}] is not found.",
+              e.getSourceFragmentInstanceId());
+          return;
+        }
+        ((SinkHandle) sinkHandles.get(e.getSourceFragmentInstanceId()))
+            .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
       }
-      ((SinkHandle) sinkHandles.get(e.getSourceFragmentInstanceId()))
-          .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
     }
 
     @Override
     public void onNewDataBlockEvent(TNewDataBlockEvent e) throws TException {
-      logger.debug(
-          "New data block event received, for plan node {} of {} from {}.",
-          e.getTargetPlanNodeId(),
-          e.getTargetFragmentInstanceId(),
-          e.getSourceFragmentInstanceId());
-      if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
-          || !sourceHandles
-              .get(e.getTargetFragmentInstanceId())
-              .containsKey(e.getTargetPlanNodeId())
-          || sourceHandles
-              .get(e.getTargetFragmentInstanceId())
-              .get(e.getTargetPlanNodeId())
-              .isAborted()) {
-        // In some scenario, when the SourceHandle sends the data block ACK event, its upstream may
-        // have already been stopped. For example, in the query whit LimitOperator, the downstream
-        // FragmentInstance may be finished, although the upstream is still working.
-        logger.warn(
-            "received NewDataBlockEvent but the upstream FragmentInstance[{}] is not found",
-            e.getTargetFragmentInstanceId());
-        return;
-      }
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(
+              createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId + ".SourceHandle"))) {
+        logger.debug(
+            "New data block event received, for plan node {} of {} from {}.",
+            e.getTargetPlanNodeId(),
+            e.getTargetFragmentInstanceId(),
+            e.getSourceFragmentInstanceId());
+        if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
+            || !sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .containsKey(e.getTargetPlanNodeId())
+            || sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .get(e.getTargetPlanNodeId())
+                .isAborted()) {
+          // In some scenario, when the SourceHandle sends the data block ACK event, its upstream
+          // may
+          // have already been stopped. For example, in the query whit LimitOperator, the downstream
+          // FragmentInstance may be finished, although the upstream is still working.
+          logger.warn(
+              "received NewDataBlockEvent but the upstream FragmentInstance[{}] is not found",
+              e.getTargetFragmentInstanceId());
+          return;
+        }
 
-      SourceHandle sourceHandle =
-          (SourceHandle)
-              sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetPlanNodeId());
-      sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
+        SourceHandle sourceHandle =
+            (SourceHandle)
+                sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetPlanNodeId());
+        sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
+      }
     }
 
     @Override
     public void onEndOfDataBlockEvent(TEndOfDataBlockEvent e) throws TException {
-      logger.debug(
-          "End of data block event received, for plan node {} of {} from {}.",
-          e.getTargetPlanNodeId(),
-          e.getTargetFragmentInstanceId(),
-          e.getSourceFragmentInstanceId());
-      if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
-          || !sourceHandles
-              .get(e.getTargetFragmentInstanceId())
-              .containsKey(e.getTargetPlanNodeId())
-          || sourceHandles
-              .get(e.getTargetFragmentInstanceId())
-              .get(e.getTargetPlanNodeId())
-              .isAborted()) {
-        throw new TException(
-            "Target fragment instance not found. Fragment instance ID: "
-                + e.getTargetFragmentInstanceId()
-                + ".");
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(
+              createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId + ".SourceHandle"))) {
+        logger.debug(
+            "End of data block event received, for plan node {} of {} from {}.",
+            e.getTargetPlanNodeId(),
+            e.getTargetFragmentInstanceId(),
+            e.getSourceFragmentInstanceId());
+        if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
+            || !sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .containsKey(e.getTargetPlanNodeId())
+            || sourceHandles
+                .get(e.getTargetFragmentInstanceId())
+                .get(e.getTargetPlanNodeId())
+                .isAborted()) {
+          throw new TException(
+              "Target fragment instance not found. Fragment instance ID: "
+                  + e.getTargetFragmentInstanceId()
+                  + ".");
+        }
+        SourceHandle sourceHandle =
+            (SourceHandle)
+                sourceHandles
+                    .getOrDefault(e.getTargetFragmentInstanceId(), Collections.emptyMap())
+                    .get(e.getTargetPlanNodeId());
+        sourceHandle.setNoMoreTsBlocks(e.getLastSequenceId());
       }
-      SourceHandle sourceHandle =
-          (SourceHandle)
-              sourceHandles
-                  .getOrDefault(e.getTargetFragmentInstanceId(), Collections.emptyMap())
-                  .get(e.getTargetPlanNodeId());
-      sourceHandle.setNoMoreTsBlocks(e.getLastSequenceId());
     }
   }
 
@@ -185,12 +203,12 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      logger.info("{} finished and release resources", sourceHandle);
+      logger.info("finished and release resources");
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
-        logger.info("{} resources has already been released", sourceHandle);
+        logger.info("resources has already been released");
       } else {
         sourceHandles
             .get(sourceHandle.getLocalFragmentInstanceId())
@@ -204,13 +222,13 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      logger.info("{}: onAborted is invoked", sourceHandle);
+      logger.info("onAborted is invoked");
       onFinished(sourceHandle);
     }
 
     @Override
     public void onFailure(ISourceHandle sourceHandle, Throwable t) {
-      logger.error("Source handle {} failed due to {}", sourceHandle, t);
+      logger.error("Source handle failed due to: ", t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -242,7 +260,7 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onAborted(ISinkHandle sinkHandle) {
-      logger.info("{} onAborted is invoked", sinkHandle);
+      logger.info("onAborted is invoked");
       removeFromDataBlockManager(sinkHandle);
     }
 
@@ -457,10 +475,9 @@ public class DataBlockManager implements IDataBlockManager {
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
-    logger.info("Force deregister fragment instance {}", fragmentInstanceId);
+    logger.info("Force deregister fragment instance");
     if (sinkHandles.containsKey(fragmentInstanceId)) {
       ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
-      logger.info("Abort sink handle {}", sinkHandle);
       sinkHandle.abort();
       sinkHandles.remove(fragmentInstanceId);
     }
@@ -472,5 +489,15 @@ public class DataBlockManager implements IDataBlockManager {
       }
       sourceHandles.remove(fragmentInstanceId);
     }
+  }
+
+  /** @param suffix should be like [PlanNodeId].SourceHandle/SinHandle */
+  public static String createFullIdFrom(TFragmentInstanceId fragmentInstanceId, String suffix) {
+    return createFullId(
+            fragmentInstanceId.queryId,
+            fragmentInstanceId.fragmentId,
+            fragmentInstanceId.instanceId)
+        + "."
+        + suffix;
   }
 }

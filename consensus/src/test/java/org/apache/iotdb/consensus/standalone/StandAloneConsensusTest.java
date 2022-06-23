@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -75,8 +76,10 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public void serializeRequest(ByteBuffer buffer) {
-      buffer.putInt(num);
+    public ByteBuffer serializeToByteBuffer() {
+      ByteBuffer buffer = ByteBuffer.allocate(4).putInt(num);
+      buffer.flip();
+      return buffer;
     }
   }
 
@@ -97,7 +100,7 @@ public class StandAloneConsensusTest {
     @Override
     public TSStatus write(IConsensusRequest request) {
       if (request instanceof ByteBufferConsensusRequest) {
-        return new TSStatus(((ByteBufferConsensusRequest) request).getContent().getInt());
+        return new TSStatus(request.serializeToByteBuffer().getInt());
       } else if (request instanceof TestEntry) {
         return new TSStatus(
             direction ? ((TestEntry) request).num + 1 : ((TestEntry) request).num - 1);

@@ -89,9 +89,9 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | Metric                  | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
 | ----------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | queue                   | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="compaction/flush"                                                       | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max   | name="compaction/flush"                                                       | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum   | name="compaction/flush"                                                       | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| cost_task_seconds_count | name="inner_compaction/cross_compaction/flush"                                | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max   | name="inner_compaction/cross_compaction/flush"                                | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
 | data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
 
@@ -101,11 +101,13 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | ------ | --------------------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
-#### 4.3.4. Cache Hit Ratio
+#### 4.3.4. Cache
 
 | Metric    | Tag                                     | level     | Description                                                                   | Sample                      |
 | --------- | --------------------------------------- | --------- | ----------------------------------------------------------------------------- | --------------------------- |
-| cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
+| cache_hit | name="chunk/timeSeriesMeta/bloomFilter/SchemaCache" | important | Cache hit ratio of chunk/timeSeriesMeta/SchemaCache  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
+| cache_total | name="StorageGroup/SchemaPartition/DataPartition", type="hit/all" | important | The cache hit/all counts of StorageGroup/SchemaPartition/DataPartition | cache_total{name="DataPartition",type="all",} 801.0 |
+
 
 #### 4.3.5. Business Data
 

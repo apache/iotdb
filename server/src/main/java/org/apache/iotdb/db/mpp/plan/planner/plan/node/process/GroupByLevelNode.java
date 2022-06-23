@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -141,6 +143,22 @@ public class GroupByLevelNode extends MultiChildNode {
       groupByTimeParameter.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.GROUP_BY_LEVEL.serialize(stream);
+    ReadWriteIOUtils.write(groupByLevelDescriptors.size(), stream);
+    for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
+      groupByLevelDescriptor.serialize(stream);
+    }
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {

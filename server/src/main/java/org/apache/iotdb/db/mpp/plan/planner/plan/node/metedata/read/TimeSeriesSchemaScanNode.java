@@ -26,6 +26,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -67,6 +69,19 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(orderByHeat, byteBuffer);
     ReadWriteIOUtils.write(isContains, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(stream);
+    ReadWriteIOUtils.write(path.getFullPath(), stream);
+    ReadWriteIOUtils.write(key, stream);
+    ReadWriteIOUtils.write(value, stream);
+    ReadWriteIOUtils.write(limit, stream);
+    ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(orderByHeat, stream);
+    ReadWriteIOUtils.write(isContains, stream);
+    ReadWriteIOUtils.write(isPrefixPath, stream);
   }
 
   public static TimeSeriesSchemaScanNode deserialize(ByteBuffer byteBuffer) {

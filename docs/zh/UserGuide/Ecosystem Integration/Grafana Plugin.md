@@ -114,19 +114,21 @@ git clone https://github.com/apache/iotdb.git
 
 #### grafana-plugin 插件安装
 
-* 拷贝上述生成的前端工程目标文件夹到 Grafana 的插件目录中 `${Grafana文件目录}\data\plugins\`
-  * Windows 系统，启动 Grafana 后会自动创建 `data\plugins` 目录
-  * Linux 系统，plugins 目录需要手动创建 `/var/lib/grafana/plugins` 
-  * MacOS，plugins 目录在`/usr/local/var/lib/grafana/plugins`（具体位置参看使用 `brew install`安装 Grafana 后的命令行输出提示）
+* 拷贝上述生成的前端工程目标文件夹到 Grafana 的插件目录中 `${Grafana文件目录}\data\plugins\`。如果没有此目录可以手动建或者启动grafana会自动建立，当然也可以修改plugins的位置,具体请查看下面的修改Grafana 的插件目录位置说明。
 
 * 修改Grafana的配置文件：找到配置文件（`${Grafana文件目录}\conf\defaults.ini`），并进行如下的修改：
 
   ```ini
   allow_loading_unsigned_plugins = iotdb
   ```
+* 修改Grafana 的插件目录位置:找到配置文件（`${Grafana文件目录}\conf\defaults.ini`），并进行如下的修改：
 
+  ```ini
+  plugins = data/plugins
+  ```
 * 如果 Grafana 服务已启动，则需要重启服务。
 
+更多详情，请点 [这里](https://grafana.com/docs/grafana/latest/plugins/installation/)
 
 
 #### 启动 Grafana
@@ -209,11 +211,11 @@ Ip 为您的 IoTDB 服务器所在的宿主机 IP，port 为 REST 服务的运�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
 
-Grafana Plugin 支持Raw和Aggregation 两种方式，默认是Raw方式。
+Grafana Plugin 支持SQL: Full Customized和SQL: Drop-down List 两种方式，默认是SQL: Full Customized方式。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input_style.png?raw=true">
 
-##### Raw 输入方式
+##### SQL: Full Customized 输入方式
 
 在 SELECT 输入框、FROM 输入框、WHERE输入框、CONTROL输入框中输入内容，其中 WHERE 和 CONTROL 输入框为非必填。
 
@@ -249,14 +251,14 @@ CONTROL 输入框为非必须填写项目，填写内容应当是控制查询类
 
 提示：为了避免OOM问题，不推荐使用select * from root.xx.** 这种语句在Grafana plugin中使用。
 
-##### Aggregation 输入方式
+##### SQL: Drop-down List 输入方式
 在 TIME-SERIES 选择框中选择一条时间序列、FUNCTION 选择一个函数、SAMPLING INTERVAL、SLIDING STEP、LEVEL、FILL 输入框中输入内容，其中 TIME-SERIESL 为必填项其余为非必填项。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input2.png?raw=true">
 
 #### 变量与模板功能的支持
 
-Raw和Aggregation两种输入方式都支持 Grafana 的变量与模板功能，下面示例中使用Raw输入方式，Aggregation与之类似。
+SQL: Full Customized和SQL: Drop-down List两种输入方式都支持 Grafana 的变量与模板功能，下面示例中使用SQL: Full Customized输入方式，SQL: Drop-down List与之类似。
 
 创建一个新的 Panel 后，点击右上角的设置按钮，如下图所示：
 

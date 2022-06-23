@@ -19,40 +19,49 @@
 package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class DeleteRegionsReq extends ConfigRequest {
 
-  private final List<TConsensusGroupId> consensusGroupIds;
+  private final Map<String, List<TConsensusGroupId>> deleteRegionMap;
 
   public DeleteRegionsReq() {
     super(ConfigRequestType.DeleteRegions);
-    this.consensusGroupIds = new ArrayList<>();
+    this.deleteRegionMap = new HashMap<>();
   }
 
-  public void addConsensusGroupId(TConsensusGroupId consensusGroupId) {
-    consensusGroupIds.add(consensusGroupId);
+  public void addDeleteRegion(String name, TConsensusGroupId consensusGroupId) {
+    deleteRegionMap.computeIfAbsent(name, empty -> new ArrayList<>()).add(consensusGroupId);
   }
 
-  public List<TConsensusGroupId> getConsensusGroupIds() {
-    return consensusGroupIds;
+  public Map<String, List<TConsensusGroupId>> getDeleteRegionMap() {
+    return deleteRegionMap;
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteRegions.ordinal());
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.DeleteRegions.ordinal());
 
-    buffer.putInt(consensusGroupIds.size());
-    for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
-      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
+    stream.writeInt(deleteRegionMap.size());
+    for (Map.Entry<String, List<TConsensusGroupId>> consensusGroupIdsEntry :
+        deleteRegionMap.entrySet()) {
+      BasicStructureSerDeUtil.write(consensusGroupIdsEntry.getKey(), stream);
+      stream.writeInt(consensusGroupIdsEntry.getValue().size());
+      for (TConsensusGroupId consensusGroupId : consensusGroupIdsEntry.getValue()) {
+        ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
+      }
     }
   }
 
@@ -60,7 +69,12 @@ public class DeleteRegionsReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      consensusGroupIds.add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
+      String name = BasicStructureSerDeUtil.readString(buffer);
+      deleteRegionMap.put(name, new ArrayList<>());
+      int regionNum = buffer.getInt();
+      for (int j = 0; j < regionNum; j++) {
+        deleteRegionMap.get(name).add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
+      }
     }
   }
 
@@ -69,11 +83,11 @@ public class DeleteRegionsReq extends ConfigRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DeleteRegionsReq that = (DeleteRegionsReq) o;
-    return consensusGroupIds.equals(that.consensusGroupIds);
+    return deleteRegionMap.equals(that.deleteRegionMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(consensusGroupIds);
+    return Objects.hash(deleteRegionMap);
   }
 }

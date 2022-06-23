@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlign
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
@@ -68,8 +69,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -112,7 +115,6 @@ public enum PlanNodeType {
   DEVICE_MERGE((short) 35),
   SCHEMA_FETCH_MERGE((short) 36),
   TRANSFORM((short) 37),
-  DELETE_REGION((short) 38),
   CREATE_MULTI_TIME_SERIES((short) 39),
   NODE_PATHS_SCAN((short) 40),
   NODE_PATHS_CONVERT((short) 41),
@@ -123,7 +125,8 @@ public enum PlanNodeType {
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY_MERGE((short) 48),
-  NODE_PATHS_COUNT((short) 49);
+  NODE_PATHS_COUNT((short) 49),
+  INTERNAL_CREATE_TIMESERIES((short) 50);
 
   private final short nodeType;
 
@@ -132,7 +135,11 @@ public enum PlanNodeType {
   }
 
   public void serialize(ByteBuffer buffer) {
-    buffer.putShort(nodeType);
+    ReadWriteIOUtils.write(nodeType, buffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(nodeType, stream);
   }
 
   public static PlanNode deserialize(DataInputStream stream)
@@ -227,8 +234,6 @@ public enum PlanNodeType {
         return SchemaFetchMergeNode.deserialize(buffer);
       case 37:
         return TransformNode.deserialize(buffer);
-      case 38:
-        return DeleteRegionNode.deserialize(buffer);
       case 39:
         return CreateMultiTimeSeriesNode.deserialize(buffer);
       case 40:
@@ -251,6 +256,8 @@ public enum PlanNodeType {
         return LastQueryMergeNode.deserialize(buffer);
       case 49:
         return NodePathsCountNode.deserialize(buffer);
+      case 50:
+        return InternalCreateTimeSeriesNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

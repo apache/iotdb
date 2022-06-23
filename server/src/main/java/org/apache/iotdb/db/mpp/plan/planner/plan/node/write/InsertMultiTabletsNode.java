@@ -31,7 +31,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -267,13 +270,27 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_MULTI_TABLET.serialize(byteBuffer);
 
-    byteBuffer.putInt(insertTabletNodeList.size());
+    ReadWriteIOUtils.write(insertTabletNodeList.size(), byteBuffer);
 
     for (InsertTabletNode node : insertTabletNodeList) {
       node.subSerialize(byteBuffer);
     }
     for (Integer index : parentInsertTabletNodeIndexList) {
-      byteBuffer.putInt(index);
+      ReadWriteIOUtils.write(index, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.INSERT_MULTI_TABLET.serialize(stream);
+
+    ReadWriteIOUtils.write(insertTabletNodeList.size(), stream);
+
+    for (InsertTabletNode node : insertTabletNodeList) {
+      node.subSerialize(stream);
+    }
+    for (Integer index : parentInsertTabletNodeIndexList) {
+      ReadWriteIOUtils.write(index, stream);
     }
   }
 
@@ -295,5 +312,15 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
+  }
+
+  @Override
+  public long getMinTime() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
   }
 }

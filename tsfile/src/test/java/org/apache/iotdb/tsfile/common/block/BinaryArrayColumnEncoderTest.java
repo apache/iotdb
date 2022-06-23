@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoderFactory;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
@@ -55,6 +55,7 @@ public class BinaryArrayColumnEncoderTest {
       }
     }
     BinaryColumn input = new BinaryColumn(positionCount, Optional.of(nullIndicators), values);
+    long expectedRetainedSize = input.getRetainedSizeInBytes();
     ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.BINARY_ARRAY);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -67,11 +68,10 @@ public class BinaryArrayColumnEncoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-    BinaryColumnBuilder binaryColumnBuilder = new BinaryColumnBuilder(null, positionCount);
-    encoder.readColumn(binaryColumnBuilder, buffer, positionCount);
-    BinaryColumn output = (BinaryColumn) binaryColumnBuilder.build();
+    BinaryColumn output = (BinaryColumn) encoder.readColumn(buffer, TSDataType.TEXT, positionCount);
     Assert.assertEquals(positionCount, output.getPositionCount());
     Assert.assertTrue(output.mayHaveNull());
+    Assert.assertEquals(expectedRetainedSize, output.getRetainedSizeInBytes());
     for (int i = 0; i < positionCount; i++) {
       Assert.assertEquals(i % 2 == 0, output.isNull(i));
       if (i % 2 != 0) {

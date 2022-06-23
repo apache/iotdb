@@ -72,7 +72,7 @@ public class LocalSourceHandleTest {
     Assert.assertTrue(localSourceHandle.isBlocked().isDone());
     localSourceHandle.receive();
     ListenableFuture<Void> blocked = localSourceHandle.isBlocked();
-    Assert.assertFalse(blocked.isDone());
+    Assert.assertTrue(blocked.isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertTrue(localSourceHandle.isFinished());
     Mockito.verify(mockSourceHandleListener, Mockito.times(1)).onFinished(localSourceHandle);

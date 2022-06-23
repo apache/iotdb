@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -27,6 +28,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -108,8 +110,9 @@ public class PathPatternTree {
       PathPatternNode curNode, List<String> nodes, List<String> pathPatternList) {
     nodes.add(curNode.getName());
     if (curNode.isLeaf()) {
-      if (!curNode.getName().equals("**")) {
-        pathPatternList.add(parseNodesToString(nodes.subList(0, nodes.size() - 1)));
+      if (!curNode.getName().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        pathPatternList.add(
+            nodes.size() == 1 ? "" : parseNodesToString(nodes.subList(0, nodes.size() - 1)));
       } else {
         pathPatternList.add(parseNodesToString(nodes));
       }
@@ -196,6 +199,11 @@ public class PathPatternTree {
   public void serialize(PublicBAOS outputStream) throws IOException {
     constructTree();
     root.serialize(outputStream);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    constructTree();
+    root.serialize(stream);
   }
 
   public void serialize(ByteBuffer buffer) {

@@ -29,6 +29,11 @@ struct TDataNodeRegisterReq {
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
+struct TDataNodeActiveReq {
+  1: required common.TDataNodeLocation location
+  2: required i32 dataNodeId
+}
+
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -103,8 +108,6 @@ struct TStorageGroupSchema {
   5: optional i64 timePartitionInterval
   6: optional i32 maximumSchemaRegionCount
   7: optional i32 maximumDataRegionCount
-  8: optional list<common.TConsensusGroupId> dataRegionGroupIds
-  9: optional list<common.TConsensusGroupId> schemaRegionGroupIds
 }
 
 // Schema
@@ -232,6 +235,8 @@ service ConfigIService {
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
+  common.TSStatus activeDataNode(TDataNodeActiveReq req)
+
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
   /* Show Cluster */
@@ -294,4 +299,10 @@ service ConfigIService {
   common.TSStatus createFunction(TCreateFunctionReq req)
 
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /* Flush */
+
+  common.TSStatus flush(common.TFlushReq req)
+
 }
+

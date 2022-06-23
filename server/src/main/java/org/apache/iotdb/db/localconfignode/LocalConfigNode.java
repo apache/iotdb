@@ -19,13 +19,34 @@
 
 package org.apache.iotdb.db.localconfignode;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -35,9 +56,9 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
@@ -45,6 +66,10 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -65,6 +90,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -83,21 +109,28 @@ public class LocalConfigNode {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final long STANDALONE_MOCK_TIME_SLOT_START_TIME = 0L;
   private volatile boolean initialized = false;
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  private IStorageGroupSchemaManager storageGroupSchemaManager =
+  private final IStorageGroupSchemaManager storageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
-  private TemplateManager templateManager = TemplateManager.getInstance();
-  private SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private LocalSchemaPartitionTable schemaPartitionTable = LocalSchemaPartitionTable.getInstance();
+  private final TemplateManager templateManager = TemplateManager.getInstance();
+  private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
+  private final LocalSchemaPartitionTable schemaPartitionTable =
+      LocalSchemaPartitionTable.getInstance();
 
-  private StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  private LocalDataPartitionTable dataPartitionTable = LocalDataPartitionTable.getInstance();
+  private final LocalDataPartitionTable dataPartitionTable = LocalDataPartitionTable.getInstance();
+
+  private final SeriesPartitionExecutor executor =
+      SeriesPartitionExecutor.getSeriesPartitionExecutor(
+          config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
+
+  private IAuthorizer iAuthorizer;
 
   private LocalConfigNode() {
     String schemaDir = config.getSchemaDir();
@@ -108,6 +141,11 @@ public class LocalConfigNode {
       } else {
         logger.error("create system folder {} failed.", schemaFolder.getAbsolutePath());
       }
+    }
+    try {
+      iAuthorizer = BasicAuthorizer.getInstance();
+    } catch (AuthException e) {
+      logger.error(e.getMessage());
     }
   }
 
@@ -131,24 +169,31 @@ public class LocalConfigNode {
     }
 
     try {
-      SchemaResourceManager.initSchemaResource();
 
       templateManager.init();
       storageGroupSchemaManager.init();
 
-      Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo = schemaEngine.init();
+      Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo =
+          schemaEngine.initForLocalConfigNode();
       schemaPartitionTable.init(recoveredLocalSchemaRegionInfo);
-      dataPartitionTable.init(null);
 
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedForceMLogThread");
-
-        timedForceMLogThread.scheduleAtFixedRate(
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                "LocalConfigNode-TimedForceMLog-Thread");
+        ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
+            timedForceMLogThread,
             this::forceMlog,
             config.getSyncMlogPeriodInMs(),
             config.getSyncMlogPeriodInMs(),
             TimeUnit.MILLISECONDS);
+      }
+
+      // TODO: the judgment should be removed after old standalone removed
+      if (config.isMppMode() && !config.isClusterMode()) {
+        Map<String, List<DataRegionId>> recoveredLocalDataRegionInfo =
+            storageEngine.getLocalDataRegionInfo();
+        dataPartitionTable.init(recoveredLocalDataRegionInfo);
       }
     } catch (MetadataException | IOException e) {
       logger.error(
@@ -164,7 +209,6 @@ public class LocalConfigNode {
     }
 
     try {
-      SchemaResourceManager.clearSchemaResource();
 
       if (timedForceMLogThread != null) {
         timedForceMLogThread.shutdown();
@@ -175,6 +219,8 @@ public class LocalConfigNode {
       schemaEngine.clear();
       storageGroupSchemaManager.clear();
       templateManager.clear();
+
+      dataPartitionTable.clear();
 
     } catch (IOException e) {
       logger.error("Error occurred when clearing LocalConfigNode:", e);
@@ -190,7 +236,6 @@ public class LocalConfigNode {
 
     storageGroupSchemaManager.forceLog();
     templateManager.forceLog();
-    schemaEngine.forceMlog();
   }
 
   // endregion
@@ -217,20 +262,15 @@ public class LocalConfigNode {
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
     }
-
-    if (config.isMppMode() && !config.isClusterMode()) {
-      for (DataRegionId dataRegionId : dataPartitionTable.setStorageGroup(storageGroup)) {
-        try {
-          storageEngine.createDataRegion(dataRegionId, storageGroup.getFullPath(), Long.MAX_VALUE);
-        } catch (DataRegionException e) {
-          // TODO (Fix exception type)
-          throw new MetadataException(e);
-        }
-      }
-    }
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
+
+    if (config.isMppMode() && !config.isClusterMode()) {
+      deleteDataRegionsInStorageGroup(
+          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup));
+      dataPartitionTable.deleteStorageGroup(storageGroup);
+    }
 
     DeleteTimeSeriesPlan deleteTimeSeriesPlan =
         SchemaSyncManager.getInstance().isEnableSync()
@@ -274,6 +314,12 @@ public class LocalConfigNode {
         throw new MetadataException(
             String.format("Failed to delete storage group folder %s", sgDir.getAbsolutePath()));
       }
+    }
+  }
+
+  private void deleteDataRegionsInStorageGroup(List<DataRegionId> dataRegionIdSet) {
+    for (DataRegionId dataRegionId : dataRegionIdSet) {
+      storageEngine.deleteDataRegion(dataRegionId);
     }
   }
 
@@ -530,6 +576,7 @@ public class LocalConfigNode {
   // endregion
 
   // region Interfaces for SchemaRegionId Management
+
   /**
    * Get the target SchemaRegionIds, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
@@ -599,8 +646,7 @@ public class LocalConfigNode {
     return result;
   }
 
-  public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup)
-      throws MetadataException {
+  public List<SchemaRegionId> getSchemaRegionIdsByStorageGroup(PartialPath storageGroup) {
     return schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup);
   }
 
@@ -789,6 +835,7 @@ public class LocalConfigNode {
   // endregion
 
   // region Interfaces for DataRegionId Management
+
   /**
    * Get the target DataRegionIds, which the given path belongs to. The path must be a fullPath
    * without wildcards, * or **. This method is the first step when there's a task on one certain
@@ -796,15 +843,41 @@ public class LocalConfigNode {
    * root.sg1. If there's no storage group on the given path, StorageGroupNotSetException will be
    * thrown.
    */
-  public DataRegionId getBelongedDataRegionRegionId(PartialPath path)
+  public DataRegionId getBelongedDataRegionId(PartialPath path)
       throws MetadataException, DataRegionException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    if (dataRegionId == null) {
+      throw new DataRegionException(
+          String.format(
+              "Storage group %s has not been prepared well. "
+                  + "Data region for %s has not been allocated or is not initialized.",
+              storageGroup, path));
+    }
+    DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
+    if (dataRegion == null) {
+      throw new DataRegionException(
+          String.format(
+              "Storage group %s has not been prepared well. Data region for %s is not initialized.",
+              storageGroup, path));
+    }
+    return dataRegionId;
+  }
+
+  // This interface involves storage group and data region auto creation
+  public DataRegionId getBelongedDataRegionIdWithAutoCreate(PartialPath path)
+      throws MetadataException, DataRegionException {
+    PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
+    DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    if (dataRegionId == null) {
+      dataPartitionTable.setDataPartitionInfo(storageGroup);
+      dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
+    }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
     if (dataRegion == null) {
       storageEngine.createDataRegion(dataRegionId, storageGroup.getFullPath(), Long.MAX_VALUE);
     }
-    return dataPartitionTable.getDataRegionId(storageGroup, path);
+    return dataRegionId;
   }
 
   public List<DataRegionId> getDataRegionIdsByStorageGroup(PartialPath storageGroup) {
@@ -812,4 +885,382 @@ public class LocalConfigNode {
   }
 
   // endregion
+
+  // region Interfaces for StandaloneSchemaFetcher
+
+  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getSchemaPartition(
+      PathPatternTree patternTree) {
+
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
+    patternTree.constructTree();
+    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    try {
+      for (PartialPath path : partialPathList) {
+        List<PartialPath> storageGroups = getBelongedStorageGroups(path);
+        for (PartialPath storageGroupPath : storageGroups) {
+          String storageGroup = storageGroupPath.getFullPath();
+          SchemaRegionId schemaRegionId = getBelongedSchemaRegionId(storageGroupPath);
+          ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+          Set<PartialPath> devices = schemaRegion.getMatchedDevices(storageGroupPath, true);
+          for (PartialPath device : devices) {
+            partitionSlotsMap
+                .computeIfAbsent(storageGroup, key -> new HashMap<>())
+                .put(
+                    executor.getSeriesPartitionSlot(device.getDevice()),
+                    genStandaloneRegionReplicaSet(
+                        TConsensusGroupType.SchemaRegion, schemaRegionId.getId()));
+          }
+        }
+      }
+      return partitionSlotsMap;
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getOrCreateSchemaPartition(
+      PathPatternTree patternTree) {
+    List<String> devicePaths = patternTree.findAllDevicePaths();
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> partitionSlotsMap = new HashMap<>();
+
+    try {
+      for (String devicePath : devicePaths) {
+        // Only check devicePaths that without "*"
+        if (!devicePath.contains("*")) {
+          PartialPath device = new PartialPath(devicePath);
+          PartialPath storageGroup = ensureStorageGroup(device);
+          SchemaRegionId schemaRegionId = getBelongedSchemaRegionIdWithAutoCreate(device);
+          partitionSlotsMap
+              .computeIfAbsent(storageGroup.getFullPath(), key -> new HashMap<>())
+              .put(
+                  executor.getSeriesPartitionSlot(devicePath),
+                  genStandaloneRegionReplicaSet(
+                      TConsensusGroupType.SchemaRegion, schemaRegionId.getId()));
+        }
+      }
+    } catch (MetadataException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
+    }
+    return partitionSlotsMap;
+  }
+
+  // endregion
+
+  // region Interfaces for StandalonePartitionFetcher
+  public DataPartition getDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
+      throws MetadataException, DataRegionException {
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = new HashMap<>();
+    for (Map.Entry<String, List<DataPartitionQueryParam>> sgEntry :
+        sgNameToQueryParamsMap.entrySet()) {
+      // for each sg
+      String storageGroupName = sgEntry.getKey();
+      List<DataPartitionQueryParam> dataPartitionQueryParams = sgEntry.getValue();
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          deviceToRegionsMap = new HashMap<>();
+      for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+        String deviceId = dataPartitionQueryParam.getDevicePath();
+        DataRegionId dataRegionId = getBelongedDataRegionId(new PartialPath(deviceId));
+        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+            new HashMap<>();
+
+        timePartitionToRegionsMap.put(
+            new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
+            Collections.singletonList(
+                genStandaloneRegionReplicaSet(
+                    TConsensusGroupType.DataRegion, dataRegionId.getId())));
+
+        deviceToRegionsMap.put(
+            executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
+      }
+      dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
+    }
+    return new DataPartition(
+        dataPartitionMap,
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+  }
+
+  private TRegionReplicaSet genStandaloneRegionReplicaSet(TConsensusGroupType type, int id) {
+    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(type, id));
+    regionReplicaSet.setDataNodeLocations(
+        Collections.singletonList(
+            new TDataNodeLocation(
+                IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+                new TEndPoint(),
+                DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT,
+                DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                new TEndPoint(),
+                new TEndPoint())));
+    return regionReplicaSet;
+  }
+
+  public DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap)
+      throws MetadataException, DataRegionException {
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = new HashMap<>();
+    for (Map.Entry<String, List<DataPartitionQueryParam>> sgEntry :
+        sgNameToQueryParamsMap.entrySet()) {
+      // for each sg
+      String storageGroupName = sgEntry.getKey();
+      List<DataPartitionQueryParam> dataPartitionQueryParams = sgEntry.getValue();
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          deviceToRegionsMap = new HashMap<>();
+      for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+        // for each device
+        String deviceId = dataPartitionQueryParam.getDevicePath();
+        DataRegionId dataRegionId =
+            getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
+        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+            new HashMap<>();
+        for (TTimePartitionSlot timePartitionSlot :
+            dataPartitionQueryParam.getTimePartitionSlotList()) {
+          // for each time partition
+          timePartitionToRegionsMap.put(
+              timePartitionSlot,
+              Collections.singletonList(
+                  genStandaloneRegionReplicaSet(
+                      TConsensusGroupType.DataRegion, dataRegionId.getId())));
+        }
+        deviceToRegionsMap.put(
+            executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
+      }
+      dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
+    }
+    return new DataPartition(
+        dataPartitionMap,
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+  }
+
+  // endregion
+
+  // author
+  public void operatorPermission(AuthorStatement authorStatement) throws AuthException {
+    AuthorOperator.AuthorType authorType =
+        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
+    String userName = authorStatement.getUserName();
+    String roleName = authorStatement.getRoleName();
+    String password = authorStatement.getPassWord();
+    String newPassword = authorStatement.getNewPassword();
+    Set<Integer> permissions = AuthUtils.strToPermissions(authorStatement.getPrivilegeList());
+    PartialPath partialPath = authorStatement.getNodeName();
+    String nodeName = partialPath == null ? null : partialPath.getFullPath();
+    switch (authorType) {
+      case UPDATE_USER:
+        iAuthorizer.updateUserPassword(userName, newPassword);
+        break;
+      case CREATE_USER:
+        iAuthorizer.createUser(userName, password);
+        break;
+      case CREATE_ROLE:
+        iAuthorizer.createRole(roleName);
+        break;
+      case DROP_USER:
+        iAuthorizer.deleteUser(userName);
+        break;
+      case DROP_ROLE:
+        iAuthorizer.deleteRole(roleName);
+        break;
+      case GRANT_ROLE:
+        for (int i : permissions) {
+          iAuthorizer.grantPrivilegeToRole(roleName, nodeName, i);
+        }
+        break;
+      case GRANT_USER:
+        for (int i : permissions) {
+          iAuthorizer.grantPrivilegeToUser(userName, nodeName, i);
+        }
+        break;
+      case GRANT_ROLE_TO_USER:
+        iAuthorizer.grantRoleToUser(roleName, userName);
+        break;
+      case REVOKE_USER:
+        for (int i : permissions) {
+          iAuthorizer.revokePrivilegeFromUser(userName, nodeName, i);
+        }
+        break;
+      case REVOKE_ROLE:
+        for (int i : permissions) {
+          iAuthorizer.revokePrivilegeFromRole(roleName, nodeName, i);
+        }
+        break;
+      case REVOKE_ROLE_FROM_USER:
+        iAuthorizer.revokeRoleFromUser(roleName, userName);
+        break;
+      default:
+        throw new AuthException("Unsupported operation " + authorType);
+    }
+  }
+
+  public Map<String, List<String>> queryPermission(AuthorStatement authorStatement)
+      throws AuthException {
+    AuthorOperator.AuthorType authorType =
+        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
+    switch (authorType) {
+      case LIST_USER:
+        return executeListUser();
+      case LIST_ROLE:
+        return executeListRole();
+      case LIST_USER_PRIVILEGE:
+        return executeListUserPrivileges(authorStatement);
+      case LIST_ROLE_PRIVILEGE:
+        return executeListRolePrivileges(authorStatement);
+      case LIST_USER_ROLES:
+        return executeListUserRoles(authorStatement);
+      case LIST_ROLE_USERS:
+        return executeListRoleUsers(authorStatement);
+      default:
+        throw new AuthException("Unsupported operation " + authorType);
+    }
+  }
+
+  public Map<String, List<String>> executeListRole() {
+    List<String> roleList = iAuthorizer.listAllRoles();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListUser() {
+    List<String> userList = iAuthorizer.listAllUsers();
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = iAuthorizer.getRole(authorStatement.getRoleName());
+      if (role == null) {
+        throw new AuthException("No such role : " + authorStatement.getRoleName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> roleUsersList = new ArrayList<>();
+    List<String> userList = iAuthorizer.listAllUsers();
+    for (String userN : userList) {
+      User userObj = iAuthorizer.getUser(userN);
+      if (userObj != null && userObj.hasRole(authorStatement.getRoleName())) {
+        roleUsersList.add(userN);
+      }
+    }
+    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListUserRoles(AuthorStatement authorStatement)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = iAuthorizer.getUser(authorStatement.getUserName());
+      if (user == null) {
+        throw new AuthException("No such user : " + authorStatement.getUserName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> userRoleList = new ArrayList<>();
+    for (String roleN : user.getRoleList()) {
+      userRoleList.add(roleN);
+    }
+
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListRolePrivileges(AuthorStatement authorStatement)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = iAuthorizer.getRole(authorStatement.getRoleName());
+      if (role == null) {
+        throw new AuthException("No such role : " + authorStatement.getRoleName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> rolePrivilegesList = new ArrayList<>();
+    for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+      if (authorStatement.getNodeName().getFullPath().equals("")
+          || AuthUtils.pathBelongsTo(
+              authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
+        rolePrivilegesList.add(pathPrivilege.toString());
+      }
+    }
+
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    return permissionInfo;
+  }
+
+  public Map<String, List<String>> executeListUserPrivileges(AuthorStatement authorStatement)
+      throws AuthException {
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = iAuthorizer.getUser(authorStatement.getUserName());
+      if (user == null) {
+        throw new AuthException("No such user : " + authorStatement.getUserName());
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
+    }
+    List<String> userPrivilegesList = new ArrayList<>();
+
+    if (IoTDBConstant.PATH_ROOT.equals(authorStatement.getUserName())) {
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
+        userPrivilegesList.add(privilegeType.toString());
+      }
+    } else {
+      List<String> rolePrivileges = new ArrayList<>();
+      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+        if (authorStatement.getNodeName().getFullPath().equals("")
+            || AuthUtils.pathBelongsTo(
+                authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
+          rolePrivileges.add("");
+          userPrivilegesList.add(pathPrivilege.toString());
+        }
+      }
+      for (String roleN : user.getRoleList()) {
+        Role role = iAuthorizer.getRole(roleN);
+        if (roleN == null) {
+          continue;
+        }
+        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+          if (authorStatement.getNodeName().getFullPath().equals("")
+              || AuthUtils.pathBelongsTo(
+                  authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
+            rolePrivileges.add(roleN);
+            userPrivilegesList.add(pathPrivilege.toString());
+          }
+        }
+      }
+      permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
+    }
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
+    return permissionInfo;
+  }
+
+  public boolean login(String username, String password) throws AuthException {
+    return iAuthorizer.login(username, password);
+  }
+
+  public boolean checkUserPrivileges(String username, String path, int permission)
+      throws AuthException {
+    return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
+
+  public TSStatus executeFlushOperation(TFlushReq tFlushReq) {
+    return storageEngine.operateFlush(tFlushReq);
+  }
 }

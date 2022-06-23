@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Objects;
@@ -131,22 +133,22 @@ public class AuthorReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), buffer);
-    BasicStructureSerDeUtil.write(userName, buffer);
-    BasicStructureSerDeUtil.write(roleName, buffer);
-    BasicStructureSerDeUtil.write(password, buffer);
-    BasicStructureSerDeUtil.write(newPassword, buffer);
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), stream);
+    BasicStructureSerDeUtil.write(userName, stream);
+    BasicStructureSerDeUtil.write(roleName, stream);
+    BasicStructureSerDeUtil.write(password, stream);
+    BasicStructureSerDeUtil.write(newPassword, stream);
     if (permissions == null) {
-      buffer.put((byte) 0);
+      stream.write((byte) 0);
     } else {
-      buffer.put((byte) 1);
-      buffer.putInt(permissions.size());
+      stream.write((byte) 1);
+      stream.writeInt(permissions.size());
       for (int permission : permissions) {
-        buffer.putInt(permission);
+        stream.writeInt(permission);
       }
     }
-    BasicStructureSerDeUtil.write(nodeName, buffer);
+    BasicStructureSerDeUtil.write(nodeName, stream);
   }
 
   @Override
@@ -244,5 +246,11 @@ public class AuthorReq extends ConfigRequest {
         && Objects.equals(newPassword, that.newPassword)
         && Objects.equals(permissions, that.permissions)
         && Objects.equals(nodeName, that.nodeName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        authorType, userName, roleName, password, newPassword, permissions, nodeName);
   }
 }

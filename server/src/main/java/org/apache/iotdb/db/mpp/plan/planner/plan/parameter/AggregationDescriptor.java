@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,6 +47,9 @@ public class AggregationDescriptor {
    * function.
    *
    * <p>example: select sum(s1) from root.sg.d1; expression [root.sg.d1.s1] will be in this field.
+   *
+   * <p>example: select sum(s1) from root.** group by level = 1; expression [root.sg.*.s1] may be in
+   * this field if the data is in different DataRegion</>
    */
   protected List<Expression> inputExpressions;
 
@@ -187,6 +192,15 @@ public class AggregationDescriptor {
     ReadWriteIOUtils.write(inputExpressions.size(), byteBuffer);
     for (Expression expression : inputExpressions) {
       Expression.serialize(expression, byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(aggregationType.ordinal(), stream);
+    step.serialize(stream);
+    ReadWriteIOUtils.write(inputExpressions.size(), stream);
+    for (Expression expression : inputExpressions) {
+      Expression.serialize(expression, stream);
     }
   }
 

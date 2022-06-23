@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
@@ -33,7 +32,11 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -43,7 +46,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class InsertNode extends WritePlanNode implements IConsensusRequest {
+public abstract class InsertNode extends WritePlanNode {
+
+  private final Logger logger = LoggerFactory.getLogger(InsertNode.class);
   /** this insert node doesn't need to participate in multi-leader consensus */
   public static final long NO_CONSENSUS_INDEX = -1;
   /** no multi-leader consensus, all insert nodes can be safely deleted */
@@ -171,18 +176,13 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
   }
 
-  /**
-   * Deserialize via {@link
-   * org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)}
-   */
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serializeAttributes(buffer);
-    getPlanNodeId().serialize(buffer);
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
 
@@ -242,12 +242,18 @@ public abstract class InsertNode extends WritePlanNode implements IConsensusRequ
                   devicePath.getFullPath(),
                   measurements[i],
                   measurementSchemas[i].getType(),
-                  dataTypes[i]));
+                  dataTypes[i],
+                  getMinTime(),
+                  getFirstValueOfIndex(i)));
         }
       }
     }
     return true;
   }
+
+  public abstract long getMinTime();
+
+  public abstract Object getFirstValueOfIndex(int index);
 
   // region partial insert
   /**
