@@ -60,6 +60,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
   private ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
+  private boolean isGroupByQuery;
 
   private TsBlock preCachedData;
 
@@ -95,6 +96,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.isGroupByQuery = groupByTimeParameter != null;
   }
 
   @Override
@@ -168,7 +170,11 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
           }
           calcFromStatistics(statisticsList);
           alignedSeriesScanUtil.skipCurrentFile();
-          continue;
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
+            break;
+          } else {
+            continue;
+          }
         }
 
         // read chunk
@@ -295,10 +301,11 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
           }
           calcFromStatistics(statisticsList);
           alignedSeriesScanUtil.skipCurrentPage();
-          if (isEndCalc(aggregators)) {
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
             return true;
+          } else {
+            continue;
           }
-          continue;
         }
       }
 
@@ -308,9 +315,6 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
       if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
         continue;
       }
-
-      // reset the last position to current Index
-      // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
       if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
@@ -355,7 +359,11 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
         }
         calcFromStatistics(statisticsList);
         alignedSeriesScanUtil.skipCurrentChunk();
-        continue;
+        if (isEndCalc(aggregators) && !isGroupByQuery) {
+          return true;
+        } else {
+          continue;
+        }
       }
       // read page
       if (readAndCalcFromPage(curTimeRange)) {

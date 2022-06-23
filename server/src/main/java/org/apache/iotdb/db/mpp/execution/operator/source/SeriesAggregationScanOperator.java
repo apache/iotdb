@@ -66,6 +66,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
   private ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
+  private boolean isGroupByQuery;
 
   private TsBlock preCachedData;
 
@@ -102,6 +103,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.isGroupByQuery = groupByTimeParameter != null;
   }
 
   /**
@@ -195,7 +197,11 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
             && curTimeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
           calcFromStatistics(fileStatistics);
           seriesScanUtil.skipCurrentFile();
-          continue;
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
+            break;
+          } else {
+            continue;
+          }
         }
 
         // read chunk
@@ -317,10 +323,11 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
             && curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);
           seriesScanUtil.skipCurrentPage();
-          if (isEndCalc(aggregators)) {
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
             return true;
+          } else {
+            continue;
           }
-          continue;
         }
       }
 
@@ -330,9 +337,6 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
         continue;
       }
-
-      // reset the last position to current Index
-      // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
       if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
@@ -371,7 +375,11 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           && curTimeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
         calcFromStatistics(chunkStatistics);
         seriesScanUtil.skipCurrentChunk();
-        continue;
+        if (isEndCalc(aggregators) && !isGroupByQuery) {
+          return true;
+        } else {
+          continue;
+        }
       }
       // read page
       if (readAndCalcFromPage(curTimeRange)) {
