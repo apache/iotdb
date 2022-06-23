@@ -60,10 +60,10 @@ public class IoTDBFilterNullIT {
       }
 
       for (String insertSql : insertSqls) {
-        // statement.addBatch(insertSql);
+        // TODO statement.addBatch(insertSql);
         statement.execute(insertSql);
       }
-      // statement.executeBatch();
+      // TODO statement.executeBatch();
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -82,7 +82,7 @@ public class IoTDBFilterNullIT {
   }
 
   @Test
-  public void nullFilterTest() throws Exception {
+  public void nullFilterTest() {
     String[] retArray = new String[] {"1,null,false,11.1", "2,22,true,null", "3,23,null,33.3"};
     try (Connection connectionIsNull = EnvFactory.getEnv().getConnection();
         Statement statementIsNull = connectionIsNull.createStatement()) {

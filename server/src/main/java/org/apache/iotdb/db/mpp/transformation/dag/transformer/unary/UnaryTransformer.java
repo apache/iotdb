@@ -54,6 +54,7 @@ public abstract class UnaryTransformer extends Transformer {
     if (!isLayerPointReaderConstant) {
       cachedTime = layerPointReader.currentTime();
     }
+
     if (layerPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
