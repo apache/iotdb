@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
