@@ -42,8 +42,8 @@ public enum ExpressionType {
   LESS_EQUAL((short) 11, (short) 600),
   LESS_THAN((short) 12, (short) 600),
 
-  LIKE((short) 13, (short) 500),
-  REGEXP((short) 14, (short) 500),
+  REGEXP((short) 13, (short) 500),
+  LIKE((short) 14, (short) 500),
 
   IS_NULL((short) 15, (short) 475),
 
