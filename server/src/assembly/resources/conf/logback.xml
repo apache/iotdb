@@ -299,5 +299,4 @@
     <logger level="info" name="COMPACTION">
         <appender-ref ref="COMPACTION"/>
     </logger>
-    <logger level="debug" name="org.apache.ratis"/>
 </configuration>
