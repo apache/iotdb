@@ -53,7 +53,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @FixMethodOrder(MethodSorters.JVM)
-public class IoTDBRestServiceIT {
+public class IoTDBRestServiceTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();

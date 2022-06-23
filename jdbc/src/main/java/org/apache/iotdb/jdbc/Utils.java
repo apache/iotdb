@@ -74,6 +74,9 @@ public class Utils {
     if (info.containsKey(Config.VERSION)) {
       params.setVersion(Constant.Version.valueOf(info.getProperty(Config.VERSION)));
     }
+    if (info.containsKey(Config.NETWORK_TIMEOUT)) {
+      params.setNetworkTimeout(Integer.parseInt(info.getProperty(Config.NETWORK_TIMEOUT)));
+    }
 
     return params;
   }
@@ -108,6 +111,7 @@ public class Utils {
           }
           break;
         case Config.VERSION:
+        case Config.NETWORK_TIMEOUT:
           info.put(key, value);
           break;
         default:

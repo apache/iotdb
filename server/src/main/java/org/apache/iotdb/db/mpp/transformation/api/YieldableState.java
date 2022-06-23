@@ -16,27 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.itbase.env;
 
-import java.util.Properties;
+package org.apache.iotdb.db.mpp.transformation.api;
 
-public interface BaseNode {
-
-  void createDir();
-
-  void destroyDir();
-
-  void changeConfig(Properties properties);
-
-  void start();
-
-  void stop();
-
-  void waitingToShutDown();
-
-  String getIp();
-
-  int getPort();
-
-  String getIpAndPortString();
+public enum YieldableState {
+  YIELDABLE,
+  NOT_YIELDABLE_WAITING_FOR_DATA,
+  NOT_YIELDABLE_NO_MORE_DATA,
 }

@@ -119,10 +119,6 @@ public class RatisConsensusTest {
     }
   }
 
-  private int getLeaderOrdinal() {
-    return servers.get(0).getLeader(gid).getEndpoint().port - 6000;
-  }
-
   @Test
   public void basicConsensus3Copy() throws Exception {
     servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());

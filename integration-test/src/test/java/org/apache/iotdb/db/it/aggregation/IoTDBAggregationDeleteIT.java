@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.aggregation;
+package org.apache.iotdb.db.it.aggregation;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Before;
@@ -36,9 +35,8 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationDeleteIT {
 
   private static String[] dataSet =
@@ -55,7 +53,7 @@ public class IoTDBAggregationDeleteIT {
 
   @Before
   public void setUp() throws Exception {
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareData();
@@ -71,13 +69,14 @@ public class IoTDBAggregationDeleteIT {
   public void countAfterDeleteTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select count(*) from root");
 
-      assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      int cnt = 0;
+      try (ResultSet resultSet = statement.executeQuery("select count(**) from root")) {
         while (resultSet.next()) {
           assertEquals("3", resultSet.getString(count("root.turbine.d1.s1")));
+          cnt++;
         }
+        assertEquals(1, cnt);
       }
     }
   }

@@ -25,7 +25,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 
 import java.io.IOException;
 
-public interface LayerRowWindowReader {
+public interface LayerRowWindowReader extends YieldableReader {
 
   boolean next() throws IOException, QueryProcessException;
 

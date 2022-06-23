@@ -74,14 +74,14 @@ public class GroupByLevelController {
     this.typeProvider = typeProvider;
   }
 
-  public void control(Expression expression, String alias) {
+  public void control(boolean isCountStar, Expression expression, String alias) {
     if (!(expression instanceof FunctionExpression
         && expression.isBuiltInAggregationFunctionExpression())) {
       throw new SemanticException(expression + " can't be used in group by level.");
     }
 
     PartialPath rawPath = ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
-    PartialPath groupedPath = generatePartialPathByLevel(rawPath.getNodes(), levels);
+    PartialPath groupedPath = generatePartialPathByLevel(isCountStar, rawPath.getNodes(), levels);
 
     checkDatatypeConsistency(
         groupedPath.getFullPath(), ((FunctionExpression) expression).getFunctionName(), rawPath);
@@ -178,7 +178,8 @@ public class GroupByLevelController {
    *
    * @return result partial path
    */
-  public PartialPath generatePartialPathByLevel(String[] nodes, int[] pathLevels) {
+  public PartialPath generatePartialPathByLevel(
+      boolean isCountStar, String[] nodes, int[] pathLevels) {
     Set<Integer> levelSet = new HashSet<>();
     for (int level : pathLevels) {
       levelSet.add(level);
@@ -194,7 +195,11 @@ public class GroupByLevelController {
         transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
       }
     }
-    transformedNodes.add(nodes[nodes.length - 1]);
+    if (isCountStar) {
+      transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+    } else {
+      transformedNodes.add(nodes[nodes.length - 1]);
+    }
     return new PartialPath(transformedNodes.toArray(new String[0]));
   }
 
