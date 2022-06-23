@@ -156,7 +156,6 @@ public class IoTDBCreateTimeseriesIT {
 
     // ensure that current timeseries in cache is right.
     createTimeSeriesWithSpecialCharacterTool(timeSeriesResArray);
-
   }
 
   private void createTimeSeriesWithSpecialCharacterTool(String[] timeSeriesArray)
