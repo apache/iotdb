@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -40,8 +42,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -73,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -473,7 +476,9 @@ public class ConfigManager implements Manager {
     if (getConsensusManager().isLeader()) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
+      Peer leader = consensusManager.getLeader(nodeManager.getOnlineConfigNodes());
       return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
+          .setRedirectNode(leader.getEndpoint())
           .setMessage(
               "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
     }
@@ -554,6 +559,20 @@ public class ConfigManager implements Manager {
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     // Check global configuration
+    TSStatus status = confirmLeader();
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TConfigNodeRegisterResp errorResp1 = checkConfigNodeRegisterResp(req);
+      if (errorResp1 != null) return errorResp1;
+
+      procedureManager.addConfigNode(req);
+      return nodeManager.registerConfigNode(req);
+    }
+
+    return new TConfigNodeRegisterResp().setStatus(status);
+  }
+
+  private TConfigNodeRegisterResp checkConfigNodeRegisterResp(TConfigNodeRegisterReq req) {
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
@@ -616,13 +635,23 @@ public class ConfigManager implements Manager {
               "Reject register, please ensure that the data_replication_factor are consistent.");
       return errorResp;
     }
-
-    return nodeManager.registerConfigNode(req);
+    return null;
   }
 
   @Override
-  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
-    return nodeManager.applyConfigNode(applyConfigNodeReq);
+  public TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+    consensusManager.addConsensusGroup(configNodeLocations);
+    return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.removeConfigNode(removeConfigNodeReq);
+    } else {
+      return status;
+    }
   }
 
   @Override

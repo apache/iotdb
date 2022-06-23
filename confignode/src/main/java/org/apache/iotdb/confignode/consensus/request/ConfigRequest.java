@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -117,13 +119,16 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case SetTimePartitionInterval:
           req = new SetTimePartitionIntervalReq();
           break;
+        case AdjustMaxRegionGroupCount:
+          req = new AdjustMaxRegionGroupCountReq();
+          break;
         case CountStorageGroup:
           req = new CountStorageGroupReq();
           break;
         case GetStorageGroup:
           req = new GetStorageGroupReq();
           break;
-        case CreateRegions:
+        case CreateRegionGroups:
           req = new CreateRegionsReq();
           break;
         case DeleteRegions:
@@ -180,6 +185,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();
+          break;
+        case RemoveConfigNode:
+          req = new RemoveConfigNodeReq();
           break;
         case CreateFunction:
           req = new CreateFunctionReq();

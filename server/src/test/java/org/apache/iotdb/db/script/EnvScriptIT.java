@@ -34,6 +34,7 @@ import java.util.Properties;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+/** This test case is strange that it relies on the maven output files */
 public class EnvScriptIT {
 
   @Before

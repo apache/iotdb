@@ -180,11 +180,25 @@ GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
+- Grant User All Privileges
+
+```
+GRANT USER <userName> PRIVILEGES ALL ON <nodeName>; 
+Eg: IoTDB > grant user renyuhua privileges all on root.**
+```
+
 * Grant Role Privileges
 
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
 Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+```
+
+- Grant Role All Privileges
+
+```
+GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeName>;  
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
 ```
 
 * Grant User Role
@@ -201,11 +215,25 @@ REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
+* Revoke User All Privileges
+
+```
+REVOKE USER <userName> PRIVILEGES ALL ON <nodeName>; 
+Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
+```
+
 * Revoke Role Privileges
 
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+```
+
+* Revoke All Role Privileges
+
+```
+REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeName>;  
+Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
 ```
 
 * Revoke Role From User
@@ -295,36 +323,51 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 **List of privileges Included in the System**
 
-|privilege Name|Interpretation|
-|:---|:---|
-|SET\_STORAGE\_GROUP|set storage groups; path dependent|
-|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
-|CREATE\_TIMESERIES|create timeseries; path dependent|
-|INSERT\_TIMESERIES|insert data; path dependent|
-|READ\_TIMESERIES|query data; path dependent|
-|DELETE\_TIMESERIES|delete data or timeseries; path dependent|
-|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
-|CREATE\_USER|create users; path independent|
-|DELETE\_USER|delete users; path independent|
-|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|
-|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of Role with four kinds of operation privileges; path independent|
-|GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|
-|REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|
-|GRANT\_USER\_ROLE|grant user roles; path independent|
-|REVOKE\_USER\_ROLE|revoke user roles; path independent|
-|CREATE\_ROLE|create roles; path independent|
-|DELETE\_ROLE|delete roles; path independent|
-|LIST\_ROLE|list all roles; list the privileges of a role; list the three kinds of operation privileges of all users owning a role; path independent|
-|GRANT\_ROLE\_PRIVILEGE|grant role privileges; path independent|
-|REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
-|CREATE_FUNCTION|register UDFs; path independent|
-|DROP_FUNCTION|deregister UDFs; path independent|
-|CREATE_TRIGGER|create triggers; path dependent|
-|DROP_TRIGGER|drop triggers; path dependent|
-|START_TRIGGER|start triggers; path dependent|
-|STOP_TRIGGER|stop triggers; path dependent|
-|CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
-|DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
+|privilege Name|Interpretation|Example|
+|:---|:---|----|
+|SET\_STORAGE\_GROUP|set storage groups; path dependent|Eg: `set storage group to root.ln;`|
+|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|Eg: `delete storage group root.ln;`|
+|CREATE\_TIMESERIES|create timeseries; path dependent|Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
+|INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
+|READ\_TIMESERIES|query data; path dependent|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [Query-Data](../Query-Data/Overview.md)（The query statements under this section all use this permission）<br />Eg8: CVS format data export<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: Performance Tracing Tool<br />`tracing select * from root`<br />Eg10: UDF-Query<br />`select example(*) from root.sg.d1`<br />Eg11: Triggers-Query<br />`show triggers`|
+|DELETE\_TIMESERIES|delete data or timeseries; path dependent|Eg1: delete timeseries<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: delete data<br />`delete from root.ln.wf02.wt02.status where time < 10`|
+|CREATE\_USER|create users; path independent|Eg: `create user thulab 'passwd';`|
+|DELETE\_USER|delete users; path independent|Eg: `drop user xiaoming;`|
+|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|Eg: `alter user tempuser SET PASSWORD 'newpwd';`|
+|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of Role with four kinds of operation privileges; path independent|Eg1: `list user;`<br />Eg2: `list privileges user 'admin' on root.sgcc.**;`<br />Eg3: `list user privileges admin;`<br />Eg4: `list all user of role 'admin';`|
+|GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|Eg:  `grant user tempuser privileges DELETE_TIMESERIES on root.ln.**;`|
+|REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|Eg:  `revoke user tempuser privileges DELETE_TIMESERIES on root.ln.**;`|
+|GRANT\_USER\_ROLE|grant user roles; path independent|Eg:  `grant temprole to tempuser;`|
+|REVOKE\_USER\_ROLE|revoke user roles; path independent|Eg:  `revoke temprole from tempuser;`|
+|CREATE\_ROLE|create roles; path independent|Eg:  `create role admin;`|
+|DELETE\_ROLE|delete roles; path independent|Eg: `drop role admin;`|
+|LIST\_ROLE|list all roles; list the privileges of a role; list the three kinds of operation privileges of all users owning a role; path independent|Eg1: `list role`<br />Eg2: `list role privileges actor;`<br />Eg3: `list privileges role wirte_role ON root.sgcc;`<br />Eg4: `list all role of user admin;`|
+|GRANT\_ROLE\_PRIVILEGE|grant role privileges; path independent|Eg: `grant role temprole privileges DELETE_TIMESERIES ON root.ln.**;`|
+|REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|Eg: `revoke role temprole privileges DELETE_TIMESERIES ON root.ln.**;`|
+|CREATE_FUNCTION|register UDFs; path independent|Eg: `create function example AS 'org.apache.iotdb.udf.UDTFExample';`|
+|DROP_FUNCTION|deregister UDFs; path independent|Eg: `drop function example`|
+|CREATE_TRIGGER|create triggers; path dependent|Eg1: `CREATE TRIGGER <TRIGGER-NAME> BEFORE INSERT ON <FULL-PATH> AS <CLASSNAME>`<br />Eg2: `CREATE TRIGGER <TRIGGER-NAME> AFTER INSERT ON <FULL-PATH> AS <CLASSNAME>`|
+|DROP_TRIGGER|drop triggers; path dependent|Eg: `drop trigger 'alert-listener-sg1d1s1'`|
+|START_TRIGGER|start triggers; path dependent|Eg: `start trigger lert-listener-sg1d1s1'`|
+|STOP_TRIGGER|stop triggers; path dependent|Eg: `stop trigger 'alert-listener-sg1d1s1'`|
+|CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
+|DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
+
+Note that the following SQL statements need to be granted multiple permissions before they can be used：
+
+- Import data: Need to assign `READ_TIMESERIES`，`INSERT_TIMESERIES` two permissions.。
+
+```
+Eg: IoTDB > ./import-csv.bat -h 127.0.0.1 -p 6667 -u renyuhua -pw root -f dump0.csv
+```
+
+-  Query Write-back (SELECT INTO)
+- - `READ_TIMESERIES` permission of source sequence in all `select` clauses is required
+  - `INSERT_TIMESERIES` permission of target sequence in all `into` clauses is required 
+
+```
+Eg: IoTDB > select s1, s1 into t1, t2 from root.sg.d1 limit 5 offset 1000
+```
 
 ### Username Restrictions
 
@@ -348,3 +391,186 @@ result set. For example, `root.sg.d.*` is a sub pattern of
 ### Permission cache
 
 In distributed related permission operations, when changing permissions other than creating users and roles, all the cache information of `dataNode` related to the user (role) will be cleared first. If any `dataNode` cache information is clear and fails, the permission change task will fail.
+
+### Operations restricted by non root users
+
+At present, the following SQL statements supported by iotdb can only be operated by the `root` user, and no corresponding permission can be given to the new user.
+
+###### TTL
+
+- set ttl
+
+```
+Eg: IoTDB > set ttl to root.ln 3600
+```
+
+- unset ttl
+
+```
+Eg: IoTDB > unset ttl to root.ln
+```
+
+###### Schema Template
+
+- Create Schema Template
+
+```
+Eg: IoTDB > create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```
+
+-  Set Schema Template
+
+```
+Eg: IoTDB > set schema template t1 to root.sg1.d1
+```
+
+- Uset Schema Template
+
+```
+Eg: IoTDB > unset schema template t1 from root.sg1.d1
+```
+
+-  Drop Schema Template
+
+```
+Eg: IoTDB > drop schema template t1
+```
+
+###### Tag and Attribute Management
+
+- Rename the tag/attribute key
+
+```text
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+
+- reset the tag/attribute value
+
+```text
+ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
+```
+
+- delete the existing tag/attribute
+
+```text
+ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+```
+
+- add new tags
+
+```text
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+```
+
+- add new attributes
+
+```text
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+
+- upsert alias, tags and attributes
+
+```text
+ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
+```
+
+###### TsFile Management
+
+- Load TsFiles
+
+```
+Eg: IoTDB > load '/Users/Desktop/data/1575028885956-101-0.tsfile'
+```
+
+- remove a tsfile
+
+```
+Eg: IoTDB > remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'
+```
+
+- unload a tsfile and move it to a target directory
+
+```
+Eg: IoTDB > unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'
+```
+
+###### Count
+
+- Count storage group/Number of nodes/device/timeseries
+
+```
+Eg: IoTDB > count storage group
+Eg: IoTDB > count nodes root.** LEVEL=2
+Eg: IoTDB > count devices root.ln.**
+Eg: IoTDB > count timeseries root.**
+```
+
+###### Delete Time Partition (experimental)
+
+- Delete Time Partition (experimental)
+
+```
+Eg: IoTDB > DELETE PARTITION root.ln 0,1,2
+```
+
+###### Continuous Query,CQ
+
+- Continuous Query,CQ
+
+```
+Eg: IoTDB > CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.* GROUP BY time(10s) END
+```
+
+###### Maintenance Command
+
+- FLUSH
+
+```
+Eg: IoTDB > flush
+```
+
+- MERGE
+
+```
+Eg: IoTDB > MERGE
+Eg: IoTDB > FULL MERGE
+```
+
+- CLEAR CACHE
+
+```sql
+Eg: IoTDB > CLEAR CACHE
+```
+
+- SET STSTEM TO READONLY / WRITABLE
+
+```
+Eg: IoTDB > SET STSTEM TO READONLY / WRITABLE
+```
+
+- SCHEMA SNAPSHOT
+
+```sql
+Eg: IoTDB > CREATE SNAPSHOT FOR SCHEMA
+```
+
+- Query abort
+
+```
+Eg: IoTDB > KILL QUERY 1
+```
+
+###### Watermark Tool
+
+- Watermark new users 
+
+```
+Eg: IoTDB > grant watermark_embedding to Alice
+```
+
+- Watermark Detection
+
+```
+Eg: IoTDB > revoke watermark_embedding from Alice
+```
+
