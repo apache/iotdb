@@ -21,10 +21,11 @@ package org.apache.iotdb.confignode.manager.load;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
@@ -37,9 +38,13 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.Manager;
 import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.IHeartbeatStatistic;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,14 +52,16 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
  * dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
-public class LoadManager implements Runnable {
+public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
@@ -62,24 +69,31 @@ public class LoadManager implements Runnable {
 
   private final long heartbeatInterval =
       ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
-  private final HeartbeatCache heartbeatCache;
+  // Map<NodeId, HeartbeatCache>
+  private final Map<Integer, HeartbeatCache> heartbeatCacheMap;
 
   // Balancers
   private final RegionBalancer regionBalancer;
   private final PartitionBalancer partitionBalancer;
+  private final RouteBalancer routeBalancer;
 
-  private final Map<TConsensusGroupId, TRegionReplicaSet> replicaScoreMap;
+  /** heartbeat executor service */
+  private final ScheduledExecutorService heartBeatExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
 
-  // TODO: Interfaces for active, interrupt and reset LoadBalancer
+  /** monitor for heartbeat state change */
+  private final Object heartbeatMonitor = new Object();
+
+  private Future<?> currentHeartbeatFuture;
+  private int balanceCount = 0;
 
   public LoadManager(Manager configManager) {
     this.configManager = configManager;
-    this.heartbeatCache = new HeartbeatCache();
+    this.heartbeatCacheMap = new ConcurrentHashMap<>();
 
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
-
-    this.replicaScoreMap = new TreeMap<>();
+    this.routeBalancer = new RouteBalancer(configManager);
   }
 
   /**
@@ -134,47 +148,102 @@ public class LoadManager implements Runnable {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
+  /**
+   * Generate an optimal real-time read/write requests routing policy.
+   *
+   * @return Map<TConsensusGroupId, TRegionReplicaSet>, The routing policy of read/write requests
+   *     for each Region is based on the order in the TRegionReplicaSet. The replica with higher
+   *     sorting result have higher priority.
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> genRealTimeRoutingPolicy() {
+    return routeBalancer.genRealTimeRoutingPolicy(getPartitionManager().getAllReplicaSets());
+  }
+
+  /**
+   * Get the loadScore of each DataNode
+   *
+   * @return Map<DataNodeId, loadScore>
+   */
+  public Map<Integer, Float> getAllLoadScores() {
+    Map<Integer, Float> result = new ConcurrentHashMap<>();
+
+    heartbeatCacheMap.forEach(
+        (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
+
+    return result;
+  }
+
+  /** Start the heartbeat service */
+  public void start() {
+    LOGGER.debug("Start Heartbeat Service of LoadManager");
+    synchronized (heartbeatMonitor) {
+      if (currentHeartbeatFuture == null) {
+        currentHeartbeatFuture =
+            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                heartBeatExecutor,
+                this::heartbeatLoopBody,
+                0,
+                heartbeatInterval,
+                TimeUnit.MILLISECONDS);
+      }
+    }
+  }
+
+  /** Stop the heartbeat service */
+  public void stop() {
+    LOGGER.debug("Stop Heartbeat Service of LoadManager");
+    synchronized (heartbeatMonitor) {
+      if (currentHeartbeatFuture != null) {
+        currentHeartbeatFuture.cancel(false);
+        currentHeartbeatFuture = null;
+      }
+    }
+  }
+
+  /** loop body of the heartbeat thread */
+  private void heartbeatLoopBody() {
+    if (getConsensusManager().isLeader()) {
+      // Send heartbeat requests to all the online DataNodes
+      pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
+      // TODO: Send heartbeat requests to all the online ConfigNodes
+
+      // Do load balancing
+      doLoadBalancing(balanceCount);
+      balanceCount += 1;
+    }
+  }
+
   private THeartbeatReq genHeartbeatReq() {
     return new THeartbeatReq(System.currentTimeMillis());
   }
 
-  private void doLoadBalancing() {
-    // regionExpansion();
-    // TODO: update replicaScoreMap
+  private void doLoadBalancing(int balanceCount) {
+    if (balanceCount % 5 == 0) {
+      // We update nodes' load statistic in every 5s
+      updateNodeLoadStatistic();
+    }
   }
 
-  @Override
-  public void run() {
-    int balanceCount = 0;
-    while (!configManager.isStopped()) {
-      try {
+  private void updateNodeLoadStatistic() {
+    heartbeatCacheMap.values().forEach(IHeartbeatStatistic::updateLoadStatistic);
+  }
 
-        if (getConsensusManager().isLeader()) {
-          // Ask DataNode for heartbeat in every heartbeat interval
-          List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
-          for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
-            HeartbeatHandler handler =
-                new HeartbeatHandler(dataNodeInfo.getLocation(), heartbeatCache);
-            AsyncDataNodeClientPool.getInstance()
-                .getHeartBeat(
-                    dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
-          }
-
-          balanceCount += 1;
-          // TODO: Adjust load balancing period
-          if (balanceCount == 10) {
-            // Pause load balancing temporary
-            // doLoadBalancing();
-            balanceCount = 0;
-          }
-        } else {
-          heartbeatCache.discardAllCache();
-        }
-
-        TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
-      } catch (InterruptedException e) {
-        LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
-      }
+  /**
+   * Send heartbeat requests to all the online DataNodes
+   *
+   * @param onlineDataNodes DataNodes that currently online
+   */
+  private void pingOnlineDataNodes(List<TDataNodeInfo> onlineDataNodes) {
+    // Send heartbeat requests
+    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+      HeartbeatHandler handler =
+          new HeartbeatHandler(
+              dataNodeInfo.getLocation(),
+              heartbeatCacheMap.computeIfAbsent(
+                  dataNodeInfo.getLocation().getDataNodeId(), empty -> new HeartbeatCache()));
+      AsyncDataNodeClientPool.getInstance()
+          .getHeartBeat(
+              dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
     }
   }
 
@@ -188,5 +257,9 @@ public class LoadManager implements Runnable {
 
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
   }
 }

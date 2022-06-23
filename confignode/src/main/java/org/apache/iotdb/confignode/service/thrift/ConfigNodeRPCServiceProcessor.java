@@ -21,10 +21,11 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
@@ -36,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigura
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -49,10 +51,8 @@ import org.apache.iotdb.confignode.consensus.response.ConfigNodeConfigurationRes
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -85,13 +86,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -138,6 +141,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
 
     return resp;
+  }
+
+  @Override
+  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
+    // TODO: implement active data node
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -264,12 +273,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    SchemaPartitionResp schemaResp =
-        (SchemaPartitionResp) configManager.getSchemaPartition(patternTree);
-
-    TSchemaPartitionResp resp = new TSchemaPartitionResp();
-    schemaResp.convertToRpcSchemaPartitionResp(resp);
-    return resp;
+    return configManager.getSchemaPartition(patternTree);
   }
 
   @Override
@@ -277,12 +281,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    SchemaPartitionResp dataResp =
-        (SchemaPartitionResp) configManager.getOrCreateSchemaPartition(patternTree);
-
-    TSchemaPartitionResp resp = new TSchemaPartitionResp();
-    dataResp.convertToRpcSchemaPartitionResp(resp);
-    return resp;
+    return configManager.getOrCreateSchemaPartition(patternTree);
   }
 
   @Override
@@ -290,37 +289,22 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    PartialPath partialPath = patternTree.splitToPathList().get(0);
-    SchemaNodeManagementResp schemaNodeManagementResp;
-    schemaNodeManagementResp =
-        (SchemaNodeManagementResp) configManager.getNodePathsPartition(partialPath, req.getLevel());
-    TSchemaNodeManagementResp resp = new TSchemaNodeManagementResp();
-    schemaNodeManagementResp.convertToRpcSchemaNodeManagementPartitionResp(resp);
-    return resp;
+    PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
+    return configManager.getNodePathsPartition(partialPath, req.getLevel());
   }
 
   @Override
   public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
     GetDataPartitionReq getDataPartitionReq = new GetDataPartitionReq();
     getDataPartitionReq.convertFromRpcTDataPartitionReq(req);
-    DataPartitionResp dataResp =
-        (DataPartitionResp) configManager.getDataPartition(getDataPartitionReq);
-
-    TDataPartitionResp resp = new TDataPartitionResp();
-    dataResp.convertToRpcDataPartitionResp(resp);
-    return resp;
+    return configManager.getDataPartition(getDataPartitionReq);
   }
 
   @Override
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
     GetOrCreateDataPartitionReq getOrCreateDataPartitionReq = new GetOrCreateDataPartitionReq();
     getOrCreateDataPartitionReq.convertFromRpcTDataPartitionReq(req);
-    DataPartitionResp dataResp =
-        (DataPartitionResp) configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
-
-    TDataPartitionResp resp = new TDataPartitionResp();
-    dataResp.convertToRpcDataPartitionResp(resp);
-    return resp;
+    return configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
   }
 
   @Override
@@ -392,6 +376,8 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         new GetConfigNodeConfigurationReq(configNodeLocation);
     ConfigNodeConfigurationResp configurationResp =
         (ConfigNodeConfigurationResp) configManager.getConfigNodeConfiguration(getConfigurationReq);
+    configurationResp.setPartitionRegionId(
+        configManager.getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
     TConfigNodeConfigurationResp resp = new TConfigNodeConfigurationResp();
     configurationResp.convertToRPCConfigNodeConfigurationResp(resp);
@@ -405,18 +391,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
-    if (configManager
-        .getNodeManager()
-        .getOnlineConfigNodes()
-        .contains(req.getConfigNodeLocation())) {
-      TSStatus status =
-          new TSStatus(TSStatusCode.REGISTER_CONFIGNODE_FAILED.getStatusCode())
-              .setMessage(
-                  "Register ConfigNode failed because the ConfigNode already in current Cluster.");
-      return resp.setStatus(status);
-    }
-    resp = configManager.registerConfigNode(req);
+    TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
     LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
@@ -443,36 +418,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
    */
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    if (checkConfigNodeDuplicateNum()) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Remove ConfigNode failed only one ConfigNode in current Cluster.");
-    }
-
-    if (!configManager.getNodeManager().getOnlineConfigNodes().contains(configNodeLocation)) {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
-    }
-
-    Peer leader =
-        configManager
-            .getConsensusManager()
-            .getLeader(configManager.getConsensusManager().getConsensusGroupId());
-    if (leader.getEndpoint().equals(configNodeLocation.getInternalEndPoint())) {
-      // transfer leader
-      TEndPoint endPoint = transferLeader(leader);
-      if (endPoint != null) {
-        LOGGER.info("redirectionNode: {}", endPoint.toString());
-        return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-            .setRedirectNode(endPoint)
-            .setMessage("Remove ConfigNode is leader, already transfer Leader.");
-      }
-    }
-
     RemoveConfigNodeReq removeConfigNodeReq = new RemoveConfigNodeReq(configNodeLocation);
 
     TSStatus status = configManager.removeConfigNode(removeConfigNodeReq);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      SyncConfigNodeClientPool.getInstance().stopConfigNode(configNodeLocation);
+      status = SyncConfigNodeClientPool.getInstance().stopConfigNode(configNodeLocation);
     }
 
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
@@ -491,7 +441,15 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     if (!configManager.getNodeManager().getOnlineConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
+          .setMessage("Stop ConfigNode failed because the ConfigNode not in current Cluster.");
+    }
+
+    ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
+    ConsensusGenericResponse resp =
+        configManager.getConsensusManager().getConsensusImpl().removeConsensusGroup(groupId);
+    if (!resp.isSuccess()) {
+      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+          .setMessage("Stop ConfigNode failed because remove ConsensusGroup failed.");
     }
 
     new Thread(
@@ -508,37 +466,6 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         .setMessage("Stop ConfigNode success.");
   }
 
-  private TEndPoint transferLeader(Peer peer) {
-    TEndPoint endPoint = new TEndPoint();
-    for (TConfigNodeLocation onlineConfigNode :
-        configManager.getNodeManager().getOnlineConfigNodes()) {
-      if (!peer.getEndpoint().equals(onlineConfigNode.getInternalEndPoint())) {
-        ConsensusGenericResponse resp =
-            configManager
-                .getConsensusManager()
-                .getConsensusImpl()
-                .transferLeader(
-                    configManager.getConsensusManager().getConsensusGroupId(),
-                    new Peer(
-                        configManager.getConsensusManager().getConsensusGroupId(),
-                        onlineConfigNode.getConsensusEndPoint()));
-        if (resp.isSuccess()) {
-          LOGGER.info("Transfer ConfigNode Leader success.");
-          endPoint = onlineConfigNode.getInternalEndPoint();
-          break;
-        }
-      }
-    }
-    return endPoint;
-  }
-
-  private boolean checkConfigNodeDuplicateNum() {
-    if (configManager.getNodeManager().getOnlineConfigNodes().size() <= 1) {
-      return true;
-    }
-    return false;
-  }
-
   @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
     return configManager.createFunction(req.getUdfName(), req.getClassName(), req.getUris());
@@ -547,6 +474,33 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus dropFunction(TDropFunctionReq req) throws TException {
     return configManager.dropFunction(req.getUdfName());
+  }
+
+  @Override
+  public TSStatus flush(TFlushReq req) throws TException {
+    if (req.storageGroups != null) {
+      List<PartialPath> noExistSg =
+          configManager.checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
+      if (!noExistSg.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
+        return RpcUtils.getStatus(
+            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            "storageGroup " + sb.subSequence(0, sb.length() - 1) + " does not exist");
+      }
+    }
+    return configManager.flush(req);
+  }
+
+  @Override
+  public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
+    GetRegionLocationsReq getRegionsinfoReq =
+        new GetRegionLocationsReq(showRegionReq.getConsensusGroupType());
+    RegionLocationsResp dataSet = (RegionLocationsResp) configManager.showRegion(getRegionsinfoReq);
+    TShowRegionResp showRegionResp = new TShowRegionResp();
+    showRegionResp.setStatus(dataSet.getStatus());
+    showRegionResp.setRegionInfoList(dataSet.getRegionInfosList());
+    return showRegionResp;
   }
 
   public void handleClientExit() {}

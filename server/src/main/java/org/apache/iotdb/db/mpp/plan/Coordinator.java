@@ -22,9 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
@@ -56,11 +55,9 @@ public class Coordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
 
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final int COORDINATOR_EXECUTOR_SIZE = 10;
   private static final String COORDINATOR_WRITE_EXECUTOR_NAME = "MPPCoordinatorWrite";
-  private static final int COORDINATOR_WRITE_EXECUTOR_SIZE = 10;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
+  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -68,10 +65,6 @@ public class Coordinator {
               .createClientManager(
                   new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
@@ -96,7 +89,7 @@ public class Coordinator {
       ISchemaFetcher schemaFetcher) {
     if (statement instanceof IConfigStatement) {
       queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor, CONFIG_NODE_CLIENT_MANAGER);
+      return new ConfigExecution(queryContext, statement, executor);
     }
     return new QueryExecution(
         statement,
@@ -116,9 +109,11 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+      if (sql != null) {
+        LOGGER.info("start executing sql: {}", sql);
+      }
       IQueryExecution execution =
           createQueryExecution(
               statement,
@@ -143,15 +138,23 @@ public class Coordinator {
     return queryExecutionMap.get(queryId);
   }
 
+  public void removeQueryExecution(Long queryId) {
+    queryExecutionMap.remove(queryId);
+  }
+
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
+    int coordinatorReadExecutorSize =
+        IoTDBDescriptor.getInstance().getConfig().getCoordinatorReadExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        COORDINATOR_EXECUTOR_SIZE, COORDINATOR_EXECUTOR_NAME);
+        coordinatorReadExecutorSize, COORDINATOR_EXECUTOR_NAME);
   }
 
   private ExecutorService getWriteExecutor() {
+    int coordinatorWriteExecutorSize =
+        IoTDBDescriptor.getInstance().getConfig().getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        COORDINATOR_WRITE_EXECUTOR_SIZE, COORDINATOR_WRITE_EXECUTOR_NAME);
+        coordinatorWriteExecutorSize, COORDINATOR_WRITE_EXECUTOR_NAME);
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management

@@ -78,7 +78,7 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(req.sourceFragmentInstanceId))) {
+          new SetThreadName(createFullIdFrom(req.sourceFragmentInstanceId, "SinkHandle"))) {
         logger.debug(
             "Get data block request received, for data blocks whose sequence ID in [{}, {}) from {}.",
             req.getStartSequenceId(),
@@ -107,7 +107,7 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e) throws TException {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(e.sourceFragmentInstanceId))) {
+          new SetThreadName(createFullIdFrom(e.sourceFragmentInstanceId, "SinkHandle"))) {
         logger.debug(
             "Acknowledge data block event received, for data blocks whose sequence ID in [{}, {}) from {}.",
             e.getStartSequenceId(),
@@ -127,7 +127,8 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public void onNewDataBlockEvent(TNewDataBlockEvent e) throws TException {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(e.sourceFragmentInstanceId))) {
+          new SetThreadName(
+              createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId + ".SourceHandle"))) {
         logger.debug(
             "New data block event received, for plan node {} of {} from {}.",
             e.getTargetPlanNodeId(),
@@ -161,7 +162,8 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public void onEndOfDataBlockEvent(TEndOfDataBlockEvent e) throws TException {
       try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(e.sourceFragmentInstanceId))) {
+          new SetThreadName(
+              createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId + ".SourceHandle"))) {
         logger.debug(
             "End of data block event received, for plan node {} of {} from {}.",
             e.getTargetPlanNodeId(),
@@ -175,10 +177,10 @@ public class DataBlockManager implements IDataBlockManager {
                 .get(e.getTargetFragmentInstanceId())
                 .get(e.getTargetPlanNodeId())
                 .isAborted()) {
-          throw new TException(
-              "Target fragment instance not found. Fragment instance ID: "
-                  + e.getTargetFragmentInstanceId()
-                  + ".");
+          logger.warn(
+              "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
+              e.getTargetFragmentInstanceId());
+          return;
         }
         SourceHandle sourceHandle =
             (SourceHandle)
@@ -201,43 +203,34 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sourceHandle.getLocalFragmentInstanceId()))) {
-        logger.info("{} finished and release resources", sourceHandle);
-        if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
-            || !sourceHandles
-                .get(sourceHandle.getLocalFragmentInstanceId())
-                .containsKey(sourceHandle.getLocalPlanNodeId())) {
-          logger.info("{} resources has already been released", sourceHandle);
-        } else {
-          sourceHandles
+      logger.info("finished and release resources");
+      if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
+          || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
-              .remove(sourceHandle.getLocalPlanNodeId());
-        }
-        if (sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
-            && sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
-          sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
-        }
+              .containsKey(sourceHandle.getLocalPlanNodeId())) {
+        logger.info("resources has already been released");
+      } else {
+        sourceHandles
+            .get(sourceHandle.getLocalFragmentInstanceId())
+            .remove(sourceHandle.getLocalPlanNodeId());
+      }
+      if (sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
+          && sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
+        sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
       }
     }
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sourceHandle.getLocalFragmentInstanceId()))) {
-        logger.info("{}: onAborted is invoked", sourceHandle);
-        onFinished(sourceHandle);
-      }
+      logger.info("onAborted is invoked");
+      onFinished(sourceHandle);
     }
 
     @Override
     public void onFailure(ISourceHandle sourceHandle, Throwable t) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sourceHandle.getLocalFragmentInstanceId()))) {
-        logger.error("Source handle {} failed due to {}", sourceHandle, t);
-        if (onFailureCallback != null) {
-          onFailureCallback.call(t);
-        }
+      logger.error("Source handle failed due to: ", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
       }
     }
   }
@@ -256,50 +249,35 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onFinish(ISinkHandle sinkHandle) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sinkHandle.getLocalFragmentInstanceId()))) {
-        removeFromDataBlockManager(sinkHandle);
-        context.finished();
-      }
+      removeFromDataBlockManager(sinkHandle);
+      context.finished();
     }
 
     @Override
     public void onEndOfBlocks(ISinkHandle sinkHandle) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sinkHandle.getLocalFragmentInstanceId()))) {
-        context.transitionToFlushing();
-      }
+      context.transitionToFlushing();
     }
 
     @Override
     public void onAborted(ISinkHandle sinkHandle) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sinkHandle.getLocalFragmentInstanceId()))) {
-        logger.info("{} onAborted is invoked", sinkHandle);
-        removeFromDataBlockManager(sinkHandle);
-      }
+      logger.info("onAborted is invoked");
+      removeFromDataBlockManager(sinkHandle);
     }
 
     private void removeFromDataBlockManager(ISinkHandle sinkHandle) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sinkHandle.getLocalFragmentInstanceId()))) {
-        logger.info("{} release resources of finished sink handle", sinkHandle);
-        if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
-          logger.info("{} resources already been released", sinkHandle);
-        }
-        sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
+      logger.info("release resources of finished sink handle");
+      if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
+        logger.info("resources already been released");
       }
+      sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
     }
 
     @Override
     public void onFailure(ISinkHandle sinkHandle, Throwable t) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(createFullIdFrom(sinkHandle.getLocalFragmentInstanceId()))) {
-        // TODO: (xingtanzjr) should we remove the sinkHandle from DataBlockManager ?
-        logger.error("Sink handle {} failed due to {}", sinkHandle, t);
-        if (onFailureCallback != null) {
-          onFailureCallback.call(t);
-        }
+      // TODO: (xingtanzjr) should we remove the sinkHandle from DataBlockManager ?
+      logger.error("Sink handle failed due to", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
       }
     }
   }
@@ -497,10 +475,9 @@ public class DataBlockManager implements IDataBlockManager {
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
-    logger.info("Force deregister fragment instance {}", fragmentInstanceId);
+    logger.info("Force deregister fragment instance");
     if (sinkHandles.containsKey(fragmentInstanceId)) {
       ISinkHandle sinkHandle = sinkHandles.get(fragmentInstanceId);
-      logger.info("Abort sink handle {}", sinkHandle);
       sinkHandle.abort();
       sinkHandles.remove(fragmentInstanceId);
     }
@@ -514,8 +491,13 @@ public class DataBlockManager implements IDataBlockManager {
     }
   }
 
-  public static String createFullIdFrom(TFragmentInstanceId fragmentInstanceId) {
+  /** @param suffix should be like [PlanNodeId].SourceHandle/SinHandle */
+  public static String createFullIdFrom(TFragmentInstanceId fragmentInstanceId, String suffix) {
     return createFullId(
-        fragmentInstanceId.queryId, fragmentInstanceId.fragmentId, fragmentInstanceId.instanceId);
+            fragmentInstanceId.queryId,
+            fragmentInstanceId.fragmentId,
+            fragmentInstanceId.instanceId)
+        + "."
+        + suffix;
   }
 }

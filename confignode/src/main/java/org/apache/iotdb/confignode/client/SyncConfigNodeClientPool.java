@@ -54,16 +54,12 @@ public class SyncConfigNodeClientPool {
     configNodeLeader = new TEndPoint();
   }
 
-  private boolean updateConfigNodeLeader(TSStatus status) {
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-      if (status.isSetRedirectNode()) {
-        configNodeLeader = status.getRedirectNode();
-      } else {
-        configNodeLeader = null;
-      }
-      return true;
+  private void updateConfigNodeLeader(TSStatus status) {
+    if (status.isSetRedirectNode()) {
+      configNodeLeader = status.getRedirectNode();
+    } else {
+      configNodeLeader = null;
     }
-    return false;
   }
 
   public TConfigNodeConfigurationResp getConfigNodeConfiguration(
@@ -87,22 +83,14 @@ public class SyncConfigNodeClientPool {
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */
   public TConfigNodeRegisterResp registerConfigNode(
-      List<TEndPoint> endPointList, TConfigNodeRegisterReq req) {
+      TEndPoint endPoint, TConfigNodeRegisterReq req) {
     // TODO: Unified retry logic
-    for (TEndPoint endPoint : endPointList) {
-      for (int retry = 0; retry < retryNum; retry++) {
-        try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
-          TConfigNodeRegisterResp resp = client.registerConfigNode(req);
-          if (updateConfigNodeLeader(resp.status)) {
-            client.close();
-            return clientManager.borrowClient(configNodeLeader).registerConfigNode(req);
-          } else {
-            return resp;
-          }
-        } catch (Exception e) {
-          LOGGER.warn("Register ConfigNode failed, retrying...", e);
-          doRetryWait();
-        }
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+        return client.registerConfigNode(req);
+      } catch (Exception e) {
+        LOGGER.warn("Register ConfigNode failed, retrying...", e);
+        doRetryWait();
       }
     }
     LOGGER.error("Register ConfigNode failed");
@@ -112,23 +100,14 @@ public class SyncConfigNodeClientPool {
                 .setMessage("All retry failed."));
   }
 
-  public TSStatus applyConfigNode(
-      List<TEndPoint> endPointList, TConfigNodeLocation configNodeLocation) {
+  public TSStatus applyConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
-    for (TEndPoint endPoint : endPointList) {
-      for (int retry = 0; retry < retryNum; retry++) {
-        try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
-          TSStatus status = client.applyConfigNode(configNodeLocation);
-          if (updateConfigNodeLeader(status)) {
-            client.close();
-            return clientManager.borrowClient(configNodeLeader).applyConfigNode(configNodeLocation);
-          } else {
-            return status;
-          }
-        } catch (Exception e) {
-          LOGGER.warn("Apply ConfigNode failed, retrying...", e);
-          doRetryWait();
-        }
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+        return client.applyConfigNode(configNodeLocation);
+      } catch (Exception e) {
+        LOGGER.warn("Apply ConfigNode failed, retrying...", e);
+        doRetryWait();
       }
     }
     LOGGER.error("Apply ConfigNode failed");
@@ -136,26 +115,30 @@ public class SyncConfigNodeClientPool {
         .setMessage("All retry failed.");
   }
 
+  /**
+   * ConfigNode Leader stop any ConfigNode in the cluster
+   *
+   * @param configNodeLocations confignode_list of confignode-system.properties
+   * @param configNodeLocation To be removed ConfigNode
+   * @return SUCCESS_STATUS: remove ConfigNode success, other status remove failed
+   */
   public TSStatus removeConfigNode(
       List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
     for (TConfigNodeLocation nodeLocation : configNodeLocations) {
-      if (nodeLocation.equals(configNodeLocation)) {
-        continue;
-      }
-
       for (int retry = 0; retry < retryNum; retry++) {
         try (SyncConfigNodeIServiceClient client =
             clientManager.borrowClient(nodeLocation.getInternalEndPoint())) {
           TSStatus status = client.removeConfigNode(configNodeLocation);
-          if (updateConfigNodeLeader(status)) {
-            client.close();
-            return clientManager
-                .borrowClient(configNodeLeader)
-                .removeConfigNode(configNodeLocation);
-          } else {
-            return status;
+          while (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            TimeUnit.MILLISECONDS.sleep(2000);
+            updateConfigNodeLeader(status);
+            try (SyncConfigNodeIServiceClient clientLeader =
+                clientManager.borrowClient(configNodeLeader)) {
+              status = clientLeader.removeConfigNode(configNodeLocation);
+            }
           }
+          return status;
         } catch (Exception e) {
           LOGGER.warn("Remove ConfigNode failed, retrying...", e);
           doRetryWait();

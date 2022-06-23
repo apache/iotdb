@@ -19,9 +19,9 @@
 package org.apache.iotdb.confignode.client.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatPackage;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -43,7 +43,6 @@ public class HeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
   @Override
   public void onComplete(THeartbeatResp tHeartbeatResp) {
     heartbeatCache.cacheHeartBeat(
-        dataNodeLocation.getDataNodeId(),
         new HeartbeatPackage(tHeartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
   }
 

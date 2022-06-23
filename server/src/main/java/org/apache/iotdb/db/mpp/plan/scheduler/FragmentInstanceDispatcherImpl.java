@@ -58,6 +58,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
+
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private static final Logger logger =
@@ -88,7 +90,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (type == QueryType.READ) {
       return dispatchRead(instances);
     } else {
-      return dispatchWrite(instances);
+      return dispatchWriteSync(instances);
     }
   }
 
@@ -132,6 +134,23 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
     resultFuture.set(new FragInstanceDispatchResult(true));
     return resultFuture;
+  }
+
+  private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
+    boolean result = true;
+    try {
+      for (FragmentInstance instance : instances) {
+
+        if (!dispatchOneInstance(instance)) {
+          result = false;
+          break;
+        }
+      }
+      return immediateFuture(new FragInstanceDispatchResult(result));
+    } catch (FragmentInstanceDispatchException e) {
+      logger.error("cannot dispatch FI for write operation", e);
+      return immediateFuture(new FragInstanceDispatchResult(false));
+    }
   }
 
   private boolean dispatchOneInstance(FragmentInstance instance)
@@ -201,11 +220,20 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         return !((FragmentInstanceInfo) readResponse.getDataset()).getState().isFailed();
       case WRITE:
         PlanNode planNode = instance.getFragment().getRoot();
+        boolean hasFailedMeasurement = false;
         if (planNode instanceof InsertNode) {
+          InsertNode insertNode = (InsertNode) planNode;
           try {
-            SchemaValidator.validate((InsertNode) planNode);
+            SchemaValidator.validate(insertNode);
           } catch (SemanticException e) {
             throw new FragmentInstanceDispatchException(e);
+          }
+          hasFailedMeasurement = insertNode.hasFailedMeasurements();
+          if (hasFailedMeasurement) {
+            logger.warn(
+                "Fail to insert measurements {} caused by {}",
+                insertNode.getFailedMeasurements(),
+                insertNode.getFailedMessages());
           }
         }
         ConsensusWriteResponse writeResponse;
@@ -214,7 +242,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         } else {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
-        return TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
+        return !hasFailedMeasurement
+            && TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
     }
     throw new UnsupportedOperationException(
         String.format("unknown query type [%s]", instance.getType()));

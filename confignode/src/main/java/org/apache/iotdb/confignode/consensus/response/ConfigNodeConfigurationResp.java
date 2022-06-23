@@ -19,20 +19,22 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
 
 public class ConfigNodeConfigurationResp implements DataSet {
   private TSStatus status;
-  private List<TConfigNodeLocation> configNodeList;
-  private String configNodeConsensusProtocolClass;
-  private String dataRegionConsensusProtocolClass;
-  private String schemaRegionConsensusProtocolClass;
-  private int seriesPartitionSlotNum;
-  private String seriesPartitionExecutorClass;
+  private TConsensusGroupId partitionRegionId;
+  private List<TConfigNodeLocation> configNodes;
+  private TGlobalConfig globalConfig;
+  private long defaultTTL;
+  private int schemaReplicationFactor;
+  private int dataReplicationFactor;
 
   public ConfigNodeConfigurationResp() {}
 
@@ -44,41 +46,41 @@ public class ConfigNodeConfigurationResp implements DataSet {
     this.status = status;
   }
 
-  public List<TConfigNodeLocation> getConfigNodeList() {
-    return configNodeList;
+  public void setPartitionRegionId(TConsensusGroupId partitionRegionId) {
+    this.partitionRegionId = partitionRegionId;
   }
 
-  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
-    this.configNodeList = configNodeList;
+  public List<TConfigNodeLocation> getConfigNodes() {
+    return configNodes;
   }
 
-  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
-    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
+  public void setConfigNodes(List<TConfigNodeLocation> configNodes) {
+    this.configNodes = configNodes;
   }
 
-  public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
-    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  public void setGlobalConfig(TGlobalConfig globalConfig) {
+    this.globalConfig = globalConfig;
   }
 
-  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
-    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 
-  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
-    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
+    this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
-  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
-    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  public void setDataReplicationFactor(int dataReplicationFactor) {
+    this.dataReplicationFactor = dataReplicationFactor;
   }
 
   public void convertToRPCConfigNodeConfigurationResp(TConfigNodeConfigurationResp resp) {
     resp.setStatus(status);
-    resp.setConfigNodeList(configNodeList);
-    resp.setConfigNodeConsensusProtocolClass(configNodeConsensusProtocolClass);
-    resp.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
-    resp.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
-    resp.setSeriesPartitionSlotNum(seriesPartitionSlotNum);
-    resp.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
+    resp.setPartitionRegionId(partitionRegionId);
+    resp.setConfigNodes(configNodes);
+    resp.setGlobalConfig(globalConfig);
+    resp.setDefaultTTL(defaultTTL);
+    resp.setSchemaReplicationFactor(schemaReplicationFactor);
+    resp.setDataReplicationFactor(dataReplicationFactor);
   }
 }

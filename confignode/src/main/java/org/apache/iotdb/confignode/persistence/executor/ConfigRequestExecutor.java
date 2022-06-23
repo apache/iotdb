@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigura
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
@@ -134,6 +135,8 @@ public class ConfigRequestExecutor {
         return nodeInfo.getConfigNodeConfiguration((GetConfigNodeConfigurationReq) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
+      case GetRegionLocations:
+        return partitionInfo.getRegionLocations((GetRegionLocationsReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

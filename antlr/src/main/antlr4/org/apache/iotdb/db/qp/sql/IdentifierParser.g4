@@ -51,6 +51,7 @@ keyWords
     | CACHE
     | CHILD
     | CLEAR
+    | CLUSTER
     | CONCAT
     | CONFIGURATION
     | CONTINUOUS
@@ -59,6 +60,7 @@ keyWords
     | CQ
     | CQS
     | CREATE
+    | DATA
     | DEBUG
     | DELETE
     | DESC
@@ -95,6 +97,7 @@ keyWords
     | LINK
     | LIST
     | LOAD
+    | LOCAL
     | LOCK
     | MERGE
     | METADATA
@@ -124,6 +127,7 @@ keyWords
     | QUERY
     | READONLY
     | REGEXP
+    | REGIONS
     | REMOVE
     | RENAME
     | RESAMPLE

@@ -153,6 +153,10 @@ CREATE
     : C R E A T E
     ;
 
+DATA
+    : D A T A
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -298,6 +302,10 @@ LOAD
     : L O A D
     ;
 
+LOCAL
+    : L O C A L
+    ;
+
 LOCK
     : L O C K
     ;
@@ -412,6 +420,10 @@ READONLY
 
 REGEXP
     : R E G E X P
+    ;
+
+REGIONS
+    : R E G I O N S
     ;
 
 REMOVE

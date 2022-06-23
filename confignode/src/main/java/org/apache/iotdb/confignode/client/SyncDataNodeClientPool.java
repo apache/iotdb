@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -39,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
+/** Synchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class SyncDataNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
@@ -55,10 +56,8 @@ public class SyncDataNodeClientPool {
 
   public TSStatus invalidatePartitionCache(
       TEndPoint endPoint, TInvalidateCacheReq invalidateCacheReq) {
-    SyncDataNodeInternalServiceClient client;
     TSStatus status;
-    try {
-      client = clientManager.borrowClient(endPoint);
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
       status = client.invalidatePartitionCache(invalidateCacheReq);
       LOGGER.info("Invalid Schema Cache {} successfully", invalidateCacheReq);
     } catch (IOException e) {
@@ -90,17 +89,16 @@ public class SyncDataNodeClientPool {
     Map<TDataNodeLocation, List<TConsensusGroupId>> regionLocationMap = new HashMap<>();
     deletedRegionSet.forEach(
         (tRegionReplicaSet) -> {
-          final List<TDataNodeLocation> dataNodeLocations =
-              tRegionReplicaSet.getDataNodeLocations();
-          regionLocationMap
-              .computeIfAbsent(dataNodeLocations.get(0), k -> new ArrayList<>())
-              .add(tRegionReplicaSet.getRegionId());
+          for (TDataNodeLocation dataNodeLocation : tRegionReplicaSet.getDataNodeLocations()) {
+            regionLocationMap
+                .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
+                .add(tRegionReplicaSet.getRegionId());
+          }
         });
     LOGGER.info("Current regionLocationMap {} ", regionLocationMap);
     regionLocationMap.forEach(
-        (dataNodeLocation, regionIds) -> {
-          deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet);
-        });
+        (dataNodeLocation, regionIds) ->
+            deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet));
   }
 
   private void deleteRegions(
@@ -121,6 +119,21 @@ public class SyncDataNodeClientPool {
     } catch (TException e) {
       LOGGER.error("Delete Region on DataNode {} failed", endPoint, e);
     }
+  }
+
+  public TSStatus invalidatePermissionCache(
+      TEndPoint endPoint, TInvalidatePermissionCacheReq invalidatePermissionCacheReq) {
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+      status = client.invalidatePermissionCache(invalidatePermissionCacheReq);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
+    } catch (TException e) {
+      LOGGER.error("Invalid Permission Cache on DataNode {} failed", endPoint, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+    return status;
   }
 
   // TODO: Is the ClientPool must be a singleton?

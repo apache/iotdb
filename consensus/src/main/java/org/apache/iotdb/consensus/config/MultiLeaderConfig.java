@@ -207,7 +207,7 @@ public class MultiLeaderConfig {
     public static class Builder {
       private int maxPendingRequestNumPerNode = 1000;
       private int maxRequestPerBatch = 100;
-      private int maxPendingBatch = 50;
+      private int maxPendingBatch = 20;
       private int maxWaitingTimeForAccumulatingBatchInMs = 10;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);

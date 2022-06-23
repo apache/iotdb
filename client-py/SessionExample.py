@@ -283,6 +283,17 @@ with session.execute_query_statement(
     while session_data_set.has_next():
         print(session_data_set.next())
 
+# execute statement
+with session.execute_statement(
+    "select * from root.sg_test_01.d_01"
+) as session_data_set:
+    while session_data_set.has_next():
+        print(session_data_set.next())
+
+session.execute_statement(
+    "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
+)
+
 # insert string records of one device
 time_list = [1, 2, 3]
 measurements_list = [
@@ -343,12 +354,12 @@ session.create_schema_template(template)
 print("create template success template_python")
 
 # create internal node template
-template = Template(name="treeTemplate_python", share_time=True)
+template_name = "treeTemplate_python"
+template = Template(name=template_name, share_time=True)
 i_node_gps = InternalNode(name="GPS", share_time=False)
 i_node_v = InternalNode(name="vehicle", share_time=True)
 m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
 
-i_node_gps.add_child(m_node_x)
 i_node_gps.add_child(m_node_x)
 i_node_v.add_child(m_node_x)
 template.add_template(i_node_gps)
@@ -358,9 +369,47 @@ template.add_template(m_node_x)
 session.create_schema_template(template)
 print("create template success treeTemplate_python}")
 
+print(session.is_measurement_in_template(template_name, "GPS"))
+print(session.is_measurement_in_template(template_name, "GPS.x"))
+print(session.show_all_templates())
+
+# # append schema template
+data_types = [TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE]
+encoding_list = [TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA]
+compressor_list = [Compressor.SNAPPY, Compressor.SNAPPY, Compressor.LZ4]
+
+measurements_aligned_path = ["aligned.s1", "aligned.s2", "aligned.s3"]
+session.add_measurements_in_template(
+    template_name,
+    measurements_aligned_path,
+    data_types,
+    encoding_list,
+    compressor_list,
+    is_aligned=True,
+)
+# session.drop_schema_template("add_template_python")
+measurements_aligned_path = ["unaligned.s1", "unaligned.s2", "unaligned.s3"]
+session.add_measurements_in_template(
+    template_name,
+    measurements_aligned_path,
+    data_types,
+    encoding_list,
+    compressor_list,
+    is_aligned=False,
+)
+session.delete_node_in_template(template_name, "aligned.s1")
+print(session.count_measurements_in_template(template_name))
+print(session.is_path_exist_in_template(template_name, "aligned.s1"))
+print(session.is_path_exist_in_template(template_name, "aligned.s2"))
+
+session.set_schema_template(template_name, "root.python.set")
+print(session.show_paths_template_using_on(template_name))
+print(session.show_paths_template_set_on(template_name))
+session.unset_schema_template(template_name, "root.python.set")
+
 # drop template
 session.drop_schema_template("template_python")
-session.drop_schema_template("treeTemplate_python")
+session.drop_schema_template(template_name)
 print("drop template success, template_python and treeTemplate_python")
 # close session connection.
 session.close()

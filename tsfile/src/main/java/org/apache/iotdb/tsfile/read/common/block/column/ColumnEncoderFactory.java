@@ -24,13 +24,14 @@ import java.util.Map;
 
 public class ColumnEncoderFactory {
 
-  private static Map<ColumnEncoding, ColumnEncoder> encodingToEncoder = new HashMap<>();
+  private static final Map<ColumnEncoding, ColumnEncoder> encodingToEncoder = new HashMap<>();
 
   static {
     encodingToEncoder.put(ColumnEncoding.INT32_ARRAY, new Int32ArrayColumnEncoder());
     encodingToEncoder.put(ColumnEncoding.INT64_ARRAY, new Int64ArrayColumnEncoder());
     encodingToEncoder.put(ColumnEncoding.BYTE_ARRAY, new ByteArrayColumnEncoder());
     encodingToEncoder.put(ColumnEncoding.BINARY_ARRAY, new BinaryArrayColumnEncoder());
+    encodingToEncoder.put(ColumnEncoding.RLE, new RunLengthColumnEncoder());
   }
 
   public static ColumnEncoder get(ColumnEncoding columnEncoding) {

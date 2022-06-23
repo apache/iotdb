@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
@@ -296,12 +297,13 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     return timeFilter;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "SeriesAggregationScanNode-%s:[SeriesPath: %s, Descriptor: %s, DataRegion: %s]",
         this.getPlanNodeId(),
         this.getSeriesPath(),
         this.getAggregationDescriptorList(),
-        this.getRegionReplicaSet());
+        PlanNodeUtil.printRegionReplicaSet(this.getRegionReplicaSet()));
   }
 }

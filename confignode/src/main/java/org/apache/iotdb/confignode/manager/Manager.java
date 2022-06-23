@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -38,7 +40,10 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -153,53 +158,52 @@ public interface Manager {
   /**
    * Get SchemaPartition
    *
-   * @return SchemaPartitionDataSet
+   * @return TSchemaPartitionResp
    */
-  DataSet getSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionResp getSchemaPartition(PathPatternTree patternTree);
 
   /**
    * Get or create SchemaPartition
    *
-   * @return SchemaPartitionDataSet
+   * @return TSchemaPartitionResp
    */
-  DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
+  TSchemaPartitionResp getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
    * create SchemaNodeManagementPartition for child paths node management
    *
-   * @return SchemaNodeManagementPartitionDataSet
+   * @return TSchemaNodeManagementResp
    */
-  DataSet getNodePathsPartition(PartialPath partialPath, Integer level);
+  TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level);
 
   /**
    * Get DataPartition
    *
-   * @return DataPartitionDataSet
+   * @return TDataPartitionResp
    */
-  DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq);
+  TDataPartitionResp getDataPartition(GetDataPartitionReq getDataPartitionReq);
 
   /**
    * Get or create DataPartition
    *
-   * @return DataPartitionDataSet
+   * @return TDataPartitionResp
    */
-  DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
+  TDataPartitionResp getOrCreateDataPartition(
+      GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
 
   /**
    * Operate Permission
    *
-   * @param configRequest AuthorPlan
    * @return status
    */
-  TSStatus operatePermission(ConfigRequest configRequest);
+  TSStatus operatePermission(AuthorReq authorReq);
 
   /**
    * Query Permission
    *
-   * @param configRequest AuthorPlan
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(ConfigRequest configRequest);
+  DataSet queryPermission(AuthorReq authorReq);
 
   /** login */
   TPermissionInfoResp login(String username, String password);
@@ -238,4 +242,11 @@ public interface Manager {
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  TSStatus flush(TFlushReq req);
+
+  void addMetrics();
+
+  /** Show (data/schema) regions */
+  DataSet showRegion(GetRegionLocationsReq getRegionsinfoReq);
 }

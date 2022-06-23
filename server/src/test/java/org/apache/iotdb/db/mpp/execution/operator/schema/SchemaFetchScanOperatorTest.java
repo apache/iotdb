@@ -66,8 +66,8 @@ public class SchemaFetchScanOperatorTest {
     ISchemaRegion schemaRegion = prepareSchemaRegion();
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.**.status"));
-    patternTree.appendPath(new PartialPath("root.**.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.**.status"));
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
 
     SchemaFetchScanOperator schemaFetchScanOperator =

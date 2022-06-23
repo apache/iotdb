@@ -64,18 +64,16 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
     SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    List<PartialPath> pathPatterns = patternTree.getAllPathPatterns();
     try {
-      for (PartialPath path : partialPathList) {
-        List<PartialPath> storageGroups = localConfigNode.getBelongedStorageGroups(path);
+      for (PartialPath pathPattern : pathPatterns) {
+        List<PartialPath> storageGroups = localConfigNode.getBelongedStorageGroups(pathPattern);
         for (PartialPath storageGroupPath : storageGroups) {
-          String storageGroup = storageGroupPath.getFullPath();
-          storageGroupSet.add(storageGroup);
+          storageGroupSet.add(storageGroupPath.getFullPath());
           SchemaRegionId schemaRegionId =
               localConfigNode.getBelongedSchemaRegionId(storageGroupPath);
           ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-          schemaTree.appendMeasurementPaths(
-              schemaRegion.getMeasurementPaths(storageGroupPath, true));
+          schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(pathPattern, false));
         }
       }
     } catch (MetadataException e) {
@@ -90,32 +88,15 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     return fetchSchema(patternTree);
   }
 
-  private SchemaTree fetchSchemaForWrite(PathPatternTree patternTree) {
-    patternTree.constructTree();
-    Set<String> storageGroupSet = new HashSet<>();
-    SchemaTree schemaTree = new SchemaTree();
-    List<PartialPath> partialPathList = patternTree.splitToPathList();
-    try {
-      for (PartialPath path : partialPathList) {
-        String storageGroup = localConfigNode.getBelongedStorageGroup(path).getFullPath();
-        storageGroupSet.add(storageGroup);
-        SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(path);
-        ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-        schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
-      }
-    } catch (MetadataException e) {
-      throw new RuntimeException(e);
-    }
-    schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
-    return schemaTree;
-  }
-
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
     SchemaTree schemaTree = new SchemaTree();
 
-    PathPatternTree patternTree = new PathPatternTree(devicePath, measurements);
+    PathPatternTree patternTree = new PathPatternTree();
+    for (String measurement : measurements) {
+      patternTree.appendFullPath(devicePath, measurement);
+    }
 
     if (patternTree.isEmpty()) {
       return schemaTree;
@@ -124,12 +105,12 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+      fetchedSchemaTree = fetchSchema(patternTree);
       schemaTree.mergeSchemaTree(fetchedSchemaTree);
       return schemaTree;
     }
 
-    fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+    fetchedSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
     SchemaTree missingSchemaTree =
@@ -150,7 +131,9 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree schemaTree = new SchemaTree();
     PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < devicePathList.size(); i++) {
-      patternTree.appendPaths(devicePathList.get(i), Arrays.asList(measurementsList.get(i)));
+      for (String measurement : measurementsList.get(i)) {
+        patternTree.appendFullPath(devicePathList.get(i), measurement);
+      }
     }
 
     if (patternTree.isEmpty()) {
@@ -160,12 +143,12 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     SchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+      fetchedSchemaTree = fetchSchema(patternTree);
       schemaTree.mergeSchemaTree(fetchedSchemaTree);
       return schemaTree;
     }
 
-    fetchedSchemaTree = fetchSchemaForWrite(patternTree);
+    fetchedSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
     SchemaTree missingSchemaTree;
@@ -229,8 +212,11 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     internalCreateTimeseries(
         devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
 
-    SchemaTree reFetchSchemaTree =
-        fetchSchema(new PathPatternTree(devicePath, missingMeasurements));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (String measurement : missingMeasurements) {
+      patternTree.appendFullPath(devicePath, measurement);
+    }
+    SchemaTree reFetchSchemaTree = fetchSchema(patternTree);
 
     Pair<List<String>, List<TSDataType>> recheckResult =
         checkMissingMeasurements(
@@ -294,7 +280,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
           schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
         }
       }
-    } catch (MetadataException e) {
+    } catch (Exception e) {
       throw new RuntimeException("cannot auto create schema ", e);
     }
   }

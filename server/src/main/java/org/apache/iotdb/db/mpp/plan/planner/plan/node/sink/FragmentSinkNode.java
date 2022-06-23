@@ -147,8 +147,11 @@ public class FragmentSinkNode extends SinkNode {
       return "Not assigned";
     }
     return String.format(
-        "%s/%s/%s",
-        getDownStreamEndpoint().getIp(), getDownStreamInstanceId(), getDownStreamPlanNodeId());
+        "%s:%d/%s/%s",
+        getDownStreamEndpoint().getIp(),
+        getDownStreamEndpoint().getPort(),
+        getDownStreamInstanceId(),
+        getDownStreamPlanNodeId());
   }
 
   public void setDownStream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {

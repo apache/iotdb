@@ -26,34 +26,37 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
 
+/** This is not thread safe class, the caller should ensure multi-threads safety. */
+@NotThreadSafe
 public class SharedTsBlockQueue {
+
+  private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
 
-  @GuardedBy("this")
   private boolean noMoreTsBlocks = false;
 
-  @GuardedBy("this")
   private long bufferRetainedSizeInBytes = 0L;
 
-  @GuardedBy("this")
   private final Queue<TsBlock> queue = new LinkedList<>();
 
-  @GuardedBy("this")
   private SettableFuture<Void> blocked = SettableFuture.create();
 
-  @GuardedBy("this")
   private ListenableFuture<Void> blockedOnMemory;
 
-  @GuardedBy("this")
   private boolean destroyed = false;
+
+  private LocalSourceHandle sourceHandle;
+  private LocalSinkHandle sinkHandle;
 
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId, LocalMemoryManager localMemoryManager) {
@@ -79,28 +82,48 @@ public class SharedTsBlockQueue {
     return queue.isEmpty();
   }
 
+  public void setSinkHandle(LocalSinkHandle sinkHandle) {
+    this.sinkHandle = sinkHandle;
+  }
+
+  public void setSourceHandle(LocalSourceHandle sourceHandle) {
+    this.sourceHandle = sourceHandle;
+  }
+
   /** Notify no more tsblocks will be added to the queue. */
-  public synchronized void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
+  public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
+    logger.info("SharedTsBlockQueue receive no more TsBlocks signal.");
     if (destroyed) {
       throw new IllegalStateException("queue has been destroyed");
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
+    if (!blocked.isDone()) {
+      blocked.set(null);
+    }
+    if (this.sourceHandle != null) {
+      this.sourceHandle.checkAndInvokeOnFinished();
+    }
   }
 
   /**
    * Remove a tsblock from the head of the queue and return. Should be invoked only when the future
    * returned by {@link #isBlocked()} completes.
    */
-  public synchronized TsBlock remove() {
+  public TsBlock remove() {
     if (destroyed) {
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
+    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
+    // corresponding LocalSinkHandle.
+    if (sinkHandle != null) {
+      sinkHandle.checkAndInvokeOnFinished();
+    }
     localMemoryManager
         .getQueryPool()
         .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
-    if (blocked.isDone() && queue.isEmpty()) {
+    if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
     }
     return tsBlock;
@@ -110,12 +133,12 @@ public class SharedTsBlockQueue {
    * Add tsblocks to the queue. Except the first invocation, this method should be invoked only when
    * the returned future of last invocation completes.
    */
-  public synchronized ListenableFuture<Void> add(TsBlock tsBlock) {
+  public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (destroyed) {
       throw new IllegalStateException("queue has been destroyed");
     }
 
-    Validate.notNull(tsBlock, "tsblock cannot be null");
+    Validate.notNull(tsBlock, "TsBlock cannot be null");
     Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
     blockedOnMemory =
         localMemoryManager
@@ -130,7 +153,7 @@ public class SharedTsBlockQueue {
   }
 
   /** Destroy the queue and cancel the future. */
-  public synchronized void destroy() {
+  public void destroy() {
     if (destroyed) {
       return;
     }

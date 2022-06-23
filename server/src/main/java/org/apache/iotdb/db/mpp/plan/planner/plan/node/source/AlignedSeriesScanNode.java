@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -284,7 +285,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   public String toString() {
     return String.format(
         "AlignedSeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getAlignedPath(), this.getRegionReplicaSet());
+        this.getPlanNodeId(),
+        this.getAlignedPath().getFormattedString(),
+        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override
