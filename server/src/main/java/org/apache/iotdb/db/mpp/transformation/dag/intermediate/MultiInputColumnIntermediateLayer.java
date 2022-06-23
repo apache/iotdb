@@ -24,12 +24,13 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowWindowReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.adapter.ElasticSerializableRowRecordListBackedMultiColumnRow;
 import org.apache.iotdb.db.mpp.transformation.dag.adapter.ElasticSerializableRowRecordListBackedMultiColumnWindow;
+import org.apache.iotdb.db.mpp.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.db.mpp.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.mpp.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.mpp.transformation.datastructure.row.ElasticSerializableRowRecordList;
-import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,13 +55,16 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   private final LayerPointReader[] layerPointReaders;
   private final TSDataType[] dataTypes;
   private final TimeSelector timeHeap;
+  private final boolean[] shouldMoveNext;
+
+  private boolean isFirstIteration = true;
+  private Object[] cachedRow = null;
 
   public MultiInputColumnIntermediateLayer(
       Expression expression,
       long queryId,
       float memoryBudgetInMB,
-      List<LayerPointReader> parentLayerPointReaders)
-      throws QueryProcessException, IOException {
+      List<LayerPointReader> parentLayerPointReaders) {
     super(expression, queryId, memoryBudgetInMB);
 
     layerPointReaders = parentLayerPointReaders.toArray(new LayerPointReader[0]);
@@ -71,14 +75,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     }
 
     timeHeap = new TimeSelector(layerPointReaders.length << 1, true);
-    for (LayerPointReader reader : layerPointReaders) {
-      if (reader.isConstantPointReader()) {
-        continue;
-      }
-      if (reader.next()) {
-        timeHeap.add(reader.currentTime());
-      }
-    }
+
+    shouldMoveNext = new boolean[dataTypes.length];
   }
 
   @Override
@@ -87,23 +85,157 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   }
 
   @Override
-  public boolean hasNextRowInObjects() {
-    return !timeHeap.isEmpty();
+  public boolean hasNextRowInObjects() throws IOException {
+    if (cachedRow != null) {
+      return true;
+    }
+
+    if (isFirstIteration) {
+      for (LayerPointReader reader : layerPointReaders) {
+        if (reader.isConstantPointReader()) {
+          continue;
+        }
+        try {
+          if (reader.next()) {
+            timeHeap.add(reader.currentTime());
+          }
+        } catch (Exception e) {
+          throw new IOException(e);
+        }
+      }
+      isFirstIteration = false;
+    }
+
+    if (timeHeap.isEmpty()) {
+      return false;
+    }
+
+    final long minTime = timeHeap.pollFirst();
+
+    final int columnLength = layerPointReaders.length;
+    cachedRow = new Object[columnLength + 1];
+    cachedRow[columnLength] = minTime;
+
+    try {
+      for (int i = 0; i < columnLength; ++i) {
+        final LayerPointReader reader = layerPointReaders[i];
+        if (!reader.next()
+            || (!reader.isConstantPointReader() && reader.currentTime() != minTime)) {
+          continue;
+        }
+
+        if (!reader.isCurrentNull()) {
+          switch (reader.getDataType()) {
+            case INT32:
+              cachedRow[i] = reader.currentInt();
+              break;
+            case INT64:
+              cachedRow[i] = reader.currentLong();
+              break;
+            case FLOAT:
+              cachedRow[i] = reader.currentFloat();
+              break;
+            case DOUBLE:
+              cachedRow[i] = reader.currentDouble();
+              break;
+            case BOOLEAN:
+              cachedRow[i] = reader.currentBoolean();
+              break;
+            case TEXT:
+              cachedRow[i] = reader.currentBinary();
+              break;
+            default:
+              throw new UnSupportedDataTypeException("Unsupported data type.");
+          }
+        }
+
+        reader.readyForNext();
+
+        if (!reader.isConstantPointReader() && reader.next()) {
+          timeHeap.add(reader.currentTime());
+        }
+      }
+    } catch (QueryProcessException e) {
+      throw new IOException(e.getMessage());
+    }
+
+    return true;
   }
 
   @Override
-  public Object[] nextRowInObjects() throws IOException {
-    long minTime = timeHeap.pollFirst();
+  public YieldableState canYieldNextRowInObjects() throws IOException {
+    if (cachedRow != null) {
+      return YieldableState.YIELDABLE;
+    }
 
-    int rowLength = layerPointReaders.length;
-    Object[] row = new Object[rowLength + 1];
-    row[rowLength] = minTime;
+    if (isFirstIteration) {
+      for (LayerPointReader reader : layerPointReaders) {
+        if (reader.isConstantPointReader()) {
+          continue;
+        }
+        try {
+          final YieldableState yieldableState = reader.yield();
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+          if (yieldableState == YieldableState.YIELDABLE) {
+            timeHeap.add(reader.currentTime());
+          }
+        } catch (Exception e) {
+          throw new IOException(e);
+        }
+      }
+      isFirstIteration = false;
+    } else {
+      for (int i = 0, columnLength = layerPointReaders.length; i < columnLength; ++i) {
+        if (shouldMoveNext[i]) {
+          layerPointReaders[i].readyForNext();
+          shouldMoveNext[i] = false;
+        }
+      }
+
+      for (LayerPointReader layerPointReader : layerPointReaders) {
+        try {
+          if (!layerPointReader.isConstantPointReader()) {
+            final YieldableState yieldableState = layerPointReader.yield();
+            if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+              return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+            }
+            if (yieldableState == YieldableState.YIELDABLE) {
+              timeHeap.add(layerPointReader.currentTime());
+            }
+          }
+        } catch (Exception e) {
+          throw new IOException(e);
+        }
+      }
+    }
+
+    if (timeHeap.isEmpty()) {
+      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    }
+
+    final long minTime = timeHeap.pollFirst();
+
+    final int columnLength = layerPointReaders.length;
+    final Object[] row = new Object[columnLength + 1];
+    row[columnLength] = minTime;
 
     try {
-      for (int i = 0; i < rowLength; ++i) {
-        LayerPointReader reader = layerPointReaders[i];
-        if (!reader.next()
-            || (!reader.isConstantPointReader() && reader.currentTime() != minTime)) {
+      for (int i = 0; i < columnLength; ++i) {
+        final LayerPointReader reader = layerPointReaders[i];
+
+        final YieldableState yieldableState = reader.yield();
+        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+          for (int j = 0; j <= i; ++j) {
+            shouldMoveNext[j] = false;
+          }
+          return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+        }
+        if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+          continue;
+        }
+        if (!reader.isConstantPointReader() && reader.currentTime() != minTime) {
           continue;
         }
 
@@ -132,17 +264,22 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           }
         }
 
-        reader.readyForNext();
-
-        if (!(reader.isConstantPointReader()) && reader.next()) {
-          timeHeap.add(reader.currentTime());
-        }
+        shouldMoveNext[i] = true;
       }
+
+      cachedRow = row;
     } catch (QueryProcessException e) {
       throw new IOException(e.getMessage());
     }
 
-    return row;
+    return YieldableState.YIELDABLE;
+  }
+
+  @Override
+  public Object[] nextRowInObjects() {
+    final Object[] returnedRow = cachedRow;
+    cachedRow = null;
+    return returnedRow;
   }
 
   @Override
@@ -160,6 +297,24 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
       private boolean hasCached = false;
       private boolean currentNull = false;
+
+      @Override
+      public YieldableState yield() throws IOException {
+        if (hasCached) {
+          return YieldableState.YIELDABLE;
+        }
+
+        final YieldableState yieldableState = canYieldNextRowInObjects();
+        if (yieldableState != YieldableState.YIELDABLE) {
+          return yieldableState;
+        }
+
+        Object[] rowRecords = nextRowInObjects();
+        currentNull = InputRowUtils.isAllNull(rowRecords);
+        row.setRowRecord(rowRecords);
+        hasCached = true;
+        return YieldableState.YIELDABLE;
+      }
 
       @Override
       public boolean next() throws IOException {
@@ -227,6 +382,54 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private int beginIndex = -slidingStep;
 
       @Override
+      public YieldableState yield() throws IOException, QueryProcessException {
+        if (hasCached) {
+          return YieldableState.YIELDABLE;
+        }
+
+        beginIndex += slidingStep;
+        int endIndex = beginIndex + windowSize;
+        if (beginIndex < 0 || endIndex < 0) {
+          LOGGER.warn(
+              "MultiInputColumnIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              beginIndex,
+              endIndex,
+              windowSize);
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        final int rowsToBeCollected = endIndex - rowRecordList.size();
+        if (0 < rowsToBeCollected) {
+          final YieldableState yieldableState =
+              LayerCacheUtils.yieldRows(udfInputDataSet, rowRecordList, rowsToBeCollected);
+
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            beginIndex -= slidingStep;
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+
+          if (rowRecordList.size() <= beginIndex) {
+            return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+          }
+
+          window.seek(
+              beginIndex,
+              rowRecordList.size(),
+              rowRecordList.getTime(beginIndex),
+              rowRecordList.getTime(rowRecordList.size() - 1));
+        } else {
+          window.seek(
+              beginIndex,
+              endIndex,
+              rowRecordList.getTime(beginIndex),
+              rowRecordList.getTime(endIndex - 1));
+        }
+
+        hasCached = true;
+        return YieldableState.YIELDABLE;
+      }
+
+      @Override
       public boolean next() throws IOException, QueryProcessException {
         if (hasCached) {
           return true;
@@ -289,7 +492,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException {
+      throws QueryProcessException {
 
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
@@ -302,29 +505,97 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     final ElasticSerializableRowRecordListBackedMultiColumnWindow window =
         new ElasticSerializableRowRecordListBackedMultiColumnWindow(rowRecordList);
 
-    long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
-    if (rowRecordList.size() == 0
-        && LayerCacheUtils.cacheRow(udfInputDataSet, rowRecordList)
-        && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
-      // display window begin should be set to the same as the min timestamp of the query result
-      // set
-      nextWindowTimeBeginGivenByStrategy = rowRecordList.getTime(0);
-    }
-    long finalNextWindowTimeBeginGivenByStrategy = nextWindowTimeBeginGivenByStrategy;
-
-    final boolean hasAtLeastOneRow = rowRecordList.size() != 0;
-
     return new LayerRowWindowReader() {
 
+      private boolean isFirstIteration = true;
+      private boolean hasAtLeastOneRow = false;
+
       private boolean hasCached = false;
-      private long nextWindowTimeBegin = finalNextWindowTimeBeginGivenByStrategy;
+      private long nextWindowTimeBegin = strategy.getDisplayWindowBegin();
       private int nextIndexBegin = 0;
 
       @Override
+      public YieldableState yield() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (rowRecordList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
+            final YieldableState yieldableState =
+                LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
+            if (yieldableState != YieldableState.YIELDABLE) {
+              return yieldableState;
+            }
+            // display window begin should be set to the same as the min timestamp of the query
+            // result set
+            nextWindowTimeBegin = rowRecordList.getTime(0);
+          }
+          hasAtLeastOneRow = rowRecordList.size() != 0;
+          isFirstIteration = false;
+        }
+
+        if (hasCached) {
+          return YieldableState.YIELDABLE;
+        }
+
+        if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        while (rowRecordList.getTime(rowRecordList.size() - 1) < nextWindowTimeEnd) {
+          final YieldableState yieldableState =
+              LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+          if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+            break;
+          }
+        }
+
+        for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
+          if (nextWindowTimeBegin <= rowRecordList.getTime(i)) {
+            nextIndexBegin = i;
+            break;
+          }
+          if (i == rowRecordList.size() - 1) {
+            nextIndexBegin = rowRecordList.size();
+          }
+        }
+
+        int nextIndexEnd = rowRecordList.size();
+        for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
+          if (nextWindowTimeEnd <= rowRecordList.getTime(i)) {
+            nextIndexEnd = i;
+            break;
+          }
+        }
+        window.seek(
+            nextIndexBegin,
+            nextIndexEnd,
+            nextWindowTimeBegin,
+            nextWindowTimeBegin + timeInterval - 1);
+
+        hasCached = nextIndexBegin != nextIndexEnd;
+        return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      }
+
+      @Override
       public boolean next() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (rowRecordList.size() == 0
+              && LayerCacheUtils.cacheRow(udfInputDataSet, rowRecordList)
+              && nextWindowTimeBegin == Long.MIN_VALUE) {
+            // display window begin should be set to the same as the min timestamp of the query
+            // result set
+            nextWindowTimeBegin = rowRecordList.getTime(0);
+          }
+          hasAtLeastOneRow = rowRecordList.size() != 0;
+          isFirstIteration = false;
+        }
+
         if (hasCached) {
           return true;
         }
+
         if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
           return false;
         }

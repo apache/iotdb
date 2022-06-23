@@ -21,21 +21,20 @@ package org.apache.iotdb.it.env;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.Collections;
 
 public class StandaloneOnMppEnv extends AbstractEnv {
 
   private static final Logger logger = LoggerFactory.getLogger(StandaloneOnMppEnv.class);
 
-  private void initEnvironment() throws InterruptedException {
-    super.dataNodeWrapperList = new ArrayList<>();
-    final String testName = super.getTestClassName() + super.getNextTestCaseString();
-    DataNodeWrapper dataNodeWrapper = new StandaloneDataNodeWrapper(null, testName);
+  private void initEnvironment() {
+    DataNodeWrapper dataNodeWrapper =
+        new StandaloneDataNodeWrapper(
+            null, super.getTestClassName(), super.getTestMethodName(), searchAvailablePorts());
     dataNodeWrapper.createDir();
     dataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
     dataNodeWrapper.start();
-    super.dataNodeWrapperList.add(dataNodeWrapper);
-    logger.info("In test " + testName + " DataNode " + dataNodeWrapper.getId() + " started.");
+    super.dataNodeWrapperList = Collections.singletonList(dataNodeWrapper);
     super.testWorking();
   }
 
@@ -46,27 +45,8 @@ public class StandaloneOnMppEnv extends AbstractEnv {
   }
 
   @Override
-  public void initBeforeTest() throws InterruptedException {
+  public void initBeforeTest() {
     logger.debug("=======start init test=======");
     initEnvironment();
-  }
-
-  private void cleanupEnvironment() {
-    for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
-      dataNodeWrapper.stop();
-      dataNodeWrapper.waitingToShutDown();
-      dataNodeWrapper.destroyDir();
-    }
-    super.nextTestCase = null;
-  }
-
-  @Override
-  public void cleanAfterClass() {
-    cleanupEnvironment();
-  }
-
-  @Override
-  public void cleanAfterTest() {
-    cleanupEnvironment();
   }
 }

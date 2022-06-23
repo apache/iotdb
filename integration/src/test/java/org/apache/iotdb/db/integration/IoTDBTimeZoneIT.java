@@ -22,7 +22,6 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
-import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -100,11 +99,11 @@ public class IoTDBTimeZoneIT {
    */
   @Test
   public void timezoneTest() throws SQLException, TException {
-    try (IoTDBConnection connection = (IoTDBConnection) EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       String insertSQLTemplate = "insert into root.timezone(timestamp,tz1) values(%s,%s)";
-      connection.setTimeZone("+08:00");
+      connection.setClientInfo("time_zone", "+08:00");
       // 1514779200000 = 2018-1-1T12:00:00+08:00
       statement.execute(String.format(insertSQLTemplate, "1514779200000", "1"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:01", "2"));
@@ -112,14 +111,14 @@ public class IoTDBTimeZoneIT {
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:03+09:00", "4"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:04+07:00", "5"));
 
-      connection.setTimeZone("+09:00");
+      connection.setClientInfo("time_zone", "+09:00");
       statement.execute(String.format(insertSQLTemplate, "1514789200000", "6"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T14:00:05", "7"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:03+08:00", "8"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:06+07:00", "9"));
 
       // Asia/Almaty +06:00
-      connection.setTimeZone("Asia/Almaty");
+      connection.setClientInfo("time_zone", "Asia/Almaty");
       statement.execute(String.format(insertSQLTemplate, "1514782807000", "10"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T11:00:08", "11"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T13:00:09+08:00", "12"));

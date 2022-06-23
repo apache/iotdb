@@ -17,26 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset;
+package org.apache.iotdb.db.mpp.transformation.api;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.io.IOException;
-import java.util.List;
-
-/** The input data set interface for a UDFPlan */
-public interface IUDFInputDataSet {
-
-  /** returns the input data types, except the timestamp column(the last column). */
-  List<TSDataType> getDataTypes();
-
-  /** Whether the data set has next row. */
-  boolean hasNextRowInObjects() throws IOException;
-
-  /**
-   * Get the next row for UDFPlan input.
-   *
-   * <p>The last element in the row is the timestamp.
-   */
-  Object[] nextRowInObjects() throws IOException;
+public enum YieldableState {
+  YIELDABLE,
+  NOT_YIELDABLE_WAITING_FOR_DATA,
+  NOT_YIELDABLE_NO_MORE_DATA,
 }

@@ -185,4 +185,10 @@ public class DirectoryManager {
   public List<String> getAllUnSequenceFileFolders() {
     return new ArrayList<>(unsequenceFileFolders);
   }
+
+  public List<String> getAllFilesFolders() {
+    List<String> folders = new ArrayList<>(sequenceFileFolders);
+    folders.addAll(unsequenceFileFolders);
+    return folders;
+  }
 }
