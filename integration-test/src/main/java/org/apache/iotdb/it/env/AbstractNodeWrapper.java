@@ -62,6 +62,14 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private static final Logger logger = LoggerFactory.getLogger(AbstractNodeWrapper.class);
   private final String templateNodePath =
       System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
+  private final String templateNodeLibPath =
+      System.getProperty("user.dir")
+          + File.separator
+          + "target"
+          + File.separator
+          + "template-node-share"
+          + File.separator
+          + "lib";
   private final File NULL_FILE =
       SystemUtils.IS_OS_WINDOWS ? new File("nul") : new File("/dev/null");
   protected final String testClassName;
@@ -107,7 +115,25 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               }
             });
       }
-
+      Path destLibPath = Paths.get(destPath, "lib");
+      FileUtils.forceMkdir(destLibPath.toFile());
+      // Create hard link for libs to decrease copy size
+      try (Stream<Path> s = Files.walk(Paths.get(this.templateNodeLibPath))) {
+        s.forEach(
+            source -> {
+              if (source.toFile().isFile()) {
+                Path destination =
+                    Paths.get(
+                        destLibPath.toString(),
+                        source.toString().substring(this.templateNodeLibPath.length()));
+                try {
+                  Files.createLink(destination, source);
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              }
+            });
+      }
       String startScriptPath = getStartScriptPath();
       String stopScriptPath = getStopScriptPath();
       if (!new File(startScriptPath).setExecutable(true)) {

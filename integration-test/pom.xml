@@ -142,27 +142,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.1.0</version>
-                <configuration>
-                    <skip>${integrationTest.launchNodeInSameJVM}</skip>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <configuration>
-                            <target>
-                                <symlink link="${project.build.directory}/template-node/lib" resource="${project.build.directory}/template-node-share/lib"/>
-                            </target>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- If the test starts separate processes, we can set maximum-heap and new-heap size -->
             <plugin>
                 <groupId>com.google.code.maven-replacer-plugin</groupId>
