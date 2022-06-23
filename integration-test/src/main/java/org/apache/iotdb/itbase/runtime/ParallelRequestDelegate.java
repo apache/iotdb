@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.it.env.EnvFactory;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +55,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
       } catch (ExecutionException e) {
         exceptions[i] = e;
       } catch (InterruptedException | TimeoutException e) {
+        EnvFactory.getEnv().dumpTestJVMSnapshot();
         for (int j = i; j < getEndpoints().size(); j++) {
           resultFutures.get(j).cancel(true);
         }
