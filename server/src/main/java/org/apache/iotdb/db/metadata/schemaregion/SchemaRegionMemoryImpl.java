@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -149,6 +150,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
 
+  private String storageGroupDirPath;
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
@@ -175,6 +177,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
 
+    storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
+    schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
+
     int cacheSize = config.getSchemaRegionDeviceNodeCacheSize();
     mNodeCache =
         Caffeine.newBuilder()
@@ -189,6 +194,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 });
 
     this.storageGroupMNode = storageGroupMNode;
+
+    // In ratis mode, no matter create schemaRegion or recover schemaRegion, the working dir should
+    // be clear first
+    if (config.isClusterMode()
+        && config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      FileUtils.deleteDirectory(new File(schemaRegionDirPath));
+    }
+
     init();
   }
 
@@ -228,25 +241,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    String sgDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(sgDirPath);
+    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create storage group schema folder {}", sgDirPath);
+        logger.info("create storage group schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create storage group schema folder {} failed.", sgDirPath);
-          throw new SchemaDirCreationFailureException(sgDirPath);
+          logger.error("create storage group schema folder {} failed.", storageGroupDirPath);
+          throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
     }
 
-    schemaRegionDirPath =
-        config.getSchemaDir()
-            + File.separator
-            + storageGroupFullPath
-            + File.separator
-            + schemaRegionId.getId();
     File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
