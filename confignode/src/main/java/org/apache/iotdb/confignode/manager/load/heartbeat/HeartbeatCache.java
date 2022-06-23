@@ -78,7 +78,14 @@ public class HeartbeatCache implements IHeartbeatStatistic {
   @Override
   public float getLoadScore() {
     // Return a copy of loadScore
-    return loadScore;
+    switch (status) {
+      case Running:
+        return loadScore;
+      case Unknown:
+      default:
+        // The Unknown Node will get the highest loadScore
+        return Float.MAX_VALUE;
+    }
   }
 
   @Override

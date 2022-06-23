@@ -16,27 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.itbase.env;
 
-import java.util.Properties;
+package org.apache.iotdb.db.metadata.mnode.visitor;
 
-public interface BaseNode {
+import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 
-  void createDir();
+public abstract class MNodeVisitor<R, C> {
 
-  void destroyDir();
+  public abstract R visitInternalMNode(InternalMNode node, C context);
 
-  void changeConfig(Properties properties);
+  public abstract R visitStorageGroupMNode(StorageGroupMNode node, C context);
 
-  void start();
+  public abstract R visitStorageGroupEntityMNode(StorageGroupEntityMNode node, C context);
 
-  void stop();
+  public abstract R visitEntityMNode(EntityMNode node, C context);
 
-  void waitingToShutDown();
-
-  String getIp();
-
-  int getPort();
-
-  String getIpAndPortString();
+  public abstract R visitMeasurementMNode(MeasurementMNode node, C context);
 }

@@ -141,8 +141,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     if (currentNode.equals(newLeader)) {
       LOGGER.info("Current node {} is Leader, start procedure manager.", newLeader);
       configManager.getProcedureManager().shiftExecutor(true);
+      configManager.getLoadManager().start();
     } else {
       configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getLoadManager().stop();
     }
   }
 

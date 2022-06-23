@@ -177,17 +177,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                   (deviceGroupId, schemaRegionReplicaSet) ->
                       schemaRegions.add(schemaRegionReplicaSet));
             });
-    int count = schemaRegions.size();
     schemaRegions.forEach(
         region -> {
           SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
           schemaQueryScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           schemaQueryScanNode.setRegionReplicaSet(region);
-          if (count > 1) {
-            schemaQueryScanNode.setLimit(
-                schemaQueryScanNode.getOffset() + schemaQueryScanNode.getLimit());
-            schemaQueryScanNode.setOffset(0);
-          }
           root.addChild(schemaQueryScanNode);
         });
     return root;
@@ -530,6 +524,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return aggregationNode;
   }
 
+  @Override
   public PlanNode visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
     // Firstly, we build the tree structure for GroupByLevelNode
     List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);

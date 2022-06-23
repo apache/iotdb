@@ -23,7 +23,7 @@ import org.apache.commons.lang3.SystemUtils;
 import java.io.File;
 import java.util.Properties;
 
-public class DataNode extends ClusterNodeBase {
+public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String targetConfigNode;
 
@@ -33,7 +33,7 @@ public class DataNode extends ClusterNodeBase {
   private final int schemaRegionConsensusPort;
   private final int[] portList;
 
-  public DataNode(String targetConfigNode, String testName) {
+  public DataNodeWrapper(String targetConfigNode, String testName) {
     super(testName);
     this.targetConfigNode = targetConfigNode;
     portList = super.searchAvailablePorts();
@@ -55,7 +55,9 @@ public class DataNode extends ClusterNodeBase {
     properties.setProperty(
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("connection_timeout_ms", "30000");
-    properties.setProperty("config_nodes", this.targetConfigNode);
+    if (this.targetConfigNode != null) {
+      properties.setProperty("config_nodes", this.targetConfigNode);
+    }
   }
 
   @Override

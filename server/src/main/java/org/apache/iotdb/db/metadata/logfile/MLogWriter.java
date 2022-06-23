@@ -119,7 +119,7 @@ public class MLogWriter implements AutoCloseable {
     mlogBuffer.clear();
   }
 
-  synchronized void putLog(PhysicalPlan plan) throws IOException {
+  public synchronized void putLog(PhysicalPlan plan) throws IOException {
     try {
       plan.serialize(mlogBuffer);
       sync();
