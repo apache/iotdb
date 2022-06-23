@@ -223,9 +223,12 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addIntInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -245,9 +248,12 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addLongInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -267,9 +273,12 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addFloatInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -289,9 +298,12 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addDoubleInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -311,9 +323,12 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addBooleanInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -333,9 +348,12 @@ public class FirstValueAccumulator implements Accumulator {
   }
 
   protected int addBinaryInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {

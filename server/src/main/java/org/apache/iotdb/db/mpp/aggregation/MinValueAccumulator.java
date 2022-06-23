@@ -203,9 +203,12 @@ public class MinValueAccumulator implements Accumulator {
 
   private int addIntInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -224,9 +227,12 @@ public class MinValueAccumulator implements Accumulator {
 
   private int addLongInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -245,9 +251,12 @@ public class MinValueAccumulator implements Accumulator {
 
   private int addFloatInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
@@ -266,9 +275,12 @@ public class MinValueAccumulator implements Accumulator {
 
   private int addDoubleInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
         return i;
       }
       if (!column[1].isNull(i)) {
