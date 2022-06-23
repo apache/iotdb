@@ -47,7 +47,7 @@ If you use [Maven](http://search.maven.org/), you can search for the development
 ``` xml
 <dependency>
   <groupId>org.apache.iotdb</groupId>
-  <artifactId>iotdb-server</artifactId>
+  <artifactId>udf-api</artifactId>
   <version>0.14.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
@@ -57,7 +57,7 @@ If you use [Maven](http://search.maven.org/), you can search for the development
 
 ## UDTF（User Defined Timeseries Generating Function）
 
-To write a UDTF,  you need to inherit the `org.apache.iotdb.db.query.udf.api.UDTF` class, and at least implement the `beforeStart` method and a `transform` method.
+To write a UDTF,  you need to inherit the `org.apache.iotdb.udf.api.UDTF` class, and at least implement the `beforeStart` method and a `transform` method.
 
 The following table shows all the interfaces available for user implementation. 
 
@@ -107,7 +107,7 @@ This method is mainly used to customize UDTF. In this method, the user can do th
 
 #### UDFParameters
 
-`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) and their data types of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
+`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is data types of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
 
 
 Example：
@@ -120,11 +120,6 @@ Usage：
 
 ``` java
 void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
-  // parameters
-	for (PartialPath path : parameters.getPaths()) {
-    TSDataType dataType = parameters.getDataType(path);
-  	// do something
-  }
   String stringValue = parameters.getString("key1"); // iotdb
   Float floatValue = parameters.getFloat("key2"); // 123.45
   Double doubleValue = parameters.getDouble("key3"); // null
@@ -152,7 +147,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
   // configurations
   configurations
     .setAccessStrategy(new RowByRowAccessStrategy())
-    .setOutputDataType(TSDataType.INT32);
+    .setOutputDataType(Type.INT32);
 }
 ```
 
@@ -218,7 +213,7 @@ Note that the type of output sequence you set here determines the type of data t
 | `FLOAT`                                     | `float`                                                      |
 | `DOUBLE`                                    | `double`                                                     |
 | `BOOLEAN`                                   | `boolean`                                                    |
-| `TEXT`                                      | `java.lang.String` and `org.apache.iotdb.tsfile.utils.Binary` |
+| `TEXT`                                      | `java.lang.String` and `org.apache.iotdb.udf.api.type.Binary` |
 
 The type of output time series of a UDTF is determined at runtime, which means that a UDTF can dynamically determine the type of output time series according to the type of input time series.
 Here is a simple example:
@@ -245,13 +240,14 @@ This method processes the raw data one row at a time. The raw data is input from
 The following is a complete UDF example that implements the `void transform(Row row, PointCollector collector) throws Exception` method. It is an adder that receives two columns of time series as input. When two data points in a row are not `null`, this UDF will output the algebraic sum of these two data points.
 
 ``` java
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class Adder implements UDTF {
 
@@ -284,13 +280,16 @@ Below is a complete UDF example that implements the `void transform(RowWindow ro
 
 ```java
 import java.io.IOException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class Counter implements UDTF {
 
@@ -328,13 +327,14 @@ Below is a complete UDF example that implements the `void terminate(PointCollect
 
 ```java
 import java.io.IOException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class Max implements UDTF {
 
