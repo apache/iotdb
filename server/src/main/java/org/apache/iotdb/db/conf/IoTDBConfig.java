@@ -893,12 +893,6 @@ public class IoTDBConfig {
           : 1;
 
   /**
-   * Cache size of dataNodeSchemaCache in{@link
-   * org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache}.
-   */
-  private int dataNodeSchemaCacheSize = 1000000;
-
-  /**
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
@@ -2845,14 +2839,6 @@ public class IoTDBConfig {
 
   public void setDataNodeId(int dataNodeId) {
     this.dataNodeId = dataNodeId;
-  }
-
-  public int getDataNodeSchemaCacheSize() {
-    return dataNodeSchemaCacheSize;
-  }
-
-  public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
-    this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
   }
 
   public int getPartitionCacheSize() {

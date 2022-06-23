@@ -801,12 +801,6 @@ public class IoTDBDescriptor {
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
-      conf.setDataNodeSchemaCacheSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "datanode_schema_cache_size",
-                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
-
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
