@@ -45,6 +45,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -145,13 +150,7 @@ public class SnapshotStorage implements StateMachineStorage {
 
     List<FileInfo> fileInfos = new ArrayList<>();
     for (Path file : getAllFilesUnder(latestSnapshotDir)) {
-      MD5Hash fileHash = null;
-      try {
-        fileHash = MD5FileUtil.computeMd5ForFile(file.toFile());
-      } catch (IOException e) {
-        logger.error("read file info failed for snapshot file ", e);
-      }
-      FileInfo fileInfo = new FileInfo(file, fileHash);
+      FileInfo fileInfo = new FileInfoWithAsyncMd5Computing(file);
       fileInfos.add(fileInfo);
     }
 
@@ -259,6 +258,56 @@ public class SnapshotStorage implements StateMachineStorage {
       }
     } catch (IOException e) {
       logger.warn("delete directory failed: ", e);
+    }
+  }
+
+  public static class FileInfoWithAsyncMd5Computing extends FileInfo {
+
+    private static final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
+    private Future<Void> computeMd5;
+    private volatile MD5Hash digest;
+
+    public FileInfoWithAsyncMd5Computing(Path path, MD5Hash fileDigest) {
+      super(path, fileDigest);
+      digest = null;
+    }
+
+    public FileInfoWithAsyncMd5Computing(Path path) {
+      this(path, null);
+
+      // start an async job to compute MD5Hash
+      computeMd5 =
+          CompletableFuture.runAsync(
+              () -> {
+                try {
+                  if (MD5FileUtil.getDigestFileForFile(path.toFile()).exists()) {
+                    digest = MD5FileUtil.readStoredMd5ForFile(path.toFile());
+                    return;
+                  }
+                  digest = MD5FileUtil.computeMd5ForFile(path.toFile());
+                  MD5FileUtil.saveMD5File(path.toFile(), digest);
+                } catch (IOException e) {
+                  logger.error("compute md5 digest for {} failed due to {}", path, e);
+                }
+              });
+    }
+
+    // return null iff sync md5 computing failed
+    @Override
+    public MD5Hash getFileDigest() {
+      if (computeMd5 != null) {
+        try {
+          computeMd5.get(15, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+          logger.error("async compute md5 for {} failed due to {}", getPath(), e);
+          return null;
+        }
+
+        if (computeMd5.isDone()) {
+          computeMd5 = null;
+        }
+      }
+      return digest;
     }
   }
 }
