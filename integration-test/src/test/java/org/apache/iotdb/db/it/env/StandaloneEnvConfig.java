@@ -214,4 +214,16 @@ public class StandaloneEnvConfig implements BaseConfig {
   public int getPrimitiveArraySize() {
     return IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
   }
+
+  public int getAvgSeriesPointNumberThreshold() {
+    return IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+  }
+
+  @Override
+  public BaseConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+    return this;
+  }
 }

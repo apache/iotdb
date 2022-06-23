@@ -47,6 +47,7 @@ import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
@@ -105,18 +106,18 @@ public class IOTDBGroupByIT {
   public static void setUp() throws Exception {
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   @Test
-  public void countSumAvgTest1() throws SQLException {
+  public void countSumAvgTest1() {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
@@ -509,5 +510,23 @@ public class IOTDBGroupByIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void zeroTimeIntervalFailTest() {
+    assertTestFail(
+        "select count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 where time > 3 "
+            + "GROUP BY ([1, 30), 0ms)",
+        "The second parameter time interval should be a positive integer");
+  }
+
+  @Test
+  public void negativeTimeIntervalFailTest() {
+    assertTestFail(
+        "select count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 where time > 3 "
+            + "GROUP BY ([1, 30), -1ms)",
+        "no viable alternative at input");
   }
 }

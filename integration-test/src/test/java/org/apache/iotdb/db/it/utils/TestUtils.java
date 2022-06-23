@@ -28,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DateFormat;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -47,31 +48,45 @@ public class TestUtils {
   }
 
   public static void resultSetEqualTest(
-      String sql, String expectedHeader, String[] expectedRetArray) {
+      String sql, String expectedHeader, String[] expectedRetArray, DateFormat df) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetArray);
+      if (df != null) {
+        connection.setClientInfo("time_zone", "+00:00");
       }
-    } catch (Exception e) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetArray, df);
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   public static void resultSetEqualTest(
+      String sql, String expectedHeader, String[] expectedRetArray) {
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
+  }
+
+  public static void resultSetEqualTest(
       String sql, String[] expectedHeader, String[] expectedRetArray) {
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
+  }
+
+  public static void resultSetEqualTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray, DateFormat df) {
     StringBuilder header = new StringBuilder();
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray);
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df);
   }
 
   public static void resultSetEqualWithDescOrderTest(
-      String sql, String[] expectedHeader, String[] expectedRetArray) throws SQLException {
+      String sql, String[] expectedHeader, String[] expectedRetArray) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+
       int cnt;
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -108,6 +123,9 @@ public class TestUtils {
         }
         Assert.assertEquals(0, cnt);
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -124,6 +142,12 @@ public class TestUtils {
   public static void assertResultSetEqual(
       ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray)
       throws SQLException {
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedRetArray, null);
+  }
+
+  public static void assertResultSetEqual(
+      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray, DateFormat df)
+      throws SQLException {
     ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
     StringBuilder header = new StringBuilder();
     for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -134,7 +158,12 @@ public class TestUtils {
     int cnt = 0;
     while (actualResultSet.next()) {
       StringBuilder builder = new StringBuilder();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      if (df != null) {
+        builder.append(df.format(Long.parseLong(actualResultSet.getString(1)))).append(",");
+      } else {
+        builder.append(actualResultSet.getString(1)).append(",");
+      }
+      for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
         builder.append(actualResultSet.getString(i)).append(",");
       }
       assertEquals(expectedRetArray[cnt], builder.toString());

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.groupby;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
@@ -27,25 +26,21 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.junit.Assert.fail;
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByUnseqIT {
 
-  private static String[] dataSet1 =
+  private static final String[] dataSet1 =
       new String[] {
         "SET STORAGE GROUP TO root.sg1",
         "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -63,7 +58,7 @@ public class IoTDBGroupByUnseqIT {
         "flush"
       };
 
-  private static String[] dataSet2 =
+  private static final String[] dataSet2 =
       new String[] {
         "SET STORAGE GROUP TO root.sg2",
         "CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -103,38 +98,15 @@ public class IoTDBGroupByUnseqIT {
    */
   @Test
   public void test1() {
-    String[] retArray1 =
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.sg1.d1.s1")};
+    String[] retArray =
         new String[] {
-          "1,3", "4,1", "7,3", "10,3",
+          "1,3,", "4,1,", "7,3,", "10,3,",
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : dataSet1) {
-        statement.execute(sql);
-      }
-
-      boolean hasResultSet =
-          statement.execute("select count(s1) from root.sg1.d1 group by ([1, 13), 3ms)");
-
-      Assert.assertTrue(hasResultSet);
-      int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"));
-          Assert.assertEquals(retArray1[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray1.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    prepareData(dataSet1);
+    resultSetEqualTest(
+        "select count(s1) from root.sg1.d1 group by ([1, 13), 3ms)", expectedHeader, retArray);
   }
 
   /**
@@ -146,42 +118,17 @@ public class IoTDBGroupByUnseqIT {
    */
   @Test
   public void test2() {
-    String[] retArray1 = new String[] {"5,1", "10,1", "15,2", "20,0", "25,1"};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.sg2.d1.s1")};
+    String[] retArray = new String[] {"5,1,", "10,1,", "15,2,", "20,0,", "25,1,"};
 
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+        ConfigFactory.getConfig().getAvgSeriesPointNumberThreshold();
+    ConfigFactory.getConfig().setAvgSeriesPointNumberThreshold(2);
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+    prepareData(dataSet2);
+    resultSetEqualTest(
+        "select count(s1) from root.sg2.d1 group by ([5, 30), 5ms)", expectedHeader, retArray);
 
-      for (String sql : dataSet2) {
-        statement.execute(sql);
-      }
-
-      boolean hasResultSet =
-          statement.execute("select count(s1) from root.sg2.d1 group by ([5, 30), 5ms)");
-
-      Assert.assertTrue(hasResultSet);
-      int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.sg2.d1.s1"));
-          Assert.assertEquals(retArray1[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray1.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
-    }
+    ConfigFactory.getConfig().setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
   }
 }

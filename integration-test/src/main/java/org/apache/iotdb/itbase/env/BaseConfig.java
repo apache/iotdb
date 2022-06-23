@@ -161,4 +161,12 @@ public interface BaseConfig {
   default int getMaxQueryDeduplicatedPathNum() {
     return 1000;
   }
+
+  default int getAvgSeriesPointNumberThreshold() {
+    return 100000;
+  }
+
+  default BaseConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    return this;
+  }
 }
