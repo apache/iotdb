@@ -292,7 +292,7 @@ public class RatisConfig {
     public static class Builder {
       private boolean autoTriggerEnabled = true;
       private long creationGap = RaftServerConfigKeys.Snapshot.CREATION_GAP_DEFAULT;
-      private long autoTriggerThreshold = 10000L;
+      private long autoTriggerThreshold = 100_000L;
       //          RaftServerConfigKeys.Snapshot.AUTO_TRIGGER_THRESHOLD_DEFAULT;
       private int retentionFileNum = RaftServerConfigKeys.Snapshot.RETENTION_FILE_NUM_DEFAULT;
 
