@@ -33,12 +33,14 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +75,16 @@ public class IoTDBConnectionTest {
     sessionId = connection.getSessionId();
     when(client.getTimeZone(sessionId)).thenReturn(new TSGetTimeZoneResp(successStatus, timeZone));
     connection.setClient(client);
+    assertEquals(connection.getTimeZone(), timeZone);
+  }
+
+  @Test
+  public void testSetTimeZoneByClientInfo() throws TException, SQLClientInfoException {
+    String timeZone = "+07:00";
+    assertNotEquals(connection.getTimeZone(), timeZone);
+    when(client.setTimeZone(any(TSSetTimeZoneReq.class))).thenReturn(new TSStatus(successStatus));
+    connection.setClient(client);
+    connection.setClientInfo("time_zone", timeZone);
     assertEquals(connection.getTimeZone(), timeZone);
   }
 

@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
+import java.sql.ClientInfoStatus;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -55,6 +56,7 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -106,6 +108,7 @@ public class IoTDBConnection implements Connection {
     this.url = url;
     this.userName = info.get("user").toString();
     this.networkTimeout = params.getNetworkTimeout();
+    this.zoneId = ZoneId.of(params.getTimeZone());
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
@@ -411,8 +414,18 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void setClientInfo(String arg0, String arg1) throws SQLClientInfoException {
-    throw new SQLClientInfoException("Does not support setClientInfo", null);
+  public void setClientInfo(String name, String value) throws SQLClientInfoException {
+    if (name.equalsIgnoreCase("time_zone")) {
+      try {
+        setTimeZone(value);
+      } catch (TException | IoTDBSQLException e) {
+        throw new SQLClientInfoException("Set time_zone error: ", null, e);
+      }
+    } else {
+      HashMap<String, ClientInfoStatus> hashMap = new HashMap<>();
+      hashMap.put(name, ClientInfoStatus.REASON_UNKNOWN_PROPERTY);
+      throw new SQLClientInfoException("Does not support this type of client info: ", hashMap);
+    }
   }
 
   @Override
@@ -551,15 +564,15 @@ public class IoTDBConnection implements Connection {
     return zoneId.toString();
   }
 
-  public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
-    TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
+  public void setTimeZone(String timeZone) throws TException, IoTDBSQLException {
+    TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, timeZone);
     TSStatus resp = getClient().setTimeZone(req);
     try {
       RpcUtils.verifySuccess(resp);
     } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp);
     }
-    this.zoneId = ZoneId.of(zoneId);
+    this.zoneId = ZoneId.of(timeZone);
   }
 
   public ServerProperties getServerProperties() throws TException {
