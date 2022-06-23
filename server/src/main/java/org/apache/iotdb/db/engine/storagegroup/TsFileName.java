@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -127,6 +129,21 @@ public class TsFileName implements Comparable<TsFileName> {
         resource1.getVersion(),
         resource2.getCreatedTime(),
         resource2.getVersion());
+  }
+
+  public static int compareCrossCompactionTmpFileName(
+      TsFileResource resource1, TsFileResource resource2) {
+    int cmp = Long.compare(resource1.getCreatedTime(), resource2.getCreatedTime());
+    if (cmp == 0) {
+      cmp =
+          Long.compare(
+              resource1.getVersion() % IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL,
+              resource2.getVersion() % IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL);
+    }
+    if (cmp == 0) {
+      cmp = Long.compare(resource1.getVersion(), resource2.getVersion());
+    }
+    return cmp;
   }
 
   private static String formatPrefix(

@@ -33,7 +33,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +43,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -107,17 +108,21 @@ public class CompactionUtils {
       List<TsFileResource> targetResources)
       throws IOException {
     // target file may more or less than source seq files, so we should find each target file with
-    // its corresponding source seq file.
-    Map<Long, TsFileResource> seqFileInfoMap = new HashMap<>();
+    // its corresponding source seq file. Here is timestamp-version -> resource
+    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
     for (TsFileResource tsFileResource : seqResources) {
-      seqFileInfoMap.put(
-          TsFileName.parse(tsFileResource.getTsFile().getName()).getTime(), tsFileResource);
+      TsFileName tsFileName = TsFileName.parse(tsFileResource.getTsFile().getName());
+      seqFileInfoMap.put(tsFileName.getTime() + "-" + tsFileName.getVersion(), tsFileResource);
     }
     // update each target mods file.
     for (TsFileResource tsFileResource : targetResources) {
+      TsFileName tsFileName = TsFileName.parse(tsFileResource.getTsFile().getName());
       updateOneTargetMods(
           tsFileResource,
-          seqFileInfoMap.get(TsFileName.parse(tsFileResource.getTsFile().getName()).getTime()),
+          seqFileInfoMap.get(
+              tsFileName.getTime()
+                  + "-"
+                  + tsFileName.getVersion() % CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL),
           unseqResources);
     }
   }

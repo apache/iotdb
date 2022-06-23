@@ -219,6 +219,9 @@ public class IoTDBConstant {
   // cross space compaction
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
 
+  // used to name the version of tmp target file when splitting large target files
+  public static final long CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL = 100000;
+
   // cross space compaction of previous version (<0.13)
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD = ".merge";
 
