@@ -35,8 +35,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -44,7 +44,6 @@ import java.util.Optional;
 public class SchemaFetchScanOperator implements SourceOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFetchScanOperator.class);
-  private static final int MAX_BINARY_SIZE = 1024 * 1024;
 
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
@@ -106,23 +105,19 @@ public class SchemaFetchScanOperator implements SourceOperator {
     for (PartialPath path : partialPathList) {
       schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
     }
-    ByteBuffer bufferWithMaxSize = ByteBuffer.allocate(MAX_BINARY_SIZE);
-    try {
-      schemaTree.serialize(bufferWithMaxSize);
-    } catch (BufferOverflowException e) {
-      logger.error("The size of schemaTree's binary data is too large. {}", sourceId, e);
-      throw e;
-    }
 
-    bufferWithMaxSize.flip();
-    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferWithMaxSize.limit());
-    byteBuffer.put(bufferWithMaxSize);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      schemaTree.serialize(outputStream);
+    } catch (IOException e) {
+      // Totally memory operation. This case won't happen.
+    }
     this.tsBlock =
         new TsBlock(
             new TimeColumn(1, new long[] {0}),
             new BinaryColumn(
                 1,
                 Optional.of(new boolean[] {false}),
-                new Binary[] {new Binary(byteBuffer.array())}));
+                new Binary[] {new Binary(outputStream.toByteArray())}));
   }
 }

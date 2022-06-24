@@ -27,6 +27,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   private final int consensusPort;
   private final String targetConfigNode;
+  private final boolean isSeed;
 
   public ConfigNodeWrapper(
       boolean isSeed,
@@ -36,6 +37,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
       int[] portList) {
     super(testClassName, testMethodName, portList);
     this.consensusPort = portList[1];
+    this.isSeed = isSeed;
     if (isSeed) {
       this.targetConfigNode = getIpAndPortString();
     } else {
@@ -96,6 +98,9 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   public final String getId() {
+    if (isSeed) {
+      return "SeedConfigNode" + getPort();
+    }
     return "ConfigNode" + getPort();
   }
 }

@@ -126,6 +126,20 @@
                             <appendAssemblyId>false</appendAssemblyId>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>cluster-test-assembly-share</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/mpp-share.xml</descriptor>
+                            </descriptors>
+                            <finalName>template-node-share</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <!-- If the test starts separate processes, we can set maximum-heap and new-heap size -->
