@@ -32,7 +32,7 @@ import java.util.concurrent.ExecutionException;
 /** This class is used to handle multi requests and gather their returned values. */
 public abstract class RequestDelegate<T> {
 
-  private static final Logger logger = LoggerFactory.getLogger(RequestDelegate.class);
+  protected static final Logger logger = LoggerFactory.getLogger(RequestDelegate.class);
   private final List<String> endpoints;
   private final List<Callable<T>> requests = new ArrayList<>();
 
