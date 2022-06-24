@@ -195,27 +195,13 @@ public class ConfigNodeStartupCheck {
             conf.getSchemaReplicationFactor(),
             conf.getDataReplicationFactor());
 
-    TEndPoint targetConfigNode = conf.getTargetConfigNode();
-    while (true) {
-      TConfigNodeRegisterResp resp =
-          SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
-      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
-        LOGGER.info("ConfigNode registered successfully.");
-        break;
-      } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        targetConfigNode = resp.getStatus().getRedirectNode();
-        LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else if (resp.getStatus().getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
-        LOGGER.error("Configuration may not be consistent, {}", req);
-        throw new StartupException("Configuration may not be consistent!");
-      }
-
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        throw new StartupException("Register ConfigNode failed!");
-      }
+    TConfigNodeRegisterResp resp =
+        SyncConfigNodeClientPool.getInstance().registerConfigNode(conf.getTargetConfigNode(), req);
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+      conf.setConfigNodeList(resp.getConfigNodeList());
+    } else {
+      throw new StartupException("Register ConfigNode failed!");
     }
   }
 

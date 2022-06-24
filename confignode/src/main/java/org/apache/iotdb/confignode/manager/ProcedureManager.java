@@ -27,14 +27,12 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -64,7 +62,7 @@ public class ProcedureManager {
     this.configManager = configManager;
     this.scheduler = new SimpleProcedureScheduler();
     this.store = new ConfigProcedureStore(configManager, procedureInfo);
-    this.env = new ConfigNodeProcedureEnv(configManager, scheduler);
+    this.env = new ConfigNodeProcedureEnv(configManager);
     this.executor = new ProcedureExecutor<>(env, store, scheduler);
   }
 
@@ -107,17 +105,6 @@ public class ProcedureManager {
     } else {
       return RpcUtils.getStatus(procedureStatus);
     }
-  }
-
-  /**
-   * generate a procedure, and execute by one by one
-   *
-   * @param req new config node
-   */
-  public void addConfigNode(TConfigNodeRegisterReq req) {
-    AddConfigNodeProcedure addConfigNodeProcedure =
-        new AddConfigNodeProcedure(req.getConfigNodeLocation());
-    this.executor.submitProcedure(addConfigNodeProcedure);
   }
 
   private static boolean getProcedureStatus(

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -43,7 +44,7 @@ import java.nio.ByteBuffer;
 
 public class DeleteStorageGroupProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
-  private static final Logger LOG = LoggerFactory.getLogger(DeleteStorageGroupProcedure.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Procedure.class);
   private static final int retryThreshold = 5;
 
   private TStorageGroupSchema deleteSgSchema;

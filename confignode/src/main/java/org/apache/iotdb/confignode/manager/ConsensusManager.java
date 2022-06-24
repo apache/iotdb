@@ -20,9 +20,11 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
@@ -35,6 +37,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +63,24 @@ public class ConsensusManager {
     consensusImpl.stop();
   }
 
+  @TestOnly
+  public void singleCopyMayWaitUntilLeaderReady() {
+    if (conf.getConfigNodeList().size() == 1) {
+      long startTime = System.currentTimeMillis();
+      long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+      try {
+        while (!consensusImpl.isLeader(consensusGroupId)) {
+          TimeUnit.MILLISECONDS.sleep(100);
+          long elapsed = System.currentTimeMillis() - startTime;
+          if (elapsed > maxWaitTime) {
+            return;
+          }
+        }
+      } catch (InterruptedException ignored) {
+      }
+    }
+  }
+
   /** Build ConfigNodeGroup ConsensusLayer */
   private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
@@ -82,32 +103,29 @@ public class ConsensusManager {
                             conf.getConfigNodeConsensusProtocolClass())));
     consensusImpl.start();
 
-    // if does not start firstly, or is seed-node. will add ConsensusGroup.
-    if (!conf.isNeedApply()) {
-      addConsensusGroup(conf.getConfigNodeList());
-    }
-  }
-
-  /**
-   * after register config node, leader will call addConsensusGroup remotely. execute in new node
-   *
-   * @param configNodeLocations all config node
-   */
-  public void addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    if (configNodeLocations.size() == 0) {
-      LOGGER.warn("configNodeLocations is null");
-      return;
-    }
-
-    LOGGER.info("Set ConfigNode consensus group {}...", configNodeLocations);
+    // Build consensus group from iotdb-confignode.properties
+    LOGGER.info("Set ConfigNode consensus group {}...", conf.getConfigNodeList());
     List<Peer> peerList = new ArrayList<>();
-    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
+    for (TConfigNodeLocation configNodeLocation : conf.getConfigNodeList()) {
       peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
     }
     consensusImpl.addConsensusGroup(consensusGroupId, peerList);
 
-    // Set config node list
-    conf.setConfigNodeList(configNodeLocations);
+    // Apply ConfigNode if necessary
+    if (conf.isNeedApply()) {
+      TSStatus status =
+          SyncConfigNodeClientPool.getInstance()
+              .applyConfigNode(
+                  conf.getTargetConfigNode(),
+                  new TConfigNodeLocation(
+                      -1,
+                      new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
+                      new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(status.getMessage());
+        throw new IOException("Apply ConfigNode failed:");
+      }
+    }
   }
 
   /**
@@ -175,23 +193,5 @@ public class ConsensusManager {
 
   public IConsensus getConsensusImpl() {
     return consensusImpl;
-  }
-
-  @TestOnly
-  public void singleCopyMayWaitUntilLeaderReady() {
-    if (conf.getConfigNodeList().size() == 1) {
-      long startTime = System.currentTimeMillis();
-      long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
-      try {
-        while (!consensusImpl.isLeader(consensusGroupId)) {
-          TimeUnit.MILLISECONDS.sleep(100);
-          long elapsed = System.currentTimeMillis() - startTime;
-          if (elapsed > maxWaitTime) {
-            return;
-          }
-        }
-      } catch (InterruptedException ignored) {
-      }
-    }
   }
 }

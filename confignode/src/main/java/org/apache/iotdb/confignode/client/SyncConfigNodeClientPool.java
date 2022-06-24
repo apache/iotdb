@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -70,7 +69,7 @@ public class SyncConfigNodeClientPool {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         return client.registerConfigNode(req);
       } catch (Exception e) {
-        LOGGER.warn("Register ConfigNode failed, retrying {}...", retry, e);
+        LOGGER.warn("Register ConfigNode failed, retrying...", e);
         doRetryWait();
       }
     }
@@ -81,21 +80,17 @@ public class SyncConfigNodeClientPool {
                 .setMessage("All retry failed."));
   }
 
-  public TSStatus addConsensusGroup(
-      TEndPoint endPoint, List<TConfigNodeLocation> configNodeLocation) {
+  public TSStatus applyConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
-        TConfigNodeRegisterResp registerResp = new TConfigNodeRegisterResp();
-        registerResp.setConfigNodeList(configNodeLocation);
-        registerResp.setStatus(StatusUtils.OK);
-        return client.addConsensusGroup(registerResp);
+        return client.applyConfigNode(configNodeLocation);
       } catch (Exception e) {
-        LOGGER.warn("Add Consensus Group failed, retrying {} ...", retry, e);
+        LOGGER.warn("Apply ConfigNode failed, retrying...", e);
         doRetryWait();
       }
     }
-    LOGGER.error("Add ConsensusGroup failed");
+    LOGGER.error("Apply ConfigNode failed");
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed.");
   }

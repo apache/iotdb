@@ -622,10 +622,10 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
-  public TSStatus addConsensusGroup(TConfigNodeRegisterResp registerResp) throws TException {
+  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.addConsensusGroup(registerResp);
+        TSStatus status = client.applyConfigNode(configNodeLocation);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }

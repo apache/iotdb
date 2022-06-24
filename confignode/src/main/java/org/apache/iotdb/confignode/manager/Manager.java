@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -29,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
@@ -218,11 +218,11 @@ public interface Manager {
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
-   * Add Consensus Group in new node.
+   * Apply ConfigNode when it is first startup
    *
    * @return status
    */
-  TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations);
+  TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
 
   /**
    * Remove ConfigNode
