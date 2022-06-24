@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -45,6 +46,8 @@ public class TransformNode extends ProcessNode {
   protected final boolean keepNull;
   protected final ZoneId zoneId;
 
+  protected final OrderBy scanOrder;
+
   private List<String> outputColumnNames;
 
   public TransformNode(
@@ -52,20 +55,27 @@ public class TransformNode extends ProcessNode {
       PlanNode childPlanNode,
       Expression[] outputExpressions,
       boolean keepNull,
-      ZoneId zoneId) {
+      ZoneId zoneId,
+      OrderBy scanOrder) {
     super(id);
     this.childPlanNode = childPlanNode;
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
     this.zoneId = zoneId;
+    this.scanOrder = scanOrder;
   }
 
   public TransformNode(
-      PlanNodeId id, Expression[] outputExpressions, boolean keepNull, ZoneId zoneId) {
+      PlanNodeId id,
+      Expression[] outputExpressions,
+      boolean keepNull,
+      ZoneId zoneId,
+      OrderBy scanOrder) {
     super(id);
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
     this.zoneId = zoneId;
+    this.scanOrder = scanOrder;
   }
 
   @Override
@@ -101,7 +111,7 @@ public class TransformNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TransformNode(getPlanNodeId(), outputExpressions, keepNull, zoneId);
+    return new TransformNode(getPlanNodeId(), outputExpressions, keepNull, zoneId, scanOrder);
   }
 
   @Override
@@ -113,6 +123,7 @@ public class TransformNode extends ProcessNode {
     }
     ReadWriteIOUtils.write(keepNull, byteBuffer);
     ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
   @Override
@@ -124,6 +135,7 @@ public class TransformNode extends ProcessNode {
     }
     ReadWriteIOUtils.write(keepNull, stream);
     ReadWriteIOUtils.write(zoneId.getId(), stream);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
   public static TransformNode deserialize(ByteBuffer byteBuffer) {
@@ -134,8 +146,9 @@ public class TransformNode extends ProcessNode {
     }
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TransformNode(planNodeId, outputExpressions, keepNull, zoneId);
+    return new TransformNode(planNodeId, outputExpressions, keepNull, zoneId, scanOrder);
   }
 
   public final Expression[] getOutputExpressions() {
@@ -165,12 +178,13 @@ public class TransformNode extends ProcessNode {
     return keepNull == that.keepNull
         && childPlanNode.equals(that.childPlanNode)
         && Arrays.equals(outputExpressions, that.outputExpressions)
-        && zoneId.equals(that.zoneId);
+        && zoneId.equals(that.zoneId)
+        && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(super.hashCode(), childPlanNode, keepNull, zoneId);
+    int result = Objects.hash(super.hashCode(), childPlanNode, keepNull, zoneId, scanOrder);
     result = 31 * result + Arrays.hashCode(outputExpressions);
     return result;
   }
