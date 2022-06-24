@@ -325,7 +325,7 @@ public class LogicalPlanBuilder {
             createAggregationScanNode(
                 pathAggregationsEntry.getKey(),
                 pathAggregationsEntry.getValue(),
-                scanOrder,
+                scanOrder.reverse(),
                 null,
                 timeFilter));
       }

@@ -36,17 +36,28 @@ public class CountAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
-      long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
-      }
-      if (!column[1].isNull(i)) {
-        countValue++;
+    Column valueColumn = column[1];
+    long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
+    long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
+    if (!valueColumn.mayHaveNull() && timeRange.contains(minTime, maxTime)) {
+      countValue += timeColumn.getPositionCount();
+    } else {
+      int curPositionCount = timeColumn.getPositionCount();
+      long curMinTime = timeRange.getMin();
+      long curMaxTime = timeRange.getMax();
+      for (int i = 0; i < curPositionCount; i++) {
+        long curTime = timeColumn.getLong(i);
+        if (curTime > curMaxTime || curTime < curMinTime) {
+          return i;
+        }
+        if (!valueColumn.isNull(i)) {
+          countValue++;
+        }
       }
     }
+    return timeColumn.getPositionCount();
   }
 
   // partialResult should be like: | partialCountValue1 |
