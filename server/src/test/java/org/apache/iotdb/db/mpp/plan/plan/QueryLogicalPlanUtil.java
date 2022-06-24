@@ -298,7 +298,7 @@ public class QueryLogicalPlanUtil {
             predicate1,
             false,
             ZonedDateTime.now().getOffset(),
-            OrderBy.TIMESTAMP_ASC);
+            OrderBy.TIMESTAMP_DESC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
