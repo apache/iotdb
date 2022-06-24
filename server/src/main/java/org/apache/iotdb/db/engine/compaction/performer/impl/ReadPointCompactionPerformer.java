@@ -43,7 +43,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -59,7 +58,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -183,6 +181,7 @@ public class ReadPointCompactionPerformer
       writeWithReader(compactionWriter, dataBatchReader, 0);
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
+      compactionWriter.checkFileSizeAndMayOpenANewFile();
     }
   }
 
@@ -235,27 +234,22 @@ public class ReadPointCompactionPerformer
     }
 
     compactionWriter.endChunkGroup();
+    compactionWriter.checkFileSizeAndMayOpenANewFile();
   }
 
   private static void updateDeviceStartTimeAndEndTime(
       List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
     List<TsFileIOWriter> targetFileWriters = compactionWriter.getFileIOWriter();
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
-      TsFileResource fileResource = targetResources.get(i);
-      // The tmp target file may does not have any data points written due to the existence of the
-      // mods file, and it will be deleted after compaction. So skip the target file that has been
-      // deleted.
-      if (!fileResource.getTsFile().exists()) {
-        continue;
-      }
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          fileIOWriter.getDeviceTimeseriesMetadataMap().entrySet()) {
-        String device = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-          fileResource.updateStartTime(device, timeseriesMetadata.getStatistics().getStartTime());
-          fileResource.updateEndTime(device, timeseriesMetadata.getStatistics().getEndTime());
-        }
+    int fileWriterIndex = 0;
+    for (TsFileResource resource : targetResources) {
+      if (resource
+          .getTsFile()
+          .getName()
+          .equals(targetFileWriters.get(fileWriterIndex).getFile().getName())) {
+        // Only update the last target file of each seq file, because the others have been updated
+        // before opening a new target file.
+        compactionWriter.updateDeviceStartTimeAndEndTime(
+            resource, targetFileWriters.get(fileWriterIndex++));
       }
     }
   }

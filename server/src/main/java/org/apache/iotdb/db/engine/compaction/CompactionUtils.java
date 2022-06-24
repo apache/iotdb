@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceM
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -44,6 +44,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -106,18 +108,23 @@ public class CompactionUtils {
       List<TsFileResource> unseqResources,
       List<TsFileResource> targetResources)
       throws IOException {
-    // target file may less than source seq files, so we should find each target file with its
-    // corresponding source seq file.
+    // target file may more or less than source seq files, so we should find each target file with
+    // its corresponding source seq file. Here is timestamp-version -> resource
     Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
     for (TsFileResource tsFileResource : seqResources) {
-      seqFileInfoMap.put(
-          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
-          tsFileResource);
+      TsFileName tsFileName = TsFileName.parse(tsFileResource.getTsFile().getName());
+      seqFileInfoMap.put(tsFileName.getTime() + "-" + tsFileName.getVersion(), tsFileResource);
     }
     // update each target mods file.
     for (TsFileResource tsFileResource : targetResources) {
+      TsFileName tsFileName = TsFileName.parse(tsFileResource.getTsFile().getName());
       updateOneTargetMods(
-          tsFileResource, seqFileInfoMap.get(tsFileResource.getTsFile().getName()), unseqResources);
+          tsFileResource,
+          seqFileInfoMap.get(
+              tsFileName.getTime()
+                  + "-"
+                  + tsFileName.getVersion() % CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL),
+          unseqResources);
     }
   }
 

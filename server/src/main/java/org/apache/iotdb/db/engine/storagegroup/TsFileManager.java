@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -343,24 +345,36 @@ public class TsFileManager {
       throws IOException {
     writeLock("replace");
     try {
-      Map<Long, List<TsFileResource>> time2TargetFiles = new HashMap<>();
+      // timestamp-version -> resourceList
+      Map<String, List<TsFileResource>> time2TargetFiles = new HashMap<>();
       for (TsFileResource resource : targetFileResources) {
         time2TargetFiles
-            .computeIfAbsent(resource.getCreatedTime(), k -> new ArrayList<>())
+            .computeIfAbsent(
+                resource.getCreatedTime()
+                    + "-"
+                    + resource.getVersion()
+                        % IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL,
+                k -> new ArrayList<>())
             .add(resource);
       }
-      Map<Long, TsFileResource> time2TargetPosition = new HashMap<>();
+      // timestamp-version -> resource
+      Map<String, TsFileResource> time2TargetPosition = new HashMap<>();
       // find insert target position
       for (TsFileResource tsFileResource : seqFileResources) {
-        if (time2TargetFiles.containsKey(tsFileResource.getCreatedTime())) {
-          time2TargetPosition.put(tsFileResource.getCreatedTime(), tsFileResource);
+        String key = tsFileResource.getCreatedTime() + "-" + tsFileResource.getVersion();
+        if (time2TargetFiles.containsKey(key)) {
+          time2TargetPosition.put(key, tsFileResource);
         }
       }
-      // first add target
-      for (Long time : time2TargetFiles.keySet()) {
+      Object[] keyArr = time2TargetPosition.keySet().toArray();
+      Arrays.sort(keyArr);
+
+      // first add target from the last position
+      for (int i = keyArr.length - 1; i >= 0; i--) {
+        String key = keyArr[i].toString();
         keepOrderAddAllAndRenameAfter(
-            time2TargetPosition.get(time),
-            time2TargetFiles.get(time),
+            time2TargetPosition.get(key),
+            time2TargetFiles.get(key),
             isTargetSequence,
             timePartition);
       }

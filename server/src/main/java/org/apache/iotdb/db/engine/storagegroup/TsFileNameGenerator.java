@@ -28,6 +28,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL;
+
 public class TsFileNameGenerator {
 
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -99,6 +101,13 @@ public class TsFileNameGenerator {
     return new File(path, tsFileName.toFileName());
   }
 
+  public static File increaseFileVersion(File tsFile, long offset) {
+    String path = tsFile.getParent();
+    TsFileName tsFileName = TsFileName.parse(tsFile.getName());
+    tsFileName.setVersion(tsFileName.getVersion() + offset);
+    return new File(path, tsFileName.toFileName());
+  }
+
   /**
    * Create tmp target file for cross space compaction, in which each sequence source file has its
    * own tmp target file.
@@ -112,6 +121,7 @@ public class TsFileNameGenerator {
     for (TsFileResource resource : seqResources) {
       TsFileName tsFileName = TsFileName.parse(resource.getTsFile().getName());
       tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
+      tsFileName.setVersion(tsFileName.getVersion() + CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL);
       targetFileResources.add(
           new TsFileResource(
               new File(
