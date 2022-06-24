@@ -131,6 +131,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -183,6 +184,10 @@ public class DataRegion {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+  /** condition to safely delete data region */
+  private final Condition deletedCondition = insertLock.writeLock().newCondition();
+  /** data region has been deleted or not */
+  private volatile boolean deleted = false;
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
   /**
@@ -3679,6 +3684,32 @@ public class DataRegion {
     // identifier should be same with getTsFileProcessor method
     return WALManager.getInstance()
         .applyForWALNode(logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId);
+  }
+
+  /** Wait for this data region successfully deleted */
+  public void waitForDeleted() {
+    writeLock("waitForDeleted");
+    try {
+      if (!deleted) {
+        deletedCondition.await();
+      }
+    } catch (InterruptedException e) {
+      logger.error("Interrupted When waiting for data region deleted.");
+      Thread.currentThread().interrupt();
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** Release all threads waiting for this data region successfully deleted */
+  public void markDeleted() {
+    deleted = true;
+    writeLock("markDeleted");
+    try {
+      deletedCondition.signalAll();
+    } finally {
+      writeUnlock();
+    }
   }
 
   @TestOnly
