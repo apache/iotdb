@@ -238,9 +238,9 @@ public class CheckpointManager implements AutoCloseable {
   /**
    * Get version id of first valid .wal file
    *
-   * @return Return {@link Integer#MIN_VALUE} if no file is valid
+   * @return Return {@link Long#MIN_VALUE} if no file is valid
    */
-  public int getFirstValidWALVersionId() {
+  public long getFirstValidWALVersionId() {
     List<MemTableInfo> memTableInfos;
     infoLock.lock();
     try {
@@ -248,7 +248,7 @@ public class CheckpointManager implements AutoCloseable {
     } finally {
       infoLock.unlock();
     }
-    int firstValidVersionId = memTableInfos.isEmpty() ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+    long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
     for (MemTableInfo memTableInfo : memTableInfos) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
     }

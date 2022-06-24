@@ -55,7 +55,7 @@ public class WALNodeRecoverTask implements Runnable {
   /** latch to collect all nodes' recovery end information */
   private final CountDownLatch allNodesRecoveredLatch;
   /** version id of first valid .wal file */
-  private int firstValidVersionId = Integer.MAX_VALUE;
+  private long firstValidVersionId = Long.MAX_VALUE;
 
   private Map<Integer, MemTableInfo> memTableId2Info;
   private Map<Integer, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
@@ -104,7 +104,7 @@ public class WALNodeRecoverTask implements Runnable {
       }
       // recover version id and search index
       long[] indexInfo = recoverLastSearchIndex();
-      int lastVersionId = (int) indexInfo[0];
+      long lastVersionId = indexInfo[0];
       long lastSearchIndex = indexInfo[1];
       WALManager.getInstance()
           .registerWALNode(
@@ -126,7 +126,7 @@ public class WALNodeRecoverTask implements Runnable {
     // get last search index from last wal file
     WALFileUtils.ascSortByVersionId(walFiles);
     File lastWALFile = walFiles[walFiles.length - 1];
-    int lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
+    long lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
     long lastSearchIndex = WALFileUtils.parseStartSearchIndex(lastWALFile.getName());
     WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     try (WALReader walReader = new WALReader(lastWALFile)) {

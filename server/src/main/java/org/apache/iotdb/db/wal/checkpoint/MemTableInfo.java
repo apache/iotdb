@@ -33,8 +33,8 @@ import java.util.Objects;
  * file version id of its first {@link WALEntry}.
  */
 public class MemTableInfo implements SerializedSize {
-  /** memTable id 4 bytes, first version id 4 bytes */
-  private static final int FIXED_SERIALIZED_SIZE = Integer.BYTES * 2;
+  /** memTable id 4 bytes, first version id 8 bytes */
+  private static final int FIXED_SERIALIZED_SIZE = Integer.BYTES + Long.BYTES;
 
   /** memTable */
   private IMemTable memTable;
@@ -43,11 +43,11 @@ public class MemTableInfo implements SerializedSize {
   /** path of the tsFile which this memTable will be flushed to */
   private String tsFilePath;
   /** version id of the file where this memTable's first WALEntry is located */
-  private volatile int firstFileVersionId;
+  private volatile long firstFileVersionId;
 
   private MemTableInfo() {}
 
-  public MemTableInfo(IMemTable memTable, String tsFilePath, int firstFileVersionId) {
+  public MemTableInfo(IMemTable memTable, String tsFilePath, long firstFileVersionId) {
     this.memTable = memTable;
     this.memTableId = memTable.getMemTableId();
     this.tsFilePath = tsFilePath;
@@ -62,14 +62,14 @@ public class MemTableInfo implements SerializedSize {
   public void serialize(ByteBuffer buffer) {
     buffer.putInt(memTableId);
     ReadWriteIOUtils.write(tsFilePath, buffer);
-    buffer.putInt(firstFileVersionId);
+    buffer.putLong(firstFileVersionId);
   }
 
   public static MemTableInfo deserialize(DataInputStream stream) throws IOException {
     MemTableInfo memTableInfo = new MemTableInfo();
     memTableInfo.memTableId = stream.readInt();
     memTableInfo.tsFilePath = ReadWriteIOUtils.readString(stream);
-    memTableInfo.firstFileVersionId = stream.readInt();
+    memTableInfo.firstFileVersionId = stream.readLong();
     return memTableInfo;
   }
 
@@ -102,11 +102,11 @@ public class MemTableInfo implements SerializedSize {
     return tsFilePath;
   }
 
-  public int getFirstFileVersionId() {
+  public long getFirstFileVersionId() {
     return firstFileVersionId;
   }
 
-  public void setFirstFileVersionId(int firstFileVersionId) {
+  public void setFirstFileVersionId(long firstFileVersionId) {
     this.firstFileVersionId = firstFileVersionId;
   }
 }

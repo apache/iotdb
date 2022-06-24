@@ -83,7 +83,7 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   public WALBuffer(
-      String identifier, String logDirectory, int startFileVersion, long startSearchIndex)
+      String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     super(identifier, logDirectory, startFileVersion, startSearchIndex);
     allocateBuffers();

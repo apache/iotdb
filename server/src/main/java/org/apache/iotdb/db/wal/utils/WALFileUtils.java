@@ -72,10 +72,10 @@ public class WALFileUtils {
   }
 
   /** Parse version id from filename */
-  public static int parseVersionId(String filename) {
+  public static long parseVersionId(String filename) {
     Matcher matcher = WAL_FILE_NAME_PATTERN.matcher(filename);
     if (matcher.find()) {
-      return Integer.parseInt(matcher.group(WAL_VERSION_ID));
+      return Long.parseLong(matcher.group(WAL_VERSION_ID));
     }
     throw new RuntimeException("Invalid wal file name: " + filename);
   }
@@ -100,7 +100,7 @@ public class WALFileUtils {
 
   /** Sort wal files by version id with ascending order */
   public static void ascSortByVersionId(File[] walFiles) {
-    Arrays.sort(walFiles, Comparator.comparingInt(file -> parseVersionId(file.getName())));
+    Arrays.sort(walFiles, Comparator.comparingLong(file -> parseVersionId(file.getName())));
   }
 
   /**
@@ -149,7 +149,7 @@ public class WALFileUtils {
   }
 
   /** Get .wal filename */
-  public static String getLogFileName(int versionId, long startSearchIndex, WALFileStatus status) {
+  public static String getLogFileName(long versionId, long startSearchIndex, WALFileStatus status) {
     return String.format(WAL_FILE_NAME_FORMAT, versionId, startSearchIndex, status.getCode());
   }
 }

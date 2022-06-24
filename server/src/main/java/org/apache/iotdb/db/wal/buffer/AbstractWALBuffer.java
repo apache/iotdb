@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractWALBuffer implements IWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
@@ -40,7 +40,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** directory to store .wal files */
   protected final String logDirectory;
   /** current wal file version id */
-  protected final AtomicInteger currentWALFileVersion = new AtomicInteger();
+  protected final AtomicLong currentWALFileVersion = new AtomicLong();
   /** current search index */
   protected volatile long currentSearchIndex;
   /** current search index */
@@ -49,7 +49,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   protected volatile ILogWriter currentWALFileWriter;
 
   public AbstractWALBuffer(
-      String identifier, String logDirectory, int startFileVersion, long startSearchIndex)
+      String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
@@ -69,7 +69,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   }
 
   @Override
-  public int getCurrentWALFileVersion() {
+  public long getCurrentWALFileVersion() {
     return currentWALFileVersion.get();
   }
 

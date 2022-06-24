@@ -215,7 +215,7 @@ public class WALNodeTest {
             IMemTable memTable = new PrimitiveMemTable();
             int memTableId = memTable.getMemTableId();
             String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
-            int firstFileVersionId = walNode.getCurrentLogVersion();
+            long firstFileVersionId = walNode.getCurrentLogVersion();
             walNode.onMemTableCreated(memTable, tsFilePath);
             if (memTableId % 2 == 0) {
               walNode.onMemTableFlushed(memTable);
