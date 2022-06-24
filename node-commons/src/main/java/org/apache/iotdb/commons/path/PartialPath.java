@@ -597,6 +597,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * </ul>
    */
   private static int estimateStringSize(String string) {
-    return string == null ? 0 : 32 + string.length();
+    // each char takes 2B in Java
+    return string == null ? 0 : 32 + 2 * string.length();
   }
 }

@@ -87,6 +87,7 @@ public class SchemaCacheEntry {
    * </ul>
    */
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
-    return 100 + schemaCacheEntry.getMeasurementSchema().getMeasurementId().length();
+    // each char takes 2B in Java
+    return 100 + 2 * schemaCacheEntry.getMeasurementSchema().getMeasurementId().length();
   }
 }
