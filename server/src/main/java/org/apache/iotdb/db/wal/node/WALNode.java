@@ -222,14 +222,14 @@ public class WALNode implements IWALNode {
     public void run() {
       // init firstValidVersionId
       firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
-      if (firstValidVersionId == Integer.MIN_VALUE) {
+      if (firstValidVersionId == Long.MIN_VALUE) {
         // roll wal log writer to delete current wal file
         if (buffer.getCurrentWALFileSize() > 0) {
           rollWALFile();
         }
         // update firstValidVersionId
         firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
-        if (firstValidVersionId == Integer.MIN_VALUE) {
+        if (firstValidVersionId == Long.MIN_VALUE) {
           firstValidVersionId = buffer.getCurrentWALFileVersion();
         }
       }
@@ -321,7 +321,7 @@ public class WALNode implements IWALNode {
       Matcher matcher = pattern.matcher(name);
       boolean toDelete = false;
       if (matcher.find()) {
-        int versionId = Integer.parseInt(matcher.group(IoTDBConstant.WAL_VERSION_ID));
+        long versionId = Long.parseLong(matcher.group(IoTDBConstant.WAL_VERSION_ID));
         toDelete = versionId < firstValidVersionId;
       }
       return toDelete;
@@ -815,7 +815,7 @@ public class WALNode implements IWALNode {
       Matcher matcher = pattern.matcher(name);
       boolean toSearch = false;
       if (matcher.find()) {
-        int versionId = Integer.parseInt(matcher.group(IoTDBConstant.WAL_VERSION_ID));
+        long versionId = Long.parseLong(matcher.group(IoTDBConstant.WAL_VERSION_ID));
         toSearch = versionId >= searchedFilesVersionId;
       }
       return toSearch;
