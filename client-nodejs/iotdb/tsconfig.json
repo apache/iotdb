@@ -1,0 +1,54 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+{
+  "compilerOptions": {
+
+    /* 基本选项 */
+    "target": "es6",                       // 指定 ECMAScript 目标版本: 'ES3' (default), 'ES5', 'ES6'/'ES2015', 'ES2016', 'ES2017', or 'ESNEXT'
+    "module": "commonjs",                  // 指定使用模块: 'commonjs', 'amd', 'system', 'umd' or 'es2015'
+    "allowJs": false,                       // 允许编译 javascript 文件
+    "checkJs": false,                       // 报告 javascript 文件中的错误
+    "declaration": true,                   // 生成相应的 '.d.ts' 文件
+    "sourceMap": true,                     // 生成相应的 '.map' 文件
+    "outDir": "../dist",                    // 指定输出目录
+    "rootDir": ".",                        // 用来控制输出目录结构 --outDir.
+    "removeComments": true,                // 删除编译后的所有的注释
+    "noEmit": false,                        // 不生成输出文件
+    "importHelpers": true,                 // 从 tslib 导入辅助工具函数
+    "isolatedModules": true,               // 将每个文件作为单独的模块 （与 'ts.transpileModule' 类似）.
+
+    /* 严格的类型检查选项 */
+    "strict": false,                        // 启用所有严格类型检查选项
+    "noImplicitAny": false,                 // 在表达式和声明上有隐含的 any类型时报错
+    "strictNullChecks": false,              // 启用严格的 null 检查
+    "noImplicitThis": false,                // 当 this 表达式值为 any 类型的时候，生成一个错误
+    "alwaysStrict": false,                  // 以严格模式检查每个模块，并在每个文件里加入 'use strict'
+
+    /* 额外的检查 */
+    "noUnusedLocals": false,               // 有未使用的变量时，抛出错误
+    "noUnusedParameters": false,           // 有未使用的参数时，抛出错误
+    "noImplicitReturns": false,            // 并不是所有函数里的代码都有返回值时，抛出错误
+    "noFallthroughCasesInSwitch": false,   // 报告 switch 语句的 fallthrough 错误。（即，不允许 switch 的 case 语句贯穿）
+
+    /* 模块解析选项 */
+    "moduleResolution": "node",            // 选择模块解析策略： 'node' (Node.js) or 'classic' (TypeScript pre-1.6)
+    "noEmitOnError": false                 // 编译的源文件中存在错误的时候不再输出编译结果文件
+  }
+}

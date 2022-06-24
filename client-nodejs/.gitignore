@@ -1,0 +1,6 @@
+/iotdb/thrift/
+/dist/
+/node_modules/
+package-lock.json
+/client-nodejs.iml
+LICENSE
