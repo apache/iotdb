@@ -66,6 +66,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
   private ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
+  private boolean isGroupByQuery;
 
   private TsBlock preCachedData;
 
@@ -102,6 +103,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.isGroupByQuery = groupByTimeParameter != null;
   }
 
   /**
@@ -195,7 +197,11 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
             && curTimeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
           calcFromStatistics(fileStatistics);
           seriesScanUtil.skipCurrentFile();
-          continue;
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
+            break;
+          } else {
+            continue;
+          }
         }
 
         // read chunk
@@ -248,25 +254,32 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
   @SuppressWarnings("squid:S3776")
   private void calcFromBatch(TsBlock tsBlock, TimeRange curTimeRange) {
     // check if the batchData does not contain points in current interval
-    if (tsBlock == null || !satisfied(tsBlock, curTimeRange, ascending)) {
-      return;
-    }
-
-    // skip points that cannot be calculated
-    tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
-
-    for (Aggregator aggregator : aggregators) {
-      // current agg method has been calculated
-      if (aggregator.hasFinalResult()) {
-        continue;
+    if (tsBlock != null && satisfied(tsBlock, curTimeRange, ascending)) {
+      // skip points that cannot be calculated
+      if ((ascending && tsBlock.getStartTime() < curTimeRange.getMin())
+          || (!ascending && tsBlock.getStartTime() > curTimeRange.getMax())) {
+        tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
       }
 
-      aggregator.processTsBlock(tsBlock);
-    }
+      int lastReadRowIndex = 0;
+      for (Aggregator aggregator : aggregators) {
+        // current agg method has been calculated
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
 
-    // can calc for next interval
-    if (tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
-      preCachedData = tsBlock;
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(tsBlock));
+      }
+      if (lastReadRowIndex >= tsBlock.getPositionCount()) {
+        tsBlock = null;
+      } else {
+        tsBlock = tsBlock.subTsBlock(lastReadRowIndex);
+      }
+
+      // can calc for next interval
+      if (tsBlock != null && tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
+        preCachedData = tsBlock;
+      }
     }
   }
 
@@ -310,10 +323,11 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
             && curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);
           seriesScanUtil.skipCurrentPage();
-          if (isEndCalc(aggregators)) {
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
             return true;
+          } else {
+            continue;
           }
-          continue;
         }
       }
 
@@ -323,9 +337,6 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
         continue;
       }
-
-      // reset the last position to current Index
-      // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
       if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
@@ -364,7 +375,11 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           && curTimeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
         calcFromStatistics(chunkStatistics);
         seriesScanUtil.skipCurrentChunk();
-        continue;
+        if (isEndCalc(aggregators) && !isGroupByQuery) {
+          return true;
+        } else {
+          continue;
+        }
       }
       // read page
       if (readAndCalcFromPage(curTimeRange)) {

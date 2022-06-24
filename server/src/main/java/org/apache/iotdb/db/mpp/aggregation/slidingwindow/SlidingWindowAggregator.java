@@ -52,7 +52,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   }
 
   @Override
-  public void processTsBlock(TsBlock tsBlock) {
+  public int processTsBlock(TsBlock tsBlock) {
     checkArgument(
         step.isInputPartial(),
         "Step in SlidingWindowAggregationOperator can only process partial result");
@@ -66,6 +66,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
       valueColumn[i] = tsBlock.getColumn(inputLocation.getValueColumnIndex());
     }
     processPartialResult(new PartialAggregationResult(timeColumn, valueColumn));
+    return tsBlock.getPositionCount();
   }
 
   @Override
