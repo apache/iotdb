@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.udf;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
@@ -40,10 +41,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-// TODO @Category({LocalStandaloneIT.class, ClusterIT.class})
-// After bug of init MultiInputColumnIntermediateLayer fixed
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDTFBuiltinFunctionIT {
 
   private static final String[] INSERTION_SQLS = {

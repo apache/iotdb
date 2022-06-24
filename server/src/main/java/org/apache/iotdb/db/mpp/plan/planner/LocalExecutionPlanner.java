@@ -1112,7 +1112,7 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaFetchMergeOperator.class.getSimpleName());
-      return new SchemaFetchMergeOperator(node.getPlanNodeId(), operatorContext, children);
+      return new SchemaFetchMergeOperator(operatorContext, children);
     }
 
     @Override

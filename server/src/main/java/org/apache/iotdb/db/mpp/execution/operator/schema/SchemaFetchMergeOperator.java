@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -31,18 +30,17 @@ import java.util.List;
 
 public class SchemaFetchMergeOperator implements ProcessOperator {
 
-  private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
-  private final boolean[] noMoreTsBlocks;
-
   private final List<Operator> children;
 
-  public SchemaFetchMergeOperator(
-      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
-    this.planNodeId = planNodeId;
+  private final int childrenCount;
+  private int currentIndex;
+
+  public SchemaFetchMergeOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
-    noMoreTsBlocks = new boolean[children.size()];
+    this.childrenCount = children.size();
+    this.currentIndex = 0;
   }
 
   @Override
@@ -52,43 +50,33 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    for (int i = 0; i < children.size(); i++) {
-      if (!noMoreTsBlocks[i]) {
-        TsBlock tsBlock = children.get(i).next();
-        if (!children.get(i).hasNext()) {
-          noMoreTsBlocks[i] = true;
-        }
-        return tsBlock;
-      }
+    if (children.get(currentIndex).hasNext()) {
+      return children.get(currentIndex).next();
+    } else {
+      currentIndex++;
+      return null;
     }
-    return null;
   }
 
   @Override
   public boolean hasNext() {
-    for (int i = 0; i < children.size(); i++) {
-      if (!noMoreTsBlocks[i] && children.get(i).hasNext()) {
-        return true;
-      }
-    }
-    return false;
+    return currentIndex < childrenCount;
   }
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < children.size(); i++) {
-      if (!noMoreTsBlocks[i]) {
-        ListenableFuture<Void> blocked = children.get(i).isBlocked();
-        if (!blocked.isDone()) {
-          return blocked;
-        }
-      }
-    }
-    return NOT_BLOCKED;
+    return children.get(currentIndex).isBlocked();
   }
 
   @Override
   public boolean isFinished() {
     return !hasNext();
+  }
+
+  @Override
+  public void close() throws Exception {
+    for (Operator child : children) {
+      child.close();
+    }
   }
 }
