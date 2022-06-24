@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
 import org.junit.Before;
@@ -79,8 +78,7 @@ public class IoTDBGroupByUnseqIT {
 
   @Before
   public void setUp() throws Exception {
-    maxNumberOfPointsInPage =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    maxNumberOfPointsInPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(4);
     EnvFactory.getEnv().initBeforeTest();
   }
