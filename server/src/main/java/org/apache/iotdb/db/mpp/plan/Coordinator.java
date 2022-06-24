@@ -109,28 +109,33 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    QueryId globalQueryId = queryIdGenerator.createNextQueryId();
-    try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-      if (sql != null && sql.length() > 0) {
-        LOGGER.info("start executing sql: {}", sql);
-      }
-      IQueryExecution execution =
-          createQueryExecution(
-              statement,
-              new MPPQueryContext(
-                  sql,
-                  globalQueryId,
-                  session,
-                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
-              partitionFetcher,
-              schemaFetcher);
-      if (execution.isQuery()) {
-        queryExecutionMap.put(queryId, execution);
-      }
-      execution.start();
+    long startTime = System.nanoTime();
+    try {
+      QueryId globalQueryId = queryIdGenerator.createNextQueryId();
+      try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+        if (sql != null && sql.length() > 0) {
+          LOGGER.info("start executing sql: {}", sql);
+        }
+        IQueryExecution execution =
+            createQueryExecution(
+                statement,
+                new MPPQueryContext(
+                    sql,
+                    globalQueryId,
+                    session,
+                    DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                    DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
+                partitionFetcher,
+                schemaFetcher);
+        if (execution.isQuery()) {
+          queryExecutionMap.put(queryId, execution);
+        }
+        execution.start();
 
-      return execution.getStatus();
+        return execution.getStatus();
+      }
+    } finally {
+      StepTracker.trace("statementExec", startTime, System.nanoTime());
     }
   }
 

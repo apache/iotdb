@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.StepTracker;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
@@ -98,6 +99,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest request) {
+    long startTime = System.nanoTime();
     PlanNode planNode;
     try {
       if (request instanceof IndexedConsensusRequest) {
@@ -117,6 +119,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    } finally {
+      StepTracker.trace("stateMachineWrite", startTime, System.nanoTime());
     }
   }
 
