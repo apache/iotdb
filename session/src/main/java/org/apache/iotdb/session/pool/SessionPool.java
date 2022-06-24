@@ -2146,6 +2146,25 @@ public class SessionPool {
     }
   }
 
+  public void deactivateTempalte(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.deactivateTemplateOn(templateName, prefixPath);
+        putBack(session);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(
+            String.format("Deactivate template [%s] on [%s] failed", templateName, prefixPath), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   public void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
