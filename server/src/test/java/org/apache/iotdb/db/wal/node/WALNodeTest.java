@@ -206,14 +206,14 @@ public class WALNodeTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    Map<Integer, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
+    Map<Long, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
     // create 10 memTables, and flush the first 5 of them
     int memTablesNum = 10;
     for (int i = 0; i < memTablesNum; ++i) {
       Callable<Void> writeTask =
           () -> {
             IMemTable memTable = new PrimitiveMemTable();
-            int memTableId = memTable.getMemTableId();
+            long memTableId = memTable.getMemTableId();
             String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
             long firstFileVersionId = walNode.getCurrentLogVersion();
             walNode.onMemTableCreated(memTable, tsFilePath);
@@ -235,7 +235,7 @@ public class WALNodeTest {
       future.get();
     }
     // recover info from checkpoint file
-    Map<Integer, MemTableInfo> actualMemTableId2Info =
+    Map<Long, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
@@ -246,7 +246,7 @@ public class WALNodeTest {
     // write until log is rolled
     long time = 0;
     IMemTable memTable = new PrimitiveMemTable();
-    int memTableId = memTable.getMemTableId();
+    long memTableId = memTable.getMemTableId();
     String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
     walNode.onMemTableCreated(memTable, tsFilePath);
     while (walNode.getCurrentLogVersion() == 0) {

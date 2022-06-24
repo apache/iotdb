@@ -33,13 +33,13 @@ import java.util.Objects;
  * file version id of its first {@link WALEntry}.
  */
 public class MemTableInfo implements SerializedSize {
-  /** memTable id 4 bytes, first version id 8 bytes */
-  private static final int FIXED_SERIALIZED_SIZE = Integer.BYTES + Long.BYTES;
+  /** memTable id 8 bytes, first version id 8 bytes */
+  private static final int FIXED_SERIALIZED_SIZE = Long.BYTES * 2;
 
   /** memTable */
   private IMemTable memTable;
   /** memTable id */
-  private int memTableId;
+  private long memTableId;
   /** path of the tsFile which this memTable will be flushed to */
   private String tsFilePath;
   /** version id of the file where this memTable's first WALEntry is located */
@@ -60,14 +60,14 @@ public class MemTableInfo implements SerializedSize {
   }
 
   public void serialize(ByteBuffer buffer) {
-    buffer.putInt(memTableId);
+    buffer.putLong(memTableId);
     ReadWriteIOUtils.write(tsFilePath, buffer);
     buffer.putLong(firstFileVersionId);
   }
 
   public static MemTableInfo deserialize(DataInputStream stream) throws IOException {
     MemTableInfo memTableInfo = new MemTableInfo();
-    memTableInfo.memTableId = stream.readInt();
+    memTableInfo.memTableId = stream.readLong();
     memTableInfo.tsFilePath = ReadWriteIOUtils.readString(stream);
     memTableInfo.firstFileVersionId = stream.readLong();
     return memTableInfo;
@@ -94,7 +94,7 @@ public class MemTableInfo implements SerializedSize {
     return memTable;
   }
 
-  public int getMemTableId() {
+  public long getMemTableId() {
     return memTableId;
   }
 

@@ -181,7 +181,7 @@ public interface IMemTable extends WALEntryValue {
 
   long getMinPlanIndex();
 
-  int getMemTableId();
+  long getMemTableId();
 
   long getCreatedTime();
 

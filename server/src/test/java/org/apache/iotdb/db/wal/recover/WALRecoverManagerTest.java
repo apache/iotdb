@@ -170,7 +170,7 @@ public class WALRecoverManagerTest {
     long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
-      int memTableId = fakeMemTable.getMemTableId();
+      long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
             checkpointManager.makeCreateMemTableCP(
@@ -228,7 +228,7 @@ public class WALRecoverManagerTest {
     long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
-      int memTableId = fakeMemTable.getMemTableId();
+      long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
             checkpointManager.makeCreateMemTableCP(

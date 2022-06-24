@@ -42,7 +42,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
@@ -57,8 +57,8 @@ public class WALNodeRecoverTask implements Runnable {
   /** version id of first valid .wal file */
   private long firstValidVersionId = Long.MAX_VALUE;
 
-  private Map<Integer, MemTableInfo> memTableId2Info;
-  private Map<Integer, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
+  private Map<Long, MemTableInfo> memTableId2Info;
+  private Map<Long, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
 
   public WALNodeRecoverTask(File logDirectory, CountDownLatch allNodesRecoveredLatch) {
     this.logDirectory = logDirectory;
@@ -165,9 +165,9 @@ public class WALNodeRecoverTask implements Runnable {
     memTableId2Info = info.getMemTableId2Info();
     memTableId2RecoverPerformer = new HashMap<>();
     // update init memTable id
-    int maxMemTableId = info.getMaxMemTableId();
-    AtomicInteger memTableIdCounter = AbstractMemTable.memTableIdCounter;
-    int oldVal = memTableIdCounter.get();
+    long maxMemTableId = info.getMaxMemTableId();
+    AtomicLong memTableIdCounter = AbstractMemTable.memTableIdCounter;
+    long oldVal = memTableIdCounter.get();
     while (maxMemTableId > oldVal) {
       if (!memTableIdCounter.compareAndSet(oldVal, maxMemTableId)) {
         oldVal = memTableIdCounter.get();

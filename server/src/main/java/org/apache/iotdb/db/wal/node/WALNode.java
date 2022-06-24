@@ -100,7 +100,7 @@ public class WALNode implements IWALNode {
    * memTable id -> memTable snapshot count, used to avoid write amplification caused by frequent
    * snapshot
    */
-  private final Map<Integer, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
+  private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   /**
    * total cost of flushedMemTables. when memControl enabled, cost is memTable ram cost, otherwise
    * cost is memTable count
@@ -128,13 +128,13 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowPlan insertRowPlan) {
+  public WALFlushListener log(long memTableId, InsertRowPlan insertRowPlan) {
     WALEntry walEntry = new WALEntry(memTableId, insertRowPlan);
     return log(walEntry);
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowNode insertRowNode) {
+  public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     if (insertRowNode.getSearchIndex() != NO_CONSENSUS_INDEX
         && insertRowNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
       safelyDeletedSearchIndex = insertRowNode.getSafelyDeletedSearchIndex();
@@ -145,14 +145,14 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(
-      int memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
+      long memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
     WALEntry walEntry = new WALEntry(memTableId, insertTabletPlan, start, end);
     return log(walEntry);
   }
 
   @Override
   public WALFlushListener log(
-      int memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+      long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
     if (insertTabletNode.getSearchIndex() != NO_CONSENSUS_INDEX
         && insertTabletNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
       safelyDeletedSearchIndex = insertTabletNode.getSafelyDeletedSearchIndex();
@@ -162,7 +162,7 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(int memTableId, DeletePlan deletePlan) {
+  public WALFlushListener log(long memTableId, DeletePlan deletePlan) {
     WALEntry walEntry = new WALEntry(memTableId, deletePlan);
     return log(walEntry);
   }

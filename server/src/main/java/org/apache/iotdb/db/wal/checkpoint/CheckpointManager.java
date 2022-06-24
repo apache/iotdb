@@ -56,11 +56,11 @@ public class CheckpointManager implements AutoCloseable {
   private final Lock infoLock = new ReentrantLock();
   // region these variables should be protected by infoLock
   /** memTable id -> memTable info */
-  private final Map<Integer, MemTableInfo> memTableId2Info = new HashMap<>();
+  private final Map<Long, MemTableInfo> memTableId2Info = new HashMap<>();
   /** cache the biggest byte buffer to serialize checkpoint */
   private volatile ByteBuffer cachedByteBuffer;
   /** max memTable id */
-  private int maxMemTableId = 0;
+  private long maxMemTableId = 0;
   /** current checkpoint file version id, only updated by fsyncAndDeleteThread */
   private int currentCheckPointFileVersion = 0;
   /** current checkpoint file log writer, only updated by fsyncAndDeleteThread */
@@ -85,8 +85,8 @@ public class CheckpointManager implements AutoCloseable {
     infoLock.lock();
     try {
       // log max memTable id
-      ByteBuffer tmpBuffer = ByteBuffer.allocate(Integer.BYTES);
-      tmpBuffer.putInt(maxMemTableId);
+      ByteBuffer tmpBuffer = ByteBuffer.allocate(Long.BYTES);
+      tmpBuffer.putLong(maxMemTableId);
       try {
         currentLogWriter.write(tmpBuffer);
       } catch (IOException e) {
@@ -126,7 +126,7 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   /** make checkpoint for flush memTable info */
-  public void makeFlushMemTableCP(int memTableId) {
+  public void makeFlushMemTableCP(long memTableId) {
     infoLock.lock();
     try {
       MemTableInfo memTableInfo = memTableId2Info.remove(memTableId);
