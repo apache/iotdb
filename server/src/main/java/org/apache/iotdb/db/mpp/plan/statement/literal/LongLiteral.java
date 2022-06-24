@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -80,6 +81,11 @@ public class LongLiteral extends Literal {
   @Override
   public double getDouble() {
     return value;
+  }
+
+  @Override
+  public Binary getBinary() {
+    return new Binary(String.valueOf(value));
   }
 
   @Override

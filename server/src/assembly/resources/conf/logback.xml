@@ -125,7 +125,7 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>DEBUG</level>
+            <level>${CONSOLE_LOG_LEVEL:-DEBUG}</level>
         </filter>
     </appender>
     <!-- a log appender that collect all log records whose level is greater than debug-->
@@ -265,16 +265,6 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.FileAppender" name="ITForCluster">
-        <file>${IT_LOG_PATH:-/dev/null}</file>
-        <encoder>
-            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>${IT_LOG_LEVEL:-OFF}</level>
-        </filter>
-    </appender>
     <root level="info">
         <appender-ref ref="FILETRACE"/>
         <appender-ref ref="FILEDEBUG"/>
@@ -283,7 +273,6 @@
         <appender-ref ref="FILEINFO"/>
         <appender-ref ref="FILEALL"/>
         <appender-ref ref="stdout"/>
-        <appender-ref ref="ITForCluster"/>
     </root>
     <logger level="OFF" name="io.moquette.broker.metrics.MQTTMessageLogger"/>
     <logger level="info" name="org.apache.iotdb.db.service"/>

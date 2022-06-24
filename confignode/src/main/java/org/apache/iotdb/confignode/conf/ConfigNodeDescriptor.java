@@ -38,13 +38,13 @@ public class ConfigNodeDescriptor {
 
   private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final ConfigNodeConf conf = new ConfigNodeConf();
+  private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
   private ConfigNodeDescriptor() {
     loadProps();
   }
 
-  public ConfigNodeConf getConf() {
+  public ConfigNodeConfig getConf() {
     return conf;
   }
 
@@ -129,6 +129,10 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
+      conf.setConfigNodeConsensusProtocolClass(
+          properties.getProperty(
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+
       conf.setDataRegionConsensusProtocolClass(
           properties.getProperty(
               "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
@@ -205,11 +209,6 @@ public class ConfigNodeDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
-
-      conf.setEnableHeartbeat(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_heartbeat", String.valueOf(conf.isEnableHeartbeat()))));
 
       // commons
       commonDescriptor.loadCommonProps(properties);

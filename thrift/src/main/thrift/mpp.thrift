@@ -159,6 +159,17 @@ struct TInvalidatePermissionCacheReq {
   2: required string roleName
 }
 
+struct THeartbeatReq {
+  1: required i64 heartbeatTimestamp
+}
+
+struct THeartbeatResp {
+  1: required i64 heartbeatTimestamp
+  2: required map<common.TConsensusGroupId, bool> judgedLeaders
+  3: optional i16 cpu
+  4: optional i16 memory
+}
+
 service InternalService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -234,7 +245,7 @@ service InternalService {
   *
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
-  common.THeartbeatResp getHeartBeat(common.THeartbeatReq req)
+  THeartbeatResp getHeartBeat(THeartbeatReq req)
 
   /**
    * Config node will create a function on a list of data nodes.

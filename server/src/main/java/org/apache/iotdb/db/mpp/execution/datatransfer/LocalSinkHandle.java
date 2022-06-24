@@ -85,32 +85,43 @@ public class LocalSinkHandle implements ISinkHandle {
 
   @Override
   public boolean isFinished() {
-    return queue.hasNoMoreTsBlocks() && queue.isEmpty();
+    synchronized (queue) {
+      return queue.hasNoMoreTsBlocks() && queue.isEmpty();
+    }
   }
 
   public void checkAndInvokeOnFinished() {
-    if (isFinished()) {
-      synchronized (this) {
-        sinkHandleListener.onFinish(this);
+    synchronized (queue) {
+      if (isFinished()) {
+        synchronized (this) {
+          sinkHandleListener.onFinish(this);
+        }
       }
     }
   }
 
   @Override
-  public synchronized void send(List<TsBlock> tsBlocks) {
+  public void send(List<TsBlock> tsBlocks) {
     Validate.notNull(tsBlocks, "tsBlocks is null");
-    if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
+    synchronized (this) {
+      if (aborted) {
+        throw new IllegalStateException("Sink handle is aborted.");
+      }
+      if (!blocked.isDone()) {
+        throw new IllegalStateException("Sink handle is blocked.");
+      }
     }
-    if (!blocked.isDone()) {
-      throw new IllegalStateException("Sink handle is blocked.");
-    }
-    if (queue.hasNoMoreTsBlocks()) {
-      return;
-    }
-    logger.info("send TsBlocks. Size: {}", tsBlocks.size());
-    for (TsBlock tsBlock : tsBlocks) {
-      blocked = queue.add(tsBlock);
+
+    synchronized (queue) {
+      if (queue.hasNoMoreTsBlocks()) {
+        return;
+      }
+      logger.info("send TsBlocks. Size: {}", tsBlocks.size());
+      synchronized (this) {
+        for (TsBlock tsBlock : tsBlocks) {
+          blocked = queue.add(tsBlock);
+        }
+      }
     }
   }
 
@@ -121,24 +132,33 @@ public class LocalSinkHandle implements ISinkHandle {
 
   @Override
   public void setNoMoreTsBlocks() {
-    synchronized (this) {
-      logger.info("set noMoreTsBlocks.");
-      if (aborted) {
-        return;
+    synchronized (queue) {
+      synchronized (this) {
+        logger.info("set noMoreTsBlocks.");
+        if (aborted) {
+          return;
+        }
+        queue.setNoMoreTsBlocks(true);
+        sinkHandleListener.onEndOfBlocks(this);
       }
-      queue.setNoMoreTsBlocks(true);
-      sinkHandleListener.onEndOfBlocks(this);
     }
     checkAndInvokeOnFinished();
     logger.info("noMoreTsBlocks has been set.");
   }
 
   @Override
-  public synchronized void abort() {
+  public void abort() {
     logger.info("Sink handle is being aborted.");
-    aborted = true;
-    queue.destroy();
-    sinkHandleListener.onAborted(this);
+    synchronized (queue) {
+      synchronized (this) {
+        if (aborted) {
+          return;
+        }
+        aborted = true;
+        queue.destroy();
+        sinkHandleListener.onAborted(this);
+      }
+    }
     logger.info("Sink handle is aborted");
   }
 

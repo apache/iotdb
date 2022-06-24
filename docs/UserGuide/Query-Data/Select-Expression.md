@@ -109,6 +109,7 @@ It costs 0.014s
 ```
 
 ## Compare Expression
+### Operators
 #### Unary Logical Operators
 Supported operator `!`
 
@@ -124,7 +125,7 @@ Supported operators `>`, `>=`, `<`, `<=`, `==`, `!=`
 
 Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE` 
 
-It will transform all type to `DOUBLE` then do computation. 
+Note: It will transform all type to `DOUBLE` then do computation. 
 
 Output data type: `BOOLEAN`
 
@@ -138,14 +139,31 @@ Output data type: `BOOLEAN`
 
 Note: Only when the left operand and the right operand under a certain timestamp are both `BOOLEAN` type, the binary logic operation will have an output value.
 
+#### IN Operators
+
+Supported operator `IN`
+
+Supported input data types: `All Types`
+
+Output data type: `BOOLEAN`
+
+#### String Match Operators
+
+Supported operators `LIKE`, `REGEXP`
+
+Supported input data types: `TEXT`
+
+Output data type: `BOOLEAN`
+
 ### Example
+
+Input1:
 ```sql
 select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 ```
 
-Output:
+Output1:
 ```
-IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 +-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
 |                         Time|root.test.a|root.test.b|root.test.a > 10|root.test.a <= root.test.b|!root.test.a <= root.test.b|(root.test.a > 10) & (root.test.a > root.test.b)|
 +-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
@@ -156,6 +174,21 @@ IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 |1970-01-01T08:00:00.008+08:00|          1|       22.0|           false|                      true|                      false|                                           false|
 |1970-01-01T08:00:00.010+08:00|         23|       12.0|            true|                     false|                       true|                                            true|
 +-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
+```
+
+Input2:
+```sql
+select a, b, a in (1, 2), b like '1%', b regexp '[0-2]' from root.test;
+```
+
+Output2:
+```
++-----------------------------+-----------+-----------+--------------------+-------------------------+--------------------------+
+|                         Time|root.test.a|root.test.b|root.test.a IN (1,2)|root.test.b LIKE '^1.*?$'|root.test.b REGEXP '[0-2]'|
++-----------------------------+-----------+-----------+--------------------+-------------------------+--------------------------+
+|1970-01-01T08:00:00.001+08:00|          1| 111test111|                true|                     true|                      true|
+|1970-01-01T08:00:00.003+08:00|          3| 333test333|               false|                    false|                     false|
++-----------------------------+-----------+-----------+--------------------+-------------------------+--------------------------+
 ```
 
 ## Priority of Operators

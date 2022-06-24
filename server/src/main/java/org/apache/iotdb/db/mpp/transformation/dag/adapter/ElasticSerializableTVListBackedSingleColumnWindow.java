@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.access.RowIterator;
-import org.apache.iotdb.commons.udf.api.access.RowWindow;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWindow {
 
@@ -59,8 +60,8 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
   }
 
   @Override
-  public TSDataType getDataType(int columnIndex) {
-    return tvList.getDataType();
+  public Type getDataType(int columnIndex) {
+    return UDFDataTypeTransformer.transformToUDFDataType(tvList.getDataType());
   }
 
   @Override

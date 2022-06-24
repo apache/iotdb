@@ -30,6 +30,7 @@ import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.service.TransportHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
@@ -254,6 +255,7 @@ public class IoTDBSyncSenderIT {
   private void restart() throws Exception {
     //    EnvironmentUtils.restartDaemon();
     EnvironmentUtils.shutdownDaemon();
+    WALRecoverManager.getInstance().clear();
     EnvironmentUtils.reactiveDaemon();
   }
 

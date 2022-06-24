@@ -848,11 +848,7 @@ public class LocalConfigNode {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     DataRegionId dataRegionId = dataPartitionTable.getDataRegionId(storageGroup, path);
     if (dataRegionId == null) {
-      throw new DataRegionException(
-          String.format(
-              "Storage group %s has not been prepared well. "
-                  + "Data region for %s has not been allocated or is not initialized.",
-              storageGroup, path));
+      return null;
     }
     DataRegion dataRegion = storageEngine.getDataRegion(dataRegionId);
     if (dataRegion == null) {
@@ -906,7 +902,7 @@ public class LocalConfigNode {
             partitionSlotsMap
                 .computeIfAbsent(storageGroup, key -> new HashMap<>())
                 .put(
-                    executor.getSeriesPartitionSlot(device.getDevice()),
+                    executor.getSeriesPartitionSlot(device.getFullPath()),
                     genStandaloneRegionReplicaSet(
                         TConsensusGroupType.SchemaRegion, schemaRegionId.getId()));
           }
@@ -963,19 +959,24 @@ public class LocalConfigNode {
       for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
         String deviceId = dataPartitionQueryParam.getDevicePath();
         DataRegionId dataRegionId = getBelongedDataRegionId(new PartialPath(deviceId));
-        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            new HashMap<>();
+        // dataRegionId is null means the DataRegion is not created,
+        // use an empty dataPartitionMap to init DataPartition
+        if (dataRegionId != null) {
+          Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+              new HashMap<>();
 
-        timePartitionToRegionsMap.put(
-            new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
-            Collections.singletonList(
-                genStandaloneRegionReplicaSet(
-                    TConsensusGroupType.DataRegion, dataRegionId.getId())));
-
-        deviceToRegionsMap.put(
-            executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
+          timePartitionToRegionsMap.put(
+              new TTimePartitionSlot(STANDALONE_MOCK_TIME_SLOT_START_TIME),
+              Collections.singletonList(
+                  genStandaloneRegionReplicaSet(
+                      TConsensusGroupType.DataRegion, dataRegionId.getId())));
+          deviceToRegionsMap.put(
+              executor.getSeriesPartitionSlot(deviceId), timePartitionToRegionsMap);
+        }
       }
-      dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
+      if (!deviceToRegionsMap.isEmpty()) {
+        dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
+      }
     }
     return new DataPartition(
         dataPartitionMap,

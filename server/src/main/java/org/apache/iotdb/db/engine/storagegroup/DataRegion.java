@@ -40,7 +40,9 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -304,8 +306,39 @@ public class DataRegion {
     } else {
       lastFlushTimeManager = new LastFlushTimeManager();
     }
-    // recover tsfiles
-    recover();
+
+    // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
+    if (config.isClusterMode()
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)
+        && !StorageEngineV2.getInstance().isAllSgReady()) {
+      logger.debug(
+          "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
+          logicalStorageGroupName,
+          dataRegionId);
+      for (String fileFolder : DirectoryManager.getInstance().getAllFilesFolders()) {
+        File dataRegionFolder =
+            fsFactory.getFile(fileFolder, logicalStorageGroupName + File.separator + dataRegionId);
+        if (dataRegionFolder.exists()) {
+          File[] timePartitions = dataRegionFolder.listFiles();
+          if (timePartitions != null) {
+            for (File timePartition : timePartitions) {
+              try {
+                FileUtils.forceDelete(timePartition);
+              } catch (IOException e) {
+                logger.error(
+                    "Exception occurs when deleting time partition directory {} for {}-{}",
+                    timePartitions,
+                    logicalStorageGroupName,
+                    dataRegionId,
+                    e);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      recover();
+    }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
@@ -509,8 +542,17 @@ public class DataRegion {
     // recover and start timed compaction thread
     initCompaction();
 
-    logger.info(
-        "The data region {}[{}] is recovered successfully", logicalStorageGroupName, dataRegionId);
+    if (config.isMppMode()
+        ? StorageEngineV2.getInstance().isAllSgReady()
+        : StorageEngine.getInstance().isAllSgReady()) {
+      logger.info(
+          "The data region {}[{}] is created successfully", logicalStorageGroupName, dataRegionId);
+    } else {
+      logger.info(
+          "The data region {}[{}] is recovered successfully",
+          logicalStorageGroupName,
+          dataRegionId);
+    }
   }
 
   private void initCompaction() {
@@ -529,7 +571,7 @@ public class DataRegion {
         TimeUnit.MILLISECONDS);
   }
 
-  private void recoverCompaction() throws Exception {
+  private void recoverCompaction() {
     CompactionRecoverManager compactionRecoverManager =
         new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, dataRegionId);
     compactionRecoverManager.recoverInnerSpaceCompaction(true);
@@ -1363,19 +1405,26 @@ public class DataRegion {
    *
    * @return True if flush task is submitted successfully
    */
-  public boolean submitAFlushTask(long timeRangeId, boolean sequence) {
+  public boolean submitAFlushTask(long timeRangeId, boolean sequence, IMemTable memTable) {
     writeLock("submitAFlushTask");
     try {
+      if (memTable.getFlushStatus() != FlushStatus.WORKING) {
+        return false;
+      }
+
       TsFileProcessor tsFileProcessor;
       if (sequence) {
         tsFileProcessor = workSequenceTsFileProcessors.get(timeRangeId);
       } else {
         tsFileProcessor = workUnsequenceTsFileProcessors.get(timeRangeId);
       }
-      if (tsFileProcessor != null) {
+      // only submit when tsFileProcessor exists and memTables are same
+      boolean shouldSubmit =
+          tsFileProcessor != null && tsFileProcessor.getWorkMemTable() == memTable;
+      if (shouldSubmit) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
-      return tsFileProcessor != null;
+      return shouldSubmit;
     } finally {
       writeUnlock();
     }
@@ -1641,9 +1690,7 @@ public class DataRegion {
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
-      List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
-      folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-      deleteAllSGFolders(folder);
+      deleteAllSGFolders(DirectoryManager.getInstance().getAllFilesFolders());
 
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();

@@ -106,8 +106,8 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maximumSchemaRegionCount
-  7: optional i32 maximumDataRegionCount
+  6: optional i32 maxSchemaRegionGroupCount
+  7: optional i32 maxDataRegionGroupCount
 }
 
 // Schema
@@ -229,6 +229,16 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
+// show regions
+struct TShowRegionReq {
+  1: optional common.TConsensusGroupType consensusGroupType;
+}
+
+struct TShowRegionResp {
+  1: required common.TSStatus status
+  2: optional list<common.TRegionLocation> regionInfoList;
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -292,7 +302,11 @@ service ConfigIService {
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
+
+  common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /* UDF */
 
@@ -303,6 +317,10 @@ service ConfigIService {
   /* Flush */
 
   common.TSStatus flush(common.TFlushReq req)
+
+  /* Show Region */
+
+  TShowRegionResp showRegion(TShowRegionReq req)
 
 }
 
