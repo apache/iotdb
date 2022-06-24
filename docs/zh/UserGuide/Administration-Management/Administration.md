@@ -126,6 +126,7 @@ Msg: The statement is executed successfully.
 ```
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 
 执行状态如下所示：
@@ -134,6 +135,8 @@ REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
 REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+Msg: The statement is executed successfully.
+REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
 ```
 

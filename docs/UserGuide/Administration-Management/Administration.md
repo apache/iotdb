@@ -96,11 +96,12 @@ Msg: 602: No permissions for this operation INSERT
 
 Now, we use root user to grant the two users write privileges to the corresponding storage groups.
 
-We use `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` to grant user privileges. For example:
+We use `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` to grant user privileges(ps: grant create user does not need path). For example:
 
 ```
 GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 The execution result is as follows:
 
@@ -108,6 +109,8 @@ The execution result is as follows:
 IoTDB> GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
 IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+Msg: The statement is executed successfully.
+IoTDB> GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
 ```
 
@@ -119,11 +122,12 @@ Msg: The statement is executed successfully.
 
 ### Revoker User Privilege
 
-After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` to revoke the granted user privileges. For example, use root user to revoke the privilege of ln_write_user and sgcc_write_user:
+After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` to revoke the granted user privileges(ps: revoke create user does not need path). For example, use root user to revoke the privilege of ln_write_user and sgcc_write_user:
 
 ```
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 
 The execution result is as follows:
@@ -132,6 +136,8 @@ The execution result is as follows:
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
 REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+Msg: The statement is executed successfully.
+REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
 ```
 

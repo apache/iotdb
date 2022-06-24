@@ -520,7 +520,7 @@ grantRoleToUser
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
     ;
 
 // Revoke Role Privileges
