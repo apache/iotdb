@@ -486,7 +486,7 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt % 6].split(",");
+          String[] expectedStrings = retArray[cnt].split(",");
           StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -495,7 +495,6 @@ public class IoTDBAlignByDeviceIT {
                 .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
                 .append(",");
           }
-          System.out.println(actualBuilder.toString());
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
