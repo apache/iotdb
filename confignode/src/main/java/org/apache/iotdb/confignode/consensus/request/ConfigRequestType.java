@@ -26,11 +26,12 @@ public enum ConfigRequestType {
   SetSchemaReplicationFactor,
   SetDataReplicationFactor,
   SetTimePartitionInterval,
+  AdjustMaxRegionGroupCount,
   DeleteStorageGroup,
   PreDeleteStorageGroup,
   GetStorageGroup,
   CountStorageGroup,
-  CreateRegions,
+  CreateRegionGroups,
   DeleteRegions,
   GetSchemaPartition,
   CreateSchemaPartition,
@@ -59,7 +60,9 @@ public enum ConfigRequestType {
   ListUserRoles,
   ListRoleUsers,
   ApplyConfigNode,
+  RemoveConfigNode,
   CreateFunction,
   DropFunction,
-  GetNodePathsPartition;
+  GetNodePathsPartition,
+  GetRegionLocations;
 }

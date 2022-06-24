@@ -19,20 +19,21 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.intermediate;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.access.RowWindow;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowWindowReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.adapter.ElasticSerializableTVListBackedSingleColumnWindow;
 import org.apache.iotdb.db.mpp.transformation.dag.adapter.LayerPointReaderBackedSingleColumnRow;
 import org.apache.iotdb.db.mpp.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,21 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
       private boolean hasCached = false;
       private boolean isCurrentNull = false;
+
+      @Override
+      public YieldableState yield() throws IOException, QueryProcessException {
+        if (!hasCached) {
+          final YieldableState yieldableState = parentLayerPointReader.yield();
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+          hasCached = yieldableState == YieldableState.YIELDABLE;
+          if (hasCached) {
+            isCurrentNull = parentLayerPointReader.isCurrentNull();
+          }
+        }
+        return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      }
 
       @Override
       public boolean next() throws IOException, QueryProcessException {
@@ -129,6 +145,51 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
       private boolean hasCached = false;
       private int beginIndex = -slidingStep;
+
+      @Override
+      public YieldableState yield() throws IOException, QueryProcessException {
+        if (hasCached) {
+          return YieldableState.YIELDABLE;
+        }
+
+        beginIndex += slidingStep;
+        int endIndex = beginIndex + windowSize;
+        if (beginIndex < 0 || endIndex < 0) {
+          LOGGER.warn(
+              "SingleInputColumnSingleReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              beginIndex,
+              endIndex,
+              windowSize);
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        int pointsToBeCollected = endIndex - tvList.size();
+        if (0 < pointsToBeCollected) {
+          final YieldableState yieldableState =
+              LayerCacheUtils.yieldPoints(
+                  dataType, parentLayerPointReader, tvList, pointsToBeCollected);
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            beginIndex -= slidingStep;
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+
+          if (tvList.size() <= beginIndex) {
+            return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+          }
+
+          window.seek(
+              beginIndex,
+              tvList.size(),
+              tvList.getTime(beginIndex),
+              tvList.getTime(tvList.size() - 1));
+        } else {
+          window.seek(
+              beginIndex, endIndex, tvList.getTime(beginIndex), tvList.getTime(endIndex - 1));
+        }
+
+        hasCached = true;
+        return YieldableState.YIELDABLE;
+      }
 
       @Override
       public boolean next() throws IOException, QueryProcessException {
@@ -190,8 +251,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException {
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
@@ -203,29 +263,97 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
-    long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
-    if (tvList.size() == 0
-        && LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList)
-        && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
-      // display window begin should be set to the same as the min timestamp of the query result
-      // set
-      nextWindowTimeBeginGivenByStrategy = tvList.getTime(0);
-    }
-    long finalNextWindowTimeBeginGivenByStrategy = nextWindowTimeBeginGivenByStrategy;
-
-    final boolean hasAtLeastOneRow = tvList.size() != 0;
-
     return new LayerRowWindowReader() {
 
+      private boolean isFirstIteration = true;
+      private boolean hasAtLeastOneRow = false;
+
       private boolean hasCached = false;
-      private long nextWindowTimeBegin = finalNextWindowTimeBeginGivenByStrategy;
+      private long nextWindowTimeBegin = strategy.getDisplayWindowBegin();
       private int nextIndexBegin = 0;
 
       @Override
+      public YieldableState yield() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (tvList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
+            final YieldableState yieldableState =
+                LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
+            if (yieldableState != YieldableState.YIELDABLE) {
+              return yieldableState;
+            }
+            // display window begin should be set to the same as the min timestamp of the query
+            // result set
+            nextWindowTimeBegin = tvList.getTime(0);
+          }
+          hasAtLeastOneRow = tvList.size() != 0;
+          isFirstIteration = false;
+        }
+
+        if (hasCached) {
+          return YieldableState.YIELDABLE;
+        }
+
+        if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
+          final YieldableState yieldableState =
+              LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+          if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+            break;
+          }
+        }
+
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
+          if (nextWindowTimeBegin <= tvList.getTime(i)) {
+            nextIndexBegin = i;
+            break;
+          }
+          if (i == tvList.size() - 1) {
+            nextIndexBegin = tvList.size();
+          }
+        }
+
+        int nextIndexEnd = tvList.size();
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
+          if (nextWindowTimeEnd <= tvList.getTime(i)) {
+            nextIndexEnd = i;
+            break;
+          }
+        }
+        window.seek(
+            nextIndexBegin,
+            nextIndexEnd,
+            nextWindowTimeBegin,
+            nextWindowTimeBegin + timeInterval - 1);
+
+        hasCached = nextIndexBegin != nextIndexEnd;
+        return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      }
+
+      @Override
       public boolean next() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (tvList.size() == 0
+              && LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList)
+              && nextWindowTimeBegin == Long.MIN_VALUE) {
+            // display window begin should be set to the same as the min timestamp of the query
+            // result set
+            nextWindowTimeBegin = tvList.getTime(0);
+          }
+          hasAtLeastOneRow = tvList.size() != 0;
+          isFirstIteration = false;
+        }
+
         if (hasCached) {
           return true;
         }
+
         if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
           return false;
         }

@@ -37,8 +37,10 @@ public class DataTypeMismatchException extends MetadataException {
             realType,
             insertType,
             time,
-            value.toString().length() < 100
-                ? value.toString()
-                : value.toString().substring(0, 100)));
+            value == null
+                ? "null"
+                : value.toString().length() < 100
+                    ? value.toString()
+                    : value.toString().substring(0, 100)));
   }
 }

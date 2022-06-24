@@ -60,6 +60,7 @@ keyWords
     | CQ
     | CQS
     | CREATE
+    | DATA
     | DEBUG
     | DELETE
     | DESC
@@ -126,6 +127,7 @@ keyWords
     | QUERY
     | READONLY
     | REGEXP
+    | REGIONS
     | REMOVE
     | RENAME
     | RESAMPLE

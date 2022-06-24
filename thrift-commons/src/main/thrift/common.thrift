@@ -77,14 +77,14 @@ struct TDataNodeLocation {
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
-struct THeartbeatReq {
-  1: required i64 heartbeatTimestamp
-}
-
-struct THeartbeatResp {
-  1: required i64 heartbeatTimestamp
-  2: optional i16 cpu
-  3: optional i16 memory
+struct TRegionLocation {
+  1: required TConsensusGroupId consensusGroupId
+  2: required string storageGroup
+  3: required i32 dataNodeId;
+  4: required string rpcAddresss;
+  5: required i32 rpcPort;
+  6: required i64 slots;
+  7: optional string status;
 }
 
 struct TDataNodeInfo {
@@ -93,7 +93,7 @@ struct TDataNodeInfo {
   3: required i64 maxMemory
 }
 
-struct TFlushReq{
+struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
    3: optional i32 dataNodeId

@@ -111,6 +111,7 @@ class Cursor(object):
             sql = operation % parameters
 
         time_index = []
+        time_names = []
         if self.__sqlalchemy_mode:
             sql_seqs = []
             seqs = sql.split("\n")
@@ -119,6 +120,10 @@ class Cursor(object):
                     time_index = [
                         int(index)
                         for index in seq.replace("FROM Time Index", "").split()
+                    ]
+                elif seq.find("FROM Time Name") >= 0:
+                    time_names = [
+                        name for name in seq.replace("FROM Time Name", "").split()
                     ]
                 else:
                     sql_seqs.append(seq)
@@ -137,8 +142,8 @@ class Cursor(object):
                     time_column = data.columns[0]
                     time_column_value = data.Time
                     del data[time_column]
-                    for index in time_index:
-                        data.insert(index, time_column + str(index), time_column_value)
+                    for i in range(len(time_index)):
+                        data.insert(time_index[i], time_names[i], time_column_value)
 
                 col_names = data.columns.tolist()
                 col_types = data_set.get_column_types()
@@ -152,6 +157,7 @@ class Cursor(object):
                 "row_count": len(rows),
             }
         except Exception:
+            logger.error("failed to execute statement:{}".format(sql))
             self.__result = {
                 "col_names": None,
                 "col_types": None,

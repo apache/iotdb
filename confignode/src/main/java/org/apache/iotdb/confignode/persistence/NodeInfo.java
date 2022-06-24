@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
@@ -296,6 +297,34 @@ public class NodeInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode());
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
+    } finally {
+      configNodeInfoReadWriteLock.writeLock().unlock();
+    }
+    return status;
+  }
+
+  /**
+   * Update ConfigNodeList both in memory and confignode-system.properties file
+   *
+   * @param removeConfigNodeReq RemoveConfigNodeReq
+   * @return REMOVE_CONFIGNODE_FAILED if remove online ConfigNode failed.
+   */
+  public TSStatus removeConfigNodeList(RemoveConfigNodeReq removeConfigNodeReq) {
+    TSStatus status = new TSStatus();
+    configNodeInfoReadWriteLock.writeLock().lock();
+    try {
+      onlineConfigNodes.remove(removeConfigNodeReq.getConfigNodeLocation());
+      storeConfigNode();
+      LOGGER.info(
+          "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
+          removeConfigNodeReq.getConfigNodeLocation(),
+          onlineConfigNodes);
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (IOException e) {
+      LOGGER.error("Remove online ConfigNode failed.", e);
+      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode());
+      status.setMessage(
+          "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }

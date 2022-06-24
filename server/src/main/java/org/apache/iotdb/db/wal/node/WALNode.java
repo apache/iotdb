@@ -221,13 +221,21 @@ public class WALNode implements IWALNode {
       firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
       if (firstValidVersionId == Integer.MIN_VALUE) {
         // roll wal log writer to delete current wal file
-        rollWALFile();
+        if (buffer.getCurrentWALFileSize() > 0) {
+          rollWALFile();
+        }
         // update firstValidVersionId
         firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
         if (firstValidVersionId == Integer.MIN_VALUE) {
           firstValidVersionId = buffer.getCurrentWALFileVersion();
         }
       }
+
+      logger.debug(
+          "Start deleting outdated wal files for wal node-{}, the first valid version id is {}, and the safely deleted search index is {}.",
+          identifier,
+          firstValidVersionId,
+          safelyDeletedSearchIndex);
 
       // delete outdated files
       deleteOutdatedFiles();
@@ -262,10 +270,13 @@ public class WALNode implements IWALNode {
     }
 
     private void deleteOutdatedFiles() {
+      int deletedFilesNum = 0;
       File[] filesToDelete = logDirectory.listFiles(this::filterFilesToDelete);
       if (filesToDelete != null) {
         for (File file : filesToDelete) {
-          if (!file.delete()) {
+          if (file.delete()) {
+            deletedFilesNum++;
+          } else {
             logger.info("Fail to delete outdated wal file {} of wal node-{}.", file, identifier);
           }
           // update totalRamCostOfFlushedMemTables
@@ -276,6 +287,10 @@ public class WALNode implements IWALNode {
           }
         }
       }
+      logger.debug(
+          "Successfully delete {} outdated wal files for wal node-{}.",
+          deletedFilesNum,
+          identifier);
     }
 
     private boolean filterFilesToDelete(File dir, String name) {
@@ -334,7 +349,7 @@ public class WALNode implements IWALNode {
       if (memTable.getFlushStatus() == FlushStatus.WORKING) {
         shouldWait =
             dataRegion.submitAFlushTask(
-                TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile));
+                TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile), memTable);
         logger.info(
             "WAL node-{} flushes memTable-{} to TsFile {}, memTable size is {}.",
             identifier,
