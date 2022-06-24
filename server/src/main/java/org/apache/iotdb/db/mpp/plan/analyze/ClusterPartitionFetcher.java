@@ -433,7 +433,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     /** the size of partitionCache */
     private final int cacheSize = config.getPartitionCacheSize();
     /** the cache of storage group */
-    private Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
     /** device -> tRegionReplicaSet */
     private final Cache<String, TRegionReplicaSet> schemaPartitionCache;
     /** tSeriesPartitionSlot, tTimesereisPartitionSlot -> TRegionReplicaSets * */
@@ -460,11 +460,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       } else {
         for (String devicePath : devicePaths) {
           boolean hit = false;
-          for (String storageGroup : storageGroupCache) {
-            if (PathUtils.isStartWith(devicePath, storageGroup)) {
-              deviceToStorageGroupMap.put(devicePath, storageGroup);
-              hit = true;
-              break;
+          synchronized (storageGroupCache) {
+            for (String storageGroup : storageGroupCache) {
+              if (PathUtils.isStartWith(devicePath, storageGroup)) {
+                deviceToStorageGroupMap.put(devicePath, storageGroup);
+                hit = true;
+                break;
+              }
             }
           }
           if (!hit) {
