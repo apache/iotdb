@@ -171,6 +171,16 @@ IoTDB> show paths using schema template t1
 +-----------+
 ```
 
+## 解除元数据模板
+
+对于挂载了元数据模板的节点或其孩子节点，如果：1）曾按模板中的序列写入了数据，或2）使用了 `create timeseries of schema template`，则在使用以下命令之前，不能够卸载或删除元数据模板：
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg.d1
+```
+
+**注意**：这一操作会删除对应节点下按照模板中的序列写入的数据。
+
 ## 卸载元数据模板
 
 卸载元数据模板的 SQL 语句如下所示：
@@ -178,8 +188,6 @@ IoTDB> show paths using schema template t1
 ```shell
 IoTDB> unset schema template t1 from root.sg1.d1
 ```
-
-**注意**：目前不支持从曾经使用模板插入数据后（即使数据已被删除）的实体中卸载模板。
 
 ## 删除元数据模板
 
@@ -189,4 +197,5 @@ IoTDB> unset schema template t1 from root.sg1.d1
 IoTDB> drop schema template t1
 ```
 
-**注意**：不支持删除已经挂载的模板。
+**注意**：不能删除尚未卸载的模板。
+

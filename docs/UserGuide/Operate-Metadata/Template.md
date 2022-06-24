@@ -171,15 +171,23 @@ The execution result is as follows:
 +-----------+
 ```
 
-## Uset Schema Template
+## Deactivate SchemaTemplate
+
+If any data points had been inserted into the timeseries concatenated by the path of the node and measurements inside activated template, or `create timeseries of schema template` had been issued, you should deactivate template on nodes before unset tempalte upon them.
+
+```shell
+IoTDB> deactivate schema template t1 from root.sg1.d1
+```
+
+This statement will detele corresponding data points as well.
+
+## Unset Schema Template
 
 The SQL Statement for unsetting schema template is as follow:
 
 ```shell
 IoTDB> unset schema template t1 from root.sg1.d1
 ```
-
-**Attention**: Unsetting the template from entities, which have already inserted records using the template, is not supported.
 
 ## Drop Schema Template
 

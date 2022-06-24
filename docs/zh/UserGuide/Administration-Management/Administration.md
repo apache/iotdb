@@ -294,7 +294,7 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |CREATE\_TIMESERIES|创建时间序列。路径相关|
 |INSERT\_TIMESERIES|插入数据。路径相关|
 |READ\_TIMESERIES|查询数据。路径相关|
-|DELETE\_TIMESERIES|删除数据或时间序列。路径相关|
+|DELETE\_TIMESERIES|删除数据或时间序列，解除模板。路径相关|
 |DELETE\_STORAGE\_GROUP|删除存储组。路径相关|
 |CREATE\_USER|创建用户。路径无关|
 |DELETE\_USER|删除用户。路径无关|
@@ -317,6 +317,8 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |STOP_TRIGGER|停止触发器。路径相关|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|
+|UPDATE_TEMPLATE|创建、删除、修改模板。路径无关。|
+|APPLY_TEMPLATE|挂载、卸载、激活模板。路径相关。|
 
 ### 用户名限制
 

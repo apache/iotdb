@@ -174,7 +174,7 @@ boolean checkTimeseriesExists(String path)
 
 #### 元数据模版
 
-* 创建元数据模板，可以通过先后创建 Template、MeasurementNode 的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
+* 创建元数据模板，可以通过先后创建`Template`、`MeasurementNode`的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -207,7 +207,7 @@ Class MeasurementNode extends Node {
 }
 ```
 
-通过上述类的实例描述模板时，Template 内应当仅能包含单层的 MeasurementNode，具体可以参见如下示例：
+通过上述类的实例描述模板时，`Template`内应当仅能包含单层的`MeasurementNode`，具体可以参见如下示例：
 
 ```java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -278,7 +278,7 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-* 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
+* 将名为`templateName`的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为`templateName`的元数据模板
 * **请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来版本更新及各模块的协作**
 
 ``` java
@@ -306,10 +306,21 @@ void unsetSchemaTemplate(String prefixPath, String templateName);
 public void dropSchemaTemplate(String templateName);
 ```
 
-* 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 setSchemaTemplate 。而只有在已有数据点插入模板对应的物理量时，模板才会被设置为激活状态，进而被 show timeseries 等查询检测到。
-* 卸载'prefixPath'路径下的名为'templateName'的元数据模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的元数据模板。
+* 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 `setSchemaTemplate` 。而只有在已有数据点插入模板对应的物理量，或使用以下接口激活模板，模板才会被设置为激活状态，进而被 `show timeseries` 等查询访问到。
 
-注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。
+```java
+public void createTimeseriesOfTemplateOnPath(String path);
+```
+
+* 卸载'prefixPath'路径下的名为`templateName`的元数据模板。你需要保证给定的路径`prefixPath`下需要有名为`templateName`的元数据模板。
+* 如果在挂载模板后，曾经在`prefixPath`路径及其后代节点使用模板插入数据后，或者使用了激活模板命令，那么在卸载模板之前，还要对所有已激活模板的节点使用以下接口解除模板：
+
+```java
+public void deactivateTemplateOn(String templateName, String prefixPath);
+```
+
+* 以上解除模板接口中，参数`prefixPath`如果含有通配符（`*`或`**`）则按 PathPattern 匹配目标路径，否则仅表达其字面量对应的路径。
+* 解除模板接口会删除对应节点按照模板中的序列写入的数据。
 
 
 ### 数据操作接口 DML

@@ -44,6 +44,10 @@ public class DeactivateTemplatePlan extends PhysicalPlan {
   /**
    * Inverse process of {@link ActivateTemplatePlan}, may delete time series data as side effect.
    *
+   * <p><b>Before this plan being executed, it is compulsory to set {@link #pathToDeactivate} with
+   * {@linkplain org.apache.iotdb.db.metadata.MManager#getPathsUsingTemplateUnderPrefix}, otherwise
+   * it may deactivate nothing.</b>
+   *
    * @param templateName template to delete.
    * @param prefixPath prefix of paths expected to set NOT using template, in pattern manner with
    *     wildcard.

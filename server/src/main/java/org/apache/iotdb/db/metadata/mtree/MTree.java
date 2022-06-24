@@ -1806,7 +1806,7 @@ public class MTree implements Serializable {
 
   /**
    * Notice that wildcards do not semantically equal prefix match. E.g., prefix match for a.b.c
-   * always includes itself, while neither one level nor multi level wildcard acts do not.
+   * always includes itself, while neither one level nor multi level wildcard does so.
    *
    * <p>When it comes to delete one time series, it is necessary to make a more cautious filtering
    * which requires explicit designation by wildcards, unlike viewing some paths about.
