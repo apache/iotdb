@@ -167,14 +167,16 @@ public class ConsensusManager {
   public TConfigNodeLocation getLeader() {
     for (int retry = 0; retry < 50; retry++) {
       Peer leaderPeer = consensusImpl.getLeader(consensusGroupId);
-      List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getOnlineConfigNodes();
-      TConfigNodeLocation leaderLocation =
-          onlineConfigNodes.stream()
-              .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
-              .findFirst()
-              .orElse(null);
-      if (leaderLocation != null) {
-        return leaderLocation;
+      if (leaderPeer != null) {
+        List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getOnlineConfigNodes();
+        TConfigNodeLocation leaderLocation =
+            onlineConfigNodes.stream()
+                .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
+                .findFirst()
+                .orElse(null);
+        if (leaderLocation != null) {
+          return leaderLocation;
+        }
       }
 
       try {
