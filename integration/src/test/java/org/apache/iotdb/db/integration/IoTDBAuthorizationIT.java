@@ -430,10 +430,10 @@ public class IoTDBAuthorizationIT {
         assertTrue(caught);
 
         // duplicate grant
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER on root.a.**");
         caught = false;
         try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER");
+          adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER on root.a.**");
         } catch (SQLException e) {
           caught = true;
         }
