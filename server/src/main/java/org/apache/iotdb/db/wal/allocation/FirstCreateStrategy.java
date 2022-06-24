@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.allocation;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALNode;
 
@@ -74,6 +75,21 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
         // avoid deletion
         ((WALNode) walNode).setSafelyDeletedSearchIndex(Long.MIN_VALUE);
         identifier2Nodes.put(applicantUniqueId, (WALNode) walNode);
+      }
+    } finally {
+      nodesLock.unlock();
+    }
+  }
+
+  public void deleteWALNode(String applicantUniqueId) {
+    nodesLock.lock();
+    try {
+      WALNode walNode = identifier2Nodes.remove(applicantUniqueId);
+      if (walNode != null) {
+        walNode.close();
+        if (walNode.getLogDirectory().exists()) {
+          FileUtils.deleteDirectory(walNode.getLogDirectory());
+        }
       }
     } finally {
       nodesLock.unlock();

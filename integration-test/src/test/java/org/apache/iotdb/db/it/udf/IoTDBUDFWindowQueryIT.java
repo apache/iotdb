@@ -177,6 +177,7 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
+  @Ignore
   public void testSlidingSizeWindow7() {
     testSlidingSizeWindow(0);
   }
@@ -325,29 +326,34 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
+  @Ignore
   public void testSlidingTimeWindow9() {
     testSlidingTimeWindow(
         (int) (0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), ITERATION_TIMES / 2, 0);
   }
 
   @Test
+  @Ignore
   public void testSlidingTimeWindow10() {
     testSlidingTimeWindow(
         (int) (-0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
+  @Ignore
   public void testSlidingTimeWindow11() {
     testSlidingTimeWindow(
         (int) (0.01 * ITERATION_TIMES), (int) (-0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
+  @Ignore
   public void testSlidingTimeWindow12() {
     testSlidingTimeWindow((int) (0.01 * ITERATION_TIMES), 0, 0, ITERATION_TIMES / 2);
   }
 
   @Test
+  @Ignore
   public void testSlidingTimeWindow13() {
     testSlidingTimeWindow(0, (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
@@ -458,6 +464,7 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
+  @Ignore
   public void testSlidingTimeWindowWithTimeIntervalOnly6() {
     testSlidingTimeWindowWithTimeIntervalOnly(-ITERATION_TIMES);
   }

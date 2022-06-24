@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.itbase.runtime;
+package org.apache.iotdb.itbase.exception;
 
-import java.sql.SQLException;
 import java.util.List;
 
-public class InconsistentDataException extends SQLException {
+public class InconsistentDataException extends RuntimeException {
 
   public <T> InconsistentDataException(List<T> data, List<String> endpoints) {
     super(String.format("Datasets are inconsistent: %s with data %s", endpoints, data));

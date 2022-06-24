@@ -157,7 +157,8 @@ public class SessionManager {
       long queryId,
       long statementId,
       boolean haveStatementId,
-      boolean haveSetQueryId) {
+      boolean haveSetQueryId,
+      Consumer<Long> releaseByQueryId) {
     if (!checkLogin(sessionId)) {
       return RpcUtils.getStatus(
           TSStatusCode.NOT_LOGIN_ERROR,
@@ -174,9 +175,9 @@ public class SessionManager {
     try {
       if (haveStatementId) {
         if (haveSetQueryId) {
-          this.closeDataset(statementId, queryId);
+          this.closeDataset(statementId, queryId, releaseByQueryId);
         } else {
-          this.closeStatement(sessionId, statementId);
+          this.closeStatement(sessionId, statementId, releaseByQueryId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -187,6 +188,21 @@ public class SessionManager {
       return onNPEOrUnexpectedException(
           e, OperationType.CLOSE_OPERATION, TSStatusCode.CLOSE_OPERATION_ERROR);
     }
+  }
+
+  public TSStatus closeOperation(
+      long sessionId,
+      long queryId,
+      long statementId,
+      boolean haveStatementId,
+      boolean haveSetQueryId) {
+    return closeOperation(
+        sessionId,
+        queryId,
+        statementId,
+        haveStatementId,
+        haveSetQueryId,
+        this::releaseQueryResourceNoExceptions);
   }
 
   /**
@@ -261,11 +277,11 @@ public class SessionManager {
     return statementId;
   }
 
-  public void closeStatement(long sessionId, long statementId) {
+  public void closeStatement(long sessionId, long statementId, Consumer<Long> releaseByQueryId) {
     Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
     if (queryIdSet != null) {
       for (Long queryId : queryIdSet) {
-        releaseQueryResourceNoExceptions(queryId);
+        releaseByQueryId.accept(queryId);
       }
     }
 
@@ -377,8 +393,8 @@ public class SessionManager {
     queryIdToDataSet.remove(queryId);
   }
 
-  public void closeDataset(Long statementId, Long queryId) {
-    releaseQueryResourceNoExceptions(queryId);
+  public void closeDataset(Long statementId, Long queryId, Consumer<Long> releaseByQueryId) {
+    releaseByQueryId.accept(queryId);
     if (statementIdToQueryId.containsKey(statementId)) {
       statementIdToQueryId.get(statementId).remove(queryId);
     }
