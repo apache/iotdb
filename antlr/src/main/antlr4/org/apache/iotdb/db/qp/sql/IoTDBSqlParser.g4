@@ -510,7 +510,7 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges ON prefixPath
+    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
     ;
 
 // Grant Role Privileges
@@ -525,7 +525,7 @@ grantRoleToUser
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
     ;
 
 // Revoke Role Privileges
