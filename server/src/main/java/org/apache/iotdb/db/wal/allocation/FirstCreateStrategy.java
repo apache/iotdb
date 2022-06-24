@@ -62,7 +62,7 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
   }
 
   public void registerWALNode(
-      String applicantUniqueId, String logDirectory, int startFileVersion, long startSearchIndex) {
+      String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     nodesLock.lock();
     try {
       if (identifier2Nodes.containsKey(applicantUniqueId)) {

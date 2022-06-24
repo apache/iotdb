@@ -51,6 +51,7 @@ import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -75,15 +76,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+import static org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
+
 /**
  * This class encapsulates {@link IWALBuffer} and {@link CheckpointManager}. If search is enabled,
  * the order of search index should be protected by the upper layer, and the value should start from
  * 1.
  */
 public class WALNode implements IWALNode {
-  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX =
-      InsertNode.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
-
   private static final Logger logger = LoggerFactory.getLogger(WALNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -99,14 +100,14 @@ public class WALNode implements IWALNode {
    * memTable id -> memTable snapshot count, used to avoid write amplification caused by frequent
    * snapshot
    */
-  private final Map<Integer, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
+  private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   /**
    * total cost of flushedMemTables. when memControl enabled, cost is memTable ram cost, otherwise
    * cost is memTable count
    */
   private final AtomicLong totalCostOfFlushedMemTables = new AtomicLong();
   /** version id -> cost sum of memTables flushed at this file version */
-  private final Map<Integer, Long> walFileVersionId2MemTablesTotalCost = new ConcurrentHashMap<>();
+  private final Map<Long, Long> walFileVersionId2MemTablesTotalCost = new ConcurrentHashMap<>();
   /** insert nodes whose search index are before this value can be deleted safely */
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
@@ -115,7 +116,7 @@ public class WALNode implements IWALNode {
   }
 
   public WALNode(
-      String identifier, String logDirectory, int startFileVersion, long startSearchIndex)
+      String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;
     this.logDirectory = SystemFileFactory.INSTANCE.getFile(logDirectory);
@@ -127,14 +128,15 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowPlan insertRowPlan) {
+  public WALFlushListener log(long memTableId, InsertRowPlan insertRowPlan) {
     WALEntry walEntry = new WALEntry(memTableId, insertRowPlan);
     return log(walEntry);
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowNode insertRowNode) {
-    if (insertRowNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
+  public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
+    if (insertRowNode.getSearchIndex() != NO_CONSENSUS_INDEX
+        && insertRowNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
       safelyDeletedSearchIndex = insertRowNode.getSafelyDeletedSearchIndex();
     }
     WALEntry walEntry = new WALEntry(memTableId, insertRowNode);
@@ -143,15 +145,16 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(
-      int memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
+      long memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
     WALEntry walEntry = new WALEntry(memTableId, insertTabletPlan, start, end);
     return log(walEntry);
   }
 
   @Override
   public WALFlushListener log(
-      int memTableId, InsertTabletNode insertTabletNode, int start, int end) {
-    if (insertTabletNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
+      long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+    if (insertTabletNode.getSearchIndex() != NO_CONSENSUS_INDEX
+        && insertTabletNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
       safelyDeletedSearchIndex = insertTabletNode.getSafelyDeletedSearchIndex();
     }
     WALEntry walEntry = new WALEntry(memTableId, insertTabletNode, start, end);
@@ -159,7 +162,7 @@ public class WALNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(int memTableId, DeletePlan deletePlan) {
+  public WALFlushListener log(long memTableId, DeletePlan deletePlan) {
     WALEntry walEntry = new WALEntry(memTableId, deletePlan);
     return log(walEntry);
   }
@@ -184,7 +187,7 @@ public class WALNode implements IWALNode {
     memTableSnapshotCount.remove(memTable.getMemTableId());
     // update cost info
     long cost = config.isEnableMemControl() ? memTable.getTVListsRamCost() : 1;
-    int currentWALFileVersion = buffer.getCurrentWALFileVersion();
+    long currentWALFileVersion = buffer.getCurrentWALFileVersion();
     walFileVersionId2MemTablesTotalCost.compute(
         currentWALFileVersion, (k, v) -> v == null ? cost : v + cost);
     totalCostOfFlushedMemTables.addAndGet(cost);
@@ -196,7 +199,7 @@ public class WALNode implements IWALNode {
       return;
     }
     // use current log version id as first file version id
-    int firstFileVersionId = buffer.getCurrentWALFileVersion();
+    long firstFileVersionId = buffer.getCurrentWALFileVersion();
     MemTableInfo memTableInfo = new MemTableInfo(memTable, targetTsFile, firstFileVersionId);
     checkpointManager.makeCreateMemTableCP(memTableInfo);
   }
@@ -213,20 +216,20 @@ public class WALNode implements IWALNode {
 
   private class DeleteOutdatedFileTask implements Runnable {
     /** .wal files whose version ids are less than first valid version id should be deleted */
-    private int firstValidVersionId;
+    private long firstValidVersionId;
 
     @Override
     public void run() {
       // init firstValidVersionId
       firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
-      if (firstValidVersionId == Integer.MIN_VALUE) {
+      if (firstValidVersionId == Long.MIN_VALUE) {
         // roll wal log writer to delete current wal file
         if (buffer.getCurrentWALFileSize() > 0) {
           rollWALFile();
         }
         // update firstValidVersionId
         firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
-        if (firstValidVersionId == Integer.MIN_VALUE) {
+        if (firstValidVersionId == Long.MIN_VALUE) {
           firstValidVersionId = buffer.getCurrentWALFileVersion();
         }
       }
@@ -270,21 +273,44 @@ public class WALNode implements IWALNode {
     }
 
     private void deleteOutdatedFiles() {
-      int deletedFilesNum = 0;
+      // find all files to delete
+      // delete files whose version < firstValidVersionId
       File[] filesToDelete = logDirectory.listFiles(this::filterFilesToDelete);
-      if (filesToDelete != null) {
-        for (File file : filesToDelete) {
-          if (file.delete()) {
-            deletedFilesNum++;
-          } else {
-            logger.info("Fail to delete outdated wal file {} of wal node-{}.", file, identifier);
-          }
-          // update totalRamCostOfFlushedMemTables
-          int versionId = WALFileUtils.parseVersionId(file.getName());
-          Long memTableRamCostSum = walFileVersionId2MemTablesTotalCost.remove(versionId);
-          if (memTableRamCostSum != null) {
-            totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
-          }
+      if (filesToDelete == null) {
+        return;
+      }
+      // delete files whose content's search index are all <= safelyDeletedSearchIndex
+      WALFileUtils.ascSortByVersionId(filesToDelete);
+      int endFileIndex =
+          safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+              ? filesToDelete.length
+              : WALFileUtils.binarySearchFileBySearchIndex(
+                  filesToDelete, safelyDeletedSearchIndex + 1);
+      // delete files whose file status is CONTAINS_NONE_SEARCH_INDEX
+      if (endFileIndex == -1) {
+        endFileIndex++;
+      }
+      while (endFileIndex < filesToDelete.length) {
+        if (WALFileUtils.parseStatusCode(filesToDelete[endFileIndex].getName())
+            == WALFileStatus.CONTAINS_SEARCH_INDEX) {
+          break;
+        }
+        endFileIndex++;
+      }
+      // delete files
+      int deletedFilesNum = 0;
+      for (int i = 0; i < endFileIndex; ++i) {
+        if (filesToDelete[i].delete()) {
+          deletedFilesNum++;
+        } else {
+          logger.info(
+              "Fail to delete outdated wal file {} of wal node-{}.", filesToDelete[i], identifier);
+        }
+        // update totalRamCostOfFlushedMemTables
+        long versionId = WALFileUtils.parseVersionId(filesToDelete[i].getName());
+        Long memTableRamCostSum = walFileVersionId2MemTablesTotalCost.remove(versionId);
+        if (memTableRamCostSum != null) {
+          totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
         }
       }
       logger.debug(
@@ -298,9 +324,8 @@ public class WALNode implements IWALNode {
       Matcher matcher = pattern.matcher(name);
       boolean toDelete = false;
       if (matcher.find()) {
-        int versionId = Integer.parseInt(matcher.group(IoTDBConstant.WAL_VERSION_ID));
-        long startSearchIndex = Long.parseLong(matcher.group(IoTDBConstant.WAL_START_SEARCH_INDEX));
-        toDelete = versionId < firstValidVersionId && startSearchIndex < safelyDeletedSearchIndex;
+        long versionId = Long.parseLong(matcher.group(IoTDBConstant.WAL_VERSION_ID));
+        toDelete = versionId < firstValidVersionId;
       }
       return toDelete;
     }
@@ -604,7 +629,7 @@ public class WALNode implements IWALNode {
      * files whose version id before this value have already been searched, avoid storing too many
      * files in filesToSearch
      */
-    private int searchedFilesVersionId = 0;
+    private long searchedFilesVersionId = 0;
     /** batch store insert nodes */
     private final List<InsertNode> insertNodes = new LinkedList<>();
     /** iterator of insertNodes */
@@ -793,7 +818,7 @@ public class WALNode implements IWALNode {
       Matcher matcher = pattern.matcher(name);
       boolean toSearch = false;
       if (matcher.find()) {
-        int versionId = Integer.parseInt(matcher.group(IoTDBConstant.WAL_VERSION_ID));
+        long versionId = Long.parseLong(matcher.group(IoTDBConstant.WAL_VERSION_ID));
         toSearch = versionId >= searchedFilesVersionId;
       }
       return toSearch;
@@ -817,7 +842,7 @@ public class WALNode implements IWALNode {
   }
 
   @TestOnly
-  int getCurrentLogVersion() {
+  long getCurrentLogVersion() {
     return buffer.getCurrentWALFileVersion();
   }
 

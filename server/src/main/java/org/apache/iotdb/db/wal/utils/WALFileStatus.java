@@ -16,36 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.buffer;
+package org.apache.iotdb.db.wal.utils;
 
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+/**
+ * This enumeration class annotates the status of wal file. This first bit is used to denote whether
+ * this contains search index.
+ */
+public enum WALFileStatus {
+  /** This file doesn't contain content needs searching */
+  CONTAINS_NONE_SEARCH_INDEX(0),
+  /** This file contains content needs searching */
+  CONTAINS_SEARCH_INDEX(1),
+  ;
 
-/** This class provides a signal to help wal buffer dealing with some special cases */
-public class SignalWALEntry extends WALEntry {
-  private final SignalType signalType;
+  private final int code;
 
-  public SignalWALEntry(SignalType signalType) {
-    this(signalType, false);
+  WALFileStatus(int code) {
+    this.code = code;
   }
 
-  public SignalWALEntry(SignalType signalType, boolean wait) {
-    super(Long.MIN_VALUE, new DeletePlan(), wait);
-    this.signalType = signalType;
+  public int getCode() {
+    return code;
   }
 
-  @Override
-  public boolean isSignal() {
-    return true;
-  }
-
-  public SignalType getSignalType() {
-    return signalType;
-  }
-
-  public enum SignalType {
-    /** signal wal buffer has been closed */
-    CLOSE_SIGNAL,
-    /** signal wal buffer to roll wal log writer */
-    ROLL_WAL_LOG_WRITER_SIGNAL,
+  public static WALFileStatus valueOf(int code) {
+    for (WALFileStatus status : WALFileStatus.values()) {
+      if (status.code == code) {
+        return status;
+      }
+    }
+    return null;
   }
 }

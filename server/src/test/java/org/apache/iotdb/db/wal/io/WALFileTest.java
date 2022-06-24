@@ -30,6 +30,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -49,7 +51,10 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 public class WALFileTest {
-  private final File walFile = new File(TestConstant.BASE_OUTPUT_PATH.concat("_0.wal"));
+  private final File walFile =
+      new File(
+          TestConstant.BASE_OUTPUT_PATH.concat(
+              WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX)));
   private final String devicePath = "root.test_sg.test_d";
 
   @Before
