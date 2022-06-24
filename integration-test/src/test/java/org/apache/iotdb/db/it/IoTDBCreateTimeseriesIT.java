@@ -157,7 +157,7 @@ public class IoTDBCreateTimeseriesIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("count timeseries root.sg.**")) {
       while (resultSet.next()) {
-        int count = resultSet.getInt("count(timeseries)");
+        int count = resultSet.getInt(1);
         Assert.assertEquals(timeSeriesArray.length, count);
       }
     }
