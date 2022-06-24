@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
@@ -51,13 +53,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
  * dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
-public class LoadManager implements Runnable {
+public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
@@ -73,6 +77,16 @@ public class LoadManager implements Runnable {
   private final PartitionBalancer partitionBalancer;
   private final RouteBalancer routeBalancer;
 
+  /** heartbeat executor service */
+  private final ScheduledExecutorService heartBeatExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(LoadManager.class.getSimpleName());
+
+  /** monitor for heartbeat state change */
+  private final Object heartbeatMonitor = new Object();
+
+  private Future<?> currentHeartbeatFuture;
+  private int balanceCount = 0;
+
   public LoadManager(Manager configManager) {
     this.configManager = configManager;
     this.heartbeatCacheMap = new ConcurrentHashMap<>();
@@ -83,32 +97,28 @@ public class LoadManager implements Runnable {
   }
 
   /**
-   * Allocate and create one Region for each StorageGroup. TODO: Use procedure to protect create
-   * Regions process
+   * Allocate and create Regions for each StorageGroup.
    *
-   * @param storageGroups List<StorageGroupName>
+   * @param allotmentMap Map<StorageGroupName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of Region to be allocated
-   * @param regionNum The number of Regions
    */
-  public void initializeRegions(
-      List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
+  public void doRegionCreation(
+      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    CreateRegionsReq createRegionsReq =
-        regionBalancer.genRegionsAllocationPlan(storageGroups, consensusGroupType, regionNum);
-    createRegionsOnDataNodes(createRegionsReq);
+    CreateRegionsReq createRegionGroupsReq =
+        regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
 
-    getConsensusManager().write(createRegionsReq);
-  }
-
-  private void createRegionsOnDataNodes(CreateRegionsReq createRegionsReq)
-      throws StorageGroupNotExistsException {
+    // TODO: Use procedure to protect the following process
+    // Create Regions on DataNodes
     Map<String, Long> ttlMap = new HashMap<>();
-    for (String storageGroup : createRegionsReq.getRegionMap().keySet()) {
+    for (String storageGroup : createRegionGroupsReq.getRegionGroupMap().keySet()) {
       ttlMap.put(
           storageGroup,
           getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
     }
-    AsyncDataNodeClientPool.getInstance().createRegions(createRegionsReq, ttlMap);
+    AsyncDataNodeClientPool.getInstance().createRegions(createRegionGroupsReq, ttlMap);
+    // Persist the allocation result
+    getConsensusManager().write(createRegionGroupsReq);
   }
 
   /**
@@ -159,31 +169,43 @@ public class LoadManager implements Runnable {
     return result;
   }
 
-  @Override
-  public void run() {
-    int balanceCount = 0;
-    while (true) {
-      try {
-
-        if (getConsensusManager().isLeader()) {
-          // Send heartbeat requests to all the online DataNodes
-          pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
-          // TODO: Send heartbeat requests to all the online ConfigNodes
-
-          // Do load balancing
-          doLoadBalancing(balanceCount);
-          balanceCount += 1;
-        } else {
-          // Discard all cache when current ConfigNode is not longer the leader
-          heartbeatCacheMap.clear();
-          balanceCount = 0;
-        }
-
-        TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
-      } catch (InterruptedException e) {
-        LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
-        System.exit(-1);
+  /** Start the heartbeat service */
+  public void start() {
+    LOGGER.debug("Start Heartbeat Service of LoadManager");
+    synchronized (heartbeatMonitor) {
+      if (currentHeartbeatFuture == null) {
+        currentHeartbeatFuture =
+            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                heartBeatExecutor,
+                this::heartbeatLoopBody,
+                0,
+                heartbeatInterval,
+                TimeUnit.MILLISECONDS);
       }
+    }
+  }
+
+  /** Stop the heartbeat service */
+  public void stop() {
+    LOGGER.debug("Stop Heartbeat Service of LoadManager");
+    synchronized (heartbeatMonitor) {
+      if (currentHeartbeatFuture != null) {
+        currentHeartbeatFuture.cancel(false);
+        currentHeartbeatFuture = null;
+      }
+    }
+  }
+
+  /** loop body of the heartbeat thread */
+  private void heartbeatLoopBody() {
+    if (getConsensusManager().isLeader()) {
+      // Send heartbeat requests to all the online DataNodes
+      pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
+      // TODO: Send heartbeat requests to all the online ConfigNodes
+
+      // Do load balancing
+      doLoadBalancing(balanceCount);
+      balanceCount += 1;
     }
   }
 

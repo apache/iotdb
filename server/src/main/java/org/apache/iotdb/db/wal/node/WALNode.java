@@ -349,7 +349,7 @@ public class WALNode implements IWALNode {
       if (memTable.getFlushStatus() == FlushStatus.WORKING) {
         shouldWait =
             dataRegion.submitAFlushTask(
-                TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile));
+                TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile), memTable);
         logger.info(
             "WAL node-{} flushes memTable-{} to TsFile {}, memTable size is {}.",
             identifier,
@@ -805,6 +805,10 @@ public class WALNode implements IWALNode {
   public void close() {
     buffer.close();
     checkpointManager.close();
+  }
+
+  public File getLogDirectory() {
+    return logDirectory;
   }
 
   @TestOnly

@@ -44,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
+public class IoTDBAggregationWithDeletionIT {
 
   private static final double DELTA = 1e-6;
   protected static boolean enableSeqSpaceCompaction;
@@ -395,6 +395,121 @@ public class IoTDBAggregationWithoutValueFilterWithDeletionIT {
             builder.append(resultSet.getString(index));
           }
           assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  // ----------------------- Aggregation with value filter -----------------------------
+  @Test
+  public void countAlignedWithValueFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"11"};
+    String[] columnNames = {"count(root.sg1.d1.s4)"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(s4) from root.sg1.d1 where s4 = true")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] ans = new String[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            ans[i] = resultSet.getString(index);
+          }
+          assertArrayEquals(retArray, ans);
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void countAllAlignedWithValueFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"0", "0", "9", "11", "6"};
+    String[] columnNames = {
+      "count(root.sg1.d1.s1)",
+      "count(root.sg1.d1.s2)",
+      "count(root.sg1.d1.s3)",
+      "count(root.sg1.d1.s4)",
+      "count(root.sg1.d1.s5)"
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.sg1.d1 where s4 = true")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] ans = new String[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            ans[i] = resultSet.getString(index);
+          }
+          assertArrayEquals(retArray, ans);
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void aggregationAllAlignedWithValueFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"0", "25", "1"};
+    String[] columnNames = {
+      "count(root.sg1.d1.s1)", "max_time(root.sg1.d1.s4)", "min_value(root.sg1.d1.s3)",
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1), max_time(s4), min_value(s3) from root.sg1.d1 where s4 = true")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] ans = new String[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            ans[i] = resultSet.getString(index);
+          }
+          assertArrayEquals(retArray, ans);
           cnt++;
         }
         assertEquals(1, cnt);

@@ -61,6 +61,6 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   }
 
   public String toString() {
-    return String.format("SchemaFetchNode-%s", getPlanNodeId());
+    return String.format("SchemaFetchMergeNode-%s", getPlanNodeId());
   }
 }

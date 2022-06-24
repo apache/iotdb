@@ -20,7 +20,6 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
 
-import org.apache.ratis.io.MD5Hash;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.server.storage.FileInfo;
 import org.apache.ratis.server.storage.RaftStorage;
@@ -29,7 +28,6 @@ import org.apache.ratis.statemachine.SnapshotRetentionPolicy;
 import org.apache.ratis.statemachine.StateMachineStorage;
 import org.apache.ratis.statemachine.impl.FileListSnapshotInfo;
 import org.apache.ratis.util.FileUtils;
-import org.apache.ratis.util.MD5FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,13 +143,7 @@ public class SnapshotStorage implements StateMachineStorage {
 
     List<FileInfo> fileInfos = new ArrayList<>();
     for (Path file : getAllFilesUnder(latestSnapshotDir)) {
-      MD5Hash fileHash = null;
-      try {
-        fileHash = MD5FileUtil.computeMd5ForFile(file.toFile());
-      } catch (IOException e) {
-        logger.error("read file info failed for snapshot file ", e);
-      }
-      FileInfo fileInfo = new FileInfo(file, fileHash);
+      FileInfo fileInfo = new FileInfoWithDelayedMd5Computing(file);
       fileInfos.add(fileInfo);
     }
 

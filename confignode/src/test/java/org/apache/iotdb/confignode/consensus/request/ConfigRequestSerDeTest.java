@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -58,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -158,6 +161,18 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void AdjustMaxRegionGroupCountReqTest() throws IOException {
+    AdjustMaxRegionGroupCountReq req0 = new AdjustMaxRegionGroupCountReq();
+    for (int i = 0; i < 3; i++) {
+      req0.putEntry("root.sg" + i, new Pair<>(i, i));
+    }
+
+    AdjustMaxRegionGroupCountReq req1 =
+        (AdjustMaxRegionGroupCountReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void CountStorageGroupReqTest() throws IOException {
     CountStorageGroupReq req0 = new CountStorageGroupReq(Arrays.asList("root", "sg"));
     CountStorageGroupReq req1 =
@@ -192,12 +207,12 @@ public class ConfigRequestSerDeTest {
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion("root.sg0", dataRegionSet);
+    req0.addRegionGroup("root.sg0", dataRegionSet);
 
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion("root.sg1", schemaRegionSet);
+    req0.addRegionGroup("root.sg1", schemaRegionSet);
 
     CreateRegionsReq req1 =
         (CreateRegionsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
@@ -479,6 +494,17 @@ public class ConfigRequestSerDeTest {
                 0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
     ApplyConfigNodeReq req1 =
         (ApplyConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void removeConfigNodeReqTest() throws IOException {
+    RemoveConfigNodeReq req0 =
+        new RemoveConfigNodeReq(
+            new TConfigNodeLocation(
+                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+    RemoveConfigNodeReq req1 =
+        (RemoveConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 

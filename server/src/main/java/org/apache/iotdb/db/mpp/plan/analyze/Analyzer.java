@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -61,7 +63,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
-import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -102,6 +103,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -398,14 +401,24 @@ public class Analyzer {
 
         if (queryStatement.getFillComponent() != null) {
           FillComponent fillComponent = queryStatement.getFillComponent();
+          List<Expression> fillColumnList =
+              outputExpressions.stream().map(Pair::getLeft).distinct().collect(Collectors.toList());
           if (fillComponent.getFillPolicy() == FillPolicy.VALUE) {
-            List<Expression> fillColumnList =
-                outputExpressions.stream()
-                    .map(Pair::getLeft)
-                    .distinct()
-                    .collect(Collectors.toList());
             for (Expression fillColumn : fillColumnList) {
-              checkDataTypeConsistencyInFill(fillColumn, fillComponent.getFillValue());
+              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
+              if (!fillComponent.getFillValue().isDataTypeConsistency(checkedDataType)) {
+                throw new SemanticException(
+                    "FILL: the data type of the fill value should be the same as the output column");
+              }
+            }
+          } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
+            for (Expression fillColumn : fillColumnList) {
+              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
+              if (!checkedDataType.isNumeric()) {
+                throw new SemanticException(
+                    String.format(
+                        "FILL: dataType %s doesn't support linear fill.", checkedDataType));
+              }
             }
           }
           analysis.setFillDescriptor(
@@ -430,7 +443,8 @@ public class Analyzer {
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException e) {
         logger.error("Meet error when analyzing the query statement: ", e);
-        throw new StatementAnalyzeException("Meet error when analyzing the query statement");
+        throw new StatementAnalyzeException(
+            "Meet error when analyzing the query statement: " + e.getMessage());
       }
       return analysis;
     }
@@ -448,7 +462,7 @@ public class Analyzer {
         boolean hasAlias = resultColumn.hasAlias();
         List<Expression> resultExpressions =
             ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
-        if (hasAlias && resultExpressions.size() > 1) {
+        if (hasAlias && !queryStatement.isGroupByLevel() && resultExpressions.size() > 1) {
           throw new SemanticException(
               String.format(
                   "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
@@ -467,6 +481,12 @@ public class Analyzer {
                     : null;
             alias = hasAlias ? resultColumn.getAlias() : alias;
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
+            if (queryStatement.isGroupByLevel()
+                && resultColumn.getExpression() instanceof FunctionExpression) {
+              queryStatement
+                  .getGroupByLevelComponent()
+                  .updateIsCountStar((FunctionExpression) resultColumn.getExpression());
+            }
             ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
             expressionWithoutAlias.inferTypes(typeProvider);
             paginationController.consumeLimit();
@@ -668,8 +688,11 @@ public class Analyzer {
       GroupByLevelController groupByLevelController =
           new GroupByLevelController(
               queryStatement.getGroupByLevelComponent().getLevels(), typeProvider);
-      for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
-        groupByLevelController.control(measurementWithAlias.left, measurementWithAlias.right);
+      for (int i = 0; i < outputExpressions.size(); i++) {
+        Pair<Expression, String> measurementWithAlias = outputExpressions.get(i);
+        boolean isCountStar = queryStatement.getGroupByLevelComponent().isCountStar(i);
+        groupByLevelController.control(
+            isCountStar, measurementWithAlias.left, measurementWithAlias.right);
       }
       Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
           groupByLevelController.getGroupedPathMap();
@@ -851,15 +874,6 @@ public class Analyzer {
           throw new SemanticException(
               "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
         }
-      }
-    }
-
-    private void checkDataTypeConsistencyInFill(Expression fillColumn, Literal fillValue) {
-      TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
-      if (!fillValue.isDataTypeConsistency(checkedDataType)) {
-        // TODO: consider type casting
-        throw new SemanticException(
-            "FILL: the data type of the fill value should be the same as the output column");
       }
     }
 
@@ -1381,12 +1395,33 @@ public class Analyzer {
 
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           schemaPartition.getSchemaPartitionMap();
-      for (String storageGroup : schemaPartitionMap.keySet()) {
-        sgNameToQueryParamsMap.put(
-            storageGroup,
-            schemaPartitionMap.get(storageGroup).keySet().stream()
-                .map(DataPartitionQueryParam::new)
-                .collect(Collectors.toList()));
+
+      // todo keep the behaviour consistency of cluster and standalone,
+      // the behaviour of standalone fetcher and LocalConfigNode is not consistent with that of
+      // cluster mode's
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        for (String storageGroup : schemaPartitionMap.keySet()) {
+          sgNameToQueryParamsMap.put(
+              storageGroup,
+              schemaPartitionMap.get(storageGroup).keySet().stream()
+                  .map(DataPartitionQueryParam::new)
+                  .collect(Collectors.toList()));
+        }
+      } else {
+        // the StandalonePartitionFetcher and LocalConfigNode now doesn't support partition fetch
+        // via slotId
+        schemaTree
+            .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
+            .forEach(
+                deviceSchemaInfo -> {
+                  PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+                  DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+                  queryParam.setDevicePath(devicePath.getFullPath());
+                  sgNameToQueryParamsMap
+                      .computeIfAbsent(
+                          schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+                      .add(queryParam);
+                });
       }
 
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);

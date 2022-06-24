@@ -188,8 +188,6 @@ public class QueryExecution implements IQueryExecution {
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    // initialize the variable `analysis`
-    logger.info("start to analyze query");
     return new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
   }
 
@@ -219,22 +217,24 @@ public class QueryExecution implements IQueryExecution {
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    logger.info("do logical plan...");
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
-    logger.info(
-        "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+    if (isQuery()) {
+      logger.info(
+          "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+    }
   }
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
-    logger.info("do distribution plan...");
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
-    logger.info(
-        "distribution plan done. Fragment instance count is {}, details is: \n {}",
-        distributedPlan.getInstances().size(),
-        printFragmentInstances(distributedPlan.getInstances()));
+    if (isQuery()) {
+      logger.info(
+          "distribution plan done. Fragment instance count is {}, details is: \n {}",
+          distributedPlan.getInstances().size(),
+          printFragmentInstances(distributedPlan.getInstances()));
+    }
   }
 
   private String printFragmentInstances(List<FragmentInstance> instances) {
@@ -334,15 +334,17 @@ public class QueryExecution implements IQueryExecution {
   public ExecutionResult getStatus() {
     // Although we monitor the state to transition to RUNNING, the future will return if any
     // Terminated state is triggered
-    SettableFuture<QueryState> future = SettableFuture.create();
-    stateMachine.addStateChangeListener(
-        state -> {
-          if (state == QueryState.RUNNING || state.isDone()) {
-            future.set(state);
-          }
-        });
-
     try {
+      if (stateMachine.getState() == QueryState.FINISHED) {
+        return getExecutionResult(QueryState.FINISHED);
+      }
+      SettableFuture<QueryState> future = SettableFuture.create();
+      stateMachine.addStateChangeListener(
+          state -> {
+            if (state == QueryState.RUNNING || state.isDone()) {
+              future.set(state);
+            }
+          });
       QueryState state = future.get();
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
       return getExecutionResult(state);

@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -107,7 +110,7 @@ public abstract class RequestDelegate<T> {
       if (businessExceptions[i] != null) {
         // As each exception has its own stacktrace, in order to display them clearly, we can only
         // print them through logger.
-        logger.error(
+        logger.warn(
             "Exception happens during request to {}", getEndpoints().get(i), businessExceptions[i]);
       }
     }
@@ -115,7 +118,7 @@ public abstract class RequestDelegate<T> {
       throw new SQLException(exceptionMsg[0]);
     }
     if (exceptionInconsistent) {
-      throw new InconsistentDataException(exceptionMsg, getEndpoints());
+      throw new InconsistentDataException(Arrays.asList(exceptionMsg), getEndpoints());
     }
   }
 

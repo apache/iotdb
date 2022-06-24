@@ -773,6 +773,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
 
+OPERATOR_IS : I S;
+
 OPERATOR_IN : I N;
 
 OPERATOR_AND
@@ -875,7 +877,6 @@ NULL_LITERAL
 NAN_LITERAL
     : N A N
     ;
-
 
 /**
  * 6. ID

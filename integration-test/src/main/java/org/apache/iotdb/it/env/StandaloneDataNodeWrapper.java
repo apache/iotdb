@@ -24,8 +24,9 @@ import java.io.File;
 
 public class StandaloneDataNodeWrapper extends DataNodeWrapper {
 
-  public StandaloneDataNodeWrapper(String targetConfigNode, String testName) {
-    super(targetConfigNode, testName);
+  public StandaloneDataNodeWrapper(
+      String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
+    super(targetConfigNode, testClassName, testMethodName, portList);
   }
 
   @Override

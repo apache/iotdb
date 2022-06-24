@@ -28,19 +28,23 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
@@ -48,32 +52,36 @@ import static org.junit.Assert.fail;
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = LoggerFactory.getLogger(AbstractEnv.class);
   private final int NODE_START_TIMEOUT = 100;
-  private final int PROBE_TIMEOUT = 2;
-  protected List<ConfigNodeWrapper> configNodeWrapperList;
-  protected List<DataNodeWrapper> dataNodeWrapperList;
+  private final int PROBE_TIMEOUT_MS = 2000;
+  private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+  private final String lockFilePath =
+      System.getProperty("user.dir") + File.separator + "target" + File.separator + "lock-";
+  protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
+  protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   private final Random rand = new Random();
-  protected String nextTestCase = null;
+  protected String testMethodName = null;
 
-  protected void initEnvironment(int configNodesNum, int dataNodesNum) throws InterruptedException {
+  protected void initEnvironment(int configNodesNum, int dataNodesNum) {
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
 
-    final String testName = getTestClassName() + getNextTestCaseString();
+    final String testClassName = getTestClassName();
+    final String testMethodName = getTestMethodName();
 
-    ConfigNodeWrapper seedConfigNodeWrapper = new ConfigNodeWrapper(true, "", testName);
+    ConfigNodeWrapper seedConfigNodeWrapper =
+        new ConfigNodeWrapper(true, "", testClassName, testMethodName, searchAvailablePorts());
     seedConfigNodeWrapper.createDir();
     seedConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
     seedConfigNodeWrapper.start();
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
-    logger.info(
-        "In test " + testName + " SeedConfigNode " + seedConfigNodeWrapper.getId() + " started.");
 
     List<String> configNodeEndpoints = new ArrayList<>();
     RequestDelegate<Void> configNodesDelegate = new SerialRequestDelegate<>(configNodeEndpoints);
     for (int i = 1; i < configNodesNum; i++) {
       ConfigNodeWrapper configNodeWrapper =
-          new ConfigNodeWrapper(false, targetConfigNode, testName);
+          new ConfigNodeWrapper(
+              false, targetConfigNode, testClassName, testMethodName, searchAvailablePorts());
       this.configNodeWrapperList.add(configNodeWrapper);
       configNodeEndpoints.add(configNodeWrapper.getIpAndPortString());
       configNodeWrapper.createDir();
@@ -81,8 +89,6 @@ public abstract class AbstractEnv implements BaseEnv {
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
-            logger.info(
-                "In test " + testName + " ConfigNode " + configNodeWrapper.getId() + " started.");
             return null;
           });
     }
@@ -97,7 +103,9 @@ public abstract class AbstractEnv implements BaseEnv {
     RequestDelegate<Void> dataNodesDelegate =
         new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT);
     for (int i = 0; i < dataNodesNum; i++) {
-      DataNodeWrapper dataNodeWrapper = new DataNodeWrapper(targetConfigNode, testName);
+      DataNodeWrapper dataNodeWrapper =
+          new DataNodeWrapper(
+              targetConfigNode, testClassName, testMethodName, searchAvailablePorts());
       this.dataNodeWrapperList.add(dataNodeWrapper);
       dataNodeEndpoints.add(dataNodeWrapper.getIpAndPortString());
       dataNodeWrapper.createDir();
@@ -105,8 +113,6 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
-            logger.info(
-                "In test " + testName + " DataNode " + dataNodeWrapper.getId() + " started.");
             return null;
           });
     }
@@ -122,41 +128,29 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   private void cleanupEnvironment() {
-    for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
-      dataNodeWrapper.stop();
-      dataNodeWrapper.waitingToShutDown();
-      dataNodeWrapper.destroyDir();
+    for (AbstractNodeWrapper nodeWrapper :
+        Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
+            .collect(Collectors.toList())) {
+      nodeWrapper.stop();
+      nodeWrapper.waitingToShutDown();
+      nodeWrapper.destroyDir();
+      String lockPath = getLockFilePath(nodeWrapper.getPort());
+      if (!new File(lockPath).delete()) {
+        logger.error("Delete lock file {} failed", lockPath);
+      }
     }
-    for (ConfigNodeWrapper configNodeWrapper : this.configNodeWrapperList) {
-      configNodeWrapper.stop();
-      configNodeWrapper.waitingToShutDown();
-      configNodeWrapper.destroyDir();
-    }
-    nextTestCase = null;
+    testMethodName = null;
   }
 
   public String getTestClassName() {
-    StackTraceElement stack[] = Thread.currentThread().getStackTrace();
-    for (int i = 0; i < stack.length; i++) {
-      String className = stack[i].getClassName();
+    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+    for (StackTraceElement stackTraceElement : stack) {
+      String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
         return className.substring(className.lastIndexOf(".") + 1);
       }
     }
     return "UNKNOWN-IT";
-  }
-
-  public String getTestClassNameAndDate() {
-    Date date = new Date();
-    SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd-HHmmss");
-    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-    for (StackTraceElement stackTraceElement : stack) {
-      String className = stackTraceElement.getClassName();
-      if (className.endsWith("IT")) {
-        return className.substring(className.lastIndexOf(".") + 1) + "-" + formatter.format(date);
-      }
-    }
-    return "IT";
   }
 
   public void testWorking() {
@@ -172,7 +166,7 @@ public abstract class AbstractEnv implements BaseEnv {
           () -> {
             Exception lastException = null;
             for (int i = 0; i < 30; i++) {
-              try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT)) {
+              try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
                 return null;
               } catch (Exception e) {
                 lastException = e;
@@ -199,21 +193,70 @@ public abstract class AbstractEnv implements BaseEnv {
     cleanupEnvironment();
   }
 
-  @Override
-  public Connection getConnection() throws SQLException {
-    return new ClusterTestConnection(getWriteConnection(null), getReadConnections(null));
+  public final int[] searchAvailablePorts() {
+    do {
+      int randomPortStart = 1000 + (int) (Math.random() * (1999 - 1000));
+      randomPortStart = randomPortStart * 10 + 1;
+      File lockFile = new File(getLockFilePath(randomPortStart));
+      if (lockFile.exists()) {
+        continue;
+      }
+
+      List<Integer> requiredPorts =
+          IntStream.rangeClosed(randomPortStart, randomPortStart + 9)
+              .boxed()
+              .collect(Collectors.toList());
+      try {
+        if (checkPortsAvailable(requiredPorts) && lockFile.createNewFile()) {
+          return requiredPorts.stream().mapToInt(Integer::intValue).toArray();
+        }
+      } catch (IOException e) {
+        // ignore
+      }
+    } while (true);
+  }
+
+  private boolean checkPortsAvailable(List<Integer> ports) {
+    String cmd = getSearchAvailablePortCmd(ports);
+    try {
+      Process proc = Runtime.getRuntime().exec(cmd);
+      return proc.waitFor() == 1;
+    } catch (IOException e) {
+      // ignore
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    return false;
+  }
+
+  private String getSearchAvailablePortCmd(List<Integer> ports) {
+    if (SystemUtils.IS_OS_WINDOWS) {
+      return getWindowsSearchPortCmd(ports);
+    }
+    return getUnixSearchPortCmd(ports);
+  }
+
+  private String getWindowsSearchPortCmd(List<Integer> ports) {
+    String cmd = "netstat -aon -p tcp | findStr ";
+    return cmd
+        + ports.stream().map(v -> "/C:'127.0.0.1:" + v + "'").collect(Collectors.joining(" "));
+  }
+
+  private String getUnixSearchPortCmd(List<Integer> ports) {
+    String cmd = "lsof -iTCP -sTCP:LISTEN -P -n | awk '{print $9}' | grep -E ";
+    return cmd + ports.stream().map(String::valueOf).collect(Collectors.joining("|")) + "\"";
   }
 
   @Override
-  public void setNextTestCaseName(String testCaseName) {
-    nextTestCase = testCaseName;
+  public Connection getConnection() throws SQLException {
+    return new ClusterTestConnection(getWriteConnection(null), getReadConnections(null));
   }
 
   private Connection getConnection(String endpoint, int queryTimeout) throws SQLException {
     IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + endpoint,
+                Config.IOTDB_URL_PREFIX + endpoint + getParam(null, queryTimeout),
                 System.getProperty("User", "root"),
                 System.getProperty("Password", "root"));
     connection.setQueryTimeout(queryTimeout);
@@ -243,7 +286,7 @@ public abstract class AbstractEnv implements BaseEnv {
     String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
     Connection writeConnection =
         DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
+            Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
             System.getProperty("User", "root"),
             System.getProperty("Password", "root"));
     return new NodeConnection(
@@ -257,14 +300,14 @@ public abstract class AbstractEnv implements BaseEnv {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
-    for (DataNodeWrapper dataNodeWarpper : this.dataNodeWrapperList) {
-      final String endpoint = dataNodeWarpper.getIpAndPortString();
+    for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
+      final String endpoint = dataNodeWrapper.getIpAndPortString();
       endpoints.add(endpoint);
       readConnRequestDelegate.addRequest(
           () -> {
             Connection readConnection =
                 DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + endpoint + getVersionParam(version),
+                    Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
                     System.getProperty("User", "root"),
                     System.getProperty("Password", "root"));
             return new NodeConnection(
@@ -277,17 +320,34 @@ public abstract class AbstractEnv implements BaseEnv {
     return readConnRequestDelegate.requestAll();
   }
 
-  private String getVersionParam(Constant.Version version) {
-    if (version == null) {
-      return "";
+  private String getParam(Constant.Version version, int timeout) {
+    StringBuilder sb = new StringBuilder("?");
+    sb.append(Config.NETWORK_TIMEOUT).append("=").append(timeout);
+    if (version != null) {
+      sb.append("&").append(VERSION).append("=").append(version);
     }
-    return "?" + VERSION + "=" + version;
+    return sb.toString();
   }
 
-  public String getNextTestCaseString() {
-    if (nextTestCase != null) {
-      return "_" + nextTestCase;
+  public String getTestMethodName() {
+    return testMethodName;
+  }
+
+  @Override
+  public void setTestMethodName(String testMethodName) {
+    this.testMethodName = testMethodName;
+  }
+
+  public void dumpTestJVMSnapshot() {
+    for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
+      configNodeWrapper.dumpJVMSnapshot(testMethodName);
     }
-    return "";
+    for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
+      dataNodeWrapper.dumpJVMSnapshot(testMethodName);
+    }
+  }
+
+  private String getLockFilePath(int port) {
+    return lockFilePath + port;
   }
 }

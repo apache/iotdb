@@ -18,15 +18,20 @@
  */
 package org.apache.iotdb.confignode.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
@@ -47,15 +52,19 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private final RegisterManager registerManager = new RegisterManager();
 
-  private final ConfigNodeRPCService configNodeRPCService;
-  private final ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
+  private ConfigNodeRPCService configNodeRPCService;
+  private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
   private ConfigManager configManager;
 
   private ConfigNode() {
+    // we do not init anything here, so that we can re-initialize the instance in IT.
+  }
+
+  private void initConfigManager() {
     // Init ConfigManager
     try {
-      this.configManager = new ConfigManager();
+      configManager = new ConfigManager();
     } catch (IOException e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       try {
@@ -67,8 +76,8 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     // Init RPC service
-    this.configNodeRPCService = new ConfigNodeRPCService();
-    this.configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
+    configNodeRPCService = new ConfigNodeRPCService();
+    configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
   }
 
   public static void main(String[] args) {
@@ -78,6 +87,9 @@ public class ConfigNode implements ConfigNodeMBean {
   /** Register services */
   private void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
+    // Init ConfigManager
+    initConfigManager();
+
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
@@ -125,12 +137,37 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    configManager.close();
+    if (configManager != null) {
+      configManager.close();
+    }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
   public void stop() throws IOException {
     deactivate();
+  }
+
+  public void doRemoveNode(String[] args) throws IOException {
+    LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
+    if (args.length != 3) {
+      LOGGER.info("Usage: -r <ip>:<rpcPort>");
+      return;
+    }
+
+    try {
+      TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args[2]);
+      TConfigNodeLocation removeConfigNodeLocation =
+          ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
+      if (removeConfigNodeLocation == null) {
+        LOGGER.error("The ConfigNode not in the Cluster.");
+        return;
+      }
+
+      ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
+    } catch (BadNodeUrlException e) {
+      LOGGER.warn("No ConfigNodes need to be removed.", e);
+    }
+    LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
   private static class ConfigNodeHolder {
