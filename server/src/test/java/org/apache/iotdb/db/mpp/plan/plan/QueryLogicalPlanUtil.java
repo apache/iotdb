@@ -231,7 +231,8 @@ public class QueryLogicalPlanUtil {
             new Expression[] {new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))},
             predicate,
             false,
-            ZonedDateTime.now().getOffset());
+            ZonedDateTime.now().getOffset(),
+            OrderBy.TIMESTAMP_DESC);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
@@ -296,7 +297,8 @@ public class QueryLogicalPlanUtil {
             },
             predicate1,
             false,
-            ZonedDateTime.now().getOffset());
+            ZonedDateTime.now().getOffset(),
+            OrderBy.TIMESTAMP_ASC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
@@ -337,7 +339,8 @@ public class QueryLogicalPlanUtil {
             },
             predicate2,
             false,
-            ZonedDateTime.now().getOffset());
+            ZonedDateTime.now().getOffset(),
+            OrderBy.TIMESTAMP_DESC);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
@@ -794,7 +797,8 @@ public class QueryLogicalPlanUtil {
             },
             predicate,
             false,
-            ZonedDateTime.now().getOffset());
+            ZonedDateTime.now().getOffset(),
+            OrderBy.TIMESTAMP_DESC);
 
     AggregationNode aggregationNode =
         new AggregationNode(
@@ -915,7 +919,8 @@ public class QueryLogicalPlanUtil {
             },
             predicate1,
             false,
-            ZonedDateTime.now().getOffset());
+            ZonedDateTime.now().getOffset(),
+            OrderBy.TIMESTAMP_DESC);
 
     AggregationNode aggregationNode1 =
         new AggregationNode(
@@ -973,7 +978,8 @@ public class QueryLogicalPlanUtil {
             },
             predicate2,
             false,
-            ZonedDateTime.now().getOffset());
+            ZonedDateTime.now().getOffset(),
+            OrderBy.TIMESTAMP_DESC);
 
     AggregationNode aggregationNode2 =
         new AggregationNode(
