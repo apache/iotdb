@@ -51,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -377,8 +378,13 @@ public class Analyzer {
         }
 
         if (queryStatement.isGroupByTime()) {
-          analysis.setGroupByTimeParameter(
-              new GroupByTimeParameter(queryStatement.getGroupByTimeComponent()));
+          GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+          if ((groupByTimeComponent.isIntervalByMonth()
+                  || groupByTimeComponent.isSlidingStepByMonth())
+              && queryStatement.getResultOrder() == OrderBy.TIMESTAMP_DESC) {
+            throw new SemanticException("Group by month doesn't support order by time desc now.");
+          }
+          analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
         }
 
         if (queryStatement.getFilterNullComponent() != null) {
