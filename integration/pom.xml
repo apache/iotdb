@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.13.1-SNAPSHOT</version>
+        <version>0.13.0.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration</artifactId>
