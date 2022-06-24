@@ -242,7 +242,7 @@ public class PartitionInfo implements SnapshotProcessor {
       if (storageGroupPartitionTable == null) {
         return;
       }
-      deletedRegionSet.addAll(storageGroupPartitionTables.get(req.getName()).getAllReplicaSets());
+      deletedRegionSet.addAll(storageGroupPartitionTable.getAllReplicaSets());
       // Clean the cache
       storageGroupPartitionTables.remove(req.getName());
     }
