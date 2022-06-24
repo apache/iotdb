@@ -209,12 +209,17 @@ public class PartitionInfo implements SnapshotProcessor {
     final PreDeleteStorageGroupReq.PreDeleteType preDeleteType =
         preDeleteStorageGroupReq.getPreDeleteType();
     final String storageGroup = preDeleteStorageGroupReq.getStorageGroup();
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        storageGroupPartitionTables.get(storageGroup);
+    if (storageGroupPartitionTable == null) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
     switch (preDeleteType) {
       case EXECUTE:
-        storageGroupPartitionTables.get(storageGroup).setPredeleted(true);
+        storageGroupPartitionTable.setPredeleted(true);
         break;
       case ROLLBACK:
-        storageGroupPartitionTables.get(storageGroup).setPredeleted(false);
+        storageGroupPartitionTable.setPredeleted(false);
         break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -226,12 +231,21 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param req DeleteRegionsReq
    */
   public void deleteStorageGroup(DeleteStorageGroupReq req) {
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        storageGroupPartitionTables.get(req.getName());
+    if (storageGroupPartitionTable == null) {
+      return;
+    }
     // Cache RegionReplicaSets
     synchronized (deletedRegionSet) {
+      storageGroupPartitionTable = storageGroupPartitionTables.get(req.getName());
+      if (storageGroupPartitionTable == null) {
+        return;
+      }
       deletedRegionSet.addAll(storageGroupPartitionTables.get(req.getName()).getAllReplicaSets());
+      // Clean the cache
+      storageGroupPartitionTables.remove(req.getName());
     }
-    // Clean the cache
-    storageGroupPartitionTables.remove(req.getName());
   }
 
   /** @return The Regions that should be deleted among the DataNodes */
