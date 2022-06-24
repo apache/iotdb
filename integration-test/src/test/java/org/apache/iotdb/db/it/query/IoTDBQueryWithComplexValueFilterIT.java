@@ -55,7 +55,8 @@ public class IoTDBQueryWithComplexValueFilterIT {
   public void testRawQuery1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select s1 from root.sg1.d1 where (time > 4 and s1 <= 6) or (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -73,7 +74,8 @@ public class IoTDBQueryWithComplexValueFilterIT {
   public void testRawQuery2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select s1 from root.sg1.d1 where (time > 4 and s1 <= 6) and (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -103,12 +105,12 @@ public class IoTDBQueryWithComplexValueFilterIT {
       statement.execute("insert into root.sg1.d1(time,s1,s2) values(7,7,7)");
       statement.execute("insert into root.sg1.d1(time,s1,s2) values(8,8,8)");
       statement.execute("insert into root.sg1.d1(time,s1,s2) values(9,9,9)");
-//      for (int i = 0; i < 10; i++) {
-//        statement.addBatch(
-//            String.format(
-//                "insert into root.sg1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
-//      }
-//      statement.executeBatch();
+      //      for (int i = 0; i < 10; i++) {
+      //        statement.addBatch(
+      //            String.format(
+      //                "insert into root.sg1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
+      //      }
+      //      statement.executeBatch();
     } catch (Exception e) {
       e.printStackTrace();
     }
