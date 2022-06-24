@@ -16,18 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -35,7 +36,8 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBQueryWithComplexValueFilterIT {
 
   @BeforeClass
@@ -53,17 +55,13 @@ public class IoTDBQueryWithComplexValueFilterIT {
   public void testRawQuery1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1 from root.sg1.d1 where (time > 400 and s1 <= 600) or (s2 > 300 and time <= 500)");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(
+              "select s1 from root.sg1.d1 where (time > 4 and s1 <= 6) or (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
         }
-        Assert.assertEquals(300, cnt);
+        Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -75,19 +73,14 @@ public class IoTDBQueryWithComplexValueFilterIT {
   public void testRawQuery2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1 from root.sg1.d1 where (time > 400 and s1 <= 600) and (s2 > 300 and time <= 500)");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(
+              "select s1 from root.sg1.d1 where (time > 4 and s1 <= 6) and (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
         }
-        Assert.assertEquals(100, cnt);
+        Assert.assertEquals(1, cnt);
       }
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -100,12 +93,22 @@ public class IoTDBQueryWithComplexValueFilterIT {
       statement.execute("create storage group root.sg1");
       statement.execute("create timeseries root.sg1.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("create timeseries root.sg1.d1.s2 with datatype=DOUBLE,encoding=PLAIN");
-      for (int i = 0; i < 1000; i++) {
-        statement.addBatch(
-            String.format(
-                "insert into root.sg1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
-      }
-      statement.executeBatch();
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(0,0,0)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(1,1,1)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(2,2,2)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(3,3,3)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(4,4,4)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(5,5,5)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(6,6,6)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(7,7,7)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(8,8,8)");
+      statement.execute("insert into root.sg1.d1(time,s1,s2) values(9,9,9)");
+//      for (int i = 0; i < 10; i++) {
+//        statement.addBatch(
+//            String.format(
+//                "insert into root.sg1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
+//      }
+//      statement.executeBatch();
     } catch (Exception e) {
       e.printStackTrace();
     }
