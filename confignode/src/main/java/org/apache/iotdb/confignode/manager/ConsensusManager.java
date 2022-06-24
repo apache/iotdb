@@ -49,10 +49,15 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+
+  private final Manager configManager;
+
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(PartitionRegionStateMachine stateMachine) throws IOException {
+  public ConsensusManager(Manager configManager, PartitionRegionStateMachine stateMachine)
+      throws IOException {
+    this.configManager = configManager;
     setConsensusLayer(stateMachine);
   }
 
@@ -158,15 +163,21 @@ public class ConsensusManager {
     return consensusImpl.isLeader(consensusGroupId);
   }
 
-  public Peer getLeader(List<TConfigNodeLocation> onlineConfigNodes) {
-    Peer leader = consensusImpl.getLeader(consensusGroupId);
-
-    TConfigNodeLocation nodeLocation =
-        onlineConfigNodes.stream()
-            .filter(e -> e.getConsensusEndPoint().equals(leader.getEndpoint()))
-            .findFirst()
-            .get();
-    return new Peer(consensusGroupId, nodeLocation.getInternalEndPoint());
+  /** @return ConfigNode-leader's location if leader exists, null otherwise. */
+  public TConfigNodeLocation getLeader() {
+    for (int retry = 0; retry < 5; retry++) {
+      Peer leaderPeer = consensusImpl.getLeader(consensusGroupId);
+      List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getOnlineConfigNodes();
+      TConfigNodeLocation leaderLocation =
+          onlineConfigNodes.stream()
+              .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
+              .findFirst()
+              .orElse(null);
+      if (leaderLocation != null) {
+        return leaderLocation;
+      }
+    }
+    return null;
   }
 
   public ConsensusGroupId getConsensusGroupId() {
@@ -175,6 +186,10 @@ public class ConsensusManager {
 
   public IConsensus getConsensusImpl() {
     return consensusImpl;
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 
   @TestOnly
