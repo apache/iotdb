@@ -207,7 +207,7 @@ public class LogDispatcher {
       PendingBatch batch;
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
-      long maxIndex = impl.getController().getCurrentIndex();
+      long maxIndex = impl.getController().getCurrentIndex() + 1;
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
@@ -288,8 +288,6 @@ public class LogDispatcher {
         // TODO iterator
         IConsensusRequest data = reader.getReq(currentIndex++);
         if (data != null) {
-          // since WAL can no longer recover FragmentInstance, but only PlanNode, we need to give
-          // special flags to use different deserialization methods in the dataRegion stateMachine
           logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
         }
       }
