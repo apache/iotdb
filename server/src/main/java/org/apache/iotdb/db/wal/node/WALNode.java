@@ -807,6 +807,10 @@ public class WALNode implements IWALNode {
     checkpointManager.close();
   }
 
+  public File getLogDirectory() {
+    return logDirectory;
+  }
+
   @TestOnly
   boolean isAllWALEntriesConsumed() {
     return buffer.isAllWALEntriesConsumed();
