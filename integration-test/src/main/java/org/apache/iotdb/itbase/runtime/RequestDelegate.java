@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,7 @@ import java.util.concurrent.ExecutionException;
 /** This class is used to handle multi requests and gather their returned values. */
 public abstract class RequestDelegate<T> {
 
-  protected static final Logger logger = LoggerFactory.getLogger(RequestDelegate.class);
+  private static final Logger logger = LoggerFactory.getLogger(RequestDelegate.class);
   private final List<String> endpoints;
   private final List<Callable<T>> requests = new ArrayList<>();
 

@@ -19,8 +19,7 @@
 package org.apache.iotdb.itbase.runtime;
 
 import org.apache.iotdb.it.env.EnvFactory;
-
-import org.junit.Assert;
+import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -61,8 +60,8 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
         for (int j = i; j < getEndpoints().size(); j++) {
           resultFutures.get(j).cancel(true);
         }
-        logger.error("Waiting for query results of {} timeout", getEndpoints().get(i), e);
-        Assert.fail(String.format("Test failed by timeout of %s", getEndpoints().get(i)));
+        throw new ParallelRequestTimeoutException(
+            String.format("Waiting for query results of %s timeout", getEndpoints().get(i)), e);
       }
     }
     handleExceptions(exceptions);
