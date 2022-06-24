@@ -82,10 +82,4 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   public List<TsFileIOWriter> getFileIOWriter() {
     return Collections.singletonList(fileWriter);
   }
-
-  @Override
-  public void checkFileSizeAndMayOpenANewFile() throws IOException {
-    // In inner space compaction, size of target file is controlled in the process of selecting
-    // source files, so here we do nothing.
-  }
 }
