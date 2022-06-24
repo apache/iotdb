@@ -1834,8 +1834,7 @@ public class MTree implements Serializable {
     // start with given prefix if any related sg matches or set initPath null if not
     if (prefix != null) {
       initPath =
-          initPath.stream().anyMatch(p -> p.matchPrefixPath(prefix))
-                  || initPath.stream().anyMatch(prefix::matchPrefixPath)
+          initPath.stream().anyMatch(p -> p.matchPrefixPath(prefix) || prefix.matchPrefixPath(p))
               ? Collections.singleton(prefix)
               : null;
     }
