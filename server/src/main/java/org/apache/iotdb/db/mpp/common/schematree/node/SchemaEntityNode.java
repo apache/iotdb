@@ -21,7 +21,9 @@ package org.apache.iotdb.db.mpp.common.schematree.node;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -99,18 +101,18 @@ public class SchemaEntityNode extends SchemaInternalNode {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
-    serializeChildren(buffer);
+  public void serialize(OutputStream outputStream) throws IOException {
+    serializeChildren(outputStream);
 
-    ReadWriteIOUtils.write(getType(), buffer);
-    ReadWriteIOUtils.write(name, buffer);
-    ReadWriteIOUtils.write(isAligned, buffer);
-    ReadWriteIOUtils.write(children.size(), buffer);
+    ReadWriteIOUtils.write(getType(), outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(isAligned, outputStream);
+    ReadWriteIOUtils.write(children.size(), outputStream);
   }
 
-  public static SchemaEntityNode deserialize(ByteBuffer buffer) {
-    String name = ReadWriteIOUtils.readString(buffer);
-    boolean isAligned = ReadWriteIOUtils.readBool(buffer);
+  public static SchemaEntityNode deserialize(InputStream inputStream) throws IOException {
+    String name = ReadWriteIOUtils.readString(inputStream);
+    boolean isAligned = ReadWriteIOUtils.readBool(inputStream);
 
     SchemaEntityNode entityNode = new SchemaEntityNode(name);
     entityNode.setAligned(isAligned);

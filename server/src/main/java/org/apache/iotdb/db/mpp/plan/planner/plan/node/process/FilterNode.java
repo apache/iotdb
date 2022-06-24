@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -41,8 +42,9 @@ public class FilterNode extends TransformNode {
       Expression[] outputExpressions,
       Expression predicate,
       boolean keepNull,
-      ZoneId zoneId) {
-    super(id, childPlanNode, outputExpressions, keepNull, zoneId);
+      ZoneId zoneId,
+      OrderBy scanOrder) {
+    super(id, childPlanNode, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
   }
 
@@ -51,8 +53,9 @@ public class FilterNode extends TransformNode {
       Expression[] outputExpressions,
       Expression predicate,
       boolean keepNull,
-      ZoneId zoneId) {
-    super(id, outputExpressions, keepNull, zoneId);
+      ZoneId zoneId,
+      OrderBy scanOrder) {
+    super(id, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
   }
 
@@ -63,7 +66,8 @@ public class FilterNode extends TransformNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(getPlanNodeId(), outputExpressions, predicate, keepNull, zoneId);
+    return new FilterNode(
+        getPlanNodeId(), outputExpressions, predicate, keepNull, zoneId, scanOrder);
   }
 
   @Override
@@ -76,6 +80,7 @@ public class FilterNode extends TransformNode {
     Expression.serialize(predicate, byteBuffer);
     ReadWriteIOUtils.write(keepNull, byteBuffer);
     ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
   @Override
@@ -88,6 +93,7 @@ public class FilterNode extends TransformNode {
     Expression.serialize(predicate, stream);
     ReadWriteIOUtils.write(keepNull, stream);
     ReadWriteIOUtils.write(zoneId.getId(), stream);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {
@@ -99,8 +105,9 @@ public class FilterNode extends TransformNode {
     Expression predicate = Expression.deserialize(byteBuffer);
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId);
+    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder);
   }
 
   public Expression getPredicate() {

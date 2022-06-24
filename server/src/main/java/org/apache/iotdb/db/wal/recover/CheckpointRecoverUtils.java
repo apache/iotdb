@@ -42,7 +42,7 @@ public class CheckpointRecoverUtils {
     // desc sort by version id
     CheckpointFileUtils.descSortByVersionId(checkpointFiles);
     // find last valid .checkpoint file and load checkpoints from it
-    int maxMemTableId = 0;
+    long maxMemTableId = 0;
     List<Checkpoint> checkpoints = null;
     for (File checkpointFile : checkpointFiles) {
       CheckpointReader reader = new CheckpointReader(checkpointFile);
@@ -56,7 +56,7 @@ public class CheckpointRecoverUtils {
       return new CheckpointInfo(0, Collections.emptyMap());
     }
     // recover memTables information by checkpoints
-    Map<Integer, MemTableInfo> memTableId2Info = new HashMap<>();
+    Map<Long, MemTableInfo> memTableId2Info = new HashMap<>();
     for (Checkpoint checkpoint : checkpoints) {
       switch (checkpoint.getType()) {
         case GLOBAL_MEMORY_TABLE_INFO:
@@ -77,19 +77,19 @@ public class CheckpointRecoverUtils {
   }
 
   public static class CheckpointInfo {
-    private final int maxMemTableId;
-    private final Map<Integer, MemTableInfo> memTableId2Info;
+    private final long maxMemTableId;
+    private final Map<Long, MemTableInfo> memTableId2Info;
 
-    public CheckpointInfo(int maxMemTableId, Map<Integer, MemTableInfo> memTableId2Info) {
+    public CheckpointInfo(long maxMemTableId, Map<Long, MemTableInfo> memTableId2Info) {
       this.maxMemTableId = maxMemTableId;
       this.memTableId2Info = memTableId2Info;
     }
 
-    public int getMaxMemTableId() {
+    public long getMaxMemTableId() {
       return maxMemTableId;
     }
 
-    public Map<Integer, MemTableInfo> getMemTableId2Info() {
+    public Map<Long, MemTableInfo> getMemTableId2Info() {
       return memTableId2Info;
     }
   }
