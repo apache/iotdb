@@ -19,30 +19,28 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL;
 
 public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
@@ -218,7 +216,7 @@ public class TsFileManager {
       TsFileResource addAfterThisFile,
       List<TsFileResource> filesToAdd,
       boolean sequence,
-      long timePartition,List<TsFileResource> compactionTargetResources) {
+      long timePartition) {
     if (filesToAdd.isEmpty()) {
       return true;
     }
@@ -273,7 +271,6 @@ public class TsFileManager {
 
       // filter files need renaming
       List<TsFileResource> filesToRename = new ArrayList<>();
-      List<TsFileResource> crossMiddleFilesToRename = new ArrayList<>();
       long startVersion =
           addAfterThisFile != null && addAfterThisFile.getCreatedTime() == targetTime
               ? addAfterThisFile.getVersion() + 1
@@ -287,26 +284,6 @@ public class TsFileManager {
       for (TsFileResource resource : targetSameTimeList) {
         if (resource.getVersion() >= startVersion) {
           filesToRename.add(resource);
-          // add cross space compaction tmp file to rename
-          compactionTargetResources.stream().filter(resource -> )
-          File[] tmpFiles =
-              Objects.requireNonNull(
-                  resource
-                      .getTsFile()
-                      .getParentFile()
-                      .listFiles(
-                          file ->
-                              file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)
-                                  && TsFileName.parseTime(file.getName())
-                                      == resource.getCreatedTime()
-                                  && TsFileName.parseVersion(file.getName())
-                                          % CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL
-                                      == resource.getVersion()));
-          for (File f : tmpFiles) {
-            if (!f.getPath().equals(resource.getTsFilePath())) {
-              crossMiddleFilesToRename.add(new TsFileResource(f));
-            }
-          }
         }
       }
       // 2. filter files need renaming from another list
@@ -323,15 +300,9 @@ public class TsFileManager {
 
       // rename existing files
       filesToRename.sort(((Comparator<TsFileResource>) (TsFileName::compareFileName)).reversed());
-      crossMiddleFilesToRename.sort(
-          ((Comparator<TsFileResource>) (TsFileName::compareCrossCompactionTmpFileName))
-              .reversed());
       long offset = filesToAdd.size();
       for (TsFileResource resource : filesToRename) {
         resource.setVersion(resource.getVersion() + offset);
-      }
-      for (TsFileResource tmpResource : crossMiddleFilesToRename) {
-        tmpResource.setVersion(tmpResource.getVersion() + offset);
       }
 
       // add files
@@ -373,14 +344,19 @@ public class TsFileManager {
       throws IOException {
     writeLock("replace");
     try {
+      // timestamp-version -> resourceList
       Map<String, List<TsFileResource>> time2TargetFiles = new HashMap<>();
       for (TsFileResource resource : targetFileResources) {
         time2TargetFiles
             .computeIfAbsent(
-                resource.getCreatedTime() + "-" + resource.getVersion() % 100000,
+                resource.getCreatedTime()
+                    + "-"
+                    + resource.getVersion()
+                        % IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL,
                 k -> new ArrayList<>())
             .add(resource);
       }
+      // timestamp-version -> resource
       Map<String, TsFileResource> time2TargetPosition = new HashMap<>();
       // find insert target position
       for (TsFileResource tsFileResource : seqFileResources) {
@@ -389,13 +365,17 @@ public class TsFileManager {
           time2TargetPosition.put(key, tsFileResource);
         }
       }
-      // first add target
-      for (String timeVersionKey : time2TargetFiles.keySet()) {
+      Object[] keyArr = time2TargetPosition.keySet().toArray();
+      Arrays.sort(keyArr);
+
+      // first add target from the last position
+      for (int i = keyArr.length - 1; i >= 0; i--) {
+        String key = keyArr[i].toString();
         keepOrderAddAllAndRenameAfter(
-            time2TargetPosition.get(timeVersionKey),
-            time2TargetFiles.get(timeVersionKey),
+            time2TargetPosition.get(key),
+            time2TargetFiles.get(key),
             isTargetSequence,
-            timePartition,targetFileResources);
+            timePartition);
       }
       // then remove source
       for (TsFileResource tsFileResource : seqFileResources) {

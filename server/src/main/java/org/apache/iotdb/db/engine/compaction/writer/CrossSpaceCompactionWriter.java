@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL;
+
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // target fileIOWriters
   private List<TsFileIOWriter> fileWriterList = new ArrayList<>();
@@ -169,7 +171,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
         // add new target file resource
         TsFileResource newTargetResource =
             new TsFileResource(
-                TsFileNameGenerator.increaseFileVersion(fileWriterList.get(fileIndex).getFile()));
+                TsFileNameGenerator.increaseFileVersion(
+                    fileWriterList.get(fileIndex).getFile(),
+                    CROSS_COMPACTION_TMP_FILE_VERSION_INTERVAL));
         int i;
         for (i = 0; i < targetResources.size(); i++) {
           if (targetResources
