@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceM
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileName;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -106,19 +106,18 @@ public class CompactionUtils {
       List<TsFileResource> unseqResources,
       List<TsFileResource> targetResources)
       throws IOException {
-    // target file may more or less than source seq files, so we should find each target file with
-    // its corresponding source seq file.
-    Map<Long, TsFileResource> seqFileInfoMap = new HashMap<>();
+    // target file may less than source seq files, so we should find each target file with its
+    // corresponding source seq file.
+    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
     for (TsFileResource tsFileResource : seqResources) {
       seqFileInfoMap.put(
-          TsFileName.parse(tsFileResource.getTsFile().getName()).getTime(), tsFileResource);
+          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
+          tsFileResource);
     }
     // update each target mods file.
     for (TsFileResource tsFileResource : targetResources) {
       updateOneTargetMods(
-          tsFileResource,
-          seqFileInfoMap.get(TsFileName.parse(tsFileResource.getTsFile().getName()).getTime()),
-          unseqResources);
+          tsFileResource, seqFileInfoMap.get(tsFileResource.getTsFile().getName()), unseqResources);
     }
   }
 
