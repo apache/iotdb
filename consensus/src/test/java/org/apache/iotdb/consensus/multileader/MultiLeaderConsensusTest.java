@@ -365,25 +365,27 @@ public class MultiLeaderConsensusTest {
     public void stop() {}
 
     @Override
-    public synchronized TSStatus write(IConsensusRequest request) {
-      IConsensusRequest innerRequest = ((IndexedConsensusRequest) request).getRequest();
-      if (innerRequest instanceof ByteBufferConsensusRequest) {
-        ByteBuffer buffer = innerRequest.serializeToByteBuffer();
-        requestSet.add(
-            new IndexedConsensusRequest(
-                ((IndexedConsensusRequest) request).getSearchIndex(),
-                -1,
-                new TestEntry(buffer.getInt(), Peer.deserialize(buffer))));
-      } else {
-        requestSet.add(((IndexedConsensusRequest) request));
+    public TSStatus write(IConsensusRequest request) {
+      synchronized (requestSet) {
+        IConsensusRequest innerRequest = ((IndexedConsensusRequest) request).getRequest();
+        if (innerRequest instanceof ByteBufferConsensusRequest) {
+          ByteBuffer buffer = innerRequest.serializeToByteBuffer();
+          requestSet.add(
+              new IndexedConsensusRequest(
+                  ((IndexedConsensusRequest) request).getSearchIndex(),
+                  -1,
+                  new TestEntry(buffer.getInt(), Peer.deserialize(buffer))));
+        } else {
+          requestSet.add(((IndexedConsensusRequest) request));
+        }
+        return new TSStatus();
       }
-      return new TSStatus();
     }
 
     @Override
     public synchronized DataSet read(IConsensusRequest request) {
       if (request instanceof GetConsensusReqReaderPlan) {
-        return new FakeConsensusReqReader(new ArrayList<>(requestSet));
+        return new FakeConsensusReqReader(requestSet);
       }
       return null;
     }
@@ -399,20 +401,22 @@ public class MultiLeaderConsensusTest {
 
   public static class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
 
-    private final List<IndexedConsensusRequest> requestList;
+    private final Set<IndexedConsensusRequest> requestSet;
 
-    public FakeConsensusReqReader(List<IndexedConsensusRequest> requestList) {
-      this.requestList = requestList;
+    public FakeConsensusReqReader(Set<IndexedConsensusRequest> requestSet) {
+      this.requestSet = requestSet;
     }
 
     @Override
     public IConsensusRequest getReq(long index) {
-      for (IndexedConsensusRequest indexedConsensusRequest : requestList) {
-        if (indexedConsensusRequest.getSearchIndex() == index) {
-          return indexedConsensusRequest;
+      synchronized (requestSet) {
+        for (IndexedConsensusRequest indexedConsensusRequest : requestSet) {
+          if (indexedConsensusRequest.getSearchIndex() == index) {
+            return indexedConsensusRequest;
+          }
         }
+        return null;
       }
-      return null;
     }
 
     @Override
