@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.constant.TestConstant;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -281,12 +280,12 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   public void testUserPassword() {
     String errorMsg =
         "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:17 mismatched input 'test' expecting STRING_LITERAL";
+            + "line 1:18 mismatched input 'test' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE USER test 'test'");
+      statement.execute("CREATE USER test1 'test'");
       // password should be STRING_LITERAL
-      statement.execute("CREATE USER test test");
+      statement.execute("CREATE USER test1 test");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg, e.getMessage());
@@ -366,11 +365,6 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
       try (ResultSet resultSet =
           statement.executeQuery("select bottom_k(s1,'k' = '1') from root.vehicle.d1")) {
-        assertTrue(resultSet.next());
-        Assert.assertEquals("2.0", resultSet.getString(2));
-      }
-      try (ResultSet resultSet =
-          statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1")) {
         assertTrue(resultSet.next());
         Assert.assertEquals("2.0", resultSet.getString(2));
       }
@@ -513,22 +507,6 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
   }
 
-  // remove ignore when supporting sync in new cluster
-  @Test
-  @Ignore
-  public void testPipeSinkAttribute() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:40 token recognition error at: '` = '127.0.0.1')'";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE PIPESINK `test.*1` AS IoTDB (``ip` = '127.0.0.1')");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
-  }
-
   // alias can be identifier or STRING_LITERAL
   @Test
   public void testAliasInResultColumn() {
@@ -602,6 +580,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   }
 
   // TODO: add this back when trigger is supported in new cluster
+
   //  @Test
   //  public void testTriggerClassName() {
   //    String errorMsg =
@@ -705,6 +684,22 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //    } catch (SQLException e) {
   //      e.printStackTrace();
   //      fail();
+  //    }
+  //  }
+
+  // todo: add this back when supporting sync in new cluster
+
+  //  @Test
+  //  public void testPipeSinkAttribute() {
+  //    String errorMsg =
+  //        "401: Error occurred while parsing SQL to physical plan: "
+  //            + "line 1:40 token recognition error at: '` = '127.0.0.1')'";
+  //    try (Connection connection = EnvFactory.getEnv().getConnection();
+  //        Statement statement = connection.createStatement()) {
+  //      statement.execute("CREATE PIPESINK `test.*1` AS IoTDB (``ip` = '127.0.0.1')");
+  //      fail();
+  //    } catch (SQLException e) {
+  //      Assert.assertEquals(errorMsg, e.getMessage());
   //    }
   //  }
 }

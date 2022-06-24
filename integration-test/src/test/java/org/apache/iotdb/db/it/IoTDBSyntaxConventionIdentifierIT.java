@@ -793,7 +793,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //  }
   //
 
-  // todo: add this back when supporting cq
+  // todo: add this back when supporting cq in new cluster
 
   //  @Test
   //  public void testContinuousQueryNameIllegal() {
@@ -850,7 +850,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //    }
   //  }
 
-  // todo: add these back when support sync
+  // todo: add these back when support sync in new cluster
 
   //  @Test
   //  public void testPipeSinkNameIllegal() {
@@ -892,7 +892,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //    }
   //  }
 
-  // todo: add this back when support template
+  // todo: add this back when support template in new cluster
 
   //  @Test
   //  public void testTemplateName() {
