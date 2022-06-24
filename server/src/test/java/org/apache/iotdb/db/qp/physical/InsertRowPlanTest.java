@@ -251,9 +251,7 @@ public class InsertRowPlanTest {
       Assert.assertEquals(6, record.getFields().size());
     }
 
-    executor.processNonQuery(
-        new DeactivateTemplatePlan(
-            "template1", "root.isp.d1", Collections.singletonList("root.isp.d1")));
+    executor.processNonQuery(new DeactivateTemplatePlan("template1", "root.isp.d1"));
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -271,9 +269,7 @@ public class InsertRowPlanTest {
     }
     Assert.assertEquals(1, rCnt);
 
-    executor.processNonQuery(
-        new DeactivateTemplatePlan(
-            "template1", "root.isp.d1", Collections.singletonList("root.isp.d1")));
+    executor.processNonQuery(new DeactivateTemplatePlan("template1", "root.isp.d1"));
     executor.processNonQuery(new UnsetTemplatePlan("root.isp.d1", "template1"));
 
     rowPlan.getDataTypes()[0] = TSDataType.TEXT;

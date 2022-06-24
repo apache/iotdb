@@ -528,6 +528,12 @@ public class MManager {
         break;
       case DEACTIVATE_TEMPLATE:
         DeactivateTemplatePlan deactivateTemplatePlan = (DeactivateTemplatePlan) plan;
+        deactivateTemplatePlan.setPaths(
+            new ArrayList<>(
+                getPathsUsingTemplateUnderPrefix(
+                    deactivateTemplatePlan.getTemplateName(),
+                    deactivateTemplatePlan.getPrefixPath().getFullPath(),
+                    false)));
         deactivateSchemaTemplate(deactivateTemplatePlan);
         break;
       case AUTO_CREATE_DEVICE_MNODE:
@@ -2406,6 +2412,14 @@ public class MManager {
   }
 
   public void deactivateSchemaTemplate(DeactivateTemplatePlan plan) throws MetadataException {
+    if (plan.getPaths() == null || plan.getPaths().size() == 0) {
+      logger.warn(
+          "No actual paths to deactivate with template [{}] on prefix [{}].",
+          plan.getTemplateName(),
+          plan.getPrefixPath().getFullPath());
+      return;
+    }
+
     IMNode node;
     for (PartialPath path : plan.getPaths()) {
       node = mtree.getNodeByPath(path);
@@ -2413,13 +2427,13 @@ public class MManager {
       if (node.isMeasurement()) {
         throw new MetadataException(
             String.format(
-                "[%s] cannot be deactivated template as it is a measurement.", path.getFullPath()));
+                "[%s] cannot be applied to deactivate template as a measurement.",
+                path.getFullPath()));
       }
 
-      // clear caches within MManger
       node.setUseTemplate(false);
+      // clear caches within MManger
       mNodeCache.invalidate(node);
-
       if (node.isEntity()) {
         node.getAsEntityMNode().getTemplateLastCaches().clear();
       }

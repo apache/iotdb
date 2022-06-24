@@ -141,6 +141,7 @@ public class AuthUtils {
         case DROP_TRIGGER:
         case START_TRIGGER:
         case STOP_TRIGGER:
+        case APPLY_TEMPLATE:
           return;
         default:
           throw new AuthException(

@@ -28,14 +28,14 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class DeactivateTemplatePlan extends PhysicalPlan {
 
   String templateName;
   PartialPath prefixPath;
-  PartialPath[] pathToDeactivate;
+  transient List<PartialPath> pathToDeactivate;
 
   public DeactivateTemplatePlan() {
     super(OperatorType.DEACTIVATE_TEMPLATE);
@@ -44,45 +44,39 @@ public class DeactivateTemplatePlan extends PhysicalPlan {
   /**
    * Inverse process of {@link ActivateTemplatePlan}, may delete time series data as side effect.
    *
-   * <p>It might be some redundant as paths can be derived from prefixPath. But to avoid traversal
-   * when checking authority in {@linkplain org.apache.iotdb.db.service.thrift.impl.TSServiceImpl}
-   * and traversal again when setting not using template in {@linkplain
-   * org.apache.iotdb.db.metadata.MManager}, this implementation prefers to endure a little
-   * redundancy.
-   *
    * @param templateName template to delete.
    * @param prefixPath prefix of paths expected to set NOT using template, in pattern manner with
    *     wildcard.
-   * @param paths using template under the prefix when this plan created.
    */
-  public DeactivateTemplatePlan(
-      String templateName, PartialPath prefixPath, List<PartialPath> paths) {
+  public DeactivateTemplatePlan(String templateName, PartialPath prefixPath) {
     super(OperatorType.DEACTIVATE_TEMPLATE);
     this.templateName = templateName;
     this.prefixPath = prefixPath;
-    this.pathToDeactivate = paths.toArray(new PartialPath[0]);
+    this.pathToDeactivate = null;
   }
 
   // shortcut for uts
-  public DeactivateTemplatePlan(String templateName, String prefixPath, List<String> paths)
+  public DeactivateTemplatePlan(String templateName, String prefixPath)
       throws IllegalPathException {
     super(OperatorType.DEACTIVATE_TEMPLATE);
     this.templateName = templateName;
     this.prefixPath = new PartialPath(prefixPath);
-    this.pathToDeactivate = new PartialPath[paths.size()];
-    for (int i = 0; i < paths.size(); i++) {
-      this.pathToDeactivate[i] = new PartialPath(paths.get(i));
-    }
+    this.pathToDeactivate = null;
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return Arrays.asList(pathToDeactivate);
+    return pathToDeactivate;
+  }
+
+  @Override
+  public void setPaths(List<PartialPath> paths) {
+    this.pathToDeactivate = paths;
   }
 
   @Override
   public List<? extends PartialPath> getAuthPaths() {
-    return Arrays.asList(pathToDeactivate);
+    return Collections.singletonList(prefixPath);
   }
 
   public PartialPath getPrefixPath() {
@@ -98,10 +92,6 @@ public class DeactivateTemplatePlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.DEACTIVATE_TEMPLATE.ordinal());
     ReadWriteIOUtils.write(templateName, buffer);
     ReadWriteIOUtils.write(prefixPath.getFullPath(), buffer);
-    ReadWriteIOUtils.write(pathToDeactivate.length, buffer);
-    for (PartialPath path : pathToDeactivate) {
-      ReadWriteIOUtils.write(path.getFullPath(), buffer);
-    }
     buffer.putLong(index);
   }
 
@@ -109,10 +99,6 @@ public class DeactivateTemplatePlan extends PhysicalPlan {
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     templateName = readString(buffer);
     prefixPath = new PartialPath(readString(buffer));
-    pathToDeactivate = new PartialPath[ReadWriteIOUtils.readInt(buffer)];
-    for (int i = 0; i < pathToDeactivate.length; i++) {
-      pathToDeactivate[i] = new PartialPath(readString(buffer));
-    }
     index = buffer.getLong();
   }
 
@@ -121,10 +107,6 @@ public class DeactivateTemplatePlan extends PhysicalPlan {
     stream.writeByte((byte) PhysicalPlanType.DEACTIVATE_TEMPLATE.ordinal());
     ReadWriteIOUtils.write(templateName, stream);
     ReadWriteIOUtils.write(prefixPath.getFullPath(), stream);
-    ReadWriteIOUtils.write(pathToDeactivate.length, stream);
-    for (PartialPath path : pathToDeactivate) {
-      ReadWriteIOUtils.write(path.getFullPath(), stream);
-    }
     stream.writeLong(index);
   }
 }

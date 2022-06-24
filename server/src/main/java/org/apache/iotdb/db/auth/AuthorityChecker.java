@@ -123,6 +123,7 @@ public class AuthorityChecker {
       case CREATE_ALIGNED_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
+      case DEACTIVATE_TEMPLATE:
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
@@ -170,6 +171,15 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
+      case CREATE_TEMPLATE:
+      case APPEND_TEMPLATE:
+      case DROP_TEMPLATE:
+      case PRUNE_TEMPLATE:
+        return PrivilegeType.UPDATE_TEMPLATE.ordinal();
+      case ACTIVATE_TEMPLATE:
+      case SET_TEMPLATE:
+      case UNSET_TEMPLATE:
+        return PrivilegeType.APPLY_TEMPLATE.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

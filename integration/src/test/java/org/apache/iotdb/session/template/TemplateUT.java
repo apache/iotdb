@@ -493,6 +493,117 @@ public class TemplateUT {
   }
 
   @Test
+  public void testTemplatePrivilege() throws Exception {
+    session.executeNonQueryStatement("CREATE USER tpl_user 'tpl_pwd'");
+    Session nSession = new Session("127.0.0.1", 6667, "tpl_user", "tpl_pwd", ZoneId.of("+05:00"));
+    nSession.open();
+    try {
+      nSession.createSchemaTemplate(getTemplate("t1"));
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation CREATE_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement(
+        "grant user tpl_user privileges UPDATE_TEMPLATE on root.irrelevant");
+    nSession.createSchemaTemplate(getTemplate("t1"));
+    nSession.createSchemaTemplate(getTemplate("t2"));
+    assertEquals(2, nSession.showAllTemplates().size());
+    nSession.dropSchemaTemplate("t2");
+    assertEquals(1, nSession.showAllTemplates().size());
+
+    try {
+      nSession.setSchemaTemplate("t1", "root.sg2.d1");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation SET_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement("grant user tpl_user privileges APPLY_TEMPLATE on root.sg1");
+    try {
+      nSession.setSchemaTemplate("t1", "root.sg2.d1");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation SET_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement("grant user tpl_user privileges APPLY_TEMPLATE on root.sg2");
+    nSession.setSchemaTemplate("t1", "root.sg1.d1");
+    nSession.setSchemaTemplate("t1", "root.sg2.d1");
+    nSession.createTimeseriesOfTemplateOnPath("root.sg1.d1.v1");
+    nSession.createTimeseriesOfTemplateOnPath("root.sg2.d1.v1");
+
+    try {
+      nSession.deactivateTemplateOn("t1", "root.sg1.d1.*");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation DEACTIVATE_TEMPLATE", e.getMessage());
+    }
+
+    session.close();
+    nSession.close();
+    EnvironmentUtils.restartDaemon();
+
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    nSession = new Session("127.0.0.1", 6667, "tpl_user", "tpl_pwd", ZoneId.of("+05:00"));
+    session.open();
+    nSession.open();
+    assertEquals(2, nSession.showPathsTemplateUsingOn("t1").size());
+
+    session.executeNonQueryStatement(
+        "grant user tpl_user privileges DELETE_TIMESERIES on root.sg2");
+    nSession.deactivateTemplateOn("t1", "root.sg2.**");
+    assertEquals(1, nSession.showPathsTemplateUsingOn("t1").size());
+
+    try {
+      nSession.deactivateTemplateOn("t1", "root.sg1.d1.*");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation DEACTIVATE_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement(
+        "grant user tpl_user privileges DELETE_TIMESERIES on root.sg1");
+    nSession.deactivateTemplateOn("t1", "root.sg1.**");
+    assertEquals(0, nSession.showPathsTemplateUsingOn("t1").size());
+    nSession.unsetSchemaTemplate("root.sg1.d1", "t1");
+    nSession.unsetSchemaTemplate("root.sg2.d1", "t1");
+    nSession.dropSchemaTemplate("t1");
+    assertEquals(0, nSession.showAllTemplates().size());
+
+    session.close();
+    nSession.close();
+    EnvironmentUtils.restartDaemon();
+
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    nSession = new Session("127.0.0.1", 6667, "tpl_user", "tpl_pwd", ZoneId.of("+05:00"));
+    session.open();
+    nSession.open();
+    assertEquals(0, nSession.showAllTemplates().size());
+
+    nSession.close();
+  }
+
+  @Test
+  public void testUnsetTemplateSQL()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    session.createSchemaTemplate(getTemplate("template1"));
+    session.setSchemaTemplate("template1", "root.sg.v1");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.dd1");
+    session.executeNonQueryStatement("deactivate schema template template1 from root.sg.v1.dd1");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.dd2");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.dd3");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.g1.d1");
+    assertEquals(3, session.showPathsTemplateUsingOn("template1").size());
+
+    session.executeNonQueryStatement("deactivate schema template template1 from root.sg.v1.*");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.executeNonQueryStatement("deactivate schema template template1 from root.sg.v1.**");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+    session.unsetSchemaTemplate("root.sg.v1", "template1");
+    session.dropSchemaTemplate("template1");
+    assertEquals(0, session.showAllTemplates().size());
+  }
+
+  @Test
   public void testActivateTemplate()
       throws StatementExecutionException, IoTDBConnectionException, IOException {
     Template temp1 = getTemplate("template1");

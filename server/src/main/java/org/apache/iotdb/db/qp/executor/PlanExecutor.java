@@ -473,6 +473,13 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       // get all measurement paths
+      List<PartialPath> pathToDeactivate =
+          new ArrayList<>(
+              IoTDB.metaManager.getPathsUsingTemplateUnderPrefix(
+                  deactivateTemplatePlan.getTemplateName(),
+                  deactivateTemplatePlan.getPrefixPath().getFullPath(),
+                  false));
+      deactivateTemplatePlan.setPaths(pathToDeactivate);
       List<String> measurementsInnerPaths =
           IoTDB.metaManager.getMeasurementsInTemplate(deactivateTemplatePlan.getTemplateName(), "");
 
@@ -482,7 +489,7 @@ public class PlanExecutor implements IPlanExecutor {
         innerPartialPath.add(new PartialPath(path));
       }
 
-      List<PartialPath> pathToDeactivate = deactivateTemplatePlan.getPaths();
+      // List<PartialPath> pathToDeactivate = deactivateTemplatePlan.getPaths();
       List<PartialPath> pathToDelete =
           new ArrayList<>(innerPartialPath.size() * pathToDeactivate.size());
 

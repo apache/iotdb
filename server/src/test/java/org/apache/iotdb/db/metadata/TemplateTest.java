@@ -613,10 +613,10 @@ public class TemplateTest {
 
   private DeactivateTemplatePlan getDeactivatePlan(String tName, String prefix)
       throws MetadataException {
-    return new DeactivateTemplatePlan(
-        tName,
-        new PartialPath(prefix),
+    DeactivateTemplatePlan plan = new DeactivateTemplatePlan(tName, new PartialPath(prefix));
+    plan.setPaths(
         new ArrayList<>(IoTDB.metaManager.getPathsUsingTemplateUnderPrefix(tName, prefix, false)));
+    return plan;
   }
 
   private InsertRowPlan getInsertRowPlan(String prefixPath, String measurement)

@@ -1967,8 +1967,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
+    TSQueryTemplateResp resp = new TSQueryTemplateResp();
     try {
-      TSQueryTemplateResp resp = new TSQueryTemplateResp();
       String path;
       switch (TemplateQueryType.values()[req.getQueryType()]) {
         case COUNT_MEASUREMENTS:
@@ -2006,11 +2006,11 @@ public class TSServiceImpl implements TSIService.Iface {
           break;
       }
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
-      return resp;
     } catch (MetadataException e) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
       LOGGER.error("fail to query schema template because: " + e);
     }
-    return null;
+    return resp;
   }
 
   @Override
@@ -2075,15 +2075,8 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     try {
-      // paths using template involved since related to the authority check
       DeactivateTemplatePlan plan =
-          new DeactivateTemplatePlan(
-              templateName,
-              new PartialPath(prefixPath),
-              new ArrayList<>(
-                  IoTDB.metaManager.getPathsUsingTemplateUnderPrefix(
-                      templateName, prefixPath, false)));
-      // FIXME: update authority check
+          new DeactivateTemplatePlan(templateName, new PartialPath(prefixPath));
       TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (MetadataException e) {

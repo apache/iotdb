@@ -36,7 +36,7 @@ statement
 
 ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
-    | createSchemaTemplate | createTimeseriesOfSchemaTemplate
+    | createSchemaTemplate | createTimeseriesOfSchemaTemplate | deactivateSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
@@ -102,6 +102,11 @@ templateMeasurementClause
 // Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
     : CREATE TIMESERIES OF SCHEMA? TEMPLATE ON prefixPath
+    ;
+
+// Inverse procedure of Create Timeseries Of Schema Template
+deactivateSchemaTemplate
+    : DEACTIVATE SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Create Function
