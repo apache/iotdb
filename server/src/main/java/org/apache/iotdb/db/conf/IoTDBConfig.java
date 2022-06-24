@@ -927,12 +927,16 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
-  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
+  /** Memory allocated for schemaRegion */
+  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
 
-  private long allocateMemoryForSchemaCache = allocateMemoryForSchema * 3 / 10;
+  /** Memory allocated for SchemaCache */
+  private long allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
 
-  private long allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
+  /** Memory allocated for PartitionCache */
+  private long allocateMemoryForPartitionCache = 0;
 
+  /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
 
   IoTDBConfig() {}

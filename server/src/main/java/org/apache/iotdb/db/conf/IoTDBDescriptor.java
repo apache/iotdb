@@ -1408,13 +1408,14 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForSchema(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-        initSchemaMemoryAllocate(properties);
       }
     }
 
     logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
+
+    initSchemaMemoryAllocate(properties);
 
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
@@ -1459,10 +1460,16 @@ public class IoTDBDescriptor {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
     int proportionSum = 10;
-    int schemaRegionProportion = 5;
-    int schemaCacheProportion = 3;
-    int partitionCacheProportion = 1;
+    int schemaRegionProportion = 8;
+    int schemaCacheProportion = 1;
+    int partitionCacheProportion = 0;
     int lastCacheProportion = 1;
+
+    if (conf.isClusterMode()) {
+      schemaRegionProportion = 5;
+      schemaCacheProportion = 3;
+      partitionCacheProportion = 1;
+    }
 
     String schemaMemoryAllocatePortion =
         properties.getProperty("schema_memory_allocate_proportion");
