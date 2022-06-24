@@ -165,7 +165,7 @@ public class ConsensusManager {
 
   /** @return ConfigNode-leader's location if leader exists, null otherwise. */
   public TConfigNodeLocation getLeader() {
-    for (int retry = 0; retry < 5; retry++) {
+    for (int retry = 0; retry < 50; retry++) {
       Peer leaderPeer = consensusImpl.getLeader(consensusGroupId);
       List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getOnlineConfigNodes();
       TConfigNodeLocation leaderLocation =
@@ -175,6 +175,12 @@ public class ConsensusManager {
               .orElse(null);
       if (leaderLocation != null) {
         return leaderLocation;
+      }
+
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+      } catch (InterruptedException e) {
+        LOGGER.warn("ConsensusManager getLeader been interrupted, ", e);
       }
     }
     return null;
