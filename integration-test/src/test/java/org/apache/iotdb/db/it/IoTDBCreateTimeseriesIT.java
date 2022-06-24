@@ -157,25 +157,13 @@ public class IoTDBCreateTimeseriesIT {
 
   private void createTimeSeriesWithSpecialCharacterTool(String[] timeSeriesArray)
       throws SQLException {
-
-    List<String> resultList = new ArrayList<>();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("show timeseries root.sg.**")) {
+        ResultSet resultSet = statement.executeQuery("count timeseries root.sg.**")) {
       while (resultSet.next()) {
-        String timeseries = resultSet.getString("timeseries");
-        resultList.add(timeseries);
+        int count = resultSet.getInt("count(timeseries)");
+        Assert.assertEquals(timeSeriesArray.length, count);
       }
-    }
-    Assert.assertEquals(timeSeriesArray.length, resultList.size());
-
-    List<String> collect =
-        resultList.stream()
-            .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
-            .collect(Collectors.toList());
-
-    for (String timeseries : timeSeriesArray) {
-      Assert.assertTrue(collect.contains(timeseries));
     }
   }
 
