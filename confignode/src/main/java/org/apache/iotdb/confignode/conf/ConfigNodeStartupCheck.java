@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * ConfigNodeStartupCheck checks the cluster status and parameters in iotdb-confignode.properties
@@ -174,13 +175,7 @@ public class ConfigNodeStartupCheck {
 
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties
-      List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
-      for (TEndPoint endPoint : conf.getTargetConfigNodeList()) {
-        configNodeLocations.add(
-            new TConfigNodeLocation(
-                0, endPoint, new TEndPoint(endPoint.getIp(), conf.getConsensusPort())));
-      }
-      conf.setConfigNodeList(configNodeLocations);
+      conf.setConfigNodeList(conf.getTargetConfigNodeList());
     }
     return result;
   }
@@ -191,12 +186,17 @@ public class ConfigNodeStartupCheck {
    * @return True if the target_confignode points to itself
    */
   private boolean isContainsRpcConfigNode() {
-    boolean result = false;
+    AtomicBoolean result = new AtomicBoolean(false);
     TEndPoint rpcConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
-    if (conf.getTargetConfigNodeList().contains(rpcConfigNode)) {
-      result = true;
-    }
-    return result;
+    conf.getTargetConfigNodeList()
+        .forEach(
+            e -> {
+              if (e.getInternalEndPoint().equals(rpcConfigNode)) {
+                result.set(true);
+                return;
+              }
+            });
+    return result.get();
   }
 
   /** Register ConfigNode when first startup */
@@ -216,12 +216,13 @@ public class ConfigNodeStartupCheck {
             conf.getSchemaReplicationFactor(),
             conf.getDataReplicationFactor());
 
-    TEndPoint targetConfigNode = conf.getTargetConfigNodeList().get(0);
+    TEndPoint targetConfigNode = conf.getTargetConfigNodeList().get(0).getInternalEndPoint();
     while (true) {
       TConfigNodeRegisterResp resp =
           SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+        conf.setConfigNodeList(resp.getConfigNodeList());
         LOGGER.info("ConfigNode registered successfully.");
         break;
       } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {

@@ -42,7 +42,10 @@ public class ConfigNodeConfig {
   private int consensusPort = 22278;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private List<TEndPoint> targetConfigNodeList = Arrays.asList(new TEndPoint("0.0.0.0", 22277));
+  private List<TConfigNodeLocation> targetConfigNodeList =
+      Arrays.asList(
+          new TConfigNodeLocation(
+              0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
 
   /** Mark if the ConfigNode needs to apply */
   private boolean needApply = false;
@@ -200,11 +203,11 @@ public class ConfigNodeConfig {
     this.needApply = needApply;
   }
 
-  public List<TEndPoint> getTargetConfigNodeList() {
+  public List<TConfigNodeLocation> getTargetConfigNodeList() {
     return targetConfigNodeList;
   }
 
-  public void setTargetConfigNodeList(List<TEndPoint> targetConfigNodeList) {
+  public void setTargetConfigNodeList(List<TConfigNodeLocation> targetConfigNodeList) {
     this.targetConfigNodeList = targetConfigNodeList;
   }
 

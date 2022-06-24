@@ -117,7 +117,8 @@ public class ConfigNodeDescriptor {
 
       String targetConfigNodeList = properties.getProperty("target_confignode", null);
       if (targetConfigNodeList != null) {
-        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(targetConfigNodeList));
+        conf.setTargetConfigNodeList(
+            NodeUrlUtils.parseTConfigNodeLocationUrls(targetConfigNodeList));
       }
 
       conf.setSeriesPartitionSlotNum(
