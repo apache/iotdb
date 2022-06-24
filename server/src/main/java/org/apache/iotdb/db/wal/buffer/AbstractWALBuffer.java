@@ -21,6 +21,7 @@ package org.apache.iotdb.db.wal.buffer;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALWriter;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
@@ -42,6 +43,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   protected final AtomicInteger currentWALFileVersion = new AtomicInteger();
   /** current search index */
   protected volatile long currentSearchIndex;
+  /** current search index */
+  protected volatile WALFileStatus currentFileStatus;
   /** current wal file log writer */
   protected volatile ILogWriter currentWALFileWriter;
 
@@ -55,12 +58,14 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
       logger.info("Create folder {} for wal node-{}'s buffer.", logDirectory, identifier);
     }
     currentSearchIndex = startSearchIndex;
+    currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     currentWALFileVersion.set(startFileVersion);
     currentWALFileWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
                 logDirectory,
-                WALFileUtils.getLogFileName(currentWALFileVersion.get(), currentSearchIndex)));
+                WALFileUtils.getLogFileName(
+                    currentWALFileVersion.get(), currentSearchIndex, currentFileStatus)));
   }
 
   @Override
@@ -74,12 +79,27 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   }
 
   /** Notice: only called by syncBufferThread and old log writer will be closed by this function. */
-  protected void rollLogWriter(long searchIndex) throws IOException {
+  protected void rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
+    // close file
+    File currentFile = currentWALFileWriter.getLogFile();
+    String currentName = currentFile.getName();
     currentWALFileWriter.close();
+    if (WALFileUtils.parseStatusCode(currentName) != fileStatus) {
+      String targetName =
+          WALFileUtils.getLogFileName(
+              WALFileUtils.parseVersionId(currentName),
+              WALFileUtils.parseStartSearchIndex(currentName),
+              fileStatus);
+      if (!currentFile.renameTo(SystemFileFactory.INSTANCE.getFile(logDirectory, targetName))) {
+        logger.error("Fail to rename file {} to {}", currentName, targetName);
+      }
+    }
+    // roll file
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
             logDirectory,
-            WALFileUtils.getLogFileName(currentWALFileVersion.incrementAndGet(), searchIndex));
+            WALFileUtils.getLogFileName(
+                currentWALFileVersion.incrementAndGet(), searchIndex, currentFileStatus));
     currentWALFileWriter = new WALWriter(nextLogFile);
     logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
   }

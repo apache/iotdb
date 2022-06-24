@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
@@ -126,6 +128,7 @@ public class WALNodeRecoverTask implements Runnable {
     File lastWALFile = walFiles[walFiles.length - 1];
     int lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
     long lastSearchIndex = WALFileUtils.parseStartSearchIndex(lastWALFile.getName());
+    WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     try (WALReader walReader = new WALReader(lastWALFile)) {
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
@@ -134,11 +137,23 @@ public class WALNodeRecoverTask implements Runnable {
           InsertNode insertNode = (InsertNode) walEntry.getValue();
           if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
             lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
+            fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
           }
         }
       }
     } catch (Exception e) {
       logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);
+    }
+    // rename last wal file when file status are inconsistent
+    if (WALFileUtils.parseStatusCode(lastWALFile.getName()) != fileStatus) {
+      String targetName =
+          WALFileUtils.getLogFileName(
+              WALFileUtils.parseVersionId(lastWALFile.getName()),
+              WALFileUtils.parseStartSearchIndex(lastWALFile.getName()),
+              fileStatus);
+      if (!lastWALFile.renameTo(SystemFileFactory.INSTANCE.getFile(logDirectory, targetName))) {
+        logger.error("Fail to rename file {} to {}", lastWALFile, targetName);
+      }
     }
     return new long[] {lastVersionId, lastSearchIndex};
   }

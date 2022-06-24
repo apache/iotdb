@@ -30,6 +30,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.recover.CheckpointRecoverUtils;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
@@ -258,16 +259,32 @@ public class WALNodeTest {
     }
     walNode.onMemTableFlushed(memTable);
     walNode.onMemTableCreated(new PrimitiveMemTable(), tsFilePath);
-    // check existence of _0-0.wal file
+    // check existence of _0-0-0.wal file
     assertTrue(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(0, 0)).exists());
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
     assertTrue(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(1, 0)).exists());
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
     walNode.deleteOutdatedFiles();
     assertFalse(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(0, 0)).exists());
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
     assertTrue(
-        new File(logDirectory + File.separator + WALFileUtils.getLogFileName(1, 0)).exists());
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
     // check flush listeners
     try {
       for (WALFlushListener walFlushListener : walFlushListeners) {

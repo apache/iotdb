@@ -232,6 +232,7 @@ public class IoTDBConstant {
   public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
   public static final String WAL_VERSION_ID = "versionId";
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
+  public static final String WAL_STATUS_CODE = "statusCode";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
