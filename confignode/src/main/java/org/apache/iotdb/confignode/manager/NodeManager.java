@@ -177,8 +177,6 @@ public class NodeManager {
     resp.setPartitionRegionId(
         getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
-    resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
-
     return resp;
   }
 

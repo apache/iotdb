@@ -201,7 +201,6 @@ public class ConfigNodeStartupCheck {
           SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
-        conf.setConfigNodeList(resp.getConfigNodeList());
         LOGGER.info("ConfigNode registered successfully.");
         break;
       } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
