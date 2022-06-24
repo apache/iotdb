@@ -163,6 +163,10 @@ public class TransformNode extends ProcessNode {
     return zoneId;
   }
 
+  public OrderBy getScanOrder() {
+    return scanOrder;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
