@@ -287,6 +287,9 @@ public class WALNode implements IWALNode {
               : WALFileUtils.binarySearchFileBySearchIndex(
                   filesToDelete, safelyDeletedSearchIndex + 1);
       // delete files whose file status is CONTAINS_NONE_SEARCH_INDEX
+      if (endFileIndex == -1) {
+        endFileIndex++;
+      }
       while (endFileIndex < filesToDelete.length) {
         if (WALFileUtils.parseStatusCode(filesToDelete[endFileIndex].getName())
             == WALFileStatus.CONTAINS_SEARCH_INDEX) {
