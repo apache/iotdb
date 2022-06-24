@@ -375,10 +375,6 @@ public class MLogTxtWriter implements AutoCloseable {
     StringBuilder buf = new StringBuilder((MetadataOperationType.UNSET_USING_TEMPLATE));
     buf.append(",");
     buf.append(plan.getPrefixPath().getFullPath());
-
-    buf.append(
-        plan.getPaths().stream().map(PartialPath::getFullPath).collect(Collectors.joining(",")));
-
     buf.append(LINE_SEPARATOR);
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);
