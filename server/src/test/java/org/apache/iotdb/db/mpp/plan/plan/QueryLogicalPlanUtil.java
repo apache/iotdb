@@ -441,7 +441,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
-            OrderBy.TIMESTAMP_ASC,
+            OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -453,7 +453,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            OrderBy.TIMESTAMP_ASC,
+            OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -465,7 +465,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            OrderBy.TIMESTAMP_ASC,
+            OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList.forEach(
         node -> {

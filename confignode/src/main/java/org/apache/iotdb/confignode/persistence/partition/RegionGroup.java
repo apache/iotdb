@@ -33,7 +33,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroup {
 
-  private final TConsensusGroupId id;
   private final TRegionReplicaSet replicaSet;
 
   // For DataRegion, each SeriesSlot * TimeSlot form a slot,
@@ -41,19 +40,17 @@ public class RegionGroup {
   private final AtomicLong slotCount;
 
   public RegionGroup() {
-    this.id = new TConsensusGroupId();
     this.replicaSet = new TRegionReplicaSet();
     this.slotCount = new AtomicLong();
   }
 
   public RegionGroup(TRegionReplicaSet replicaSet) {
-    this.id = replicaSet.getRegionId();
     this.replicaSet = replicaSet;
     this.slotCount = new AtomicLong(0);
   }
 
   public TConsensusGroupId getId() {
-    return id;
+    return replicaSet.getRegionId();
   }
 
   public TRegionReplicaSet getReplicaSet() {
@@ -70,14 +67,12 @@ public class RegionGroup {
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
-    id.write(protocol);
     replicaSet.write(protocol);
     ReadWriteIOUtils.write(slotCount.get(), outputStream);
   }
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
-    id.read(protocol);
     replicaSet.read(protocol);
     slotCount.set(ReadWriteIOUtils.readLong(inputStream));
   }
@@ -87,11 +82,11 @@ public class RegionGroup {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegionGroup that = (RegionGroup) o;
-    return id.equals(that.id) && replicaSet.equals(that.replicaSet);
+    return replicaSet.equals(that.replicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, replicaSet);
+    return Objects.hash(replicaSet);
   }
 }
