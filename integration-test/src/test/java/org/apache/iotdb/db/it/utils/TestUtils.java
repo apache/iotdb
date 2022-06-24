@@ -29,8 +29,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestUtils {
@@ -42,6 +44,19 @@ public class TestUtils {
         statement.execute(sql);
       }
     } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void resultSetEqualTest(
+      String sql, String expectedHeader, Set<String> expectedRetSet) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetSet);
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -143,6 +158,27 @@ public class TestUtils {
       ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray)
       throws SQLException {
     assertResultSetEqual(actualResultSet, expectedHeader, expectedRetArray, null);
+  }
+
+  public static void assertResultSetEqual(
+      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet)
+      throws SQLException {
+    ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+    StringBuilder header = new StringBuilder();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      header.append(resultSetMetaData.getColumnName(i)).append(",");
+    }
+    assertEquals(expectedHeader, header.toString());
+
+    while (actualResultSet.next()) {
+      StringBuilder builder = new StringBuilder();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        builder.append(actualResultSet.getString(i)).append(",");
+      }
+      assertTrue(expectedRetSet.contains(builder.toString()));
+      expectedRetSet.remove(builder.toString());
+    }
+    assertEquals(expectedRetSet.size(), 0);
   }
 
   public static void assertResultSetEqual(

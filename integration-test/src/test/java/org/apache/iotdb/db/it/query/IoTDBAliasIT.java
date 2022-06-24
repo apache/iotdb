@@ -35,7 +35,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
@@ -263,23 +265,24 @@ public class IoTDBAliasIT {
   @Test
   public void alignByDeviceQueryAsTest2() {
     String expectedHeader = "Time,Device,speed,s2,";
-    String[] retArray =
-        new String[] {
-          "100,root.sg2.d2,11.1,20.2,",
-          "200,root.sg2.d2,20.2,21.8,",
-          "300,root.sg2.d2,45.3,23.4,",
-          "400,root.sg2.d2,73.4,26.3,",
-          "100,root.sg2.d1,10.1,20.7,",
-          "200,root.sg2.d1,15.2,22.9,",
-          "300,root.sg2.d1,30.3,25.1,",
-          "400,root.sg2.d1,50.4,28.3,"
-        };
+    Set<String> retSet =
+        new HashSet<>(
+            Arrays.asList(
+                "100,root.sg2.d2,11.1,20.2,",
+                "200,root.sg2.d2,20.2,21.8,",
+                "300,root.sg2.d2,45.3,23.4,",
+                "400,root.sg2.d2,73.4,26.3,",
+                "100,root.sg2.d1,10.1,20.7,",
+                "200,root.sg2.d1,15.2,22.9,",
+                "300,root.sg2.d1,30.3,25.1,",
+                "400,root.sg2.d1,50.4,28.3,"));
 
     resultSetEqualTest(
-        "select s1 as speed, s2 from root.sg2.* align by device", expectedHeader, retArray);
+        "select s1 as speed, s2 from root.sg2.* align by device", expectedHeader, retSet);
   }
 
   @Test
+  @Ignore // TODO incompatible feature with 0.13
   public void alignByDeviceQueryAsTest3() {
     String expectedHeader = "Time,Device,speed,s1,";
     String[] retArray =
@@ -310,7 +313,7 @@ public class IoTDBAliasIT {
     // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
     assertTestFail(
         "select * as speed from root.sg2.d1 align by device",
-        "alias 'speed' can only be matched with one time series");
+        "can only be matched with one time series");
   }
 
   @Test
@@ -345,7 +348,6 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  @Ignore // TODO: remove @Ignore after support UDF
   public void UDFQueryAsTest() {
     List<String> sqls =
         Arrays.asList(

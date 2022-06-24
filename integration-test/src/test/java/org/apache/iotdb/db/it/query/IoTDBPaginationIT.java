@@ -99,31 +99,27 @@ public class IoTDBPaginationIT {
 
   @Test
   public void rawDataQueryTest() {
-    // TODO: remove comments after support value filter
     List<String> querySQLs =
         Arrays.asList(
             "SELECT s1 FROM root.vehicle.d0 WHERE time<200 limit 3",
-            // "SELECT s0 FROM root.vehicle.d0 WHERE s1 > 190 limit 3",
-            // "SELECT s1,s2 FROM root.vehicle.d0 WHERE s1 > 190 or s2 < 10.0 limit 3 offset 2",
+            "SELECT s0 FROM root.vehicle.d0 WHERE s1 > 190 limit 3",
+            "SELECT s1,s2 FROM root.vehicle.d0 WHERE s1 > 190 or s2 < 10.0 limit 3 offset 2",
             "SELECT * FROM root.vehicle.d0 slimit 1",
-            "SELECT * FROM root.vehicle.d0 slimit 1 soffset 2"
-            // "SELECT * FROM root.vehicle.d0 WHERE s1 > 190 or s2 < 10.0 limit 3 offset 1 slimit 1
-            // soffset 2"
-            );
+            "SELECT * FROM root.vehicle.d0 slimit 1 soffset 2",
+            "SELECT * FROM root.vehicle.d0 WHERE s1 > 190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2");
     List<String> expectHeaders =
         Arrays.asList(
             "Time,root.vehicle.d0.s1,",
-            // "Time,root.vehicle.d0.s0,",
-            // "Time,root.vehicle.d0.s1,root.vehicle.d0.s2,",
             "Time,root.vehicle.d0.s0,",
-            "Time,root.vehicle.d0.s2,"
-            // "Time,root.vehicle.d0.s2,"
-            );
+            "Time,root.vehicle.d0.s1,root.vehicle.d0.s2,",
+            "Time,root.vehicle.d0.s0,",
+            "Time,root.vehicle.d0.s2,",
+            "Time,root.vehicle.d0.s2,");
     List<String[]> retArrays =
         Arrays.asList(
             new String[] {"1,1101,", "2,40000,", "50,50000,"},
-            // new String[] {"1,101,", "2,10000,", "50,10000,"},
-            // new String[] {"3,null,3.33,", "4,null,4.44,", "50,50000,null,"},
+            new String[] {"1,101,", "2,10000,", "50,10000,"},
+            new String[] {"3,null,3.33,", "4,null,4.44,", "50,50000,null,"},
             new String[] {
               "1,101,",
               "2,10000,",
@@ -139,9 +135,8 @@ public class IoTDBPaginationIT {
             },
             new String[] {
               "2,2.22,", "3,3.33,", "4,4.44,", "102,10.0,", "105,11.11,", "1000,1000.11,"
-            }
-            // new String[] {"3,3.33,", "4,4.44,", "105,11.11,"}
-            );
+            },
+            new String[] {"3,3.33,", "4,4.44,", "105,11.11,"});
 
     for (int i = 0; i < querySQLs.size(); i++) {
       resultSetEqualTest(querySQLs.get(0), expectHeaders.get(0), retArrays.get(0));
