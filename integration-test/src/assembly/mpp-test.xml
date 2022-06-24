@@ -20,16 +20,11 @@
 
 -->
 <assembly>
-    <id>cluster-test</id>
+    <id>mpp-test</id>
     <formats>
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
-    <dependencySets>
-        <dependencySet>
-            <outputDirectory>lib</outputDirectory>
-        </dependencySet>
-    </dependencySets>
     <fileSets>
         <fileSet>
             <outputDirectory>datanode/conf</outputDirectory>

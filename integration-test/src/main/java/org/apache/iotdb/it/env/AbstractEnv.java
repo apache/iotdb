@@ -206,19 +206,27 @@ public abstract class AbstractEnv implements BaseEnv {
           IntStream.rangeClosed(randomPortStart, randomPortStart + 9)
               .boxed()
               .collect(Collectors.toList());
-      String cmd = getSearchAvailablePortCmd(requiredPorts);
-
       try {
-        Process proc = Runtime.getRuntime().exec(cmd);
-        if (proc.waitFor() == 1 && lockFile.createNewFile()) {
+        if (checkPortsAvailable(requiredPorts) && lockFile.createNewFile()) {
           return requiredPorts.stream().mapToInt(Integer::intValue).toArray();
         }
       } catch (IOException e) {
         // ignore
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
       }
     } while (true);
+  }
+
+  private boolean checkPortsAvailable(List<Integer> ports) {
+    String cmd = getSearchAvailablePortCmd(ports);
+    try {
+      Process proc = Runtime.getRuntime().exec(cmd);
+      return proc.waitFor() == 1;
+    } catch (IOException e) {
+      // ignore
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    return false;
   }
 
   private String getSearchAvailablePortCmd(List<Integer> ports) {
