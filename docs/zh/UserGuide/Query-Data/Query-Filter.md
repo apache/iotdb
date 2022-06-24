@@ -91,6 +91,20 @@
    select code from root.sg1.d1 where code not in ('200', '300', '400', '500');
    ```
 
+## 空值过滤
+使用空值过滤条件可以筛选出值为空或非空的数据
+1. 选择值为空的数据:
+
+    ```sql
+    select code from root.sg1.d1 where temperature is null;
+    ````
+
+2. 选择值为非空的数据:
+
+    ```sql
+    select code from root.sg1.d1 where temperature is not null;
+    ````
+
 ## 模糊查询
 
 在值过滤条件中，对于 TEXT 类型的数据，支持使用 `Like` 和 `Regexp` 运算符对数据进行模糊匹配
