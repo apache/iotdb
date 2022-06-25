@@ -95,11 +95,12 @@ Msg: 602: No permissions for this operation INSERT
 
 现在，我们用root用户分别赋予他们向对应存储组数据的写入权限.
 
-我们使用 `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` 语句赋予用户权限，例如：
+我们使用 `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` 语句赋予用户权限(注：其中，创建用户权限无需指定路径)，例如：
 
 ```
 GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 执行状态如下所示：
 
@@ -107,6 +108,8 @@ GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 IoTDB> GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
 IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+Msg: The statement is executed successfully.
+IoTDB> GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
 ```
 
@@ -118,11 +121,12 @@ Msg: The statement is executed successfully.
 
 ### 撤销用户权限
 
-授予用户权限后，我们可以使用 `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` 来撤销已授予的用户权限。例如，用root用户撤销ln_write_user和sgcc_write_user的权限：
+授予用户权限后，我们可以使用 `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` 来撤销已授予的用户权限(注：其中，撤销创建用户权限无需指定路径)。例如，用root用户撤销ln_write_user和sgcc_write_user的权限：
 
 ```
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 
 执行状态如下所示：
@@ -131,6 +135,8 @@ REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
 REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+Msg: The statement is executed successfully.
+REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
 ```
 

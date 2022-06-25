@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
@@ -40,7 +42,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
@@ -53,10 +55,10 @@ public class WALNodeRecoverTask implements Runnable {
   /** latch to collect all nodes' recovery end information */
   private final CountDownLatch allNodesRecoveredLatch;
   /** version id of first valid .wal file */
-  private int firstValidVersionId = Integer.MAX_VALUE;
+  private long firstValidVersionId = Long.MAX_VALUE;
 
-  private Map<Integer, MemTableInfo> memTableId2Info;
-  private Map<Integer, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
+  private Map<Long, MemTableInfo> memTableId2Info;
+  private Map<Long, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
 
   public WALNodeRecoverTask(File logDirectory, CountDownLatch allNodesRecoveredLatch) {
     this.logDirectory = logDirectory;
@@ -102,7 +104,7 @@ public class WALNodeRecoverTask implements Runnable {
       }
       // recover version id and search index
       long[] indexInfo = recoverLastSearchIndex();
-      int lastVersionId = (int) indexInfo[0];
+      long lastVersionId = indexInfo[0];
       long lastSearchIndex = indexInfo[1];
       WALManager.getInstance()
           .registerWALNode(
@@ -124,8 +126,9 @@ public class WALNodeRecoverTask implements Runnable {
     // get last search index from last wal file
     WALFileUtils.ascSortByVersionId(walFiles);
     File lastWALFile = walFiles[walFiles.length - 1];
-    int lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
+    long lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
     long lastSearchIndex = WALFileUtils.parseStartSearchIndex(lastWALFile.getName());
+    WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     try (WALReader walReader = new WALReader(lastWALFile)) {
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
@@ -134,11 +137,23 @@ public class WALNodeRecoverTask implements Runnable {
           InsertNode insertNode = (InsertNode) walEntry.getValue();
           if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
             lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
+            fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
           }
         }
       }
     } catch (Exception e) {
       logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);
+    }
+    // rename last wal file when file status are inconsistent
+    if (WALFileUtils.parseStatusCode(lastWALFile.getName()) != fileStatus) {
+      String targetName =
+          WALFileUtils.getLogFileName(
+              WALFileUtils.parseVersionId(lastWALFile.getName()),
+              WALFileUtils.parseStartSearchIndex(lastWALFile.getName()),
+              fileStatus);
+      if (!lastWALFile.renameTo(SystemFileFactory.INSTANCE.getFile(logDirectory, targetName))) {
+        logger.error("Fail to rename file {} to {}", lastWALFile, targetName);
+      }
     }
     return new long[] {lastVersionId, lastSearchIndex};
   }
@@ -150,9 +165,9 @@ public class WALNodeRecoverTask implements Runnable {
     memTableId2Info = info.getMemTableId2Info();
     memTableId2RecoverPerformer = new HashMap<>();
     // update init memTable id
-    int maxMemTableId = info.getMaxMemTableId();
-    AtomicInteger memTableIdCounter = AbstractMemTable.memTableIdCounter;
-    int oldVal = memTableIdCounter.get();
+    long maxMemTableId = info.getMaxMemTableId();
+    AtomicLong memTableIdCounter = AbstractMemTable.memTableIdCounter;
+    long oldVal = memTableIdCounter.get();
     while (maxMemTableId > oldVal) {
       if (!memTableIdCounter.compareAndSet(oldVal, maxMemTableId)) {
         oldVal = memTableIdCounter.get();

@@ -801,12 +801,6 @@ public class IoTDBDescriptor {
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
-      conf.setDataNodeSchemaCacheSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "datanode_schema_cache_size",
-                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
-
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -1421,6 +1415,8 @@ public class IoTDBDescriptor {
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
+    initSchemaMemoryAllocate(properties);
+
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
             properties.getProperty(
@@ -1458,6 +1454,54 @@ public class IoTDBDescriptor {
         }
       }
     }
+  }
+
+  private void initSchemaMemoryAllocate(Properties properties) {
+    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
+
+    int proportionSum = 10;
+    int schemaRegionProportion = 8;
+    int schemaCacheProportion = 1;
+    int partitionCacheProportion = 0;
+    int lastCacheProportion = 1;
+
+    if (conf.isClusterMode()) {
+      schemaRegionProportion = 5;
+      schemaCacheProportion = 3;
+      partitionCacheProportion = 1;
+    }
+
+    String schemaMemoryAllocatePortion =
+        properties.getProperty("schema_memory_allocate_proportion");
+    if (schemaMemoryAllocatePortion != null) {
+      String[] proportions = schemaMemoryAllocatePortion.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
+
+      if (loadedProportionSum != 0) {
+        proportionSum = loadedProportionSum;
+        schemaRegionProportion = Integer.parseInt(proportions[0].trim());
+        schemaCacheProportion = Integer.parseInt(proportions[1].trim());
+        partitionCacheProportion = Integer.parseInt(proportions[2].trim());
+        lastCacheProportion = Integer.parseInt(proportions[3].trim());
+      }
+    }
+
+    conf.setAllocateMemoryForSchemaRegion(
+        schemaMemoryTotal * schemaRegionProportion / proportionSum);
+    logger.info("allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
+
+    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    logger.info("allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
+
+    conf.setAllocateMemoryForPartitionCache(
+        schemaMemoryTotal * partitionCacheProportion / proportionSum);
+    logger.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+
+    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
+    logger.info("allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

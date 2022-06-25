@@ -1948,7 +1948,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    String privilege = parsePrivilege(ctx.privileges())[0];
+
+    PartialPath prefixPath;
+    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+      String[] path = {"root"};
+      prefixPath = new PartialPath(path);
+    } else {
+      if (ctx.prefixPath() == null) {
+        throw new SQLParserException("Invalid prefix path");
+      }
+      prefixPath = parsePrefixPath(ctx.prefixPath());
+    }
+    authorOperator.setNodeNameList(prefixPath);
     return authorOperator;
   }
 
@@ -1984,7 +1996,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    String privilege = parsePrivilege(ctx.privileges())[0];
+
+    PartialPath prefixPath;
+    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+      String[] path = {"root"};
+      prefixPath = new PartialPath(path);
+    } else {
+      if (ctx.prefixPath() == null) {
+        throw new SQLParserException("Invalid prefix path");
+      }
+      prefixPath = parsePrefixPath(ctx.prefixPath());
+    }
+    authorOperator.setNodeNameList(prefixPath);
     return authorOperator;
   }
 

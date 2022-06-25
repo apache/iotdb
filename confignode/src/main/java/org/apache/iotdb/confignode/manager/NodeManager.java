@@ -177,6 +177,7 @@ public class NodeManager {
     resp.setPartitionRegionId(
         getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
+    resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
     return resp;
   }
 
@@ -213,9 +214,14 @@ public class NodeManager {
         }
 
         // Check whether the remove ConfigNode is leader
-        Peer leader = getConsensusManager().getLeader(getOnlineConfigNodes());
+        TConfigNodeLocation leader = getConsensusManager().getLeader();
+        if (leader == null) {
+          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+              .setMessage(
+                  "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
+        }
         if (leader
-            .getEndpoint()
+            .getInternalEndPoint()
             .equals(removeConfigNodeReq.getConfigNodeLocation().getInternalEndPoint())) {
           // transfer leader
           return transferLeader(removeConfigNodeReq, getConsensusManager().getConsensusGroupId());

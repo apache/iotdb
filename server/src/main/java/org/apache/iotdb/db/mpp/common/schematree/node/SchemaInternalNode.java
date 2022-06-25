@@ -21,7 +21,9 @@ package org.apache.iotdb.db.mpp.common.schematree.node;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -75,22 +77,22 @@ public class SchemaInternalNode extends SchemaNode {
     return SCHEMA_INTERNAL_NODE;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    serializeChildren(buffer);
+  public void serialize(OutputStream outputStream) throws IOException {
+    serializeChildren(outputStream);
 
-    ReadWriteIOUtils.write(getType(), buffer);
-    ReadWriteIOUtils.write(name, buffer);
-    ReadWriteIOUtils.write(children.size(), buffer);
+    ReadWriteIOUtils.write(getType(), outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(children.size(), outputStream);
   }
 
-  protected void serializeChildren(ByteBuffer buffer) {
+  protected void serializeChildren(OutputStream outputStream) throws IOException {
     for (SchemaNode child : children.values()) {
-      child.serialize(buffer);
+      child.serialize(outputStream);
     }
   }
 
-  public static SchemaInternalNode deserialize(ByteBuffer buffer) {
-    String name = ReadWriteIOUtils.readString(buffer);
+  public static SchemaInternalNode deserialize(InputStream inputStream) throws IOException {
+    String name = ReadWriteIOUtils.readString(inputStream);
 
     return new SchemaInternalNode(name);
   }
