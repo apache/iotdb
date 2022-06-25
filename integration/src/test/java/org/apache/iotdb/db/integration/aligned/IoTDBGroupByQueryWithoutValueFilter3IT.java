@@ -16,21 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.experimental.categories.Category;
 
-@Category({LocalStandaloneTest.class})
-public class IoTDBGroupByQueryWithoutValueFilter2IT extends IoTDBGroupByQueryWithoutValueFilterIT {
+public class IoTDBGroupByQueryWithoutValueFilter3IT extends IoTDBGroupByQueryWithoutValueFilterIT {
 
   private static int numOfPointsPerPage;
 
@@ -48,7 +46,7 @@ public class IoTDBGroupByQueryWithoutValueFilter2IT extends IoTDBGroupByQueryWit
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(2);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(3);
     AlignedWriteUtil.insertData();
   }
 
