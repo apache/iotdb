@@ -27,6 +27,7 @@ import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALFileTest;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -80,7 +81,9 @@ public class WalCheckerTest {
         File walNodeDir = new File(tempRoot, String.valueOf(i));
         walNodeDir.mkdir();
 
-        File walFile = new File(walNodeDir, WALFileUtils.getLogFileName(i, 0));
+        File walFile =
+            new File(
+                walNodeDir, WALFileUtils.getLogFileName(i, 0, WALFileStatus.CONTAINS_SEARCH_INDEX));
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
@@ -116,7 +119,9 @@ public class WalCheckerTest {
         File walNodeDir = new File(tempRoot, String.valueOf(i));
         walNodeDir.mkdir();
 
-        File walFile = new File(walNodeDir, WALFileUtils.getLogFileName(i, 0));
+        File walFile =
+            new File(
+                walNodeDir, WALFileUtils.getLogFileName(i, 0, WALFileStatus.CONTAINS_SEARCH_INDEX));
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALEntry(fakeMemTableId, WALFileTest.getInsertRowPlan(DEVICE_ID)));
@@ -157,7 +162,9 @@ public class WalCheckerTest {
         File walNodeDir = new File(tempRoot, String.valueOf(i));
         walNodeDir.mkdir();
 
-        File walFile = new File(walNodeDir, WALFileUtils.getLogFileName(i, 0));
+        File walFile =
+            new File(
+                walNodeDir, WALFileUtils.getLogFileName(i, 0, WALFileStatus.CONTAINS_SEARCH_INDEX));
 
         FileOutputStream fileOutputStream = new FileOutputStream(walFile);
         try {

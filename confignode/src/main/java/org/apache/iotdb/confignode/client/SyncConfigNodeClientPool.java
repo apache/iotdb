@@ -41,7 +41,7 @@ public class SyncConfigNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeClientPool.class);
 
-  private static final int retryNum = 5;
+  private static final int retryNum = 6;
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
@@ -92,7 +92,7 @@ public class SyncConfigNodeClientPool {
         return client.registerConfigNode(req);
       } catch (Exception e) {
         LOGGER.warn("Register ConfigNode failed, retrying {}...", retry, e);
-        doRetryWait();
+        doRetryWait(retry);
       }
     }
     LOGGER.error("Register ConfigNode failed");
@@ -113,7 +113,7 @@ public class SyncConfigNodeClientPool {
         return client.addConsensusGroup(registerResp);
       } catch (Exception e) {
         LOGGER.warn("Add Consensus Group failed, retrying {} ...", retry, e);
-        doRetryWait();
+        doRetryWait(retry);
       }
     }
     LOGGER.error("Add ConsensusGroup failed");
@@ -147,7 +147,7 @@ public class SyncConfigNodeClientPool {
           return status;
         } catch (Exception e) {
           LOGGER.warn("Remove ConfigNode failed, retrying...", e);
-          doRetryWait();
+          doRetryWait(retry);
         }
       }
     }
@@ -166,7 +166,7 @@ public class SyncConfigNodeClientPool {
         return client.stopConfigNode(configNodeLocation);
       } catch (Exception e) {
         LOGGER.warn("Stop ConfigNode failed, retrying...", e);
-        doRetryWait();
+        doRetryWait(retry);
       }
     }
     LOGGER.error("Stop ConfigNode failed");
@@ -174,9 +174,9 @@ public class SyncConfigNodeClientPool {
         .setMessage("All retry failed.");
   }
 
-  private void doRetryWait() {
+  private void doRetryWait(int retryNum) {
     try {
-      TimeUnit.MILLISECONDS.sleep(100);
+      TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }

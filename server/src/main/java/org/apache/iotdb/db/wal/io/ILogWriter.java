@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.io;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -57,4 +58,11 @@ public interface ILogWriter extends Closeable {
    * @return size
    */
   long size();
+
+  /**
+   * Gets the log file
+   *
+   * @return log file
+   */
+  File getLogFile();
 }

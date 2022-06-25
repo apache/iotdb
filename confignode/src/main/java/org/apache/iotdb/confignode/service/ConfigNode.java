@@ -187,7 +187,9 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    configManager.close();
+    if (configManager != null) {
+      configManager.close();
+    }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
   }
 

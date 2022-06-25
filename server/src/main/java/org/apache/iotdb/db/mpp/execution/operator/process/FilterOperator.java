@@ -58,7 +58,8 @@ public class FilterOperator extends TransformOperator {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      TypeProvider typeProvider)
+      TypeProvider typeProvider,
+      boolean isAscending)
       throws QueryProcessException, IOException {
     super(
         operatorContext,
@@ -68,7 +69,8 @@ public class FilterOperator extends TransformOperator {
         bindExpressions(filterExpression, outputExpressions),
         keepNull,
         zoneId,
-        typeProvider);
+        typeProvider,
+        isAscending);
   }
 
   private static Expression[] bindExpressions(

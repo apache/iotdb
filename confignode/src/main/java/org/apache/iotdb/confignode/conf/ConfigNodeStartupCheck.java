@@ -405,7 +405,7 @@ public class ConfigNodeStartupCheck {
   /** Only load ConfigNodeList from confignode-system.properties when restart */
   private void loadConfigNodeList() throws StartupException {
     String addresses = systemProperties.getProperty("confignode_list", null);
-    if (addresses != null) {
+    if (addresses != null && !addresses.isEmpty()) {
       try {
         conf.setConfigNodeList(NodeUrlUtils.parseTConfigNodeUrls(addresses));
       } catch (BadNodeUrlException e) {

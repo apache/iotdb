@@ -76,7 +76,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -147,7 +146,7 @@ public class ConfigManager implements Manager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
-    this.consensusManager = new ConsensusManager(stateMachine);
+    this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
   public void close() throws IOException {
@@ -474,14 +473,21 @@ public class ConfigManager implements Manager {
   }
 
   private TSStatus confirmLeader() {
+    TSStatus result = new TSStatus();
+
     if (getConsensusManager().isLeader()) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      Peer leader = consensusManager.getLeader(nodeManager.getOnlineConfigNodes());
-      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-          .setRedirectNode(leader.getEndpoint())
-          .setMessage(
-              "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
+      result.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      result.setMessage(
+          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
+
+      TConfigNodeLocation leaderLocation = consensusManager.getLeader();
+      if (leaderLocation != null) {
+        result.setRedirectNode(leaderLocation.getInternalEndPoint());
+      }
+
+      return result;
     }
   }
 

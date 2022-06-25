@@ -58,9 +58,10 @@ public class WALManager implements IService {
   private ScheduledExecutorService walDeleteThread;
 
   private WALManager() {
-    if (config
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+    if (config.isClusterMode()
+        && config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
       walNodesManager = new FirstCreateStrategy();
     } else {
       walNodesManager = new RoundRobinStrategy(MAX_WAL_NODE_NUM);
@@ -76,10 +77,12 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
+  /** WAL node will be registered only when using multi-leader consensus protocol */
   public void registerWALNode(
-      String applicantUniqueId, String logDirectory, int startFileVersion, long startSearchIndex) {
+      String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     String s = config.getDataRegionConsensusProtocolClass();
     if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
         || !config
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
@@ -88,6 +91,19 @@ public class WALManager implements IService {
 
     ((FirstCreateStrategy) walNodesManager)
         .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
+  }
+
+  /** WAL node will be deleted only when using multi-leader consensus protocol */
+  public void deleteWALNode(String applicantUniqueId) {
+    if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
+        || !config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      return;
+    }
+
+    ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
   }
 
   @Override
