@@ -218,6 +218,4 @@ public class SchemaEntry implements ILastCacheContainer {
   public boolean isEmptyContainer() {
     return false;
   };
-
-
 }

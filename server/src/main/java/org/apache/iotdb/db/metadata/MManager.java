@@ -1869,10 +1869,11 @@ public class MManager {
 
   /**
    * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
-   * to search the node.
+   * to search the node.The LastCacheContainer will be set as the EmptyLastCacheContainer.
    *
    * @param seriesPath the PartialPath of full path from root to Measurement
    */
+  @TestOnly
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
     try {

@@ -87,7 +87,7 @@ public class LastCacheManager {
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-    if(lastCacheContainer.isEmptyContainer()){
+    if (lastCacheContainer.isEmptyContainer()) {
       lastCacheContainer = new LastCacheContainer();
       node.setLastCacheContainer(lastCacheContainer);
     }
@@ -95,7 +95,7 @@ public class LastCacheManager {
   }
 
   /**
-   * reset the last cache value of time series of given seriesPath
+   * reset the LastCacheContainer to the EmptyLastCacheContainer
    *
    * @param node the measurementMNode holding the lastCache When invoker only has the target
    *     seriesPath, the node could be null and MManager will search the node
@@ -107,14 +107,8 @@ public class LastCacheManager {
 
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-//    ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-//    lastCacheContainer.resetLastCache();
-    // 单例模式
     node.setLastCacheContainer(EmptyLastCacheContainer.getInstance());
-
   }
-
-
 
   private static void checkIsTemplateLastCacheAndSetIfAbsent(IMeasurementMNode node) {
     IEntityMNode entityMNode = node.getParent();

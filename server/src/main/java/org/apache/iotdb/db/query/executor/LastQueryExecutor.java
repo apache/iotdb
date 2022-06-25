@@ -257,7 +257,7 @@ public class LastQueryExecutor {
     }
 
     for (int i = 0; i < cacheAccessors.size(); i++) {
-      if(cacheAccessors.get(i).checkEmptyContainer()){
+      if (cacheAccessors.get(i).checkEmptyContainer()) {
         resultContainer.add(new Pair<>(true, null));
         continue;
       }
@@ -296,8 +296,6 @@ public class LastQueryExecutor {
     boolean checkEmptyContainer();
 
     void markEmpty();
-
-
   }
 
   private static class MManagerLastCacheAccessor implements LastCacheAccessor {
@@ -336,19 +334,20 @@ public class LastQueryExecutor {
       }
     }
 
-    public boolean checkEmptyContainer(){
-      if (node == null){
+    public boolean checkEmptyContainer() {
+      if (node == null) {
         return false;
       } else {
         return node.getLastCacheContainer().isEmptyContainer();
       }
     }
 
-    public void markEmpty(){
-      if (node == null){
+    public void markEmpty() {
+      if (node == null) {
         return;
       } else {
-        node.setLastCacheContainer(EmptyLastCacheContainer.getInstance());;
+        node.setLastCacheContainer(EmptyLastCacheContainer.getInstance());
+        ;
       }
     }
   }
@@ -385,11 +384,11 @@ public class LastQueryExecutor {
       }
     }
 
-    public boolean checkEmptyContainer(){
+    public boolean checkEmptyContainer() {
       return false;
     }
 
-    public void markEmpty(){
+    public void markEmpty() {
       return;
     }
   }

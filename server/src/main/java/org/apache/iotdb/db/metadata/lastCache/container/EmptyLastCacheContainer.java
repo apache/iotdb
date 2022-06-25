@@ -19,49 +19,46 @@
 
 package org.apache.iotdb.db.metadata.lastCache.container;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.metadata.lastCache.container.value.ILastCacheValue;
-import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
 public class EmptyLastCacheContainer implements ILastCacheContainer {
 
-    private EmptyLastCacheContainer() {}
+  private EmptyLastCacheContainer() {}
 
-    public static EmptyLastCacheContainer getInstance() {
-        return InstanceHolder.INSTANCE;
+  public static EmptyLastCacheContainer getInstance() {
+    return InstanceHolder.INSTANCE;
+  }
+
+  @Override
+  public TimeValuePair getCachedLast() {
+    return null;
+  };
+
+  @Override
+  public void updateCachedLast(
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {};
+
+  @Override
+  public synchronized void resetLastCache() {
+    return;
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return true;
+  };
+
+  @Override
+  public boolean isEmptyContainer() {
+    return true;
+  }
+
+  static class InstanceHolder {
+
+    private static final EmptyLastCacheContainer INSTANCE = new EmptyLastCacheContainer();
+
+    private InstanceHolder() {
+      // forbidding instantiation
     }
-    @Override
-    public TimeValuePair getCachedLast(){
-        return null;
-    };
-
-    @Override
-    public void updateCachedLast(
-            TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime){
-
-    };
-
-    @Override
-    public synchronized void resetLastCache() {
-        return;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return true;
-    };
-
-    @Override
-    public boolean isEmptyContainer() {return true;}
-
-    static class InstanceHolder {
-
-        private static final EmptyLastCacheContainer INSTANCE = new EmptyLastCacheContainer();
-
-        private InstanceHolder() {
-            // forbidding instantiation
-        }
-    }
-
+  }
 }

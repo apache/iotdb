@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -300,6 +302,10 @@ public class IoTDBLastIT {
       PartialPath path = new PartialPath("root.ln.wf01.wt02.temperature");
       IoTDB.metaManager.resetLastCache(path);
 
+      IMeasurementMNode node;
+      node = IoTDB.metaManager.getMeasurementMNode(path);
+      Assert.assertTrue(node.getLastCacheContainer().isEmptyContainer());
+
       boolean hasResultSet =
           statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
 
@@ -575,6 +581,86 @@ public class IoTDBLastIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void lastWithEmptyContainer() {
+    String[] retArray =
+            new String[] {
+                    "500,root.ln.wf01.wt02.temperature,15.7,DOUBLE",
+                    "500,root.ln.wf01.wt02.status,false,BOOLEAN",
+                    "500,root.ln.wf01.wt02.id,9,INT32",
+                    "600,root.ln.wf01.wt02.temperature,10.2,DOUBLE",
+                    "600,root.ln.wf01.wt02.status,false,BOOLEAN",
+                    "600,root.ln.wf01.wt02.id,6,INT32"
+            };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+         Statement statement = connection.createStatement()) {
+
+      PartialPath path = new PartialPath("root.ln.wf01.wt02.temperature");
+      IoTDB.metaManager.resetLastCache(path);
+
+      IMeasurementMNode node;
+      node = IoTDB.metaManager.getMeasurementMNode(path);
+      Assert.assertTrue(node.getLastCacheContainer().isEmptyContainer());
+
+      boolean hasResultSet =
+              statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
+
+      assertTrue(hasResultSet);
+    } catch (Exception e) {
+    e.printStackTrace();
+    fail(e.getMessage());
+    }
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+         Statement statement = connection.createStatement()) {
+
+      PartialPath path = new PartialPath("root.ln.wf01.wt02.temperature");
+      IMeasurementMNode node;
+      node = IoTDB.metaManager.getMeasurementMNode(path);
+      Assert.assertNull(node.getLastCacheContainer().getCachedLast());
+      boolean hasResultSet =
+              statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
+      node = IoTDB.metaManager.getMeasurementMNode(path);
+      Assert.assertFalse(node.getLastCacheContainer().isEmptyContainer());
+      assertTrue(hasResultSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+         Statement statement = connection.createStatement()) {
+
+      PartialPath path = new PartialPath("root.ln.wf01.wt02.temperature");
+      IMeasurementMNode node;
+      boolean hasResultSet =
+              statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
+      node = IoTDB.metaManager.getMeasurementMNode(path);
+      Assert.assertFalse(node.getLastCacheContainer().isEmptyContainer());
+      assertTrue(hasResultSet);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+
+  }
+
+
 
   private void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
