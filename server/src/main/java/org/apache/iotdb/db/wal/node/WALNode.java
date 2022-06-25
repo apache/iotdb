@@ -370,9 +370,9 @@ public class WALNode implements IWALNode {
     }
 
     private void flushMemTable(DataRegion dataRegion, File tsFile, IMemTable memTable) {
-      boolean shouldWait = true;
+      boolean submitted = true;
       if (memTable.getFlushStatus() == FlushStatus.WORKING) {
-        shouldWait =
+        submitted =
             dataRegion.submitAFlushTask(
                 TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile), memTable);
         logger.info(
@@ -384,7 +384,7 @@ public class WALNode implements IWALNode {
       }
 
       // it's fine to wait until memTable has been flushed, because deleting files is not urgent.
-      if (shouldWait) {
+      if (submitted || memTable.getFlushStatus() == FlushStatus.FLUSHING) {
         long sleepTime = 0;
         while (memTable.getFlushStatus() != FlushStatus.FLUSHED) {
           try {
