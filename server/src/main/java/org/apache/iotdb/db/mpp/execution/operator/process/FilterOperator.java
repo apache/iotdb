@@ -132,7 +132,15 @@ public class FilterOperator extends TransformOperator {
 
         if (yieldableState == YieldableState.YIELDABLE
             && filterPointReader.currentTime() == currentTime) {
-          if (!filterPointReader.isCurrentNull() && filterPointReader.currentBoolean()) {
+
+          boolean isReaderContinueNull = true;
+          for (int i = 0; isReaderContinueNull && i < outputColumnCount; ++i) {
+            isReaderContinueNull = collectReaderAppendIsNull(transformers[i], currentTime);
+          } // After the loop, isReaderContinueNull is true means all values of readers are null
+
+          if (!filterPointReader.isCurrentNull()
+              && filterPointReader.currentBoolean()
+              && !isReaderContinueNull) {
             // time
             timeBuilder.writeLong(currentTime);
 
