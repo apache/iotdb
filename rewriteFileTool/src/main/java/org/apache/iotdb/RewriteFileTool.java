@@ -61,7 +61,7 @@ import java.util.List;
 
 /**
  * This tool reads tsFiles and rewrites it chunk by chunk. It constructs tablet and invokes
- * insertTablet() for every page in chunk, in case chunk is too large. `Move` command is used to
+ * insertTablet() for every page in chunk, in case chunk is too large. `Unload` command is used to
  * unload files in iotdb, and mods files are moved manually.
  */
 public class RewriteFileTool {
@@ -156,7 +156,8 @@ public class RewriteFileTool {
         printBoth(String.format("%s is already in the backup dir. Don't need to move.", filename));
       } else {
         printBoth(String.format("Start moving %s to backup dir.", filename));
-        session.executeNonQueryStatement(String.format("move '%s' '%s'", filename, backUpDirPath));
+        session.executeNonQueryStatement(
+            String.format("unload '%s' '%s'", filename, backUpDirPath));
       }
       printBoth(String.format("Finish unloading %s.", filename));
 
