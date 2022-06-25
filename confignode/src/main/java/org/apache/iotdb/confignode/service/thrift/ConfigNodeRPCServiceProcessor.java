@@ -23,7 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -86,6 +87,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -101,6 +103,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -218,8 +221,35 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    return configManager.setTTL(new SetTTLReq(req.getStorageGroup(), req.getTTL()));
+    if (!configManager.ifStorageGroupExist(req.storageGroup)) {
+      return RpcUtils.getStatus(
+              TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+              "storageGroup " + req.storageGroup + " does not exist");
+    }
+    TSStatus tsStatus = new TSStatus();
+    tsStatus = configManager.setTTL(new SetTTLReq(req.getStorageGroup(), req.getTTL()));
+    HashSet<TDataNodeLocation> dataNodeLocations =
+            configManager
+                    .getPartitionManager()
+                    .getDataNodeLocation(req.storageGroup, TConsensusGroupType.DataRegion);
+    if(dataNodeLocations.size() != 0){
+      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+        List<TDataNodeInfo> onlineDataNodes =
+                configManager.getNodeManager().getOnlineDataNodes(dataNodeLocation.getDataNodeId());
+        for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+          tsStatus =
+                  SyncDataNodeClientPool.getInstance()
+                          .setTTL(dataNodeInfo.getLocation().getInternalEndPoint(), req);
+          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return tsStatus;
+          }
+        }
+      }
+    }
+
+    return tsStatus;
   }
+
 
   @Override
   public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
