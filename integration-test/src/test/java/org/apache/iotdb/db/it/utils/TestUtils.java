@@ -29,8 +29,13 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
+import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -44,6 +49,41 @@ public class TestUtils {
         statement.execute(sql);
       }
     } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void resultSetEqualTest(String sql, double[][] retArray, String[] columnNames) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        // if result has more than one rows, "Time" is included in columnNames
+        assertEquals(
+            retArray.length > 1 ? columnNames.length + 1 : columnNames.length,
+            resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          double[] ans = new double[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            String result = resultSet.getString(index);
+            ans[i] = result == null ? NULL : Double.parseDouble(result);
+          }
+          assertArrayEquals(retArray[cnt], ans, DELTA);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

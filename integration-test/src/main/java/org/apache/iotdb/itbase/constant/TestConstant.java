@@ -50,7 +50,8 @@ public class TestConstant {
   public static final String TIMESEIRES_STR = "timeseries";
   public static final String VALUE_STR = "value";
   public static final String DATA_TYPE_STR = "dataType";
-  public static final double DETLA = 1e-6;
+  public static final double DELTA = 1e-6;
+  public static final double NULL = Double.MIN_VALUE;
 
   public static String[] createSql =
       new String[] {
