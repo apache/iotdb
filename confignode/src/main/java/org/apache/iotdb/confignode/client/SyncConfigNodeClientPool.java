@@ -73,7 +73,7 @@ public class SyncConfigNodeClientPool {
         return client.getConfigNodeConfiguration(configNodeLocation);
       } catch (Exception e) {
         LOGGER.warn("Get ConfigNode configuration failed, retrying...", e);
-        doRetryWait();
+        doRetryWait(retry);
       }
     }
     LOGGER.error("Get ConfigNode configuration failed");

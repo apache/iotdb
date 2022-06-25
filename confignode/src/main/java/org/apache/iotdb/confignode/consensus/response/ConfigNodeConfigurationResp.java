@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -29,12 +28,8 @@ import java.util.List;
 
 public class ConfigNodeConfigurationResp implements DataSet {
   private TSStatus status;
-  private TConsensusGroupId partitionRegionId;
   private List<TConfigNodeLocation> configNodes;
   private TGlobalConfig globalConfig;
-  private long defaultTTL;
-  private int schemaReplicationFactor;
-  private int dataReplicationFactor;
 
   public ConfigNodeConfigurationResp() {}
 
@@ -44,10 +39,6 @@ public class ConfigNodeConfigurationResp implements DataSet {
 
   public void setStatus(TSStatus status) {
     this.status = status;
-  }
-
-  public void setPartitionRegionId(TConsensusGroupId partitionRegionId) {
-    this.partitionRegionId = partitionRegionId;
   }
 
   public List<TConfigNodeLocation> getConfigNodes() {
@@ -62,25 +53,9 @@ public class ConfigNodeConfigurationResp implements DataSet {
     this.globalConfig = globalConfig;
   }
 
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
-  }
-
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
-    this.schemaReplicationFactor = schemaReplicationFactor;
-  }
-
-  public void setDataReplicationFactor(int dataReplicationFactor) {
-    this.dataReplicationFactor = dataReplicationFactor;
-  }
-
   public void convertToRPCConfigNodeConfigurationResp(TConfigNodeConfigurationResp resp) {
     resp.setStatus(status);
-    resp.setPartitionRegionId(partitionRegionId);
     resp.setConfigNodes(configNodes);
     resp.setGlobalConfig(globalConfig);
-    resp.setDefaultTTL(defaultTTL);
-    resp.setSchemaReplicationFactor(schemaReplicationFactor);
-    resp.setDataReplicationFactor(dataReplicationFactor);
   }
 }

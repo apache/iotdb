@@ -375,8 +375,6 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         new GetConfigNodeConfigurationReq(configNodeLocation);
     ConfigNodeConfigurationResp configurationResp =
         (ConfigNodeConfigurationResp) configManager.getConfigNodeConfiguration(getConfigurationReq);
-    configurationResp.setPartitionRegionId(
-        configManager.getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
     TConfigNodeConfigurationResp resp = new TConfigNodeConfigurationResp();
     configurationResp.convertToRPCConfigNodeConfigurationResp(resp);

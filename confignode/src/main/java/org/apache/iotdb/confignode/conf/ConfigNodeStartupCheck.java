@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -94,7 +93,7 @@ public class ConfigNodeStartupCheck {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_configNode needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && isContainsRpcConfigNode()) {
+        && currentConfigNodeAlreadyRegistered()) {
       throw new ConfigurationException(
           "target_confignode",
           conf.getTargetConfigNodeList().toString(),
@@ -171,7 +170,7 @@ public class ConfigNodeStartupCheck {
    * @return True if the target_confignode points to itself
    */
   private boolean isSeedConfigNode() {
-    boolean result = isContainsRpcConfigNode();
+    boolean result = currentConfigNodeAlreadyRegistered();
 
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties
@@ -185,13 +184,13 @@ public class ConfigNodeStartupCheck {
    *
    * @return True if the target_confignode points to itself
    */
-  private boolean isContainsRpcConfigNode() {
+  private boolean currentConfigNodeAlreadyRegistered() {
     AtomicBoolean result = new AtomicBoolean(false);
-    TEndPoint rpcConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
+    TEndPoint currentConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
     conf.getTargetConfigNodeList()
         .forEach(
             e -> {
-              if (e.getInternalEndPoint().equals(rpcConfigNode)) {
+              if (e.getInternalEndPoint().equals(currentConfigNode)) {
                 result.set(true);
                 return;
               }
@@ -428,8 +427,8 @@ public class ConfigNodeStartupCheck {
   }
 
   /** Check configuration */
-  public boolean checkConfigurations(TConsensusGroupId groupId) {
-    if (!isContainsRpcConfigNode()) {
+  public boolean checkConfigurations() {
+    if (!currentConfigNodeAlreadyRegistered()) {
       return true;
     }
 
@@ -437,11 +436,9 @@ public class ConfigNodeStartupCheck {
     try {
       List<TConfigNodeLocation> configNodeLocations =
           NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
+      TEndPoint currentConfigNode = new TEndPoint(conf.getRpcAddress(), conf.getRpcPort());
       for (TConfigNodeLocation nodeLocation : configNodeLocations) {
-        if (nodeLocation
-            .getInternalEndPoint()
-            .getIp()
-            .equals(systemProperties.getProperty("rpc_address"))) {
+        if (nodeLocation.getInternalEndPoint().equals(currentConfigNode)) {
           continue;
         }
         TConfigNodeConfigurationResp resp =
@@ -454,7 +451,7 @@ public class ConfigNodeStartupCheck {
       }
 
       for (TConfigNodeConfigurationResp resp : configNodeConfigurations) {
-        if (!checkKeyParameters(groupId, resp)) {
+        if (!checkKeyParameters(resp)) {
           return false;
         }
       }
@@ -464,13 +461,7 @@ public class ConfigNodeStartupCheck {
     return true;
   }
 
-  private boolean checkKeyParameters(TConsensusGroupId groupId, TConfigNodeConfigurationResp resp)
-      throws BadNodeUrlException {
-    // Check partitionRegionId
-    if (!groupId.equals(resp.getPartitionRegionId())) {
-      return false;
-    }
-
+  private boolean checkKeyParameters(TConfigNodeConfigurationResp resp) throws BadNodeUrlException {
     // Check ConfigNodeList
     List<TConfigNodeLocation> configNodeLocations =
         NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
@@ -519,17 +510,17 @@ public class ConfigNodeStartupCheck {
     }
 
     Long defaultTTL = CommonDescriptor.getInstance().getConfig().getDefaultTTL();
-    if (!defaultTTL.equals(resp.getDefaultTTL())) {
+    if (!defaultTTL.equals(globalConfig.getDefaultTTL())) {
       return false;
     }
 
     int schemaReplicationFactor = conf.getSchemaReplicationFactor();
-    if (schemaReplicationFactor != resp.getSchemaReplicationFactor()) {
+    if (schemaReplicationFactor != globalConfig.getSchemaReplicationFactor()) {
       return false;
     }
 
     int dataReplicationFactor = conf.getDataReplicationFactor();
-    if (dataReplicationFactor != resp.getDataReplicationFactor()) {
+    if (dataReplicationFactor != globalConfig.getDataReplicationFactor()) {
       return false;
     }
 

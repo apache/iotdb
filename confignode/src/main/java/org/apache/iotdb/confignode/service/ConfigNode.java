@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -37,7 +36,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
-import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 
 import org.slf4j.Logger;
@@ -147,15 +145,9 @@ public class ConfigNode implements ConfigNodeMBean {
               }
               try {
                 waitLeader();
-                TConsensusGroupId groupId =
-                    configManager
-                        .getConsensusManager()
-                        .getConsensusGroupId()
-                        .convertToTConsensusGroupId();
-                if (!ConfigNodeStartupCheck.getInstance().checkConfigurations(groupId)) {
+                if (!ConfigNodeStartupCheck.getInstance().checkConfigurations()) {
                   stop();
                   LOGGER.info("Check configurations failed!");
-                  return;
                 }
               } catch (IOException | InterruptedException e) {
                 LOGGER.error("Meet error when stop ConfigNode!", e);
@@ -168,12 +160,9 @@ public class ConfigNode implements ConfigNodeMBean {
   private void waitLeader() throws InterruptedException {
     while (true) {
       try {
-        Peer peer =
-            configManager
-                .getConsensusManager()
-                .getLeader(configManager.getNodeManager().getOnlineConfigNodes());
-        if (peer != null) {
-          LOGGER.info("leader is: {}", peer);
+        TConfigNodeLocation leader = configManager.getConsensusManager().getLeader();
+        if (leader != null) {
+          LOGGER.info("leader is: {}", leader);
           return;
         }
       } catch (Exception e) {

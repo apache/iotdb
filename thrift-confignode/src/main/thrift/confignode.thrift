@@ -40,6 +40,9 @@ struct TGlobalConfig {
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
+  6: required i64 defaultTTL
+  7: required i32 schemaReplicationFactor
+  8: required i32 dataReplicationFactor
 }
 
 struct TDataNodeRegisterResp {
@@ -213,12 +216,8 @@ struct TConfigNodeRegisterResp {
 
 struct TConfigNodeConfigurationResp {
     1: required common.TSStatus status
-    2: required common.TConsensusGroupId partitionRegionId
-    3: required list<common.TConfigNodeLocation> configNodes
-    4: required TGlobalConfig globalConfig
-    5: required i64 defaultTTL
-    6: required i32 schemaReplicationFactor
-    7: required i32 dataReplicationFactor
+    2: required list<common.TConfigNodeLocation> configNodes
+    3: required TGlobalConfig globalConfig
 }
 
 // Show cluster

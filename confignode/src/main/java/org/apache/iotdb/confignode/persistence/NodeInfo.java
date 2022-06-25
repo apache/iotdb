@@ -285,8 +285,7 @@ public class NodeInfo implements SnapshotProcessor {
 
     if (!systemPropertiesFile.exists()) {
       LOGGER.info("The system properties file is not exists.");
-      result.setStatus(
-          new TSStatus(TSStatusCode.GET_CONFIGNODE_CONFIGURATION_FAILED.getStatusCode()));
+      result.setStatus(new TSStatus(TSStatusCode.SYSTEM_PROPERTIES_FILE_NOT_EXIST.getStatusCode()));
       return result;
     }
 
@@ -308,11 +307,10 @@ public class NodeInfo implements SnapshotProcessor {
       globalConfig.setSeriesPartitionExecutorClass(
           systemProperties.getProperty("series_partition_executor_class"));
       globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
+      globalConfig.setDefaultTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
+      globalConfig.setSchemaReplicationFactor(conf.getSchemaReplicationFactor());
+      globalConfig.setDataReplicationFactor(conf.getDataReplicationFactor());
       result.setGlobalConfig(globalConfig);
-
-      result.setDefaultTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
-      result.setSchemaReplicationFactor(conf.getSchemaReplicationFactor());
-      result.setDataReplicationFactor(conf.getDataReplicationFactor());
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.error("Load system properties file failed.", e);
     } finally {
