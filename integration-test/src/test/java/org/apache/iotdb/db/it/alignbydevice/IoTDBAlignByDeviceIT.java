@@ -130,8 +130,6 @@ public class IoTDBAlignByDeviceIT {
   public void selectTest() {
     String[] retArray =
         new String[] {
-          "1,root.vehicle.d1,999,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,",
           "1,root.vehicle.d0,101,1101,null,null,null,",
           "2,root.vehicle.d0,10000,40000,2.22,null,null,",
           "3,root.vehicle.d0,null,null,3.33,null,null,",
@@ -149,6 +147,8 @@ public class IoTDBAlignByDeviceIT {
           "106,root.vehicle.d0,99,null,null,null,null,",
           "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
           "946684800000,root.vehicle.d0,null,100,null,good,null,",
+          "1,root.vehicle.d1,999,null,null,null,null,",
+          "1000,root.vehicle.d1,888,null,null,null,null,",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -185,7 +185,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(19, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -197,8 +197,6 @@ public class IoTDBAlignByDeviceIT {
   public void selectWithDuplicatedPathsTest() {
     String[] retArray =
         new String[] {
-          "1,root.vehicle.d1,999,999,null,",
-          "1000,root.vehicle.d1,888,888,null,",
           "1,root.vehicle.d0,101,101,1101,",
           "2,root.vehicle.d0,10000,10000,40000,",
           "50,root.vehicle.d0,10000,10000,50000,",
@@ -211,6 +209,8 @@ public class IoTDBAlignByDeviceIT {
           "106,root.vehicle.d0,99,99,null,",
           "1000,root.vehicle.d0,22222,22222,55555,",
           "946684800000,root.vehicle.d0,null,null,100,",
+          "1,root.vehicle.d1,999,999,null,",
+          "1000,root.vehicle.d1,888,888,null,",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -242,7 +242,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(14, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -254,8 +254,6 @@ public class IoTDBAlignByDeviceIT {
   public void selectLimitTest() {
     String[] retArray =
         new String[] {
-          "1000,root.vehicle.d1,888,888,null,",
-          "1,root.vehicle.d0,101,101,1101,",
           "2,root.vehicle.d0,10000,10000,40000,",
           "50,root.vehicle.d0,10000,10000,50000,",
           "100,root.vehicle.d0,99,99,199,",
@@ -297,7 +295,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(10, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -341,7 +339,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -397,7 +395,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(13, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -453,7 +451,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(6, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -556,7 +554,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void aggregateTest() {
     String[] retArray =
-        new String[] {"root.vehicle.d1,2,null,null,null,null,", "root.vehicle.d0,11,11,6,6,1,"};
+        new String[] {"root.vehicle.d0,11,11,6,6,1,", "root.vehicle.d1,2,null,null,null,null,"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -593,7 +591,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -605,12 +603,12 @@ public class IoTDBAlignByDeviceIT {
   public void groupByTimeTest() {
     String[] retArray =
         new String[] {
-          "2,root.vehicle.d1,0,null,null,null,null,",
-          "22,root.vehicle.d1,0,null,null,null,null,",
-          "42,root.vehicle.d1,0,null,null,null,null,",
           "2,root.vehicle.d0,1,1,3,0,0,",
           "22,root.vehicle.d0,0,0,0,0,0,",
           "42,root.vehicle.d0,0,0,0,0,0,",
+          "2,root.vehicle.d1,0,null,null,null,null,",
+          "22,root.vehicle.d1,0,null,null,null,null,",
+          "42,root.vehicle.d1,0,null,null,null,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -648,7 +646,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(6, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -692,7 +690,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -744,7 +742,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -777,9 +775,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void unusualCaseTest1() {
     String[] retArray =
-        new String[] {
-          "root.vehicle.d1,2,", "root.vehicle.d0,11,", "root.other.d1,1,",
-        };
+        new String[] {"root.other.d1,1,", "root.vehicle.d0,11,", "root.vehicle.d1,2,"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -805,7 +801,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(3, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -817,11 +813,11 @@ public class IoTDBAlignByDeviceIT {
   public void unusualCaseTest2() {
     String[] retArray =
         new String[] {
-          "1,root.vehicle.d1,999,999,null,999,null,null,null,null,",
           "1,root.vehicle.d0,101,101,1101,101,1101,null,null,null,",
           "2,root.vehicle.d0,10000,10000,40000,10000,40000,2.22,null,null,",
           "3,root.vehicle.d0,null,null,null,null,null,3.33,null,null,",
           "4,root.vehicle.d0,null,null,null,null,null,4.44,null,null,",
+          "1,root.vehicle.d1,999,999,null,999,null,null,null,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -864,7 +860,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(5, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -876,8 +872,6 @@ public class IoTDBAlignByDeviceIT {
   public void selectNonExistTest() {
     String[] retArray =
         new String[] {
-          "1,root.vehicle.d1,999,null,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,null,",
           "1,root.vehicle.d0,101,1101,null,null,null,null,",
           "2,root.vehicle.d0,10000,40000,2.22,null,null,null,",
           "3,root.vehicle.d0,null,null,3.33,null,null,null,",
@@ -895,6 +889,8 @@ public class IoTDBAlignByDeviceIT {
           "106,root.vehicle.d0,99,null,null,null,null,null,",
           "1000,root.vehicle.d0,22222,55555,1000.11,null,null,null,",
           "946684800000,root.vehicle.d0,null,100,null,good,null,null,",
+          "1,root.vehicle.d1,999,null,null,null,null,null,",
+          "1000,root.vehicle.d1,888,null,null,null,null,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -933,7 +929,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(19, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -964,8 +960,6 @@ public class IoTDBAlignByDeviceIT {
   public void selectWithRegularExpressionTest() {
     String[] retArray =
         new String[] {
-          "1,root.vehicle.d1,999,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,",
           "1,root.vehicle.d0,101,1101,null,null,null,",
           "2,root.vehicle.d0,10000,40000,2.22,null,null,",
           "3,root.vehicle.d0,null,null,3.33,null,null,",
@@ -983,6 +977,8 @@ public class IoTDBAlignByDeviceIT {
           "106,root.vehicle.d0,99,null,null,null,null,",
           "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
           "946684800000,root.vehicle.d0,null,100,null,good,null,",
+          "1,root.vehicle.d1,999,null,null,null,null,",
+          "1000,root.vehicle.d1,888,null,null,null,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1019,7 +1015,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(19, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1029,10 +1025,7 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectWithNonExistMeasurementInWhereClause() {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,null,null,null,",
-        };
+    String[] retArray = new String[] {"1,root.vehicle.d0,101,1101,null,null,null,"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1068,7 +1061,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
