@@ -273,11 +273,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     // first try to hit cache
     boolean firstTryResult = partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup);
     if (!firstTryResult) {
-      List<String> storageGroupPathPattern = ROOT_PATH;
       try (ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TStorageGroupSchemaResp storageGroupSchemaResp =
-            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+            client.getMatchedStorageGroupSchemas(ROOT_PATH);
         if (storageGroupSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           Set<String> storageGroupNames =
@@ -482,19 +481,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
     /** update the cache of storage group */
     public void updateStorageCache(Set<String> storageGroupNames) {
-      for (String storageGroupName : storageGroupNames) {
-        if (!storageGroupCache.contains(storageGroupName)) {
-          storageGroupCache.add(storageGroupName);
-        }
-      }
+      storageGroupCache.addAll(storageGroupNames);
     }
 
     /** invalid storage group after delete */
     public void invalidStorageGroupCache(List<String> storageGroupNames) {
       for (String storageGroupName : storageGroupNames) {
-        if (storageGroupCache.contains(storageGroupName)) {
-          storageGroupCache.remove(storageGroupName);
-        }
+        storageGroupCache.remove(storageGroupName);
       }
     }
 
@@ -600,7 +593,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         if (!device.contains("*")) {
           String storageGroup = null;
           for (String storageGroupName : storageGroupNames) {
-            if (PathUtils.isStartWith(device, storageGroup)) {
+            if (PathUtils.isStartWith(device, storageGroupName)) {
               storageGroup = storageGroupName;
               break;
             }
@@ -682,7 +675,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  private class DataPartitionCacheKey {
+  private static class DataPartitionCacheKey {
     private TSeriesPartitionSlot seriesPartitionSlot;
     private TTimePartitionSlot timePartitionSlot;
 
