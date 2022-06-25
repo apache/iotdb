@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -329,6 +330,23 @@ public class StorageGroupPartitionTable {
   public List<TSeriesPartitionSlot> filterUnassignedSchemaPartitionSlots(
       List<TSeriesPartitionSlot> partitionSlots) {
     return schemaPartitionTable.filterUnassignedSchemaPartitionSlots(partitionSlots);
+  }
+
+  public HashSet<TDataNodeLocation> getDataNodeLocation(TConsensusGroupType type) {
+    HashSet<TDataNodeLocation> result = new HashSet<>();
+    regionInfoMap.forEach(
+        (consensusGroupId, regionGroup) -> {
+          if (consensusGroupId.getType().equals(type)) {
+            regionGroup
+                .getReplicaSet()
+                .getDataNodeLocations()
+                .forEach(
+                    (dataNodeLocation) -> {
+                      result.add(dataNodeLocation);
+                    });
+          }
+        });
+    return result;
   }
 
   /**

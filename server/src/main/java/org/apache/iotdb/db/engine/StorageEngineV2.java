@@ -20,8 +20,8 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -680,7 +680,7 @@ public class StorageEngineV2 implements IService {
 
   public TSStatus setTTL(TSetTTLReq req) {
     Map<String, List<DataRegionId>> localDataRegionInfo =
-            StorageEngineV2.getInstance().getLocalDataRegionInfo();
+        StorageEngineV2.getInstance().getLocalDataRegionInfo();
     List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
