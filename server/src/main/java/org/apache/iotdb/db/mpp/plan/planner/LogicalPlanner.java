@@ -64,10 +64,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
@@ -123,7 +123,7 @@ public class LogicalPlanner {
       }
 
       if (queryStatement.isAlignByDevice()) {
-        Map<String, PlanNode> deviceToSubPlanMap = new HashMap<>();
+        Map<String, PlanNode> deviceToSubPlanMap = new TreeMap<>();
         for (String deviceName : analysis.getDeviceToSourceExpressions().keySet()) {
           LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(context);
           subPlanBuilder =

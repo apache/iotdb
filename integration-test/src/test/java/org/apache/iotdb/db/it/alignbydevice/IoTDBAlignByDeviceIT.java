@@ -16,17 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it.alignbydevice;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -41,7 +44,8 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignByDeviceIT {
 
   private static String[] sqls =
@@ -149,10 +153,9 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root.vehicle.** align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.vehicle.** align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -182,7 +185,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(19, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -207,17 +210,15 @@ public class IoTDBAlignByDeviceIT {
           "1000,root.vehicle.d0,22222,22222,55555,",
           "946684800000,root.vehicle.d0,null,null,100,",
           "1,root.vehicle.d1,999,999,null,",
-          "1000,root.vehicle.d1,888,888,null,"
+          "1000,root.vehicle.d1,888,888,null,",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -241,7 +242,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(14, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -267,12 +268,10 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s0,s0,s1 from root.vehicle.* limit 10 offset 1 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s0,s0,s1 from root.vehicle.* limit 10 offset 1 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -296,7 +295,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(10, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -313,12 +312,10 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select * from root.vehicle.d0 limit 1 slimit 3 soffset 1 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.vehicle.d0 limit 1 slimit 3 soffset 1 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -342,7 +339,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -371,12 +368,10 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s0,s1,s2 from root.vehicle.* slimit 2 soffset 1 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s0,s1,s2 from root.vehicle.* slimit 2 soffset 1 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -400,7 +395,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(13, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -423,12 +418,10 @@ public class IoTDBAlignByDeviceIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // single device
-      boolean hasResultSet =
-          statement.execute(
-              "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -458,7 +451,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(6, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -480,13 +473,11 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CLEAR CACHE");
+      // statement.execute("CLEAR CACHE");
       // single device
-      boolean hasResultSet =
-          statement.execute("select s0 from root.vehicle.d0 where s1 < 200 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s0 from root.vehicle.d0 where s1 < 200 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -525,14 +516,12 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CLEAR CACHE");
+      // statement.execute("CLEAR CACHE");
       // single device
-      boolean hasResultSet =
-          statement.execute(
-              "select s0 from root.vehicle.d0 where s1 < 200 and s2 > 10 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s0 from root.vehicle.d0 where s1 < 200 and s2 > 10 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -565,17 +554,15 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void aggregateTest() {
     String[] retArray =
-        new String[] {"root.vehicle.d1,2,null,null,null,null,", "root.vehicle.d0,11,11,6,6,1,"};
+        new String[] {"root.vehicle.d0,11,11,6,6,1,", "root.vehicle.d1,2,null,null,null,null,"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s0),count(s1),count(s2),count(s3),count(s4) "
-                  + "from root.vehicle.d1,root.vehicle.d0 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s0),count(s1),count(s2),count(s3),count(s4) "
+                  + "from root.vehicle.d1,root.vehicle.d0 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -604,7 +591,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -621,17 +608,15 @@ public class IoTDBAlignByDeviceIT {
           "42,root.vehicle.d0,0,0,0,0,0,",
           "2,root.vehicle.d1,0,null,null,null,null,",
           "22,root.vehicle.d1,0,null,null,null,null,",
-          "42,root.vehicle.d1,0,null,null,null,null,",
+          "42,root.vehicle.d1,0,null,null,null,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(*) from root.vehicle.** GROUP BY ([2,50),20ms) align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(*) from root.vehicle.** GROUP BY ([2,50),20ms) align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -661,7 +646,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(6, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -678,12 +663,10 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s2) from root.vehicle.d0 where s2 > 3 and s2 <= 10 GROUP BY ([2,200),100ms) align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s2) from root.vehicle.d0 where s2 > 3 and s2 <= 10 GROUP BY ([2,200),100ms) align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -707,7 +690,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -715,6 +698,7 @@ public class IoTDBAlignByDeviceIT {
     }
   }
 
+  @Ignore
   @Test
   public void fillTest() {
     String[] retArray =
@@ -725,12 +709,10 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -760,7 +742,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -772,16 +754,17 @@ public class IoTDBAlignByDeviceIT {
   public void errorCaseTest3() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("select s0 from root.*.* align by device");
+      statement.executeQuery("select s0 from root.*.* align by device");
       fail("No exception thrown.");
     } catch (Exception e) {
       // root.vehicle.d0.s0 INT32
       // root.vehicle.d1.s0 INT32
       // root.other.d1.s0 FLOAT
+      System.out.println(e.getMessage());
       Assert.assertTrue(
           e.getMessage()
               .contains(
-                  "The data types of the same measurement column should be the same across devices."));
+                  "data types of the same measurement column should be the same across devices."));
     }
   }
 
@@ -797,10 +780,8 @@ public class IoTDBAlignByDeviceIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select count(s0) from root.*.* align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(s0) from root.*.* align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -820,7 +801,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(3, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -842,13 +823,11 @@ public class IoTDBAlignByDeviceIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // duplicated devices
-      boolean hasResultSet =
-          statement.execute(
-              "select s0,s0,s1,* from root.vehicle.*, root.vehicle.d0, root.vehicle.d1"
-                  + " where time < 20 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s0,s0,s1,* from root.vehicle.*, root.vehicle.d0, root.vehicle.d1"
+                  + " where time < 20 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -881,7 +860,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(5, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -911,16 +890,15 @@ public class IoTDBAlignByDeviceIT {
           "1000,root.vehicle.d0,22222,55555,1000.11,null,null,null,",
           "946684800000,root.vehicle.d0,null,100,null,good,null,null,",
           "1,root.vehicle.d1,999,null,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,null,",
+          "1000,root.vehicle.d1,888,null,null,null,null,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select s0, s1, s2, s3, s4, s5 from root.vehicle.*  align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s0, s1, s2, s3, s4, s5 from root.vehicle.*  align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -951,7 +929,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(19, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1000,15 +978,14 @@ public class IoTDBAlignByDeviceIT {
           "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
           "946684800000,root.vehicle.d0,null,100,null,good,null,",
           "1,root.vehicle.d1,999,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,",
+          "1000,root.vehicle.d1,888,null,null,null,null,"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root.vehicle.d* align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.vehicle.d* align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -1038,7 +1015,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(19, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1048,18 +1025,13 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectWithNonExistMeasurementInWhereClause() {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,null,null,null,",
-        };
+    String[] retArray = new String[] {"1,root.vehicle.d0,101,1101,null,null,null,"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select * from root.vehicle.* where s1 == 1101 align by device");
-      Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.vehicle.* where s1 == 1101 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -1089,7 +1061,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
