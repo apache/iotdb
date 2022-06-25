@@ -215,8 +215,11 @@ public class WALNode implements IWALNode {
   }
 
   private class DeleteOutdatedFileTask implements Runnable {
+    private static final int MAX_RECURSION_TIME = 5;
     /** .wal files whose version ids are less than first valid version id should be deleted */
     private long firstValidVersionId;
+    /** recursion time of calling deletion */
+    private int recursionTime = 0;
 
     @Override
     public void run() {
@@ -272,8 +275,9 @@ public class WALNode implements IWALNode {
             costOfFlushedMemTables,
             identifier,
             config.getWalMinEffectiveInfoRatio());
-        if (snapshotOrFlushMemTable()) {
+        if (snapshotOrFlushMemTable() && recursionTime < MAX_RECURSION_TIME) {
           run();
+          recursionTime++;
         }
       }
     }
