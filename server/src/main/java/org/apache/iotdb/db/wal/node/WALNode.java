@@ -251,8 +251,11 @@ public class WALNode implements IWALNode {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
       long costOfFlushedMemTables = totalCostOfFlushedMemTables.get();
-      double effectiveInfoRatio =
-          (double) costOfActiveMemTables / (costOfActiveMemTables + costOfFlushedMemTables);
+      long totalCost = costOfActiveMemTables + costOfFlushedMemTables;
+      if (totalCost == 0) {
+        return;
+      }
+      double effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
       logger.debug(
           "Effective information ratio is {}, active memTables cost is {}, flushed memTables cost is {}",
           effectiveInfoRatio,
@@ -263,12 +266,15 @@ public class WALNode implements IWALNode {
       // then delete old .wal files again
       if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()) {
         logger.info(
-            "Effective information ratio {} of wal node-{} is below wal min effective info ratio {}, some mamTables will be snapshot or flushed.",
+            "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some mamTables will be snapshot or flushed.",
             effectiveInfoRatio,
+            costOfActiveMemTables,
+            costOfFlushedMemTables,
             identifier,
             config.getWalMinEffectiveInfoRatio());
-        snapshotOrFlushMemTable();
-        run();
+        if (snapshotOrFlushMemTable()) {
+          run();
+        }
       }
     }
 
@@ -330,11 +336,16 @@ public class WALNode implements IWALNode {
       return toDelete;
     }
 
-    private void snapshotOrFlushMemTable() {
+    /**
+     * Snapshot or flush one memTable,
+     *
+     * @return true if snapshot or flushed
+     */
+    private boolean snapshotOrFlushMemTable() {
       // find oldest memTable
       MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
       if (oldestMemTableInfo == null) {
-        return;
+        return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
 
@@ -356,7 +367,7 @@ public class WALNode implements IWALNode {
         }
       } catch (IllegalPathException | StorageEngineException e) {
         logger.error("Fail to get virtual storage group processor for {}", oldestTsFile, e);
-        return;
+        return false;
       }
 
       // snapshot or flush memTable
@@ -367,6 +378,7 @@ public class WALNode implements IWALNode {
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
       }
+      return true;
     }
 
     private void flushMemTable(DataRegion dataRegion, File tsFile, IMemTable memTable) {
