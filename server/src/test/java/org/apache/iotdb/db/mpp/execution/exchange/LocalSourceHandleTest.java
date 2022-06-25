@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;

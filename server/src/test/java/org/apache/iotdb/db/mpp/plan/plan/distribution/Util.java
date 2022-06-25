@@ -185,7 +185,7 @@ public class Util {
     return new TDataNodeLocation()
         .setDataNodeId(dataNodeId)
         .setExternalEndPoint(new TEndPoint(ip, 9000))
-        .setDataBlockManagerEndPoint(new TEndPoint(ip, 9001))
+        .setMppDataExchangeEndPoint(new TEndPoint(ip, 9001))
         .setInternalEndPoint(new TEndPoint(ip, 9002));
   }
 }

@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
-import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
+import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -50,9 +50,9 @@ import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
 
-public class DataBlockManager implements IDataBlockManager {
+public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataBlockManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(MPPDataExchangeManager.class);
 
   public interface SourceHandleListener {
     void onFinished(ISourceHandle sourceHandle);
@@ -73,7 +73,7 @@ public class DataBlockManager implements IDataBlockManager {
   }
 
   /** Handle thrift communications. */
-  class DataBlockServiceImpl implements DataBlockService.Iface {
+  class MPPDataExchangeServiceImpl implements MPPDataExchangeService.Iface {
 
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
@@ -195,9 +195,9 @@ public class DataBlockManager implements IDataBlockManager {
   /** Listen to the state changes of a source handle. */
   class SourceHandleListenerImpl implements SourceHandleListener {
 
-    private final IDataBlockManagerCallback<Throwable> onFailureCallback;
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
 
-    public SourceHandleListenerImpl(IDataBlockManagerCallback<Throwable> onFailureCallback) {
+    public SourceHandleListenerImpl(IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
       this.onFailureCallback = onFailureCallback;
     }
 
@@ -239,17 +239,18 @@ public class DataBlockManager implements IDataBlockManager {
   class SinkHandleListenerImpl implements SinkHandleListener {
 
     private final FragmentInstanceContext context;
-    private final IDataBlockManagerCallback<Throwable> onFailureCallback;
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
 
     public SinkHandleListenerImpl(
-        FragmentInstanceContext context, IDataBlockManagerCallback<Throwable> onFailureCallback) {
+        FragmentInstanceContext context,
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
       this.context = context;
       this.onFailureCallback = onFailureCallback;
     }
 
     @Override
     public void onFinish(ISinkHandle sinkHandle) {
-      removeFromDataBlockManager(sinkHandle);
+      removeFromMPPDataExchangeManager(sinkHandle);
       context.finished();
     }
 
@@ -261,10 +262,10 @@ public class DataBlockManager implements IDataBlockManager {
     @Override
     public void onAborted(ISinkHandle sinkHandle) {
       logger.info("onAborted is invoked");
-      removeFromDataBlockManager(sinkHandle);
+      removeFromMPPDataExchangeManager(sinkHandle);
     }
 
-    private void removeFromDataBlockManager(ISinkHandle sinkHandle) {
+    private void removeFromMPPDataExchangeManager(ISinkHandle sinkHandle) {
       logger.info("release resources of finished sink handle");
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
         logger.info("resources already been released");
@@ -274,7 +275,7 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onFailure(ISinkHandle sinkHandle, Throwable t) {
-      // TODO: (xingtanzjr) should we remove the sinkHandle from DataBlockManager ?
+      // TODO: (xingtanzjr) should we remove the sinkHandle from MPPDataExchangeManager ?
       logger.error("Sink handle failed due to", t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
@@ -285,31 +286,33 @@ public class DataBlockManager implements IDataBlockManager {
   private final LocalMemoryManager localMemoryManager;
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
-  private final IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient>
-      dataBlockServiceClientManager;
+  private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+      mppDataExchangeServiceClientManager;
   private final Map<TFragmentInstanceId, Map<String, ISourceHandle>> sourceHandles;
   private final Map<TFragmentInstanceId, ISinkHandle> sinkHandles;
 
-  private DataBlockServiceImpl dataBlockService;
+  private MPPDataExchangeServiceImpl mppDataExchangeService;
 
-  public DataBlockManager(
+  public MPPDataExchangeManager(
       LocalMemoryManager localMemoryManager,
       Supplier<TsBlockSerde> tsBlockSerdeFactory,
       ExecutorService executorService,
-      IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> dataBlockServiceClientManager) {
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager) {
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
     this.executorService = Validate.notNull(executorService);
-    this.dataBlockServiceClientManager = Validate.notNull(dataBlockServiceClientManager);
+    this.mppDataExchangeServiceClientManager =
+        Validate.notNull(mppDataExchangeServiceClientManager);
     sourceHandles = new ConcurrentHashMap<>();
     sinkHandles = new ConcurrentHashMap<>();
   }
 
-  public DataBlockServiceImpl getOrCreateDataBlockServiceImpl() {
-    if (dataBlockService == null) {
-      dataBlockService = new DataBlockServiceImpl();
+  public MPPDataExchangeServiceImpl getOrCreateMPPDataExchangeServiceImpl() {
+    if (mppDataExchangeService == null) {
+      mppDataExchangeService = new MPPDataExchangeServiceImpl();
     }
-    return dataBlockService;
+    return mppDataExchangeService;
   }
 
   @Override
@@ -317,7 +320,8 @@ public class DataBlockManager implements IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
-      // TODO: replace with callbacks to decouple DataBlockManager from FragmentInstanceContext
+      // TODO: replace with callbacks to decouple MPPDataExchangeManager from
+      // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
     if (sinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException(
@@ -359,7 +363,8 @@ public class DataBlockManager implements IDataBlockManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
-      // TODO: replace with callbacks to decouple DataBlockManager from FragmentInstanceContext
+      // TODO: replace with callbacks to decouple MPPDataExchangeManager from
+      // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
     if (sinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException("Sink handle for " + localFragmentInstanceId + " exists.");
@@ -381,7 +386,7 @@ public class DataBlockManager implements IDataBlockManager {
             executorService,
             tsBlockSerdeFactory.get(),
             new SinkHandleListenerImpl(instanceContext, instanceContext::failed),
-            dataBlockServiceClientManager);
+            mppDataExchangeServiceClientManager);
     sinkHandles.put(localFragmentInstanceId, sinkHandle);
     return sinkHandle;
   }
@@ -391,7 +396,7 @@ public class DataBlockManager implements IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
-      IDataBlockManagerCallback<Throwable> onFailureCallback) {
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -434,7 +439,7 @@ public class DataBlockManager implements IDataBlockManager {
       String localPlanNodeId,
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
-      IDataBlockManagerCallback<Throwable> onFailureCallback) {
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -461,7 +466,7 @@ public class DataBlockManager implements IDataBlockManager {
             executorService,
             tsBlockSerdeFactory.get(),
             new SourceHandleListenerImpl(onFailureCallback),
-            dataBlockServiceClientManager);
+            mppDataExchangeServiceClientManager);
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, sourceHandle);

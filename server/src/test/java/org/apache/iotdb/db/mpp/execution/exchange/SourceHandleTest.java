@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
@@ -53,8 +53,7 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -63,11 +62,11 @@ public class SourceHandleTest {
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
-    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    SyncDataNodeDataBlockServiceClient mockClient =
-        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
+    SyncDataNodeMPPDataExchangeServiceClient mockClient =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     try {
       Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doAnswer(
@@ -169,8 +168,7 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -180,11 +178,11 @@ public class SourceHandleTest {
     MemoryPool spyMemoryPool =
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
-    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    SyncDataNodeDataBlockServiceClient mockClient =
-        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
+    SyncDataNodeMPPDataExchangeServiceClient mockClient =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     try {
       Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doAnswer(
@@ -312,8 +310,7 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -326,11 +323,11 @@ public class SourceHandleTest {
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
     TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
-    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    SyncDataNodeDataBlockServiceClient mockClient =
-        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
+    SyncDataNodeMPPDataExchangeServiceClient mockClient =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     try {
       Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doAnswer(
@@ -495,8 +492,7 @@ public class SourceHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -509,11 +505,11 @@ public class SourceHandleTest {
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
     TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
-    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    SyncDataNodeDataBlockServiceClient mockClient =
-        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
+    SyncDataNodeMPPDataExchangeServiceClient mockClient =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     TException mockException = new TException("Mock exception");
     try {
       Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
@@ -575,8 +571,7 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -585,11 +580,11 @@ public class SourceHandleTest {
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
-    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    SyncDataNodeDataBlockServiceClient mockClient =
-        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
+    SyncDataNodeMPPDataExchangeServiceClient mockClient =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     try {
       Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doAnswer(

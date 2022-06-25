@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -47,7 +47,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
-import static org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.createFullIdFrom;
+import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
 
 public class SourceHandle implements ISourceHandle {
 
@@ -71,8 +71,8 @@ public class SourceHandle implements ISourceHandle {
   private final String threadName;
   private long retryIntervalInMs;
 
-  private final IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient>
-      dataBlockServiceClientManager;
+  private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+      mppDataExchangeServiceClientManager;
 
   private SettableFuture<Void> blocked = SettableFuture.create();
 
@@ -95,7 +95,8 @@ public class SourceHandle implements ISourceHandle {
       ExecutorService executorService,
       TsBlockSerde serde,
       SourceHandleListener sourceHandleListener,
-      IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> dataBlockServiceClientManager) {
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
@@ -105,7 +106,7 @@ public class SourceHandle implements ISourceHandle {
     this.serde = Validate.notNull(serde);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
     this.bufferRetainedSizeInBytes = 0L;
-    this.dataBlockServiceClientManager = dataBlockServiceClientManager;
+    this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName =
         createFullIdFrom(localFragmentInstanceId, localPlanNodeId + "." + "SourceHandle");
@@ -339,8 +340,8 @@ public class SourceHandle implements ISourceHandle {
         int attempt = 0;
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
-          try (SyncDataNodeDataBlockServiceClient client =
-              dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (SyncDataNodeMPPDataExchangeServiceClient client =
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
             List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
             for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
@@ -407,8 +408,8 @@ public class SourceHandle implements ISourceHandle {
                 remoteFragmentInstanceId, startSequenceId, endSequenceId);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
-          try (SyncDataNodeDataBlockServiceClient client =
-              dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (SyncDataNodeMPPDataExchangeServiceClient client =
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
             break;
           } catch (Throwable e) {

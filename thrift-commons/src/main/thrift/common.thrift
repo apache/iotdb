@@ -69,8 +69,8 @@ struct TDataNodeLocation {
   2: required TEndPoint externalEndPoint
   // TEndPoint for DataNode's internal rpc
   3: required TEndPoint internalEndPoint
-  // TEndPoint for transfering data between DataNodes
-  4: required TEndPoint dataBlockManagerEndPoint
+  // TEndPoint for exchange data between DataNodes
+  4: required TEndPoint mppDataExchangeEndPoint
   // TEndPoint for DataNode's dataRegion consensus protocol
   5: required TEndPoint dataRegionConsensusEndPoint
   // TEndPoint for DataNode's schemaRegion consensus protocol

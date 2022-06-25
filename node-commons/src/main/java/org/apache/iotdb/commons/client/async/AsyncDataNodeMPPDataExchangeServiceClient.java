@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
+import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.pool2.PooledObject;
@@ -35,20 +35,20 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncDataNodeDataBlockServiceClient extends DataBlockService.AsyncClient {
+public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeService.AsyncClient {
 
   private static final Logger logger =
-      LoggerFactory.getLogger(AsyncDataNodeDataBlockServiceClient.class);
+      LoggerFactory.getLogger(AsyncDataNodeMPPDataExchangeServiceClient.class);
 
   private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, AsyncDataNodeDataBlockServiceClient> clientManager;
+  private final ClientManager<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> clientManager;
 
-  public AsyncDataNodeDataBlockServiceClient(
+  public AsyncDataNodeMPPDataExchangeServiceClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncDataNodeDataBlockServiceClient> clientManager)
+      ClientManager<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> clientManager)
       throws IOException {
     super(
         protocolFactory,
@@ -105,31 +105,31 @@ public class AsyncDataNodeDataBlockServiceClient extends DataBlockService.AsyncC
 
   @Override
   public String toString() {
-    return String.format("AsyncDataNodeDataBlockServiceClient{%s}", endpoint);
+    return String.format("AsyncDataNodeMPPDataExchangeServiceClient{%s}", endpoint);
   }
 
   public static class Factory
-      extends AsyncBaseClientFactory<TEndPoint, AsyncDataNodeDataBlockServiceClient> {
+      extends AsyncBaseClientFactory<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, AsyncDataNodeDataBlockServiceClient> clientManager,
+        ClientManager<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> clientManager,
         ClientFactoryProperty clientFactoryProperty) {
       super(clientManager, clientFactoryProperty);
     }
 
     @Override
     public void destroyObject(
-        TEndPoint endPoint, PooledObject<AsyncDataNodeDataBlockServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<AsyncDataNodeDataBlockServiceClient> makeObject(TEndPoint endPoint)
+    public PooledObject<AsyncDataNodeMPPDataExchangeServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
       TAsyncClientManager tManager = tManagers[clientCnt.incrementAndGet() % tManagers.length];
       tManager = tManager == null ? new TAsyncClientManager() : tManager;
       return new DefaultPooledObject<>(
-          new AsyncDataNodeDataBlockServiceClient(
+          new AsyncDataNodeMPPDataExchangeServiceClient(
               clientFactoryProperty.getProtocolFactory(),
               clientFactoryProperty.getConnectionTimeoutMs(),
               endPoint,
@@ -139,7 +139,7 @@ public class AsyncDataNodeDataBlockServiceClient extends DataBlockService.AsyncC
 
     @Override
     public boolean validateObject(
-        TEndPoint endPoint, PooledObject<AsyncDataNodeDataBlockServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().isReady();
     }
   }

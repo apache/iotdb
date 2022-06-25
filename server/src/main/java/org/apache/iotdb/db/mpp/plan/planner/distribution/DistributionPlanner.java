@@ -115,7 +115,7 @@ public class DistributionPlanner {
     context
         .getResultNodeContext()
         .setUpStream(
-            rootInstance.getHostDataNode().dataBlockManagerEndPoint,
+            rootInstance.getHostDataNode().mppDataExchangeEndPoint,
             rootInstance.getId(),
             sinkNode.getPlanNodeId());
     rootInstance.getFragment().setRoot(sinkNode);

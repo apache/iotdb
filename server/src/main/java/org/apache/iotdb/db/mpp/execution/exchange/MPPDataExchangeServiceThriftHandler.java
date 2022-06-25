@@ -16,19 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.datatransfer;
 
-import org.apache.iotdb.commons.exception.StartupException;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
-public interface DataBlockServiceMBean {
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
+import org.apache.thrift.transport.TTransport;
 
-  String getRPCServiceStatus();
+public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler {
 
-  int getRPCPort();
+  @Override
+  public void preServe() {}
 
-  void startService() throws StartupException;
+  @Override
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    return null;
+  }
 
-  void restartService() throws StartupException;
+  @Override
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
 
-  void stopService();
+  @Override
+  public void processContext(
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
 }

@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-public interface IDataBlockManager {
+public interface IMPPDataExchangeManager {
   /**
    * Create a sink handle who sends data blocks to a remote downstream fragment instance in async
    * manner.
@@ -65,13 +65,13 @@ public interface IDataBlockManager {
       String localPlanNodeId,
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
-      IDataBlockManagerCallback<Throwable> onFailureCallback);
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
 
   ISourceHandle createLocalSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
-      IDataBlockManagerCallback<Throwable> onFailureCallback);
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not

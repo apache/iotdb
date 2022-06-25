@@ -148,7 +148,7 @@ public class ConfigNodeRPCServiceProcessorTest {
       TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
-      dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setMppDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
       dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
 
@@ -174,7 +174,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6668));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
+    dataNodeLocation.setMppDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8778));
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
 
@@ -202,7 +202,7 @@ public class ConfigNodeRPCServiceProcessorTest {
       dataNodeLocation.setDataNodeId(i + 1);
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
-      dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setMppDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
       dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
       Assert.assertEquals(dataNodeLocation, infoList.get(i).getValue().getLocation());
@@ -217,7 +217,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeLocation.setDataNodeId(1);
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setMppDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
     Assert.assertEquals(dataNodeLocation, infoMap.get(1).getLocation());
@@ -243,7 +243,7 @@ public class ConfigNodeRPCServiceProcessorTest {
       dataNodeLocation.setDataNodeId(i + 1);
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
-      dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setMppDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
       dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
       Assert.assertEquals(dataNodeLocation, dataNodeInfos.get(i));

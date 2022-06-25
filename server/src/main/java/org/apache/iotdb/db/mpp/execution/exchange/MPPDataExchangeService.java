@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -33,7 +33,7 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
-import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Processor;
+import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService.Processor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,45 +42,46 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class DataBlockService extends ThriftService implements DataBlockServiceMBean {
+public class MPPDataExchangeService extends ThriftService implements MPPDataExchangeServiceMBean {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataBlockService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MPPDataExchangeService.class);
 
-  private final DataBlockManager dataBlockManager;
+  private final MPPDataExchangeManager mppDataExchangeManager;
   private final ExecutorService executorService;
 
-  private DataBlockService() {
+  private MPPDataExchangeService() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     executorService =
         IoTDBThreadPoolFactory.newThreadPool(
-            config.getDataBlockManagerCorePoolSize(),
-            config.getDataBlockManagerMaxPoolSize(),
-            config.getDataBlockManagerKeepAliveTimeInMs(),
+            config.getMppDataExchangeCorePoolSize(),
+            config.getMppDataExchangeMaxPoolSize(),
+            config.getMppDataExchangeKeepAliveTimeInMs(),
             TimeUnit.MILLISECONDS,
             // TODO: Use a priority queue.
             new LinkedBlockingQueue<>(),
-            new IoTThreadFactory("data-block-manager-task-executors"),
-            "data-block-manager-task-executors");
-    this.dataBlockManager =
-        new DataBlockManager(
+            new IoTThreadFactory("mpp-data-exchange-task-executors"),
+            "mpp-data-exchange-task-executors");
+    this.mppDataExchangeManager =
+        new MPPDataExchangeManager(
             new LocalMemoryManager(),
             new TsBlockSerdeFactory(),
             executorService,
-            new IClientManager.Factory<TEndPoint, SyncDataNodeDataBlockServiceClient>()
+            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new DataNodeClientPoolFactory.SyncDataNodeDataBlockServiceClientPoolFactory()));
-    LOGGER.info("DataBlockManager init successfully");
+                    new DataNodeClientPoolFactory
+                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+    LOGGER.info("MPPDataExchangeManager init successfully");
   }
 
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     initSyncedServiceImpl(null);
-    processor = new Processor<>(dataBlockManager.getOrCreateDataBlockServiceImpl());
+    processor = new Processor<>(mppDataExchangeManager.getOrCreateMPPDataExchangeServiceImpl());
   }
 
-  public DataBlockManager getDataBlockManager() {
-    return dataBlockManager;
+  public MPPDataExchangeManager getMPPDataExchangeManager() {
+    return mppDataExchangeManager;
   }
 
   @Override
@@ -92,18 +93,18 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.DATA_BLOCK_MANAGER_RPC_CLIENT.getName(),
+              ThreadName.MPP_DATA_EXCHANGE_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
-              new DataBlockServiceThriftHandler(),
+              new MPPDataExchangeServiceThriftHandler(),
               // TODO: hard coded compress strategy
               false);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.DATA_BLOCK_MANAGER_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
   }
 
   @Override
@@ -113,12 +114,12 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort();
+    return IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort();
   }
 
   @Override
   public ServiceType getID() {
-    return ServiceType.DATA_BLOCK_MANAGER_SERVICE;
+    return ServiceType.MPP_DATA_EXCHANGE_SERVICE;
   }
 
   @Override
@@ -127,8 +128,8 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
     executorService.shutdown();
   }
 
-  public static DataBlockService getInstance() {
-    return DataBlockManagerServiceHolder.INSTANCE;
+  public static MPPDataExchangeService getInstance() {
+    return MPPDataExchangeServiceHolder.INSTANCE;
   }
 
   @Override
@@ -136,9 +137,9 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
     return getBindPort();
   }
 
-  private static class DataBlockManagerServiceHolder {
-    private static final DataBlockService INSTANCE = new DataBlockService();
+  private static class MPPDataExchangeServiceHolder {
+    private static final MPPDataExchangeService INSTANCE = new MPPDataExchangeService();
 
-    private DataBlockManagerServiceHolder() {}
+    private MPPDataExchangeServiceHolder() {}
   }
 }

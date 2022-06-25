@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -47,7 +47,7 @@ public class LocalSinkHandleTest {
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     // Construct a mock SinkHandleListener.
     SinkHandleListener mockSinkHandleListener =
-        Mockito.mock(DataBlockManager.SinkHandleListener.class);
+        Mockito.mock(MPPDataExchangeManager.SinkHandleListener.class);
     // Construct a shared TsBlock queue.
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, mockLocalMemoryManager);
@@ -111,8 +111,8 @@ public class LocalSinkHandleTest {
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     // Construct a mock SinkHandleListener.
-    DataBlockManager.SinkHandleListener mockSinkHandleListener =
-        Mockito.mock(DataBlockManager.SinkHandleListener.class);
+    MPPDataExchangeManager.SinkHandleListener mockSinkHandleListener =
+        Mockito.mock(MPPDataExchangeManager.SinkHandleListener.class);
     // Construct a shared tsblock queue.
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, mockLocalMemoryManager);
