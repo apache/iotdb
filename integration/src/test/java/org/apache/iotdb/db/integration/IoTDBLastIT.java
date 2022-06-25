@@ -603,6 +603,21 @@ public class IoTDBLastIT {
           statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
 
       assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TIMESEIRES_STR)
+                  + ","
+                  + resultSet.getString(VALUE_STR)
+                  + ","
+                  + resultSet.getString(DATA_TYPE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -625,6 +640,21 @@ public class IoTDBLastIT {
       node = IoTDB.metaManager.getMeasurementMNode(path);
       Assert.assertFalse(node.getLastCacheContainer().isEmptyContainer());
       assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TIMESEIRES_STR)
+                  + ","
+                  + resultSet.getString(VALUE_STR)
+                  + ","
+                  + resultSet.getString(DATA_TYPE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -646,6 +676,21 @@ public class IoTDBLastIT {
       node = IoTDB.metaManager.getMeasurementMNode(path);
       Assert.assertFalse(node.getLastCacheContainer().isEmptyContainer());
       assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TIMESEIRES_STR)
+                  + ","
+                  + resultSet.getString(VALUE_STR)
+                  + ","
+                  + resultSet.getString(DATA_TYPE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
 
     } catch (Exception e) {
       e.printStackTrace();
