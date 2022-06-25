@@ -101,7 +101,9 @@ public class SharedTsBlockQueueTest {
     public void run() {
       ListenableFuture<Void> blockedOnMemory = null;
       while (numOfTsBlocksToSend.get() > 0) {
-        blockedOnMemory = queue.add(Utils.createMockTsBlock(mockTsBlockSize));
+        synchronized (queue) {
+          blockedOnMemory = queue.add(Utils.createMockTsBlock(mockTsBlockSize));
+        }
         numOfTsBlocksToSend.updateAndGet(v -> v - 1);
         if (!blockedOnMemory.isDone()) {
           break;
@@ -114,7 +116,9 @@ public class SharedTsBlockQueueTest {
             new SendTask(queue, mockTsBlockSize, numOfTsBlocksToSend, numOfTimesBlocked, executor),
             executor);
       } else {
-        queue.setNoMoreTsBlocks(true);
+        synchronized (queue) {
+          queue.setNoMoreTsBlocks(true);
+        }
       }
     }
   }
@@ -141,12 +145,14 @@ public class SharedTsBlockQueueTest {
     public void run() {
       ListenableFuture<Void> blocked = null;
       while (numOfTsBlocksToReceive.get() > 0) {
-        blocked = queue.isBlocked();
-        if (blocked.isDone()) {
-          queue.remove();
-          numOfTsBlocksToReceive.updateAndGet(v -> v - 1);
-        } else {
-          break;
+        synchronized (queue) {
+          blocked = queue.isBlocked();
+          if (blocked.isDone()) {
+            queue.remove();
+            numOfTsBlocksToReceive.updateAndGet(v -> v - 1);
+          } else {
+            break;
+          }
         }
       }
 
