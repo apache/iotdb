@@ -36,7 +36,7 @@ public class CheckpointReader {
   private static final Logger logger = LoggerFactory.getLogger(CheckpointReader.class);
 
   private final File logFile;
-  private int maxMemTableId;
+  private long maxMemTableId;
   private List<Checkpoint> checkpoints;
 
   public CheckpointReader(File logFile) {
@@ -48,7 +48,7 @@ public class CheckpointReader {
     checkpoints = new ArrayList<>();
     try (DataInputStream logStream =
         new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)))) {
-      maxMemTableId = logStream.readInt();
+      maxMemTableId = logStream.readLong();
       while (logStream.available() > 0) {
         Checkpoint checkpoint = Checkpoint.deserialize(logStream);
         checkpoints.add(checkpoint);
@@ -59,7 +59,7 @@ public class CheckpointReader {
     }
   }
 
-  public int getMaxMemTableId() {
+  public long getMaxMemTableId() {
     return maxMemTableId;
   }
 

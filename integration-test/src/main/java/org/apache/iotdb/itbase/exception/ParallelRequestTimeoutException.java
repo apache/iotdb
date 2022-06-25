@@ -16,36 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.buffer;
+package org.apache.iotdb.itbase.exception;
 
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-
-/** This class provides a signal to help wal buffer dealing with some special cases */
-public class SignalWALEntry extends WALEntry {
-  private final SignalType signalType;
-
-  public SignalWALEntry(SignalType signalType) {
-    this(signalType, false);
-  }
-
-  public SignalWALEntry(SignalType signalType, boolean wait) {
-    super(Long.MIN_VALUE, new DeletePlan(), wait);
-    this.signalType = signalType;
-  }
-
-  @Override
-  public boolean isSignal() {
-    return true;
-  }
-
-  public SignalType getSignalType() {
-    return signalType;
-  }
-
-  public enum SignalType {
-    /** signal wal buffer has been closed */
-    CLOSE_SIGNAL,
-    /** signal wal buffer to roll wal log writer */
-    ROLL_WAL_LOG_WRITER_SIGNAL,
+public class ParallelRequestTimeoutException extends RuntimeException {
+  public ParallelRequestTimeoutException(String message, Throwable throwable) {
+    super(message, throwable);
   }
 }

@@ -84,7 +84,8 @@ public class TransformOperator implements ProcessOperator {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      TypeProvider typeProvider)
+      TypeProvider typeProvider,
+      boolean isAscending)
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
@@ -94,7 +95,7 @@ public class TransformOperator implements ProcessOperator {
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, typeProvider);
 
-    timeHeap = new TimeSelector(transformers.length << 1, true);
+    timeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
   }

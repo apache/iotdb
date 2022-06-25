@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -53,7 +53,7 @@ public class MemoryStatistics {
   private MemoryStatistics() {}
 
   public void init() {
-    memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema();
+    memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
     memoryUsage.getAndSet(0);
     allowToCreateNewSeries = true;
   }

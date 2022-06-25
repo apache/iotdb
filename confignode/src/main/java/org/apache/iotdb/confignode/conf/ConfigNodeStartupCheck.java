@@ -201,6 +201,7 @@ public class ConfigNodeStartupCheck {
           SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+        conf.setConfigNodeList(resp.getConfigNodeList());
         LOGGER.info("ConfigNode registered successfully.");
         break;
       } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
@@ -383,7 +384,7 @@ public class ConfigNodeStartupCheck {
   /** Only load ConfigNodeList from confignode-system.properties when restart */
   private void loadConfigNodeList() throws StartupException {
     String addresses = systemProperties.getProperty("confignode_list", null);
-    if (addresses != null) {
+    if (addresses != null && !addresses.isEmpty()) {
       try {
         conf.setConfigNodeList(NodeUrlUtils.parseTConfigNodeUrls(addresses));
       } catch (BadNodeUrlException e) {

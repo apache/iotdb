@@ -778,7 +778,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -805,7 +806,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }

@@ -46,7 +46,13 @@ public class DataNodeSchemaCache {
   private final Cache<PartialPath, SchemaCacheEntry> cache;
 
   private DataNodeSchemaCache() {
-    cache = Caffeine.newBuilder().maximumSize(config.getDataNodeSchemaCacheSize()).build();
+    cache =
+        Caffeine.newBuilder()
+            .maximumWeight(config.getAllocateMemoryForSchemaCache())
+            .weigher(
+                (PartialPath key, SchemaCacheEntry value) ->
+                    PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
+            .build();
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       // add metrics
       MetricsService.getInstance()
