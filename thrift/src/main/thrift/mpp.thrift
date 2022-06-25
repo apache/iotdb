@@ -269,6 +269,8 @@ service InternalService {
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
   common.TSStatus flush(common.TFlushReq req)
+
+  common.TSStatus setTTL(common.TSetTTLReq req)
 }
 
 service DataBlockService {

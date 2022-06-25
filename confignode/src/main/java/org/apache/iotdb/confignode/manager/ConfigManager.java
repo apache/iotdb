@@ -727,4 +727,8 @@ public class ConfigManager implements Manager {
     partitionManager.addMetrics();
     nodeManager.addMetrics();
   }
+
+  public boolean ifStorageGroupExist(String storageGroup) {
+    return clusterSchemaManager.getStorageGroupNames().contains(storageGroup.toString());
+  }
 }

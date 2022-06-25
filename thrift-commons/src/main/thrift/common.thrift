@@ -98,3 +98,8 @@ struct TFlushReq {
    2: optional list<string> storageGroups
    3: optional i32 dataNodeId
 }
+
+struct TSetTTLReq {
+  1: required string storageGroup
+  2: required i64 TTL
+}
