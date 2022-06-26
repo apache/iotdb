@@ -172,7 +172,7 @@
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
-        <spotless.version>2.22.3</spotless.version>
+        <spotless.version>2.22.8</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
         <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
