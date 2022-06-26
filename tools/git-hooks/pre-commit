@@ -42,8 +42,8 @@ exec_with_log() {
 
 # update all the file indices after the hook modified the files
 update_changed_file_indices() {
-    echo "Updating changed files indices..."
-    for line in $(git diff --name-only --cached); do
+    echo "$PROMPT Updating changed files indices..."
+    for line in $("$IOTDB_GIT_PATH" diff --name-only --cached); do
         if [ -f "$line" ]; then
             "$IOTDB_GIT_PATH" add -u "$line"
         fi
@@ -76,7 +76,7 @@ main() {
     fi
 
     # get all changed module path
-    changed_files=$($IOTDB_GIT_PATH diff --name-only --cached)
+    changed_files=$("$IOTDB_GIT_PATH" diff --name-only --cached)
     changed_java_modules=""
     smart_args=""
     for line in $changed_files; do
