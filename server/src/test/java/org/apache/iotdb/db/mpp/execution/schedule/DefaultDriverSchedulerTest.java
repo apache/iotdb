@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.datatransfer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
@@ -49,8 +49,9 @@ public class DefaultDriverSchedulerTest {
 
   @Test
   public void testBlockedToReady() {
-    IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
-    manager.setBlockManager(mockDataBlockManager);
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
@@ -99,8 +100,9 @@ public class DefaultDriverSchedulerTest {
 
   @Test
   public void testReadyToRunning() {
-    IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
-    manager.setBlockManager(mockDataBlockManager);
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
 
@@ -146,8 +148,9 @@ public class DefaultDriverSchedulerTest {
 
   @Test
   public void testRunningToReady() {
-    IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
-    manager.setBlockManager(mockDataBlockManager);
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
@@ -198,8 +201,9 @@ public class DefaultDriverSchedulerTest {
 
   @Test
   public void testRunningToBlocked() {
-    IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
-    manager.setBlockManager(mockDataBlockManager);
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
@@ -250,8 +254,9 @@ public class DefaultDriverSchedulerTest {
 
   @Test
   public void testRunningToFinished() {
-    IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
-    manager.setBlockManager(mockDataBlockManager);
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
@@ -301,8 +306,9 @@ public class DefaultDriverSchedulerTest {
 
   @Test
   public void testToAbort() {
-    IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
-    manager.setBlockManager(mockDataBlockManager);
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
     InternalService.Client mockMppServiceClient = Mockito.mock(InternalService.Client.class);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     QueryId queryId = new QueryId("test");
@@ -367,9 +373,9 @@ public class DefaultDriverSchedulerTest {
       defaultScheduler.toAborted(testTask1);
 
       Mockito.reset(mockMppServiceClient);
-      Mockito.verify(mockDataBlockManager, Mockito.times(2))
+      Mockito.verify(mockMPPDataExchangeManager, Mockito.times(2))
           .forceDeregisterFragmentInstance(Mockito.any());
-      Mockito.reset(mockDataBlockManager);
+      Mockito.reset(mockMPPDataExchangeManager);
 
       // An aborted fragment may cause others in the same query aborted.
       Assert.assertEquals(DriverTaskStatus.ABORTED, testTask1.getStatus());

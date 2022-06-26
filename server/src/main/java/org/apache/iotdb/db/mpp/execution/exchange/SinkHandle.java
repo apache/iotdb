@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -48,7 +48,7 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
-import static org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.createFullIdFrom;
+import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
 
 public class SinkHandle implements ISinkHandle {
 
@@ -73,8 +73,8 @@ public class SinkHandle implements ISinkHandle {
   //   2. Fast lookup.
   private final LinkedHashMap<Integer, TsBlock> sequenceIdToTsBlock = new LinkedHashMap<>();
 
-  private final IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient>
-      dataBlockServiceClientManager;
+  private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+      mppDataExchangeServiceClientManager;
 
   private volatile ListenableFuture<Void> blocked = immediateFuture(null);
   private int nextSequenceId = 0;
@@ -93,7 +93,8 @@ public class SinkHandle implements ISinkHandle {
       ExecutorService executorService,
       TsBlockSerde serde,
       SinkHandleListener sinkHandleListener,
-      IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> dataBlockServiceClientManager) {
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
@@ -102,7 +103,7 @@ public class SinkHandle implements ISinkHandle {
     this.executorService = Validate.notNull(executorService);
     this.serde = Validate.notNull(serde);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
-    this.dataBlockServiceClientManager = dataBlockServiceClientManager;
+    this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName = createFullIdFrom(localFragmentInstanceId, "SinkHandle");
   }
@@ -171,8 +172,8 @@ public class SinkHandle implements ISinkHandle {
             nextSequenceId - 1);
     while (attempt < MAX_ATTEMPT_TIMES) {
       attempt += 1;
-      try (SyncDataNodeDataBlockServiceClient client =
-          dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+      try (SyncDataNodeMPPDataExchangeServiceClient client =
+          mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
         client.onEndOfDataBlockEvent(endOfDataBlockEvent);
         break;
       } catch (Throwable e) {
@@ -346,8 +347,8 @@ public class SinkHandle implements ISinkHandle {
                 blockSizes);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
-          try (SyncDataNodeDataBlockServiceClient client =
-              dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (SyncDataNodeMPPDataExchangeServiceClient client =
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
           } catch (Throwable e) {

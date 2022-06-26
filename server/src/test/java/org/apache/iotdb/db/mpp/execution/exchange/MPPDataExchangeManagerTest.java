@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
@@ -34,7 +34,7 @@ import org.mockito.Mockito;
 
 import java.util.concurrent.Executors;
 
-public class DataBlockManagerTest {
+public class MPPDataExchangeManagerTest {
   @Test
   public void testCreateLocalSinkHandle() {
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId("q0", 1, "0");
@@ -48,17 +48,18 @@ public class DataBlockManagerTest {
     MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", 10240L, 5120L));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
 
-    DataBlockManager dataBlockManager =
-        new DataBlockManager(
+    MPPDataExchangeManager mppDataExchangeManager =
+        new MPPDataExchangeManager(
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new IClientManager.Factory<TEndPoint, SyncDataNodeDataBlockServiceClient>()
+            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new DataNodeClientPoolFactory.SyncDataNodeDataBlockServiceClientPoolFactory()));
+                    new DataNodeClientPoolFactory
+                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISinkHandle localSinkHandle =
-        dataBlockManager.createLocalSinkHandle(
+        mppDataExchangeManager.createLocalSinkHandle(
             localFragmentInstanceId,
             remoteFragmentInstanceId,
             remotePlanNodeId,
@@ -67,7 +68,7 @@ public class DataBlockManagerTest {
     Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);
 
     ISourceHandle localSourceHandle =
-        dataBlockManager.createLocalSourceHandle(
+        mppDataExchangeManager.createLocalSourceHandle(
             remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
@@ -90,23 +91,24 @@ public class DataBlockManagerTest {
     MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", 10240L, 5120L));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
 
-    DataBlockManager dataBlockManager =
-        new DataBlockManager(
+    MPPDataExchangeManager mppDataExchangeManager =
+        new MPPDataExchangeManager(
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new IClientManager.Factory<TEndPoint, SyncDataNodeDataBlockServiceClient>()
+            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new DataNodeClientPoolFactory.SyncDataNodeDataBlockServiceClientPoolFactory()));
+                    new DataNodeClientPoolFactory
+                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISourceHandle localSourceHandle =
-        dataBlockManager.createLocalSourceHandle(
+        mppDataExchangeManager.createLocalSourceHandle(
             localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
     ISinkHandle localSinkHandle =
-        dataBlockManager.createLocalSinkHandle(
+        mppDataExchangeManager.createLocalSinkHandle(
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,

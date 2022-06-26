@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 

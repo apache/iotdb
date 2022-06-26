@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
-import org.apache.iotdb.db.mpp.execution.datatransfer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.L2PriorityQueue;
@@ -63,7 +63,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final Set<DriverTask> blockedTasks;
   private final Map<QueryId, Set<DriverTask>> queryMap;
   private final ITaskScheduler scheduler;
-  private IDataBlockManager blockManager; // TODO: init with real IDataBlockManager
+  private IMPPDataExchangeManager blockManager; // TODO: init with real IMPPDataExchangeManager
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
@@ -82,7 +82,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     this.scheduler = new Scheduler();
     this.workerGroups = new ThreadGroup("ScheduleThreads");
     this.threads = new ArrayList<>();
-    this.blockManager = DataBlockService.getInstance().getDataBlockManager();
+    this.blockManager = MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
   }
 
   @Override
@@ -246,7 +246,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @TestOnly
-  void setBlockManager(IDataBlockManager blockManager) {
+  void setBlockManager(IMPPDataExchangeManager blockManager) {
     this.blockManager = blockManager;
   }
 

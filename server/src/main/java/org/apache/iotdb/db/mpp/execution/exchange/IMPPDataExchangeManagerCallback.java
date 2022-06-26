@@ -17,8 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.datatransfer;
+package org.apache.iotdb.db.mpp.execution.exchange;
 
-public interface IDataBlockManagerCallback<T> {
+public interface IMPPDataExchangeManagerCallback<T> {
   public void call(T argument);
 }

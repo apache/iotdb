@@ -53,7 +53,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -180,8 +180,8 @@ public class DataNode implements DataNodeMBean {
         location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
             new TEndPoint(config.getInternalIp(), config.getInternalPort()));
-        location.setDataBlockManagerEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
+        location.setMppDataExchangeEndPoint(
+            new TEndPoint(config.getInternalIp(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
         location.setSchemaRegionConsensusEndPoint(
@@ -291,7 +291,7 @@ public class DataNode implements DataNodeMBean {
 
     // in mpp mode we need to start some other services
     registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(DataBlockService.getInstance());
+    registerManager.register(MPPDataExchangeService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 
     registerUdfServices();
@@ -338,8 +338,8 @@ public class DataNode implements DataNodeMBean {
         location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
             new TEndPoint(config.getInternalIp(), config.getInternalPort()));
-        location.setDataBlockManagerEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
+        location.setMppDataExchangeEndPoint(
+            new TEndPoint(config.getInternalIp(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
         location.setSchemaRegionConsensusEndPoint(
