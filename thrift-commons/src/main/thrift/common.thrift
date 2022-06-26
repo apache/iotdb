@@ -65,24 +65,24 @@ struct TConfigNodeLocation {
 
 struct TDataNodeLocation {
   1: required i32 dataNodeId
-  // TEndPoint for DataNode's external rpc
-  2: required TEndPoint externalEndPoint
+  // TEndPoint for DataNode's client rpc
+  2: required TEndPoint clientRpcEndPoint
   // TEndPoint for DataNode's internal rpc
   3: required TEndPoint internalEndPoint
-  // TEndPoint for transfering data between DataNodes
-  4: required TEndPoint dataBlockManagerEndPoint
+  // TEndPoint for exchange data between DataNodes
+  4: required TEndPoint mPPDataExchangeEndPoint
   // TEndPoint for DataNode's dataRegion consensus protocol
   5: required TEndPoint dataRegionConsensusEndPoint
   // TEndPoint for DataNode's schemaRegion consensus protocol
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
-struct TRegionLocation {
+struct TRegionInfo {
   1: required TConsensusGroupId consensusGroupId
   2: required string storageGroup
   3: required i32 dataNodeId;
-  4: required string rpcAddresss;
-  5: required i32 rpcPort;
+  4: required string clientRpcIp;
+  5: required i32 clientRpcPort;
   6: required i64 slots;
   7: optional string status;
 }

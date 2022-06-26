@@ -23,20 +23,20 @@
 
 为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得用户可以在启动服务或服务运行时对其进行配置。
 
-三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 2 个文件，分别为：`iotdb-env.sh`, `iotdb-engine.properties`
+三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 2 个文件，分别为：`iotdb-env.sh`, `iotdb-datanode.properties`
 。用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
 * `iotdb-env.sh`：环境配置项的默认配置文件。用户可以在文件中配置 JAVA-JVM 的相关系统配置项。
 
-* `iotdb-engine.properties`：IoTDB 引擎层系统配置项的默认配置文件。用户可以在文件中配置 IoTDB 引擎运行时的相关参数，如 JDBC 服务监听端口 (`rpc_port`)、overflow
+* `iotdb-datanode.properties`：IoTDB 引擎层系统配置项的默认配置文件。用户可以在文件中配置 IoTDB 引擎运行时的相关参数，如 JDBC 服务监听端口 (`rpc_port`)、overflow
   数据文件存储目录 (`overflow_data_dir`) 等。此外，用户可以在文件中配置 IoTDB 存储时 TsFile 文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小 (`group_size_in_byte`)
   ，内存中每个列打一次包的大小 (`page_size_in_byte`) 等。
 
 ## 热修改配置项
 
-为方便用户使用，IoTDB Server 为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`触发生效`
+为方便用户使用，IoTDB Server 为用户提供了热修改功能，即在系统运行过程中修改`iotdb-datanode.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`触发生效`
 的均为支持热修改的配置参数。
 
 触发方式：客户端发送```load configuration```命令至 IoTDB
@@ -86,7 +86,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 ## 系统配置项
 
 系统配置项是 IoTDB Server 运行的核心配置，它主要用于设置 IoTDB Server 文件层和引擎层的参数，便于用户根据自身需求调整 Server
-的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-engine.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
+的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-datanode.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
 
 ### RPC配置
 

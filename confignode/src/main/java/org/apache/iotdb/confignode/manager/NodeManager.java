@@ -58,7 +58,7 @@ public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
-  private final Manager configManager;
+  private final IManager configManager;
   private final NodeInfo nodeInfo;
 
   private final ReentrantLock removeConfigNodeLock;
@@ -66,7 +66,7 @@ public class NodeManager {
   /** TODO:do some operate after add node or remove node */
   private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
-  public NodeManager(Manager configManager, NodeInfo nodeInfo) {
+  public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();

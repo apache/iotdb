@@ -116,7 +116,7 @@ IoTDB> DROP PIPE my_pipe
 
 ## 5.配置参数
 
-所有参数修改均在`$IOTDB_HOME$/conf/iotdb-engine.properties`中，所有修改完成之后执行`load configuration`之后即可立刻生效。
+所有参数修改均在`$IOTDB_HOME$/conf/iotdb-datanode.properties`中，所有修改完成之后执行`load configuration`之后即可立刻生效。
 
 #### 5.1发送端相关
 
@@ -292,7 +292,7 @@ IoTDB> SHOW PIPESERVER
 
 #### **接收端操作**
 
-- `vi conf/iotdb-engine.properties` 配置云端参数，将白名单设置为仅接收来自IP为 192.168.0.1的边端的数据
+- `vi conf/iotdb-datanode.properties` 配置云端参数，将白名单设置为仅接收来自IP为 192.168.0.1的边端的数据
 
 ```
 ####################
@@ -426,7 +426,7 @@ It costs 0.134s
   ```
 
   - 原因：接收端未启动或接收端无法连接
-  - 解决方案：在接收端执行 `SHOW PIPESERVER` 检查是否启动接收端，若未启动使用 `START PIPESERVER` 启动；检查接收端`iotdb-engine.properties`中的白名单是否包含发送端ip。
+  - 解决方案：在接收端执行 `SHOW PIPESERVER` 检查是否启动接收端，若未启动使用 `START PIPESERVER` 启动；检查接收端`iotdb-datanode.properties`中的白名单是否包含发送端ip。
 
 - 执行 
 

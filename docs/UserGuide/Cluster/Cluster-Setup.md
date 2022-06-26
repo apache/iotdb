@@ -174,13 +174,13 @@ In the process of cluster running, users can add new nodes to the cluster or del
 
 ```
 # Unix/OS X
-> sbin/remove-node.sh <internal_ip> <internal_meta_port>
+> sbin/remove-node.sh <internal_address> <internal_meta_port>
 
 # Windows
-> sbin\remove-node.bat <internal_ip> <internal_meta_port>
+> sbin\remove-node.bat <internal_address> <internal_meta_port>
 ```
 
-`internal_ip` means the IP address of the node to be deleted `internal_meta_port` means the meta port of the node to be deleted
+`internal_address` means the IP address of the node to be deleted `internal_meta_port` means the meta port of the node to be deleted
 
 ### Use Cli
 
@@ -208,7 +208,7 @@ To stop the services of all the nodes on a single machine, you need to execute t
 
 | Name        | internal\_ip                                                 |
 | ----------- | ------------------------------------------------------------ |
-| Description | IP address of internal communication between nodes in IOTDB cluster, such as heartbeat, snapshot, raft log, etc. **`internal_ip` is a private ip.** |
+| Description | IP address of internal communication between nodes in IOTDB cluster, such as heartbeat, snapshot, raft log, etc. **`internal_address` is a private ip.** |
 | Type        | String                                                       |
 | Default     | 127.0.0.1                                                    |
 | Effective   | After restart system, shall NOT change after cluster is up   |

@@ -61,7 +61,7 @@ public class HeaderConstant {
   public static final String COLUMN_NODE_ID = "NodeID";
   public static final String COLUMN_NODE_TYPE = "NodeType";
   public static final String COLUMN_STATUS = "Status";
-  public static final String COLUMN_HOST_ADDRESS = "HostAdress";
+  public static final String COLUMN_HOST = "Host";
   public static final String COLUMN_PORT = "Port";
 
   // column names for show functions statement
@@ -195,7 +195,7 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
                 new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }
@@ -220,7 +220,7 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_SLOTS, TSDataType.INT64),
                 new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
-                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }

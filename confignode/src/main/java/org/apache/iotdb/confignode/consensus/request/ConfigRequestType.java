@@ -64,5 +64,5 @@ public enum ConfigRequestType {
   CreateFunction,
   DropFunction,
   GetNodePathsPartition,
-  GetRegionLocations;
+  GetRegionInfoList;
 }

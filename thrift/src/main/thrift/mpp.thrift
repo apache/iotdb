@@ -273,7 +273,7 @@ service InternalService {
   common.TSStatus setTTL(common.TSetTTLReq req)
 }
 
-service DataBlockService {
+service MPPDataExchangeService {
   TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
 
   void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);

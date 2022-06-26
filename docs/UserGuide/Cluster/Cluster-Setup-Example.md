@@ -180,7 +180,7 @@ seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
 default_replica_num = 3
 internal_meta_port = 9003
 internal_data_port = 40010
-internal_ip = A_private_Ip
+internal_address = A_private_Ip
 ```
 
 ***iotdb-engine.properties***
@@ -199,7 +199,7 @@ seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
 default_replica_num = 3
 internal_meta_port = 9003
 internal_data_port = 40010
-internal_ip = B_private_Ip
+internal_address = B_private_Ip
 ```
 
 ***iotdb-engine.properties***
@@ -218,7 +218,7 @@ seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
 default_replica_num = 3
 internal_meta_port = 9003
 internal_data_port = 40010
-internal_ip = C_private_Ip
+internal_address = C_private_Ip
 ```
 
 ***iotdb-engine.properties***
@@ -272,7 +272,7 @@ Set default\_replica\_num = 3: default value of this configuration item is 3
 
 Set internal\_ip = private ip of node (e.g. 192.168.1.1)
 ```
-sed -i -e 's/^internal_ip=127.0.0.1$/internal_ip=192.168.1.1/g' conf/iotdb-cluster.properties
+sed -i -e 's/^internal_address=127.0.0.1$/internal_address=192.168.1.1/g' conf/iotdb-cluster.properties
 ```
 Set seed\_node = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003 (e.g. private ip of all three nodes are 192.168.1.1,192.168.1.2,192.168.1.3)
 ```

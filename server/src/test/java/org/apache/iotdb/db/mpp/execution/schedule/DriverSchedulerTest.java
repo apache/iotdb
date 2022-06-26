@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.datatransfer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskID;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
@@ -50,8 +50,9 @@ public class DriverSchedulerTest {
 
   @Test
   public void testManagingDriver() {
-    IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
-    manager.setBlockManager(mockDataBlockManager);
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
     // submit 2 tasks in one query
     QueryId queryId = new QueryId("test");
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
@@ -116,7 +117,7 @@ public class DriverSchedulerTest {
     Mockito.reset(mockDriver1);
     Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
     manager.abortFragmentInstance(instanceId1);
-    Mockito.verify(mockDataBlockManager, Mockito.times(1))
+    Mockito.verify(mockMPPDataExchangeManager, Mockito.times(1))
         .forceDeregisterFragmentInstance(Mockito.any());
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(2, manager.getQueryMap().size());
@@ -132,7 +133,7 @@ public class DriverSchedulerTest {
         FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED, task1.getAbortCause());
 
     // Abort the whole query
-    Mockito.reset(mockDataBlockManager);
+    Mockito.reset(mockMPPDataExchangeManager);
     Mockito.reset(mockDriver1);
     Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
     Mockito.reset(mockDriver2);
@@ -140,7 +141,7 @@ public class DriverSchedulerTest {
     Mockito.reset(mockDriver3);
     Mockito.when(mockDriver3.getInfo()).thenReturn(instanceId3);
     manager.abortQuery(queryId);
-    Mockito.verify(mockDataBlockManager, Mockito.times(2))
+    Mockito.verify(mockMPPDataExchangeManager, Mockito.times(2))
         .forceDeregisterFragmentInstance(Mockito.any());
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
