@@ -49,7 +49,7 @@ You can download the binary file from:
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * system config module (`iotdb-engine.properties`)
+  * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`). 
 
 For more, see [Config](../Reference/Config-Manual.md) in detail.
@@ -235,5 +235,5 @@ The server can be stopped with ctrl-C or the following script:
 The configuration files is in the `conf` folder, includes:
 
 * environment configuration (`iotdb-env.bat`, `iotdb-env.sh`),
-* system configuration (`iotdb-engine.properties`)
+* system configuration (`iotdb-datanode.properties`)
 * log configuration (`logback.xml`).
