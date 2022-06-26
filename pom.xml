@@ -85,7 +85,6 @@
         <module>thrift-commons</module>
         <module>thrift-confignode</module>
         <module>thrift-multi-leader-consensus</module>
-        <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
@@ -107,7 +106,6 @@
         <module>hive-connector</module>
         <module>node-commons</module>
         <module>confignode</module>
-        <module>cluster</module>
         <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
@@ -174,7 +172,7 @@
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
-        <spotless.version>2.22.3</spotless.version>
+        <spotless.version>2.22.8</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
         <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
@@ -1434,8 +1432,6 @@
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
-                                <exclude>org/apache/iotdb/cluster/*</exclude>
-                                <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
                             </excludes>
