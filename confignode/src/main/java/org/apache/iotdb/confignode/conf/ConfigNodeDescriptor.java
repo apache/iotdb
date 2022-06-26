@@ -106,7 +106,7 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setRpcAddress(properties.getProperty("rpc_ip", conf.getRpcAddress()));
+      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       conf.setRpcPort(
           Integer.parseInt(properties.getProperty("rpc_port", String.valueOf(conf.getRpcPort()))));

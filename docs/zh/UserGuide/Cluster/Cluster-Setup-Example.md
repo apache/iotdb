@@ -171,7 +171,7 @@ nohup ./sbin/start-node.sh >/dev/null 2>&1 &nohup ./sbin/start-node.sh ./node2_c
 
 假设我们需要在三个物理节点上部署分布式 IoTDB，这三个节点分别为 A, B 和 C，其公网 ip 分别为 A\_public\_IP*, *B\_public\_IP*, and *C\_public\_IP*，私网 ip 分别为 *A\_private\_IP*, *B\_private\_IP*, and *C\_private\_IP*.
 
-注：如果没有公网 ip 或者私网 ip 则两者**设置成一致**即可，只需要保证客户端能够访问到服务端即可。 私网ip对应iotdb-cluster.properties中的`internal_ip`配置项，公网ip对应iotdb-engine.properties中的`rpc_ip`配置项。
+注：如果没有公网 ip 或者私网 ip 则两者**设置成一致**即可，只需要保证客户端能够访问到服务端即可。 私网ip对应iotdb-cluster.properties中的`internal_address`配置项，公网ip对应iotdb-engine.properties中的`rpc_address`配置项。
 ### 配置
 
 **节点A**:
@@ -183,14 +183,14 @@ seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
 default_replica_num = 3
 internal_meta_port = 9003
 internal_data_port = 40010
-internal_ip = A_private_Ip
+internal_address = A_private_Ip
 ```
 
 ***iotdb-engine.properties***
 
 ```
 rpc_port = 6667
-rpc_ip = A_public_ip 
+rpc_address = A_public_ip 
 ```
 
 **节点B**:
@@ -202,14 +202,14 @@ seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
 default_replica_num = 3
 internal_meta_port = 9003
 internal_data_port = 40010
-internal_ip = B_private_Ip
+internal_address = B_private_Ip
 ```
 
 ***iotdb-engine.properties***
 
 ```
 rpc_port = 6667
-rpc_ip = B_public_ip 
+rpc_address = B_public_ip 
 ```
 
 **节点C**:
@@ -221,14 +221,14 @@ seed_nodes = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003
 default_replica_num = 3
 internal_meta_port = 9003
 internal_data_port = 40010
-internal_ip = C_private_Ip
+internal_address = C_private_Ip
 ```
 
 ***iotdb-engine.properties***
 
 ```
 rpc_port = 6667
-rpc_ip = C_public_ip 
+rpc_address = C_public_ip 
 ```
 
 
@@ -279,7 +279,7 @@ cd apache-iotdb-0.12.4-cluster-bin
 
 设置 internal\_ip = 节点的私有ip (以192.168.1.1为例)
 ```
-sed -i -e 's/^internal_ip=127.0.0.1$/internal_ip=192.168.1.1/g' conf/iotdb-cluster.properties
+sed -i -e 's/^internal_address=127.0.0.1$/internal_address=192.168.1.1/g' conf/iotdb-cluster.properties
 ```
 设置 seed\_node = A_private_Ip:9003,B_private_Ip:9003,C_private_Ip:9003 (三个节点ip分别为192.168.1.1,192.168.1.2,192.168.1.3为例)
 ```
@@ -287,7 +287,7 @@ sed -i -e 's/^seed_nodes=127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007$/seed_node
 ```
 设置 rpc\_address = 节点的公有ip (以192.168.1.1为例)
 ```
-sed -i -e 's/^rpc_ip=127.0.0.1$/rpc_ip=192.168.1.1/g' conf/iotdb-engine.properties
+sed -i -e 's/^rpc_address=127.0.0.1$/rpc_address=192.168.1.1/g' conf/iotdb-engine.properties
 ```
 **你可以自己修改配置项而不使用“sed”命令**
 

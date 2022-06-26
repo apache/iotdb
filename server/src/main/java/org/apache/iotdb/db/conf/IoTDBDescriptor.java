@@ -144,7 +144,7 @@ public class IoTDBDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setRpcAddress(properties.getProperty("rpc_ip", conf.getRpcAddress()));
+      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       loadClusterProps(properties);
 
@@ -1645,7 +1645,7 @@ public class IoTDBDescriptor {
       }
     }
 
-    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+    conf.setInternalIp(properties.getProperty("internal_address", conf.getInternalIp()));
 
     conf.setInternalPort(
         Integer.parseInt(
