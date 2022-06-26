@@ -206,45 +206,6 @@ public class IoTDBAlignedSeriesQueryIT {
 }
 ```
 
-### 集成测试的启动命令
-
-1、在本地集群测试环境下运行集成测试
-
-```shell script
-mvn clean verify \
-  -Dsession.test.skip=true \
-  -Diotdb.test.skip=true \
-  -Dcluster.test.skip=true \
-  -Dtsfile.test.skip=true \
-  -Dcommons.test.skip=true \
-  -Dconfignode.test.skip=true \
-  -Dconsensus.test.skip=true \
-  -Djdbc.test.skip=true \
-  -Dmetrics.test.skip=true \
-  -pl integration-test -am -PClusterIT
-```
-2、在本地单机测试环境下运行集成测试
-
-```shell script
-mvn clean verify \
-  -Dsession.test.skip=true \
-  -Diotdb.test.skip=true \
-  -Dcluster.test.skip=true \
-  -Dtsfile.test.skip=true \
-  -Dcommons.test.skip=true \
-  -Dconfignode.test.skip=true \
-  -Dconsensus.test.skip=true \
-  -pl integration-test -am
-```
-
-3、在远程测试环境下运行集成测试
-
-```shell script
-mvn clean verify -pl integration-test -am -PRemoteIT \
-  -DRemoteIp=127.0.0.1 \
-  -DRemotePort=6667
-```
-
 ## Q&A
 ### CI 出错后查看日志的方法
 1、点击出错的测试对应的 Details
