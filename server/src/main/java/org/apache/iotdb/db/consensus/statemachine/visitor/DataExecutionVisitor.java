@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -33,13 +32,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.rpc.RpcUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataExecutionVisitor.class);
@@ -68,8 +65,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     } catch (TriggerExecutionException | WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
-    } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     }
   }
 
@@ -78,8 +73,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.insert(node);
       return StatusUtils.OK;
-    } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+    } catch (WriteProcessException e) {
+      LOGGER.error("Error in executing plan node: {}", node, e);
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -88,8 +84,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.insertTablets(node);
       return StatusUtils.OK;
-    } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+    } catch (WriteProcessException e) {
+      LOGGER.error("Error in executing plan node: {}", node, e);
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -102,8 +99,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     } catch (WriteProcessException | TriggerExecutionException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
-    } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     }
   }
 

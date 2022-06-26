@@ -1043,7 +1043,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, TriggerExecutionException, WriteProcessException {
+      throws TriggerExecutionException, WriteProcessException {
 
     writeLock("insertTablet");
     try {
@@ -1071,7 +1071,9 @@ public class DataRegion {
       }
       // loc pointing at first legal position
       if (loc == insertTabletNode.getRowCount()) {
-        throw new BatchProcessException(results);
+        throw new OutOfTTLException(
+            insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
+            (System.currentTimeMillis() - dataTTL));
       }
 
       //      TODO(Trigger)// fire trigger before insertion
@@ -1121,7 +1123,8 @@ public class DataRegion {
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
 
       if (!noFailure) {
-        throw new BatchProcessException(results);
+        logger.debug("Executing a InsertTabletNode failed: " + Arrays.toString(results));
+        throw new WriteProcessException("Partial failed when inserting tablet.");
       }
 
       //      TODO: trigger // fire trigger after insertion
@@ -3424,7 +3427,7 @@ public class DataRegion {
    * @param insertRowsOfOneDeviceNode batch of rows belongs to one device
    */
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
-      throws WriteProcessException, TriggerExecutionException, BatchProcessException {
+      throws WriteProcessException, TriggerExecutionException {
     writeLock("InsertRowsOfOneDevice");
     try {
       boolean isSequence = false;
@@ -3483,7 +3486,10 @@ public class DataRegion {
       writeUnlock();
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsOfOneDeviceNode.getFailingStatus());
+      logger.debug(
+          "Executing a InsertRowsOfOneDeviceNode failed: "
+              + insertRowsOfOneDeviceNode.getResults().toString());
+      throw new WriteProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3492,7 +3498,7 @@ public class DataRegion {
    *
    * @param insertRowsNode batch of rows belongs to multiple devices
    */
-  public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
+  public void insert(InsertRowsNode insertRowsNode) throws WriteProcessException {
     for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
       try {
@@ -3503,7 +3509,8 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsNode.getFailingStatus());
+      logger.debug("Executing a InsertRowsNode failed: " + insertRowsNode.getResults().toString());
+      throw new WriteProcessException("Partial failed inserting rows");
     }
   }
 
@@ -3513,12 +3520,12 @@ public class DataRegion {
    * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
-      throws BatchProcessException {
+      throws WriteProcessException {
     for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | BatchProcessException | WriteProcessException e) {
+      } catch (TriggerExecutionException | WriteProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -3526,7 +3533,10 @@ public class DataRegion {
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
+      logger.debug(
+          "Executing a InsertMultiTablets failed: "
+              + insertMultiTabletsNode.getResults().toString());
+      throw new WriteProcessException("Partial failed inserting multi tablets");
     }
   }
 
