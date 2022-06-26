@@ -271,7 +271,7 @@ service InternalService {
   common.TSStatus flush(common.TFlushReq req)
 }
 
-service DataBlockService {
+service MPPDataExchangeService {
   TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
 
   void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);

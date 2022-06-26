@@ -31,14 +31,14 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISinkHandle;
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -188,8 +188,8 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
  */
 public class LocalExecutionPlanner {
 
-  private static final DataBlockManager DATA_BLOCK_MANAGER =
-      DataBlockService.getInstance().getDataBlockManager();
+  private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
   private static final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE =
       DataNodeSchemaCache.getInstance();
@@ -1061,12 +1061,12 @@ public class LocalExecutionPlanner {
       TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
       ISourceHandle sourceHandle =
           isSameNode(upstreamEndPoint)
-              ? DATA_BLOCK_MANAGER.createLocalSourceHandle(
+              ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandle(
                   localInstanceId.toThrift(),
                   node.getPlanNodeId().getId(),
                   remoteInstanceId.toThrift(),
                   context.instanceContext::failed)
-              : DATA_BLOCK_MANAGER.createSourceHandle(
+              : MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
                   localInstanceId.toThrift(),
                   node.getPlanNodeId().getId(),
                   upstreamEndPoint,
@@ -1083,16 +1083,17 @@ public class LocalExecutionPlanner {
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
       TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
 
-      checkArgument(DATA_BLOCK_MANAGER != null, "DATA_BLOCK_MANAGER should not be null");
+      checkArgument(
+          MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
 
       ISinkHandle sinkHandle =
           isSameNode(downStreamEndPoint)
-              ? DATA_BLOCK_MANAGER.createLocalSinkHandle(
+              ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandle(
                   localInstanceId.toThrift(),
                   targetInstanceId.toThrift(),
                   node.getDownStreamPlanNodeId().getId(),
                   context.instanceContext)
-              : DATA_BLOCK_MANAGER.createSinkHandle(
+              : MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
                   localInstanceId.toThrift(),
                   downStreamEndPoint,
                   targetInstanceId.toThrift(),
