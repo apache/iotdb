@@ -896,7 +896,7 @@ public class IoTDBConfig {
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
-  private int partitionCacheSize = 0;
+  private int partitionCacheSize = 10000;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
