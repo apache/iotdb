@@ -27,7 +27,7 @@
 
 ## 配置文件
 > conf 目录下
-1. iotdb-engine.properties
+1. iotdb-datanode.properties
 2. logback.xml
 3. iotdb-env.sh
 4. jmx.access

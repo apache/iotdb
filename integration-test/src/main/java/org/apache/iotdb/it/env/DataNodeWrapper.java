@@ -44,7 +44,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   @Override
   protected void updateConfig(Properties properties) {
     properties.setProperty("rpc_address", super.getIp());
-    properties.setProperty("internal_ip", "127.0.0.1");
+    properties.setProperty("internal_address", "127.0.0.1");
     properties.setProperty("rpc_port", String.valueOf(getPort()));
     properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
     properties.setProperty("internal_port", String.valueOf(this.internalPort));
@@ -60,7 +60,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected String getConfigPath() {
-    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-engine.properties");
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-datanode.properties");
   }
 
   @Override

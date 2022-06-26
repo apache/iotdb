@@ -63,7 +63,7 @@ public class ThriftCommonsSerDeUtilsTest {
   public void readWriteTDataNodeLocationTest() throws IOException {
     TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
     dataNodeLocation0.setDataNodeId(0);
-    dataNodeLocation0.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation0.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
@@ -127,7 +127,7 @@ public class ThriftCommonsSerDeUtilsTest {
     for (int i = 0; i < 3; i++) {
       TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
       dataNodeLocation.setDataNodeId(i);
-      dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
+      dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
       dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));

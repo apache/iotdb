@@ -127,7 +127,7 @@ KILL QUERY <queryId>
 ```sql
 IoTDB> show regions
 +--------+------------+------+-------------+-----+----------+----------+----+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|Host|Port|
 +--------+------------+------+-------------+-----+----------+----------+----+
 |       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
 |       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
@@ -147,7 +147,7 @@ Total line number = 13
 It costs 0.107s
 IoTDB> show schema regions
 +--------+------------+------+-------------+-----+----------+----------+----+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|Host|Port|
 +--------+------------+------+-------------+-----+----------+----------+----+
 |       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
 |       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
@@ -157,7 +157,7 @@ Total line number = 3
 It costs 0.009s
 IoTDB> show data regions
 +--------+----------+------+-------------+-----+----------+----------+----+
-|RegionId|      Type|Status|storage group|Slots|DataNodeId|HostAdress|Port|
+|RegionId|      Type|Status|storage group|Slots|DataNodeId|Host|Port|
 +--------+----------+------+-------------+-----+----------+----------+----+
 |       3|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
 |       4|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|

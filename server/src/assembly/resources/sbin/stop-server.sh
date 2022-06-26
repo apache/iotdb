@@ -19,7 +19,7 @@
 #
 
 IOTDB_CONF="`dirname "$0"`/../conf"
-rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${IOTDB_CONF}/iotdb-engine.properties`
+rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${IOTDB_CONF}/iotdb-datanode.properties`
 PID=""
 
 function getPid {
