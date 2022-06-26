@@ -40,6 +40,16 @@ exec_with_log() {
     fi
 }
 
+# update all the file indices after the hook modified the files
+update_changed_file_indices() {
+    echo "Updating changed files indices..."
+    for line in $(git diff --name-only --cached); do
+        if [ -f "$line" ]; then
+            "$IOTDB_GIT_PATH" add -u "$line"
+        fi
+    done
+}
+
 on_error() {
     if [ "$#" -eq 0 ]; then
         echo "ERROR: 'on_error' must have at least 1 args."
@@ -104,6 +114,7 @@ main() {
         if [ "$?" -ne 0 ]; then
             on_error "spotless:apply failed."
         fi
+        update_changed_file_indices
     fi
 
     # maven validate
