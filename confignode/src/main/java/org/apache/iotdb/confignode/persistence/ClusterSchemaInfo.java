@@ -113,8 +113,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.SET_STORAGE_GROUP_FAILED.getStatusCode())
-          .setMessage("Error StorageGroup name");
+          .setCode(e.getErrorCode())
+          .setMessage(e.getMessage());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
