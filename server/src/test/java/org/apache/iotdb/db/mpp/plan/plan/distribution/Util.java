@@ -185,7 +185,7 @@ public class Util {
     return new TDataNodeLocation()
         .setDataNodeId(dataNodeId)
         .setClientRpcEndPoint(new TEndPoint(ip, 9000))
-        .setMppDataExchangeEndPoint(new TEndPoint(ip, 9001))
+        .setMPPDataExchangeEndPoint(new TEndPoint(ip, 9001))
         .setInternalEndPoint(new TEndPoint(ip, 9002));
   }
 }

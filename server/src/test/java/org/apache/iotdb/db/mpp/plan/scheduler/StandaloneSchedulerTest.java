@@ -505,7 +505,7 @@ public class StandaloneSchedulerTest {
         new TDataNodeLocation()
             .setClientRpcEndPoint(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
             .setInternalEndPoint(new TEndPoint(conf.getInternalIp(), conf.getInternalPort()))
-            .setMppDataExchangeEndPoint(
+            .setMPPDataExchangeEndPoint(
                 new TEndPoint(conf.getInternalIp(), conf.getMppDataExchangePort()))
             .setDataRegionConsensusEndPoint(
                 new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))

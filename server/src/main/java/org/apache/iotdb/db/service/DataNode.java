@@ -180,7 +180,7 @@ public class DataNode implements DataNodeMBean {
         location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
             new TEndPoint(config.getInternalIp(), config.getInternalPort()));
-        location.setMppDataExchangeEndPoint(
+        location.setMPPDataExchangeEndPoint(
             new TEndPoint(config.getInternalIp(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
@@ -338,7 +338,7 @@ public class DataNode implements DataNodeMBean {
         location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
             new TEndPoint(config.getInternalIp(), config.getInternalPort()));
-        location.setMppDataExchangeEndPoint(
+        location.setMPPDataExchangeEndPoint(
             new TEndPoint(config.getInternalIp(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
