@@ -332,7 +332,7 @@ public class StorageGroupPartitionTable {
     return schemaPartitionTable.filterUnassignedSchemaPartitionSlots(partitionSlots);
   }
 
-  public HashSet<TDataNodeLocation> getDataNodeLocation(TConsensusGroupType type) {
+  public Set<TDataNodeLocation> getDataNodeLocation(TConsensusGroupType type) {
     HashSet<TDataNodeLocation> result = new HashSet<>();
     regionInfoMap.forEach(
         (consensusGroupId, regionGroup) -> {

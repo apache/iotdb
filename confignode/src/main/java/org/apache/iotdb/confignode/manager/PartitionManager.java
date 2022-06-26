@@ -61,7 +61,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -426,8 +425,7 @@ public class PartitionManager {
     throw new TimeoutException("");
   }
 
-  public HashSet<TDataNodeLocation> getDataNodeLocation(
-      String storageGroup, TConsensusGroupType type) {
+  public Set<TDataNodeLocation> getDataNodeLocation(String storageGroup, TConsensusGroupType type) {
     return partitionInfo.getDataNodeLocation(storageGroup, type);
   }
   /**
