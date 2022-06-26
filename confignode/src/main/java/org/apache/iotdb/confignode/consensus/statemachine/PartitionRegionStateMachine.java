@@ -87,7 +87,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   protected TSStatus write(ConfigRequest plan) {
     TSStatus result;
     try {
-      result = executor.executorNonQueryPlan(plan);
+      result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -128,7 +128,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   protected DataSet read(ConfigRequest plan) {
     DataSet result;
     try {
-      result = executor.executorQueryPlan(plan);
+      result = executor.executeQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = null;

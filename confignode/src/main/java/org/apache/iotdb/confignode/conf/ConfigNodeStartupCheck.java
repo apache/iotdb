@@ -240,7 +240,7 @@ public class ConfigNodeStartupCheck {
     }
 
     // Startup configuration
-    systemProperties.setProperty("rpc_address", String.valueOf(conf.getRpcAddress()));
+    systemProperties.setProperty("rpc_ip", String.valueOf(conf.getRpcAddress()));
     systemProperties.setProperty("rpc_port", String.valueOf(conf.getRpcPort()));
     systemProperties.setProperty("consensus_port", String.valueOf(conf.getConsensusPort()));
 
@@ -283,11 +283,11 @@ public class ConfigNodeStartupCheck {
     boolean needReWrite = false;
 
     // Startup configuration
-    String rpcAddress = systemProperties.getProperty("rpc_address", null);
+    String rpcAddress = systemProperties.getProperty("rpc_ip", null);
     if (rpcAddress == null) {
       needReWrite = true;
     } else if (!rpcAddress.equals(conf.getRpcAddress())) {
-      throw new ConfigurationException("rpc_address", conf.getRpcAddress(), rpcAddress);
+      throw new ConfigurationException("rpc_ip", conf.getRpcAddress(), rpcAddress);
     }
 
     if (systemProperties.getProperty("rpc_port", null) == null) {

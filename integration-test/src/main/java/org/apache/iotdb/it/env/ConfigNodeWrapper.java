@@ -47,7 +47,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty("rpc_address", super.getIp());
+    properties.setProperty("rpc_ip", super.getIp());
     properties.setProperty("rpc_port", String.valueOf(getPort()));
     properties.setProperty("consensus_port", String.valueOf(this.consensusPort));
     properties.setProperty("target_confignode", this.targetConfigNode);

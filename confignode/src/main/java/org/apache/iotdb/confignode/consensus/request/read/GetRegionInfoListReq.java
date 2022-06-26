@@ -28,16 +28,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetRegionLocationsReq extends ConfigRequest {
+public class GetRegionInfoListReq extends ConfigRequest {
 
   private TConsensusGroupType regionType;
 
-  public GetRegionLocationsReq() {
-    super(ConfigRequestType.GetRegionLocations);
+  public GetRegionInfoListReq() {
+    super(ConfigRequestType.GetRegionInfoList);
   }
 
-  public GetRegionLocationsReq(TConsensusGroupType regionType) {
-    super(ConfigRequestType.GetRegionLocations);
+  public GetRegionInfoListReq(TConsensusGroupType regionType) {
+    super(ConfigRequestType.GetRegionInfoList);
     this.regionType = regionType;
   }
 

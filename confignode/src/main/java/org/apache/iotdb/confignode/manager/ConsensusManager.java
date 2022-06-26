@@ -50,12 +50,12 @@ public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  private final Manager configManager;
+  private final IManager configManager;
 
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(Manager configManager, PartitionRegionStateMachine stateMachine)
+  public ConsensusManager(IManager configManager, PartitionRegionStateMachine stateMachine)
       throws IOException {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);

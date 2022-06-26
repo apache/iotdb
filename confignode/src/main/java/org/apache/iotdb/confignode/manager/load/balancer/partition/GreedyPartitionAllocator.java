@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.confignode.manager.Manager;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -37,9 +37,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /** Allocating new Partitions by greedy algorithm */
 public class GreedyPartitionAllocator implements IPartitionAllocator {
 
-  private final Manager configManager;
+  private final IManager configManager;
 
-  public GreedyPartitionAllocator(Manager configManager) {
+  public GreedyPartitionAllocator(IManager configManager) {
     this.configManager = configManager;
   }
 

@@ -144,7 +144,7 @@ public class IoTDBDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      conf.setRpcAddress(properties.getProperty("rpc_ip", conf.getRpcAddress()));
 
       loadClusterProps(properties);
 

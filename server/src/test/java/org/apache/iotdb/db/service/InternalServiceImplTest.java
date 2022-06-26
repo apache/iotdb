@@ -318,7 +318,7 @@ public class InternalServiceImplTest {
     List<TDataNodeLocation> dataNodeList = new ArrayList<>();
     dataNodeList.add(
         new TDataNodeLocation()
-            .setExternalEndPoint(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
+            .setClientRpcEndPoint(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
             .setInternalEndPoint(new TEndPoint(conf.getInternalIp(), conf.getInternalPort()))
             .setMppDataExchangeEndPoint(
                 new TEndPoint(conf.getInternalIp(), conf.getMppDataExchangePort()))

@@ -49,10 +49,10 @@ public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private final Manager configManager;
+  private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
 
-  public ClusterSchemaManager(Manager configManager, ClusterSchemaInfo clusterSchemaInfo) {
+  public ClusterSchemaManager(IManager configManager, ClusterSchemaInfo clusterSchemaInfo) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
   }

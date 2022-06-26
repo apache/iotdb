@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
@@ -52,7 +52,7 @@ import java.util.List;
  * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
  * services.
  */
-public interface Manager {
+public interface IManager {
 
   /**
    * if a service stop
@@ -240,5 +240,5 @@ public interface Manager {
   void addMetrics();
 
   /** Show (data/schema) regions */
-  DataSet showRegion(GetRegionLocationsReq getRegionsinfoReq);
+  DataSet showRegion(GetRegionInfoListReq getRegionsinfoReq);
 }
