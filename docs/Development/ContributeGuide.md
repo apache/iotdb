@@ -153,7 +153,7 @@ In IDEA, you can follow these steps to change those inconsistent style formattin
 4. Change 'Class count to use import with '\*'' to 999 or another very large number.
 5. Change 'Names to count to use static import with '\*'' to 999 or another very large number.
 
-## Use git-hooks
+## Use git-hooks(Optional)
 
 Fortunately, IoTDB has pre-commit git-hooks to automatically do the code checks. 
 

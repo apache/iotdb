@@ -120,7 +120,7 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google
 4. 将“将 import 与‘*’搭配使用的类计数”改成 999 或者一个比较大的值。
 5. 将“将静态 import 与‘*’搭配使用的名称计数”改成 999 或者一个比较大的值。
 
-## 使用 git-hooks 自动检查
+## 使用 git-hooks 自动检查(可选)
 
 为简化每次 commit 的工作，我们提供了一个基于 git-hooks 的自动代码检查脚本。
 

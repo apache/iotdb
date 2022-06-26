@@ -108,7 +108,7 @@ main() {
 
     # maven validate
     if [ "$IOTDB_VALIDATE" -ne 0 ]; then
-        echo "$PROMPT Validating..."
+        echo "$PROMPT Validating with 'mvn validate'..."
         if [ "$IOTDB_SMART_JAVA_MODULES" -eq 0 ] || [ -n "$smart_args" ]; then
             exec_with_log "\"$IOTDB_MAVEN_PATH\" $smart_args validate"
         else

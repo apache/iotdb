@@ -53,8 +53,9 @@ check_paths() {
 
 install() {
     # create the relative symlink of pre-commit script
-    if [ -f "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" ] || [ -L "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" ]; then
-        printf "${Yellow}WARN: Overwriting '$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit'${NC}\n"
+    echo "Installing pre-commit hook to '$HOOKS_DIR/pre-commit'..."
+    if [ -f "$HOOKS_DIR/pre-commit" ] || [ -L "$HOOKS_DIR/pre-commit" ]; then
+        printf "${Yellow}WARN: Overwriting '$HOOKS_DIR/pre-commit'${NC}\n"
     fi
     ln -sf "$PROJECT_DIR/$REL_SCRIPT_DIR/pre-commit" "$HOOKS_DIR/pre-commit" || exit 1
     if [ -f "pre-commit" ] && [ ! -x "pre-commit" ]; then
@@ -62,6 +63,7 @@ install() {
         exit 1
     fi
     # create the relative symlink of config file
+    echo "Creating '$REL_CONFIG_FILE'..."
     if [ ! -f "$REL_CONFIG_FILE" ]; then
         # if `config.sh` not exists in this directory, create it from sample
         test -f "$REL_CONFIG_SAMPLE_FILE" || { echo "ERROR: Could not find '$REL_CONFIG_SAMPLE_FILE'." >&2; exit 1; }

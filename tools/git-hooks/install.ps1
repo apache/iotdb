@@ -48,8 +48,9 @@ function Check-Paths {
 
 function Install {
     # create the relative symlink of pre-commit script
-    if (Test-Path -Path "$PROJECT_DIR\$REL_SCRIPT_DIR\pre-commit" -PathType Leaf) {
-        Write-Warning "Overwriting '$PROJECT_DIR\$REL_SCRIPT_DIR\pre-commit'"
+    Write-Output "Installing pre-commit hook to '$HOOKS_DIR/pre-commit'..."
+    if (Test-Path -Path "$HOOKS_DIR\pre-commit" -PathType Leaf) {
+        Write-Warning "Overwriting '$HOOKS_DIR\pre-commit'"
     }
     New-Item -ItemType SymbolicLink -Force `
         -Path "$HOOKS_DIR\pre-commit" `
@@ -59,6 +60,7 @@ function Install {
         throw "Fail to create symlink for pre-commit script."
     }
     # create the relative symlink of config file
+    Write-Output "Creating '$REL_CONFIG_FILE'..."
     if (-Not(Test-Path -Path "$REL_CONFIG_FILE" -PathType Leaf)) {
         if (-Not(Test-Path -Path "$REL_CONFIG_SAMPLE_FILE")) {
             throw "Could not find '$REL_CONFIG_SAMPLE_FILE'."
