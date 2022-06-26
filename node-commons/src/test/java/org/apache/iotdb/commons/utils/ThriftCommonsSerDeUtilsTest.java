@@ -65,7 +65,7 @@ public class ThriftCommonsSerDeUtilsTest {
     dataNodeLocation0.setDataNodeId(0);
     dataNodeLocation0.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation0.setMppDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
@@ -129,7 +129,7 @@ public class ThriftCommonsSerDeUtilsTest {
       dataNodeLocation.setDataNodeId(i);
       dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
-      dataNodeLocation.setMppDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
       dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
       regionReplicaSet0.getDataNodeLocations().add(dataNodeLocation);
