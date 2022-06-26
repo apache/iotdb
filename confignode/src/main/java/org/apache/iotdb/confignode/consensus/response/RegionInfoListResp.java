@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
 
-public class RegionLocationsResp implements DataSet {
+public class RegionInfoListResp implements DataSet {
 
   private TSStatus status;
 
-  private List<TRegionLocation> regionInfosList;
+  private List<TRegionInfo> regionInfoList;
 
   public TSStatus getStatus() {
     return status;
@@ -39,11 +39,11 @@ public class RegionLocationsResp implements DataSet {
     this.status = status;
   }
 
-  public List<TRegionLocation> getRegionInfosList() {
-    return regionInfosList;
+  public List<TRegionInfo> getRegionInfoList() {
+    return regionInfoList;
   }
 
-  public void setRegionInfosList(List<TRegionLocation> regionInfosList) {
-    this.regionInfosList = regionInfosList;
+  public void setRegionInfoList(List<TRegionInfo> regionInfoList) {
+    this.regionInfoList = regionInfoList;
   }
 }

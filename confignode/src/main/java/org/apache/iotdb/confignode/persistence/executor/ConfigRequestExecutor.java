@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
@@ -104,7 +104,7 @@ public class ConfigRequestExecutor {
     this.udfInfo = udfInfo;
   }
 
-  public DataSet executorQueryPlan(ConfigRequest req)
+  public DataSet executeQueryPlan(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case GetDataNodeInfo:
@@ -133,14 +133,14 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListRoleUsers((AuthorReq) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
-      case GetRegionLocations:
-        return partitionInfo.getRegionLocations((GetRegionLocationsReq) req);
+      case GetRegionInfoList:
+        return partitionInfo.getRegionInfoList((GetRegionInfoListReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
   }
 
-  public TSStatus executorNonQueryPlan(ConfigRequest req)
+  public TSStatus executeNonQueryPlan(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case RegisterDataNode:

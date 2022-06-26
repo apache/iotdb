@@ -1645,7 +1645,7 @@ public class IoTDBDescriptor {
       }
     }
 
-    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+    conf.setInternalIp(properties.getProperty("internal_address", conf.getInternalIp()));
 
     conf.setInternalPort(
         Integer.parseInt(
