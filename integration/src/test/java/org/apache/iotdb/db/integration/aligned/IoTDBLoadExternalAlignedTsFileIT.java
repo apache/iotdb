@@ -930,9 +930,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         statement.execute(String.format("load '%s'", vehicleTmpDir));
       } catch (Exception e) {
         hasError = true;
-        assertTrue(
-            e.getMessage()
-                .contains("is aligned in the loading TsFile but is not aligned in IoTDB."));
+        assertTrue(e.getMessage().contains("Fail to load TsFile"));
       }
       assertTrue(hasError);
 
