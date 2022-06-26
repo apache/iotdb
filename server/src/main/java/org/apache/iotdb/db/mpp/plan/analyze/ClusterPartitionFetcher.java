@@ -468,11 +468,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         } else {
           for (String devicePath : devicePaths) {
             boolean hit = false;
-            for (String storageGroup : storageGroupCache) {
-              if (PathUtils.isStartWith(devicePath, storageGroup)) {
-                deviceToStorageGroupMap.put(devicePath, storageGroup);
-                hit = true;
-                break;
+            synchronized (storageGroupCache) {
+              for (String storageGroup : storageGroupCache) {
+                if (PathUtils.isStartWith(devicePath, storageGroup)) {
+                  deviceToStorageGroupMap.put(devicePath, storageGroup);
+                  hit = true;
+                  break;
+                }
               }
             }
             if (!hit) {
@@ -679,26 +681,46 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     /** invalid schemaPartitionCache by device */
     public void invalidSchemaPartitionCache(String device) {
       // TODO should be called in two situation: 1. redirect status 2. config node trigger
-      schemaPartitionCache.invalidate(device);
+      schemaPartitionCacheLock.writeLock().lock();
+      try {
+        schemaPartitionCache.invalidate(device);
+      } finally {
+        schemaPartitionCacheLock.writeLock().unlock();
+      }
     }
 
     /** invalid dataPartitionCache by seriesPartitionSlot, timePartitionSlot */
     public void invalidDataPartitionCache(
         TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+      dataPartitionCacheLock.writeLock().lock();
       // TODO should be called in two situation: 1. redirect status 2. config node trigger
-      DataPartitionCacheKey dataPartitionCacheKey =
-          new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
-      dataPartitionCache.invalidate(dataPartitionCacheKey);
+      try {
+        DataPartitionCacheKey dataPartitionCacheKey =
+            new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
+        dataPartitionCache.invalidate(dataPartitionCacheKey);
+      } finally {
+        dataPartitionCacheLock.writeLock().unlock();
+      }
     }
 
     /** invalid schemaPartitionCache by device */
     public void invalidAllSchemaPartitionCache() {
-      schemaPartitionCache.invalidateAll();
+      schemaPartitionCacheLock.writeLock().lock();
+      try {
+        schemaPartitionCache.invalidateAll();
+      } finally {
+        schemaPartitionCacheLock.writeLock().unlock();
+      }
     }
 
     /** invalid dataPartitionCache by seriesPartitionSlot, timePartitionSlot */
     public void invalidAllDataPartitionCache() {
-      dataPartitionCache.invalidateAll();
+      dataPartitionCacheLock.writeLock().lock();
+      try {
+        dataPartitionCache.invalidateAll();
+      } finally {
+        dataPartitionCacheLock.writeLock().unlock();
+      }
     }
 
     @Override
