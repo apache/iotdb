@@ -115,7 +115,7 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty("consensus_port", String.valueOf(conf.getConsensusPort()))));
 
-      String targetConfigNode = properties.getProperty("target_confignode", null);
+      String targetConfigNode = properties.getProperty("config_nodes", null);
       if (targetConfigNode != null) {
         conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
       }
