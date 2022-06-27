@@ -54,7 +54,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1656326628388,
+  "iteration": 1656326628391,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -450,10 +450,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -631,10 +627,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -1522,6 +1514,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB Dashboard",
   "uid": "TbEVYRw7k",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
