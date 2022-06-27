@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
@@ -42,12 +41,9 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletion2IT
 
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
     numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
