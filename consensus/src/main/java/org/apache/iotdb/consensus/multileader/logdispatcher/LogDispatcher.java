@@ -287,27 +287,37 @@ public class LogDispatcher {
 
     private long constructBatchFromWAL(
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
-      if (iteratorIndex != currentIndex) {
-        walEntryiterator.skipTo(currentIndex);
-        iteratorIndex = currentIndex;
-      }
-
-      while (currentIndex < maxIndex
-          && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
-        try {
-          walEntryiterator.waitForNextReady();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
+      long startTime = System.nanoTime();
+      int count = 0;
+      try {
+        if (iteratorIndex != currentIndex) {
+          walEntryiterator.skipTo(currentIndex);
+          iteratorIndex = currentIndex;
         }
-        // TODO iterator
-        IConsensusRequest data = walEntryiterator.next();
-        iteratorIndex++;
-        currentIndex++;
-        if (data != null) {
-          logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
+        while (currentIndex < maxIndex
+            && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
+          try {
+            walEntryiterator.waitForNextReady();
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          // TODO iterator
+          IConsensusRequest data = walEntryiterator.next();
+          iteratorIndex++;
+          currentIndex++;
+          if (data != null) {
+            logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
+            count++;
+          }
         }
+        return currentIndex - 1;
+      } finally {
+        double timeConsumed = (System.nanoTime() * 1.0 - startTime) / 1000_000;
+        logger.info(
+            String.format(
+                "[DataRegion[%s]->%s]construct batch[%d] time consumed: %.3f",
+                peer.getGroupId().getId(), peer.getEndpoint().ip, count, timeConsumed));
       }
-      return currentIndex - 1;
     }
 
     private void constructBatchIndexedFromConsensusRequest(
