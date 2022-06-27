@@ -19,33 +19,51 @@
 
 -->
 
-# 配置参数
+# DataNode/Standalone 配置参数
 
-为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得用户可以在启动服务或服务运行时对其进行配置。
+IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB 安装目录：`datanode/conf`文件夹下。
 
-三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 2 个文件，分别为：`iotdb-env.sh`, `iotdb-engine.properties`
-。用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+* `datanode-env.sh/bat`：环境配置项的配置文件，可以配置 DataNode/Standalone 的内存大小。
 
-配置文件的说明如下：
-
-* `iotdb-env.sh`：环境配置项的默认配置文件。用户可以在文件中配置 JAVA-JVM 的相关系统配置项。
-
-* `iotdb-engine.properties`：IoTDB 引擎层系统配置项的默认配置文件。用户可以在文件中配置 IoTDB 引擎运行时的相关参数，如 JDBC 服务监听端口 (`rpc_port`)、overflow
-  数据文件存储目录 (`overflow_data_dir`) 等。此外，用户可以在文件中配置 IoTDB 存储时 TsFile 文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小 (`group_size_in_byte`)
-  ，内存中每个列打一次包的大小 (`page_size_in_byte`) 等。
+* `iotdb-datanode.properties`：IoTDB DataNode 和单机版的配置文件。
 
 ## 热修改配置项
 
-为方便用户使用，IoTDB Server 为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`触发生效`
+为方便用户使用，IoTDB 为用户提供了热修改功能，即在系统运行过程中修改 `iotdb-datanode.properties` 中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`触发生效`
 的均为支持热修改的配置参数。
 
-触发方式：客户端发送```load configuration```命令至 IoTDB
-Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://iotdb.apache.org/zh/UserGuide/Master/CLI/Command-Line-Interface.html)
+触发方式，通过 Session 或 Cli 发送 ```load configuration``` 命令（SQL）至 IoTDB。
 
-## 环境配置项
+## 环境配置项（datanode-env.sh/bat）
 
-环境配置项主要用于对 IoTDB Server 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。IoTDB Server 启动时，此部分配置会被传给 JVM。用户可以通过查看 `iotdb-env.sh`
-（或`iotdb-env.bat`) 文件查看环境配置项内容。详细配置项说明如下：
+环境配置项主要用于对 DataNode 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。DataNode/Standalone 启动时，此部分配置会被传给 JVM，详细配置项说明如下：
+
+* MAX\_HEAP\_SIZE
+
+|名字|MAX\_HEAP\_SIZE|
+|:---:|:---|
+|描述|IoTDB 能使用的最大堆内存大小 |
+|类型|String|
+|默认值|取决于操作系统和机器配置。在 Linux 或 MacOS 系统下默认为机器内存的四分之一。在 Windows 系统下，32 位系统的默认值是 512M，64 位系统默认值是 2G。|
+|改后生效方式|重启服务生效|
+
+* HEAP\_NEWSIZE
+
+|名字|HEAP\_NEWSIZE|
+|:---:|:---|
+|描述|IoTDB 启动时分配的最小堆内存大小 |
+|类型|String|
+|默认值|取决于操作系统和机器配置。在 Linux 或 MacOS 系统下默认值为机器 CPU 核数乘以 100M 的值与 MAX\_HEAP\_SIZE 四分之一这二者的最小值。在 Windows 系统下，32 位系统的默认值是 512M，64 位系统默认值是 2G。|
+|改后生效方式|重启服务生效|
+
+* MAX\_DIRECT\_MEMORY\_SIZE
+
+|名字|MAX\_DIRECT\_MEMORY\_SIZE|
+|:---:|:---|
+|描述|IoTDB 能使用的最大堆外内存大小 |
+|类型|String|
+|默认值|默认与最大堆内存相等|
+|改后生效方式|重启服务生效|
 
 * JMX\_LOCAL
 
@@ -65,30 +83,12 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值|31999|
 |改后生效方式|重启服务生效|
 
-* MAX\_HEAP\_SIZE
+## 系统配置项（iotdb-datanode.properties）
 
-|名字|MAX\_HEAP\_SIZE|
-|:---:|:---|
-|描述|IoTDB 启动时能使用的最大堆内存大小。|
-|类型|String|
-|默认值|取决于操作系统和机器配置。在 Linux 或 MacOS 系统下默认为机器内存的四分之一。在 Windows 系统下，32 位系统的默认值是 512M，64 位系统默认值是 2G。|
-|改后生效方式|重启服务生效|
+系统配置项是 IoTDB DataNode/Standalone 运行的核心配置，它主要用于设置 IoTDB DataNode/Standalone 文件层和引擎层的参数，便于用户根据自身需求调整 Server
+的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-datanode.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
 
-* HEAP\_NEWSIZE
-
-|名字|HEAP\_NEWSIZE|
-|:---:|:---|
-|描述|IoTDB 启动时能使用的最小堆内存大小。|
-|类型|String|
-|默认值|取决于操作系统和机器配置。在 Linux 或 MacOS 系统下默认值为机器 CPU 核数乘以 100M 的值与 MAX\_HEAP\_SIZE 四分之一这二者的最小值。在 Windows 系统下，32 位系统的默认值是 512M，64 位系统默认值是 2G。|
-|改后生效方式|重启服务生效|
-
-## 系统配置项
-
-系统配置项是 IoTDB Server 运行的核心配置，它主要用于设置 IoTDB Server 文件层和引擎层的参数，便于用户根据自身需求调整 Server
-的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-engine.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
-
-### RPC配置
+### 客户端 RPC 服务配置
 
 * rpc\_address
 
@@ -103,7 +103,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 |名字| rpc\_port |
 |:---:|:---|
-|描述| jdbc 服务监听端口。请确认该端口不是系统保留端口并且未被占用。|
+|描述| Client RPC 服务监听端口。|
 |类型| Short Int : [0,65535] |
 |默认值| 6667 |
 |改后生效方式|重启服务生效|
@@ -153,6 +153,92 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1024 |
 |改后生效方式|重启服务生效|
 
+### MPP 查询引擎参数
+
+* mpp\_data\_exchange\_port
+
+|名字| mpp\_data\_exchange\_port |
+|:---:|:---|
+|描述| MPP 数据交换端口 |
+|类型| int |
+|默认值| 8777 |
+|改后生效方式|重启服务生效|
+
+* mpp\_data\_exchange\_core\_pool\_size
+
+|名字| mpp\_data\_exchange\_core\_pool\_size |
+|:---:|:---|
+|描述| MPP 数据交换线程池核心线程数 |
+|类型| int |
+|默认值| 1 |
+|改后生效方式|重启服务生效|
+
+* mpp\_data\_exchange\_max\_pool\_size
+
+|名字| mpp\_data\_exchange\_max\_pool\_size |
+|:---:|:---|
+|描述| MPP 数据交换线程池最大线程数 |
+|类型| int |
+|默认值| 5 |
+|改后生效方式|重启服务生效|
+
+* mpp\_data\_exchange\_core\_pool\_size
+
+|名字| mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
+|:---:|:---|
+|描述| MPP 数据交换最大等待时间 |
+|类型| long |
+|默认值| 1000 |
+|改后生效方式|重启服务生效|
+
+
+### DataNode 内部服务参数
+
+* internal\_address
+
+|名字| internal\_address |
+|:---:|:---|
+|描述| DataNode 内网通信地址 |
+|类型| string |
+|默认值| 127.0.0.1 |
+|改后生效方式|重启服务生效|
+
+* internal\_port
+
+|名字| internal\_address |
+|:---:|:---|
+|描述| DataNode 内网通信端口 |
+|类型| int |
+|默认值| 9003 |
+|改后生效方式|重启服务生效|
+
+* data\_region\_consensus\_port
+
+|名字| data\_region\_consensus\_port |
+|:---:|:---|
+|描述| DataNode 数据副本的共识协议通信端口 |
+|类型| int |
+|默认值| 40010 |
+|改后生效方式|重启服务生效|
+
+* schema\_region\_consensus\_port
+
+|名字| schema\_region\_consensus\_port |
+|:---:|:---|
+|描述| DataNode 元数据副本的共识协议通信端口 |
+|类型| int |
+|默认值| 50010 |
+|改后生效方式|重启服务生效|
+
+* config\_nodes
+
+|名字| config\_nodes |
+|:---:|:---|
+|描述| ConfigNode 地址，DataNode 启动时通过此地址加入集群 |
+|类型| String |
+|默认值| 127.0.0.1:22277 |
+|改后生效方式|重启服务生效|
+
 ### InfluxDB 协议适配器配置
 
 * enable_influxdb_rpc_service
@@ -169,9 +255,10 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |     名字     | influxdb_rpc_port            |
 | :----------: | :--------------------------- |
 |     描述     | influxdb rpc service占用端口 |
-|     类型     | INT32                        |
+|     类型     | int                        |
 |    默认值    | 8086                         |
 | 改后生效方式 | 重启服务生效                 |
+
 ### 写前日志配置
 
 * enable\_wal
@@ -197,7 +284,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| flush\_wal\_threshold |
 |:---:|:---|
 |描述| 写前日志的条数达到该值之后，持久化到磁盘，有可能丢失至多 flush\_wal\_threshold 个操作 |
-|类型| Int32 |
+|类型| int |
 |默认值| 10000 |
 |改后生效方式|触发生效|
 
@@ -206,7 +293,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| force\_wal\_period\_in\_ms |
 |:---:|:---|
 |描述| 写前日志定期持久化到磁盘的周期，单位毫秒，有可能丢失至多 force\_wal\_period\_in\_ms 毫秒的操作。 |
-|类型| Int32 |
+|类型| int |
 |默认值| 100 |
 |改后生效方式|触发生效|
 
@@ -254,7 +341,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 |名字| multi\_dir\_strategy |
 |:---:|:---|
-|描述| IoTDB 在 tsfile\_dir 中为 TsFile 选择目录时采用的策略。可使用简单类名或类名全称。系统提供以下三种策略：<br>1. SequenceStrategy：IoTDB 按顺序从 tsfile\_dir 中选择目录，依次遍历 tsfile\_dir 中的所有目录，并不断轮循；<br>2. MaxDiskUsableSpaceFirstStrategy：IoTDB 优先选择 tsfile\_dir 中对应磁盘空余空间最大的目录；<br>3. MinFolderOccupiedSpaceFirstStrategy：IoTDB 优先选择 tsfile\_dir 中已使用空间最小的目录；<br>4. UserDfineStrategyPackage（用户自定义策略）<br>您可以通过以下方法完成用户自定义策略：<br>1. 继承 cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy 类并实现自身的 Strategy 方法；<br>2. 将实现的类的完整类名（包名加类名，UserDfineStrategyPackage）填写到该配置项；<br>3. 将该类 jar 包添加到工程中。 |
+|描述| IoTDB 在 data\_dirs 中为 TsFile 选择目录时采用的策略。可使用简单类名或类名全称。系统提供以下三种策略：<br>1. SequenceStrategy：IoTDB 按顺序选择目录，依次遍历 data\_dirs 中的所有目录，并不断轮循；<br>2. MaxDiskUsableSpaceFirstStrategy：IoTDB 优先选择 data\_dirs 中对应磁盘空余空间最大的目录；<br>3. MinFolderOccupiedSpaceFirstStrategy：IoTDB 优先选择 data\_dirs 中已使用空间最小的目录；<br>4. UserDefineStrategyPackage（用户自定义策略）<br>您可以通过以下方法完成用户自定义策略：<br>1. 继承 org.apache.iotdb.db.conf.directories.strategy 类并实现自身的 Strategy 方法；<br>2. 将实现的类的完整类名（包名加类名，UserDefineStrategyPackage）填写到该配置项；<br>3. 将该类 jar 包添加到工程中。 |
 |类型| String |
 |默认值| MaxDiskUsableSpaceFirstStrategy |
 |改后生效方式|触发生效|
@@ -1712,13 +1799,13 @@ GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 G
 若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上"printgc"参数：
 
 ```bash
-nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
+nohup sbin/start-datanode.sh printgc >/dev/null 2>&1 &
 ```
 
 或者
 
 ```bash
-sbin\start-server.bat printgc
+sbin\start-datanode.bat printgc
 ```
 
 GC 日志会被存储在`IOTDB_HOME/logs/gc.log`. 至多会存储 10 个 gc.log 文件，每个文件最多 10MB。
