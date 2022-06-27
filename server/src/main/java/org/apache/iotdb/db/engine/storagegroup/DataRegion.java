@@ -1123,7 +1123,12 @@ public class DataRegion {
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
 
       if (!noFailure) {
-        logger.debug("Executing a InsertTabletNode failed: " + Arrays.toString(results));
+        logger.debug(
+            "Executing a InsertTabletNode failed. Device:{}, TimeRange: {}, Measurement:{}, Failing Status:{}",
+            insertTabletNode.getDevicePath(),
+            insertTabletNode.getTimes(),
+            insertTabletNode.getMeasurements(),
+            results);
         throw new WriteProcessException("Partial failed when inserting tablet.");
       }
 
@@ -3487,8 +3492,9 @@ public class DataRegion {
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
       logger.debug(
-          "Executing a InsertRowsOfOneDeviceNode failed: "
-              + insertRowsOfOneDeviceNode.getResults().toString());
+          "Executing a InsertRowsOfOneDeviceNode failed. RowList:{}, Failing Status:{}",
+          insertRowsOfOneDeviceNode.getInsertRowNodeList(),
+          insertRowsOfOneDeviceNode.getResults());
       throw new WriteProcessException("Partial failed inserting rows of one device");
     }
   }
@@ -3509,7 +3515,10 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      logger.debug("Executing a InsertRowsNode failed: " + insertRowsNode.getResults().toString());
+      logger.debug(
+          "Executing a InsertRowsNode failed. RowList:{}, Failing Status:{}",
+          insertRowsNode.getInsertRowNodeList(),
+          insertRowsNode.getResults());
       throw new WriteProcessException("Partial failed inserting rows");
     }
   }
@@ -3534,8 +3543,9 @@ public class DataRegion {
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       logger.debug(
-          "Executing a InsertMultiTablets failed: "
-              + insertMultiTabletsNode.getResults().toString());
+          "Executing a InsertMultiTablets failed. TabletList:{}, Failing Status:{}",
+          insertMultiTabletsNode.getInsertTabletNodeList(),
+          insertMultiTabletsNode.getResults());
       throw new WriteProcessException("Partial failed inserting multi tablets");
     }
   }

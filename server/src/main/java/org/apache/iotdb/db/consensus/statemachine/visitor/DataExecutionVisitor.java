@@ -74,7 +74,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insert(node);
       return StatusUtils.OK;
     } catch (WriteProcessException e) {
-      LOGGER.error("Error in executing plan node: {}", node, e);
+      LOGGER.warn("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
@@ -85,7 +85,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insertTablets(node);
       return StatusUtils.OK;
     } catch (WriteProcessException e) {
-      LOGGER.error("Error in executing plan node: {}", node, e);
+      LOGGER.warn("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
