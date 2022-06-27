@@ -76,7 +76,6 @@ public interface IWritableMemChunk extends WALEntryValue {
       Object[] valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
-      int[] columnIndexArray,
       int start,
       int end);
 

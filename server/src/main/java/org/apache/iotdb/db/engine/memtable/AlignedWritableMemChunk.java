@@ -176,7 +176,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       Object[] valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
-      int[] c,
       int start,
       int end) {
     int[] columnIndexArray = checkColumnsInInsertPlan(valueList, schemaList);

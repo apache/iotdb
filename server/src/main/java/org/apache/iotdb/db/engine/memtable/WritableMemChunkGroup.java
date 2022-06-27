@@ -48,7 +48,6 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       Object[] columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
-      int[] columnIndexArray,
       int start,
       int end) {
     int emptyColumnCount = 0;

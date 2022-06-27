@@ -122,7 +122,6 @@ public class WritableMemChunk implements IWritableMemChunk {
       Object[] valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
-      int[] columnIndexArray,
       int start,
       int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());

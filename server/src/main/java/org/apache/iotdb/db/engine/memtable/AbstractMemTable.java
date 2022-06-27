@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -477,14 +476,11 @@ public abstract class AbstractMemTable implements IMemTable {
     if (insertTabletPlan.getDeviceID() == null) {
       insertTabletPlan.setDeviceID(deviceIDFactory.getDeviceID(insertTabletPlan.getDevicePath()));
     }
-    int[] columnIndexArray = new int[insertTabletPlan.getColumns().length];
-    Arrays.fill(columnIndexArray, -1);
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0, index = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
-      columnIndexArray[index++] = i;
       IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
       schemaList.add(schema);
     }
@@ -495,7 +491,6 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
         schemaList,
-        columnIndexArray,
         start,
         end);
   }
@@ -508,13 +503,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    int[] columnIndexArray = new int[insertTabletNode.getColumns().length];
-    Arrays.fill(columnIndexArray, -1);
-    for (int i = 0, index = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         continue;
       }
-      columnIndexArray[index++] = i;
       IMeasurementSchema schema = insertTabletNode.getMeasurementSchemas()[i];
       schemaList.add(schema);
     }
@@ -525,7 +517,6 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletNode.getColumns(),
         insertTabletNode.getBitMaps(),
         schemaList,
-        columnIndexArray,
         start,
         end);
   }
@@ -538,13 +529,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    int[] columnIndexArray = new int[insertTabletPlan.getColumns().length];
-    Arrays.fill(columnIndexArray, -1);
-    for (int i = 0, index = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
-      columnIndexArray[index++] = i;
       IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
       schemaList.add(schema);
     }
@@ -558,7 +546,6 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
         schemaList,
-        columnIndexArray,
         start,
         end);
   }
@@ -571,13 +558,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    int[] columnIndexArray = new int[insertTabletNode.getColumns().length];
-    Arrays.fill(columnIndexArray, -1);
-    for (int i = 0, index = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         continue;
       }
-      columnIndexArray[index++] = i;
       IMeasurementSchema schema = insertTabletNode.getMeasurementSchemas()[i];
       schemaList.add(schema);
     }
@@ -591,7 +575,6 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletNode.getColumns(),
         insertTabletNode.getBitMaps(),
         schemaList,
-        columnIndexArray,
         start,
         end);
   }
