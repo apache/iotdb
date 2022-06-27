@@ -1043,7 +1043,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws TriggerExecutionException, WriteProcessException {
+      throws TriggerExecutionException, BatchProcessException, WriteProcessException {
 
     writeLock("insertTablet");
     try {
@@ -1123,13 +1123,7 @@ public class DataRegion {
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
 
       if (!noFailure) {
-        logger.warn(
-            "Executing a InsertTabletNode failed. Device:{}, TimeRange: {}, Measurement:{}, Failing Status:{}",
-            insertTabletNode.getDevicePath(),
-            insertTabletNode.getTimes(),
-            insertTabletNode.getMeasurements(),
-            results);
-        throw new WriteProcessException("Partial failed when inserting tablet.");
+        throw new BatchProcessException(results);
       }
 
       //      TODO: trigger // fire trigger after insertion
@@ -3432,7 +3426,7 @@ public class DataRegion {
    * @param insertRowsOfOneDeviceNode batch of rows belongs to one device
    */
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
-      throws WriteProcessException, TriggerExecutionException {
+      throws WriteProcessException, TriggerExecutionException, BatchProcessException {
     writeLock("InsertRowsOfOneDevice");
     try {
       boolean isSequence = false;
@@ -3491,19 +3485,7 @@ public class DataRegion {
       writeUnlock();
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      logger.warn("Executing a InsertRowsOfOneDeviceNode failed");
-      for (Entry<Integer, TSStatus> failedEntry :
-          insertRowsOfOneDeviceNode.getResults().entrySet()) {
-        InsertRowNode insertRowNode =
-            insertRowsOfOneDeviceNode.getInsertRowNodeList().get(failedEntry.getKey());
-        logger.warn(
-            "Insert row failed. Device: {}, time:{}, measurement:{}, TSStatus:{}",
-            insertRowNode.getDevicePath(),
-            insertRowNode.getTime(),
-            insertRowNode.getMeasurements(),
-            failedEntry.getValue());
-      }
-      throw new WriteProcessException("Partial failed inserting rows of one device");
+      throw new BatchProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3512,7 +3494,7 @@ public class DataRegion {
    *
    * @param insertRowsNode batch of rows belongs to multiple devices
    */
-  public void insert(InsertRowsNode insertRowsNode) throws WriteProcessException {
+  public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
     for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
       try {
@@ -3534,7 +3516,7 @@ public class DataRegion {
             insertRowNode.getMeasurements(),
             failedEntry.getValue());
       }
-      throw new WriteProcessException("Partial failed inserting rows");
+      throw new BatchProcessException("Partial failed inserting rows");
     }
   }
 
@@ -3544,7 +3526,7 @@ public class DataRegion {
    * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
-      throws WriteProcessException {
+      throws BatchProcessException {
     for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
@@ -3557,18 +3539,7 @@ public class DataRegion {
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      logger.warn("Executing a InsertMultiTablets failed");
-      for (Entry<Integer, TSStatus> failedEntry : insertMultiTabletsNode.getResults().entrySet()) {
-        InsertTabletNode insertTabletNode =
-            insertMultiTabletsNode.getInsertTabletNodeList().get(failedEntry.getKey());
-        logger.warn(
-            "Insert tablet failed. Device: {}, times:{}, measurement:{}, TSStatus:{}",
-            insertTabletNode.getDevicePath(),
-            insertTabletNode.getTimes(),
-            insertTabletNode.getMeasurements(),
-            failedEntry.getValue());
-      }
-      throw new WriteProcessException("Partial failed inserting multi tablets");
+      throw new BatchProcessException("Partial failed inserting multi tablets");
     }
   }
 
