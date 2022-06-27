@@ -227,7 +227,7 @@ public class DataNode implements DataNodeMBean {
                     TConsensusGroupType.DataRegion);
           }
 
-          if (IoTDBStartCheck.getInstance()
+          if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
             config.setSchemaRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
