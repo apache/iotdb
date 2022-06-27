@@ -69,9 +69,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {
       LOGGER.warn(
-          "Executing a InsertTabletNode failed. Device:{}, TimeRange: {}, Measurement:{}, Failing Status:{}",
+          "Executing a InsertTabletNode failed. device:{}, startTime: {}, Measurement:{}, Failing Status:{}",
           node.getDevicePath(),
-          node.getTimes(),
+          node.getTimes()[0],
           node.getMeasurements(),
           e.getFailingStatus());
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
@@ -88,7 +88,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
         LOGGER.warn(
-            "Insert row failed. Device: {}, time:{}, measurement:{}, TSStatus:{}",
+            "Insert row failed. device: {}, time:{}, measurement:{}, TSStatus:{}",
             insertRowNode.getDevicePath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
@@ -109,9 +109,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         InsertTabletNode insertTabletNode =
             node.getInsertTabletNodeList().get(failedEntry.getKey());
         LOGGER.warn(
-            "Insert tablet failed. Device: {}, times:{}, measurement:{}, TSStatus:{}",
+            "Insert tablet failed. device: {}, startTime:{}, measurement:{}, TSStatus:{}",
             insertTabletNode.getDevicePath(),
-            insertTabletNode.getTimes(),
+            insertTabletNode.getTimes()[0],
             insertTabletNode.getMeasurements(),
             failedEntry.getValue());
       }
@@ -133,7 +133,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
         LOGGER.warn(
-            "Insert row failed. Device: {}, time:{}, measurement:{}, TSStatus:{}",
+            "Insert row failed. device: {}, time:{}, measurement:{}, TSStatus:{}",
             insertRowNode.getDevicePath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
