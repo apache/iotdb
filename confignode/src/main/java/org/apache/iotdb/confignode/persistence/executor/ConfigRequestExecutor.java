@@ -28,9 +28,10 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
@@ -41,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -102,7 +104,7 @@ public class ConfigRequestExecutor {
     this.udfInfo = udfInfo;
   }
 
-  public DataSet executorQueryPlan(ConfigRequest req)
+  public DataSet executeQueryPlan(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case GetDataNodeInfo:
@@ -131,14 +133,14 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListRoleUsers((AuthorReq) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
-      case GetRegionLocations:
-        return partitionInfo.getRegionLocations((GetRegionLocationsReq) req);
+      case GetRegionInfoList:
+        return partitionInfo.getRegionInfoList((GetRegionInfoListReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
   }
 
-  public TSStatus executorNonQueryPlan(ConfigRequest req)
+  public TSStatus executeNonQueryPlan(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case RegisterDataNode:
@@ -149,6 +151,8 @@ public class ConfigRequestExecutor {
           return status;
         }
         return partitionInfo.setStorageGroup((SetStorageGroupReq) req);
+      case AdjustMaxRegionGroupCount:
+        return clusterSchemaInfo.adjustMaxRegionGroupCount((AdjustMaxRegionGroupCountReq) req);
       case DeleteStorageGroup:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
@@ -162,8 +166,8 @@ public class ConfigRequestExecutor {
         return clusterSchemaInfo.setDataReplicationFactor((SetDataReplicationFactorReq) req);
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
-      case CreateRegions:
-        return partitionInfo.createRegions((CreateRegionsReq) req);
+      case CreateRegionGroups:
+        return partitionInfo.createRegionGroups((CreateRegionsReq) req);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:
@@ -186,6 +190,8 @@ public class ConfigRequestExecutor {
         return authorInfo.authorNonQuery((AuthorReq) req);
       case ApplyConfigNode:
         return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
+      case RemoveConfigNode:
+        return nodeInfo.removeConfigNodeList((RemoveConfigNodeReq) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionReq) req);
       case DropFunction:

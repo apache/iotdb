@@ -171,13 +171,13 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 ```
 # Unix/OS X
-> sbin/remove-node.sh <internal_ip> <internal_meta_port>
+> sbin/remove-node.sh <internal_address> <internal_meta_port>
 
 # Windows
-> sbin\remove-node.bat <internal_ip> <internal_meta_port>
+> sbin\remove-node.bat <internal_address> <internal_meta_port>
 ```
 
-`internal_ip`表示待删除节点的 IP 地址 `internal_meta_port`表示待删除节点的 meta 服务端口
+`internal_address`表示待删除节点的 IP 地址 `internal_meta_port`表示待删除节点的 meta 服务端口
 
 ### 使用 Cli 工具
 
@@ -201,11 +201,11 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 ### 集群配置项
 
-- internal_ip
+- internal_address
 
-| 名字         | internal_ip                                                  |
+| 名字         | internal_address                                                  |
 | ------------ | ------------------------------------------------------------ |
-| 描述         | IOTDB 集群各个节点之间内部通信的 IP 地址，比如心跳、snapshot 快照、raft log 等。**`internal_ip`是集群内部的私有ip** |
+| 描述         | IOTDB 集群各个节点之间内部通信的 IP 地址，比如心跳、snapshot 快照、raft log 等。**`internal_address`是集群内部的私有ip** |
 | 类型         | String                                                       |
 | 默认值       | 127.0.0.1                                                    |
 | 改后生效方式 | 重启服务生效，集群建立后不可再修改                           |

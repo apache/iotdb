@@ -70,4 +70,4 @@ jobs:
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
-          -DskipTests -pl '!distribution'  -P '!testcontainer' -am
+          -DskipTests -pl '!distribution,!integration-test'  -P '!testcontainer' -am

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.mpp.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 

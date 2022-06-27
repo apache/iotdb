@@ -58,6 +58,10 @@ public interface BaseConfig {
     return this;
   }
 
+  default long getPartitionInterval() {
+    return 604800;
+  }
+
   default BaseConfig setCompressor(String compressor) {
     return this;
   }

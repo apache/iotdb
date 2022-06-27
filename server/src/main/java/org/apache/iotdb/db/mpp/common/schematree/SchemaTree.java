@@ -34,7 +34,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -214,31 +216,31 @@ public class SchemaTree {
     }
   }
 
-  public void serialize(ByteBuffer buffer) {
-    root.serialize(buffer);
+  public void serialize(OutputStream outputStream) throws IOException {
+    root.serialize(outputStream);
   }
 
-  public static SchemaTree deserialize(ByteBuffer buffer) {
+  public static SchemaTree deserialize(InputStream inputStream) throws IOException {
 
     byte nodeType;
     int childNum;
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
 
-    while (buffer.hasRemaining()) {
-      nodeType = ReadWriteIOUtils.readByte(buffer);
+    while (inputStream.available() > 0) {
+      nodeType = ReadWriteIOUtils.readByte(inputStream);
       if (nodeType == SCHEMA_MEASUREMENT_NODE) {
-        SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(buffer);
+        SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
         stack.push(measurementNode);
       } else {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
-          internalNode = SchemaEntityNode.deserialize(buffer);
+          internalNode = SchemaEntityNode.deserialize(inputStream);
         } else {
-          internalNode = SchemaInternalNode.deserialize(buffer);
+          internalNode = SchemaInternalNode.deserialize(inputStream);
         }
 
-        childNum = ReadWriteIOUtils.readInt(buffer);
+        childNum = ReadWriteIOUtils.readInt(inputStream);
         while (childNum > 0) {
           child = stack.pop();
           internalNode.addChild(child.getName(), child);

@@ -131,7 +131,7 @@ public class InsertRowStatement extends InsertBaseStatement {
         dataPartition.getDataRegionReplicaSetForWriting(
             devicePath.getFullPath(), StorageEngineV2.getTimePartitionSlot(time));
     return Collections.singletonList(
-        regionReplicaSet.getDataNodeLocations().get(0).getExternalEndPoint());
+        regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

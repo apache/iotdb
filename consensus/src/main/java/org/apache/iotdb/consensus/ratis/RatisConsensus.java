@@ -567,7 +567,7 @@ class RatisConsensus implements IConsensus {
 
     RaftClientReply reply;
     try {
-      reply = server.submitClientRequest(request);
+      reply = server.snapshotManagement(request);
     } catch (IOException ioException) {
       return failed(new RatisRequestFailedException(ioException));
     }

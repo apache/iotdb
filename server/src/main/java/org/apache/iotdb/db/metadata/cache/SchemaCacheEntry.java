@@ -67,4 +67,27 @@ public class SchemaCacheEntry {
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
     this.lastCacheContainer = lastCacheContainer;
   }
+
+  /**
+   * Total basic 100B
+   *
+   * <ul>
+   *   <li>SchemaCacheEntry Object header, 8B
+   *   <li>isAligned, 1B
+   *   <li>LastCacheContainer reference, 8B
+   *   <li>MeasurementSchema
+   *       <ul>
+   *         <li>Reference, 8B
+   *         <li>Object header, 8B
+   *         <li>String measurementId basic, 8 + 8 + 4 + 8 + 4 = 32B
+   *         <li>type, encoding, compressor, 3 B
+   *         <li>encodingConverter, 8 + 8 + 8 = 24B
+   *         <li>props, 8B
+   *       </ul>
+   * </ul>
+   */
+  public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
+    // each char takes 2B in Java
+    return 100 + 2 * schemaCacheEntry.getMeasurementSchema().getMeasurementId().length();
+  }
 }

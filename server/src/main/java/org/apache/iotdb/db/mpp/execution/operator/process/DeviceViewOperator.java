@@ -105,6 +105,9 @@ public class DeviceViewOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     TsBlock tsBlock = getCurDeviceOperator().next();
+    if (tsBlock == null) {
+      return null;
+    }
     List<Integer> indexes = getCurDeviceIndexes();
 
     // fill existing columns

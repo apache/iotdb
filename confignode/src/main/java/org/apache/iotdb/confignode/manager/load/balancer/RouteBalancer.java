@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.manager.Manager;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
@@ -34,9 +34,9 @@ import java.util.Map;
  */
 public class RouteBalancer {
 
-  private final Manager configManager;
+  private final IManager configManager;
 
-  public RouteBalancer(Manager configManager) {
+  public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
   }
 

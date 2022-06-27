@@ -96,7 +96,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
           dataPartition.getDataRegionReplicaSetForWriting(
               insertRowStatement.devicePath.getFullPath(),
               StorageEngineV2.getTimePartitionSlot(insertRowStatement.getTime()));
-      result.add(regionReplicaSet.getDataNodeLocations().get(0).getExternalEndPoint());
+      result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
     }
     return result;
   }

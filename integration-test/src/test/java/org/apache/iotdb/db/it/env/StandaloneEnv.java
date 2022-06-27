@@ -87,7 +87,11 @@ public class StandaloneEnv implements BaseEnv {
     return null;
   }
 
-  public void setNextTestCaseName(String testCaseName) {
+  public void setTestMethodName(String testCaseName) {
+    // Do nothing
+  }
+
+  public void dumpTestJVMSnapshot() {
     // Do nothing
   }
 }

@@ -42,7 +42,7 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -143,7 +143,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(WALManager.getInstance());
 
     registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(DataBlockService.getInstance());
+    registerManager.register(MPPDataExchangeService.getInstance());
     registerManager.register(InternalService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 

@@ -35,57 +35,81 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   // Don't break in advance
-  protected void addIntInput(Column[] column, TimeRange timeRange) {
+  protected int addIntInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateIntFirstValue(column[1].getInt(i), curTime);
       }
     }
+    return column[0].getPositionCount();
   }
 
-  protected void addLongInput(Column[] column, TimeRange timeRange) {
+  protected int addLongInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateLongFirstValue(column[1].getLong(i), curTime);
       }
     }
+    return column[0].getPositionCount();
   }
 
-  protected void addFloatInput(Column[] column, TimeRange timeRange) {
+  protected int addFloatInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateFloatFirstValue(column[1].getFloat(i), curTime);
       }
     }
+    return column[0].getPositionCount();
   }
 
-  protected void addDoubleInput(Column[] column, TimeRange timeRange) {
+  protected int addDoubleInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateDoubleFirstValue(column[1].getDouble(i), curTime);
       }
     }
+    return column[0].getPositionCount();
   }
 
-  protected void addBooleanInput(Column[] column, TimeRange timeRange) {
+  protected int addBooleanInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateBooleanFirstValue(column[1].getBoolean(i), curTime);
       }
     }
+    return column[0].getPositionCount();
   }
 
-  protected void addBinaryInput(Column[] column, TimeRange timeRange) {
+  protected int addBinaryInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateBinaryFirstValue(column[1].getBinary(i), curTime);
       }
     }
+    return column[0].getPositionCount();
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.multi;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -50,12 +51,28 @@ public abstract class UDFQueryTransformer extends Transformer {
   }
 
   @Override
-  public boolean isConstantPointReader() {
+  public final boolean isConstantPointReader() {
     return isLayerPointReaderConstant;
   }
 
   @Override
-  protected boolean cacheValue() throws QueryProcessException, IOException {
+  protected final YieldableState yieldValue() throws QueryProcessException, IOException {
+    while (!cacheValueFromUDFOutput()) {
+      final YieldableState udfYieldableState = tryExecuteUDFOnce();
+      if (udfYieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+        return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+      }
+      if (udfYieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA && !terminate()) {
+        return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      }
+    }
+    return YieldableState.YIELDABLE;
+  }
+
+  protected abstract YieldableState tryExecuteUDFOnce() throws QueryProcessException, IOException;
+
+  @Override
+  protected final boolean cacheValue() throws QueryProcessException, IOException {
     while (!cacheValueFromUDFOutput()) {
       if (!executeUDFOnce() && !terminate()) {
         return false;

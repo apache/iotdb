@@ -87,12 +87,12 @@ public class CheckpointManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    Map<Integer, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
-    Map<Integer, Integer> versionId2memTableId = new ConcurrentHashMap<>();
+    Map<Long, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
+    Map<Long, Long> versionId2memTableId = new ConcurrentHashMap<>();
     // create 10 memTables, and flush the first 5 of them
     int memTablesNum = 10;
     for (int i = 0; i < memTablesNum; ++i) {
-      int versionId = i;
+      long versionId = i;
       Callable<Void> writeTask =
           () -> {
             String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
@@ -117,7 +117,7 @@ public class CheckpointManagerTest {
     // check first valid version id
     assertEquals(memTablesNum / 2, checkpointManager.getFirstValidWALVersionId());
     // recover info from checkpoint file
-    Map<Integer, MemTableInfo> actualMemTableId2Info =
+    Map<Long, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
@@ -126,9 +126,9 @@ public class CheckpointManagerTest {
   public void testTriggerLogRoller() {
     // create memTables until reach LOG_SIZE_LIMIT, and flush the first 5 of them
     int size = 0;
-    int versionId = 0;
-    Map<Integer, MemTableInfo> expectedMemTableId2Info = new HashMap<>();
-    Map<Integer, Integer> versionId2memTableId = new HashMap<>();
+    long versionId = 0;
+    Map<Long, MemTableInfo> expectedMemTableId2Info = new HashMap<>();
+    Map<Long, Long> versionId2memTableId = new HashMap<>();
     while (size < config.getCheckpointFileSizeThresholdInByte()) {
       ++versionId;
       String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
@@ -157,7 +157,7 @@ public class CheckpointManagerTest {
     assertTrue(
         new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(1)).exists());
     // recover info from checkpoint file
-    Map<Integer, MemTableInfo> actualMemTableId2Info =
+    Map<Long, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }

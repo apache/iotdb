@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -25,6 +26,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -82,6 +84,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  // ======================================================
+  // Consensus read/write interfaces
+  // ======================================================
+
   /**
    * Cache StorageGroupSchema
    *
@@ -138,6 +144,51 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .setMessage("Storage group not exist");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
+  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupReq req) {
+    CountStorageGroupResp result = new CountStorageGroupResp();
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      PartialPath patternPath = new PartialPath(req.getStorageGroupPattern());
+      result.setCount(mTree.getBelongedStorageGroups(patternPath).size());
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result.setStatus(
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage("Error StorageGroup name"));
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
+  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupReq req) {
+    StorageGroupSchemaResp result = new StorageGroupSchemaResp();
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+      PartialPath patternPath = new PartialPath(req.getStorageGroupPattern());
+      List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+      for (PartialPath path : matchedPaths) {
+        schemaMap.put(
+            path.getFullPath(),
+            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
+      }
+      result.setSchemaMap(schemaMap);
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result.setStatus(
+          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+              .setMessage("Error StorageGroup name"));
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
     }
     return result;
   }
@@ -243,7 +294,43 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return List<StorageGroupName>, all storageGroups' name */
+  /**
+   * Adjust the maximum RegionGroup count of each StorageGroup
+   *
+   * @param req AdjustMaxRegionGroupCountReq
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupCountReq req) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      for (Map.Entry<String, Pair<Integer, Integer>> entry :
+          req.getMaxRegionGroupCountMap().entrySet()) {
+        PartialPath path = new PartialPath(entry.getKey());
+        TStorageGroupSchema storageGroupSchema =
+            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+        storageGroupSchema.setMaxSchemaRegionGroupCount(entry.getValue().getLeft());
+        storageGroupSchema.setMaxDataRegionGroupCount(entry.getValue().getRight());
+      }
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  // ======================================================
+  // Leader scheduling interfaces
+  // ======================================================
+
+  /**
+   * Only leader use this interface.
+   *
+   * @return List<StorageGroupName>, all storageGroups' name
+   */
   public List<String> getStorageGroupNames() {
     List<String> storageGroups = new ArrayList<>();
     storageGroupReadWriteLock.readLock().lock();
@@ -258,51 +345,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return storageGroups;
   }
 
-  /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
-  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupReq req) {
-    CountStorageGroupResp result = new CountStorageGroupResp();
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      PartialPath patternPath = new PartialPath(req.getStorageGroupPattern());
-      result.setCount(mTree.getBelongedStorageGroups(patternPath).size());
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      result.setStatus(
-          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name"));
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
-
-  /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
-  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupReq req) {
-    StorageGroupSchemaResp result = new StorageGroupSchemaResp();
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
-      PartialPath patternPath = new PartialPath(req.getStorageGroupPattern());
-      List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
-      for (PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(),
-            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
-      }
-      result.setSchemaMap(schemaMap);
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      result.setStatus(
-          new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name"));
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
-
+  /**
+   * Only leader use this interface. Check if the specific StorageGroup already exists.
+   *
+   * @param storageName The specific StorageGroup's name
+   * @throws MetadataException If the specific StorageGroup already exists
+   */
   public void checkContainsStorageGroup(String storageName) throws MetadataException {
     storageGroupReadWriteLock.readLock().lock();
     try {
@@ -313,7 +361,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get the specific StorageGroupSchema
+   * Only leader use this interface. Get the specific StorageGroupSchema
    *
    * @param storageGroup StorageGroupName
    * @return The specific StorageGroupSchema
@@ -333,7 +381,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return All StorageGroupSchemas that matches to the specific StorageGroup patterns */
+  /**
+   * Only leader use this interface. Get the matched StorageGroupSchemas.
+   *
+   * @param rawPathList StorageGroups' path patterns or full paths
+   * @return All StorageGroupSchemas that matches to the specific StorageGroup patterns
+   */
   public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
       List<String> rawPathList) {
     Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
@@ -353,6 +406,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return schemaMap;
+  }
+
+  /**
+   * Only leader use this interface. Get the maxRegionGroupCount of specific StorageGroup.
+   *
+   * @param storageGroup StorageGroupName
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @return maxSchemaRegionGroupCount or maxDataRegionGroupCount
+   */
+  public int getMaxRegionGroupCount(String storageGroup, TConsensusGroupType consensusGroupType) {
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      PartialPath path = new PartialPath(storageGroup);
+      TStorageGroupSchema storageGroupSchema =
+          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+      switch (consensusGroupType) {
+        case SchemaRegion:
+          return storageGroupSchema.getMaxSchemaRegionGroupCount();
+        case DataRegion:
+        default:
+          return storageGroupSchema.getMaxDataRegionGroupCount();
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn("Error StorageGroup name", e);
+      return -1;
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
   }
 
   @Override

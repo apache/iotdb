@@ -26,9 +26,9 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: 
 
-* environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
-* system configuration file (`iotdb-engine.properties`). 
-	* `iotdb-engine.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc. What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
+* environment configuration file (`datanode-env.bat`, `datanode-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
+* system configuration file (`iotdb-datanode.properties`). 
+	* `iotdb-datanode.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc. What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
   
 * log configuration file (`logback.xml`)
 
@@ -43,7 +43,7 @@ Trigger way: The client sends the command `load configuration` to the IoTDB serv
 
 ## IoTDB Environment Configuration File
 
-The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server starts. Users can view the contents of the environment configuration file by viewing the `iotdb-env.sh` (or `iotdb-env.bat`) file.
+The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server starts. Users can view the contents of the environment configuration file by viewing the `datanode-env.sh` (or `datanode-env.bat`) file.
 
 The detail of each variables are as follows:
 
