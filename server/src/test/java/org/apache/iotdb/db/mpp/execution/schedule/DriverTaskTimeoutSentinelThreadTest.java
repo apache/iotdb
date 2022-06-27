@@ -189,7 +189,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
         new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a blocked future
-    ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
+    ListenableFuture<?> mockFuture = Mockito.mock(ListenableFuture.class);
     Mockito.when(mockFuture.isDone()).thenReturn(false);
     Mockito.doAnswer(
             ans -> {
@@ -237,7 +237,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
         new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a ready future
-    ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
+    ListenableFuture<?> mockFuture = Mockito.mock(ListenableFuture.class);
     Mockito.when(mockFuture.isDone()).thenReturn(true);
     Mockito.doAnswer(
             ans -> {

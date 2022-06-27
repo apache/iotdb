@@ -116,7 +116,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     for (int i = 0; i < operators.size(); i++) {
       if (!noMoreTsBlocks[i]) {
         Operator operator = operators.get(i);

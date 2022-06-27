@@ -85,7 +85,7 @@ public class AggregationOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     for (int i = 0; i < inputOperatorsCount; i++) {
       ListenableFuture<Void> blocked = children.get(i).isBlocked();
       if (!blocked.isDone()) {
