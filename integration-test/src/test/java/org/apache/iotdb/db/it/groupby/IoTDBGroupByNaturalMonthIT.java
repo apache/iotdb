@@ -47,7 +47,6 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByNaturalMonthIT {
 
   private static final List<String> dataSet = new ArrayList<>();
@@ -79,7 +78,8 @@ public class IoTDBGroupByNaturalMonthIT {
    * 00:00:00
    */
   @Test
-  public void groupByNaturalMonth1() {
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void groupByNaturalMonthTest1() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray =
         new String[] {
@@ -102,7 +102,8 @@ public class IoTDBGroupByNaturalMonthIT {
    * 2021-03-01 00:00:00
    */
   @Test
-  public void groupByNaturalMonth2() {
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void groupByNaturalMonthTest2() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {
       "10/31/2020:00:00:00,10.0,",
@@ -124,7 +125,8 @@ public class IoTDBGroupByNaturalMonthIT {
    * 00:00:00
    */
   @Test
-  public void groupByNaturalMonth3() {
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void groupByNaturalMonthTest3() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {"10/31/2020:00:00:00,30.0,"};
     resultSetEqualTest(
@@ -140,7 +142,8 @@ public class IoTDBGroupByNaturalMonthIT {
    * month with 31 days
    */
   @Test
-  public void groupByNaturalMonth4() {
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void groupByNaturalMonthTest4() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {"01/31/2021:00:00:00,28.0,", "02/28/2021:00:00:00,31.0,"};
     resultSetEqualTest(
@@ -152,7 +155,8 @@ public class IoTDBGroupByNaturalMonthIT {
 
   /** Test group by month with order by time desc. */
   @Test
-  public void groupByNaturalMonth5() {
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void groupByNaturalMonthFailTest() {
     assertTestFail(
         "select sum(temperature) from root.sg1.d1 "
             + "GROUP BY ([1612051200000, 1617148800000), 1mo) order by time desc",
@@ -161,7 +165,8 @@ public class IoTDBGroupByNaturalMonthIT {
 
   /** StartTime: now() - 1mo, EndTime: now(). */
   @Test
-  public void groupByNaturalMonth6() {
+  @Category(LocalStandaloneIT.class) // datasets are inconsistent in cluster
+  public void groupByNaturalMonthWithNowTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -193,6 +198,7 @@ public class IoTDBGroupByNaturalMonthIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupBySlingWindowNaturalMonth1() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {
@@ -211,6 +217,7 @@ public class IoTDBGroupByNaturalMonthIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupBySlingWindowNaturalMonth2() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {
