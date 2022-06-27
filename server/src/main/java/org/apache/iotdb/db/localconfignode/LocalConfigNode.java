@@ -361,6 +361,10 @@ public class LocalConfigNode {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
+    if (config.isMppMode() && !config.isClusterMode()) {
+      storageEngine.setTTL(
+          dataPartitionTable.getDataRegionIdsByStorageGroup(storageGroup), dataTTL);
+    }
     storageGroupSchemaManager.setTTL(storageGroup, dataTTL);
   }
 
