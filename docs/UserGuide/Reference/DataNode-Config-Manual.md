@@ -1253,7 +1253,7 @@ To enable GC log, just add a parameter "printgc" when you start the DataNode.
 nohup sbin/start-datanode.sh printgc >/dev/null 2>&1 &
 ```
 Or
-```bash
+```cmd
 sbin\start-datanode.bat printgc
 ```
 
